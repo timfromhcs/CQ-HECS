@@ -1,0 +1,85 @@
+#version 460
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+// Amplitude format: int32 Q1.31 real and imag (ivec2)
+struct AmplitudeQ31 {
+    int re;
+    int im;
+};
+
+layout(std430, binding = 0) readonly buffer TensorLeft {
+    AmplitudeQ31 site_l[]; // Dimensions: [2][chi_L][chi_M]
+};
+
+layout(std430, binding = 1) readonly buffer TensorRight {
+    AmplitudeQ31 site_r[]; // Dimensions: [2][chi_M][chi_R]
+};
+
+layout(std430, binding = 2) readonly buffer GateMatrix {
+    AmplitudeQ31 gate_u[16]; // 4x4 unitary gate
+};
+
+layout(std430, binding = 3) writeonly buffer OutputTheta {
+    AmplitudeQ31 theta[]; // Dimensions: [4][chi_L][chi_R]
+};
+
+layout(push_constant) uniform PushConstants {
+    uint chi_L;
+    uint chi_M;
+    uint chi_R;
+    uint pad;
+} pc;
+
+shared AmplitudeQ31 s_left[16][16];
+shared AmplitudeQ31 s_right[16][16];
+
+AmplitudeQ31 q31_mult(AmplitudeQ31 x, AmplitudeQ31 y) {
+    int64_t r = (int64_t(x.re) * y.re - int64_t(x.im) * y.im) >> 31;
+    int64_t i = (int64_t(x.re) * y.im + int64_t(x.im) * y.re) >> 31;
+    return AmplitudeQ31(int(r), int(i));
+}
+
+AmplitudeQ31 q31_add(AmplitudeQ31 x, AmplitudeQ31 y) {
+    int64_t r = int64_t(x.re) + y.re;
+    int64_t i = int64_t(x.im) + y.im;
+    if (r > 0x7FFFFFFFLL) r = 0x7FFFFFFFLL;
+    if (r < -0x80000000LL) r = -0x80000000LL;
+    if (i > 0x7FFFFFFFLL) i = 0x7FFFFFFFLL;
+    if (i < -0x80000000LL) i = -0x80000000LL;
+    return AmplitudeQ31(int(r), int(i));
+}
+
+void main() {
+    uint alpha = gl_GlobalInvocationID.x; // index in chi_L
+    uint gamma = gl_GlobalInvocationID.y; // index in chi_R
+
+    if (alpha >= pc.chi_L || gamma >= pc.chi_R) return;
+
+    // Contract over shared bond chi_M for each physical index pair (sL, sR)
+    for (uint sL_prime = 0; sL_prime < 2; ++sL_prime) {
+        for (uint sR_prime = 0; sR_prime < 2; ++sR_prime) {
+            AmplitudeQ31 total_sum = AmplitudeQ31(0, 0);
+
+            for (uint sL = 0; sL < 2; ++sL) {
+                for (uint sR = 0; sR < 2; ++sR) {
+                    uint u_idx = (sL_prime * 2 + sR_prime) * 4 + (sL * 2 + sR);
+                    AmplitudeQ31 u_val = gate_u[u_idx];
+
+                    AmplitudeQ31 bond_sum = AmplitudeQ31(0, 0);
+                    for (uint m = 0; m < pc.chi_M; ++m) {
+                        uint l_idx = (sL * pc.chi_L + alpha) * pc.chi_M + m;
+                        uint r_idx = (sR * pc.chi_M + m) * pc.chi_R + gamma;
+                        bond_sum = q31_add(bond_sum, q31_mult(site_l[l_idx], site_r[r_idx]));
+                    }
+
+                    total_sum = q31_add(total_sum, q31_mult(u_val, bond_sum));
+                }
+            }
+
+            uint out_idx = ((sL_prime * 2 + sR_prime) * pc.chi_L + alpha) * pc.chi_R + gamma;
+            theta[out_idx] = total_sum;
+        }
+    }
+}

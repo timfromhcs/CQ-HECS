@@ -1,4 +1,5 @@
 # Build & Output Directories
+target/
 build/
 bin/
 out/

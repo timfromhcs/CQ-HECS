@@ -1,0 +1,64 @@
+#version 460
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+struct RingElement {
+    int64_t a;
+    int64_t b;
+    int64_t c;
+    int64_t d;
+    uint k;
+    uint pad;
+};
+
+layout(std430, binding = 0) readonly buffer InputA {
+    RingElement in_a[];
+};
+
+layout(std430, binding = 1) readonly buffer InputB {
+    RingElement in_b[];
+};
+
+layout(std430, binding = 2) writeonly buffer OutputC {
+    RingElement out_c[];
+};
+
+layout(push_constant) uniform PushConstants {
+    uint count;
+} pc;
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx >= pc.count) return;
+
+    RingElement x = in_a[idx];
+    RingElement y = in_b[idx];
+
+    int64_t re_rat = x.a * y.a + 2 * x.b * y.b - x.c * y.c - 2 * x.d * y.d;
+    int64_t re_sq2 = x.a * y.b + x.b * y.a - x.c * y.d - x.d * y.c;
+
+    int64_t im_rat = x.a * y.c + 2 * x.b * y.d + x.c * y.a + 2 * x.d * y.b;
+    int64_t im_sq2 = x.a * y.d + x.b * y.c + x.c * y.b + x.d * y.a;
+    uint k_sum = x.k + y.k;
+
+    // Canonical reduction in Z[1/sqrt(2), i]
+    while (k_sum > 0 && ((re_rat & 1) == 0) && ((im_rat & 1) == 0)) {
+        int64_t next_a = re_sq2;
+        int64_t next_b = re_rat / 2;
+        int64_t next_c = im_sq2;
+        int64_t next_d = im_rat / 2;
+        re_rat = next_a;
+        re_sq2 = next_b;
+        im_rat = next_c;
+        im_sq2 = next_d;
+        k_sum--;
+    }
+
+    out_c[idx].a = re_rat;
+    out_c[idx].b = re_sq2;
+    out_c[idx].c = im_rat;
+    out_c[idx].d = im_sq2;
+    out_c[idx].k = k_sum;
+    out_c[idx].pad = 0u;
+}

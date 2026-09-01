@@ -19,6 +19,15 @@ else()
     add_compile_options(-Wall -Wextra)
 endif()
 
+option(CQ_ENABLE_AVX2 "Enable AVX2 SIMD optimizations" OFF)
+if(CQ_ENABLE_AVX2)
+    if(MSVC)
+        add_compile_options(/arch:AVX2)
+    else()
+        add_compile_options(-mavx2)
+    endif()
+endif()
+
 if(WIN32)
     if(NOT DEFINED ENV{VULKAN_SDK} OR NOT EXISTS "$ENV{VULKAN_SDK}")
         file(GLOB _VULKAN_CANDIDATE_DIRS "C:/VulkanSDK/*")
@@ -142,6 +151,9 @@ add_library(cq_hecs_core SHARED
     src/stabilizer_tableau.cpp
     src/mps_sampler.cpp
     src/cq_qasm_parser.cpp
+    src/algebra/ring.cpp
+    src/stabilizer/tableau.cpp
+    src/vulkan/vulkan_engine.cpp
 )
 target_include_directories(cq_hecs_core PUBLIC include src)
 target_link_libraries(cq_hecs_core PRIVATE ${Vulkan_LIBRARIES})
@@ -168,6 +180,18 @@ add_executable(test_stress_limits tests/test_stress_limits.cpp src/mps_sampler.c
 target_include_directories(test_stress_limits PRIVATE include src)
 target_link_libraries(test_stress_limits PRIVATE ${Vulkan_LIBRARIES})
 
+add_executable(test_exact_ring tests/cpp/test_exact_ring.cpp src/algebra/ring.cpp)
+target_include_directories(test_exact_ring PRIVATE include src)
+target_link_libraries(test_exact_ring PRIVATE ${Vulkan_LIBRARIES})
+
+add_executable(test_stabilizer_extreme tests/cpp/test_stabilizer_extreme.cpp src/stabilizer/tableau.cpp)
+target_include_directories(test_stabilizer_extreme PRIVATE include src)
+target_link_libraries(test_stabilizer_extreme PRIVATE ${Vulkan_LIBRARIES})
+
+add_executable(test_300q_stress tests/cpp/test_300q_stress.cpp src/vulkan/vulkan_engine.cpp)
+target_include_directories(test_300q_stress PRIVATE include src)
+target_link_libraries(test_300q_stress PRIVATE ${Vulkan_LIBRARIES})
+
 # 7. CTest Verification Suite
 enable_testing()
 add_test(NAME test_reversibility COMMAND test_reversibility)
@@ -180,6 +204,9 @@ add_test(NAME test_exact_algebra COMMAND test_exact_algebra)
 add_test(NAME test_stabilizer COMMAND test_stabilizer)
 add_test(NAME test_hybrid_mps COMMAND test_hybrid_mps)
 add_test(NAME test_stress_limits COMMAND test_stress_limits)
+add_test(NAME test_exact_ring COMMAND test_exact_ring)
+add_test(NAME test_stabilizer_extreme COMMAND test_stabilizer_extreme)
+add_test(NAME test_300q_stress COMMAND test_300q_stress)
 
 # 8. Nanobind Python C++20 Modules
 find_package(Python 3.10 COMPONENTS Interpreter Development.Module QUIET)

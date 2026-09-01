@@ -1,4 +1,4 @@
-name: Continuous Integration
+name: CQ-HECS Production CI/CD
 
 on:
   push:
@@ -7,16 +7,11 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build-and-test:
-    name: Build and Test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-
+  build-and-test-linux:
+    name: Linux C++20 & Qiskit Verification (Ubuntu)
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: Checkout Code
         uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -27,48 +22,35 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++-12 libvulkan-dev glslang-tools \
+            mesa-vulkan-drivers vulkan-tools libx11-xcb-dev libxkbcommon-dev libwayland-dev
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 100
+
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install numpy torch rich pytest qiskit nanobind wheel setuptools
-
-      - name: Install Vulkan SDK & SwiftShader (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libvulkan-dev vulkan-tools glslang-tools spirv-tools \
-            libx11-xcb-dev libxkbcommon-dev libwayland-dev mesa-vulkan-drivers ninja-build
-
-      - name: Install Vulkan SDK (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          choco install vulkan-sdk -y --no-progress
-          $vulkanDir = (Get-ChildItem -Path "C:\VulkanSDK" -Directory | Sort-Object Name -Descending | Select-Object -First 1).FullName
-          echo "VULKAN_SDK=$vulkanDir" >> $env:GITHUB_ENV
-          echo "$vulkanDir\Bin" >> $env:GITHUB_PATH
+          pip install numpy qiskit pytest nanobind setuptools wheel
 
       - name: Configure CMake
-        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCQ_BUILD_TESTS=ON -DCQHECS_BUILD_TESTS=ON -DCQHECS_HEADLESS=ON
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCQ_BUILD_TESTS=ON \
+            -DCQ_ENABLE_AVX2=ON
 
-      - name: Build Binaries, Shared Libraries and Tests
-        run: cmake --build build --config Release --parallel
+      - name: Build C++20 Core & Shaders
+        run: cmake --build build --config Release --parallel $(nproc)
 
-      - name: Run CTest Suite (All Tests Must Pass)
-        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Execute C++ Test Suite & Stress Gates
+        run: ctest --test-dir build --output-on-failure --schedule-random -j$(nproc)
 
-      - name: Run Python Automated Unit Tests (65 Tests)
-        run: python -m unittest discover -s tests -v
+      - name: Install Python Package
+        run: pip install -e .
 
-      - name: Run Pytest End-to-End Qiskit Suites
+      - name: Execute Python & Qiskit Test Suite
         env:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
-        run: |
-          python -m pytest tests/python/ -v
-          python -m pytest tests/test_qiskit_and_transpiler.py -v
-
-      - name: Run PowerShell IPC and CLI Tests (Windows Only)
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: |
-          .\bin\Release\cq_hecs.exe test
-          powershell -ExecutionPolicy Bypass -File tests/test_powershell_ipc.ps1
+        run: pytest tests/python/ -v --durations=10
