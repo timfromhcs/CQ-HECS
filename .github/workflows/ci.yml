@@ -1,4 +1,4 @@
-name: CQ-HECS Production CI/CD
+name: CQ-HECS Production CI & Showroom Validation
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build-and-test-linux:
-    name: Linux C++20 & Qiskit Verification (Ubuntu)
+  build-and-test:
+    name: Ubuntu Linux C++20, Vulkan & Qiskit CI
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -22,7 +22,7 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install System Dependencies
+      - name: Setup Toolchain
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build g++-12 libvulkan-dev glslang-tools \
@@ -35,22 +35,17 @@ jobs:
           pip install numpy qiskit pytest nanobind setuptools wheel
 
       - name: Configure CMake
-        run: |
-          cmake -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCQ_BUILD_TESTS=ON \
-            -DCQ_ENABLE_AVX2=ON
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCQ_BUILD_TESTS=ON -DCQ_ENABLE_AVX2=ON
 
       - name: Build C++20 Core & Shaders
         run: cmake --build build --config Release --parallel $(nproc)
 
-      - name: Execute C++ Test Suite & Stress Gates
+      - name: Execute CTest Zero-Mock Suite
         run: ctest --test-dir build --output-on-failure --schedule-random -j$(nproc)
 
-      - name: Install Python Package
-        run: pip install -e .
-
-      - name: Execute Python & Qiskit Test Suite
+      - name: Python Integration Tests
         env:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
-        run: pytest tests/python/ -v --durations=10
+        run: |
+          pip install -e .
+          pytest tests/python/ -v --durations=10
