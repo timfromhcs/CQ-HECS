@@ -63,6 +63,25 @@
       "ctest_failed": 0,
       "audit_zero_silent_truncation": "PASSED (0 violations)",
       "url": "https://github.com/timfromhcs/CQ-HECS/actions/runs/33554871525"
+    },
+    {
+      "run_id": "33562814848",
+      "commit_sha": "88dc726021dde78d9ac9f8450b6bb9d5efc4f760",
+      "branch": "main",
+      "status": "success",
+      "conclusion": "success",
+      "duration_seconds": 175,
+      "workflow": "CQ-HECS Deterministic CI & Four-Path Architecture Validation",
+      "tests_passed": 89,
+      "tests_failed": 0,
+      "mutation_score_percent": 100.0,
+      "mutants_killed": 5,
+      "mutants_tested": 5,
+      "vulkan_shaders_verified": 12,
+      "ctest_passed": 13,
+      "ctest_failed": 0,
+      "audit_zero_silent_truncation": "PASSED (0 violations)",
+      "url": "https://github.com/timfromhcs/CQ-HECS/actions/runs/33562814848"
     }
   ],
   "iterations": [
@@ -158,6 +177,15 @@
       "timestamp": "2026-09-01T23:38:00+02:00",
       "action": "vulkan_mps_comparative_benchmark_suite",
       "notes": "Created benchmarks/run_vulkan_mps_benchmarks.py, generating benchmarks/vulkan_mps_benchmark_results.json and benchmarks/VULKAN_MPS_EVALUATION.md. Documented Area-Law memory efficiency (< 5 MB at 300 qubits) vs Volume-Law exponential explosion, exact Giles-Selinger ring arithmetic Z[1/sqrt(2), i], and cross-vendor Vulkan portability vs proprietary CUDA."
+    },
+    {
+      "iteration": 12,
+      "timestamp": "2026-09-01T23:49:00+02:00",
+      "action": "first_consecutive_green_v020_ci_run",
+      "commit_sha": "88dc726021dde78d9ac9f8450b6bb9d5efc4f760",
+      "ci_status": "GREEN",
+      "active_run_id": "33562814848",
+      "notes": "First 100% green run for v0.2.0: 12/12 Vulkan 1.3 shaders verified, 89/89 Python tests passed, 13/13 CTest passed, 100% mutation killed (5/5), zero silent truncation verified, wheel/sdist/SBOM generated in 2m55s."
     }
   ],
   "coverage_metrics": {
@@ -184,11 +212,13 @@
   },
   "release_artifacts": {
     "dist_directory": "dist",
-    "version": "0.1.0",
+    "commit_sha": "88dc726021dde78d9ac9f8450b6bb9d5efc4f760",
     "checksums": {
       "cqhecs-0.1.0-py3-none-any.whl": "f6fb92a3ce6b78d16a6ecc6a55e8b246d2d2c22f5476864f5f8c57b9d1d4a3fd",
       "cqhecs-0.1.0.tar.gz": "66ca81a69d530417a31ee95816a59422efc96c7ab9d8052dc5a42bfec9347fdc",
-      "sha256sums.txt": "bcf53112cf8e8fbaf0ef87a044d03e9114d4e3a89345d3e0c0ae2f5b84ae9f03"
+      "cqhecs-0.2.0-py3-none-any.whl": "6fe9fd0b0100b2cb293dd7a2a6e37f79a170b298c997031eee6a745f327bcd59",
+      "cqhecs-0.2.0.tar.gz": "3fcb2496018e490e22f2e84dddff14de89e9f24a7c077b93bd8472b7aaacbe92",
+      "sha256sums.txt": "eee61b9d77f4b5fc5445c287468b2fce692d945accc1537d85f895607be09abc"
     },
     "sbom_file": "dist/cqhecs-sbom.spdx.json"
   }
