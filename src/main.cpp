@@ -173,12 +173,16 @@ static int cmd_sat(const std::vector<std::string>& args) {
 // ---------------------------------------------------------------------
 static int cmd_arx(const std::vector<std::string>& args) {
     std::string primitive;
-    uint32_t rounds = 1000;
+    uint32_t rounds = 0;
+    bool rounds_explicit = false;
     bool json_mode = false;
 
     for (size_t i = 0; i < args.size(); ++i) {
         if (args[i] == "--json") json_mode = true;
-        else if (args[i] == "--rounds" && i + 1 < args.size()) rounds = std::stoul(args[++i]);
+        else if (args[i] == "--rounds" && i + 1 < args.size()) {
+            rounds = std::stoul(args[++i]);
+            rounds_explicit = true;
+        }
         else if (primitive.empty() && args[i][0] != '-') primitive = args[i];
     }
 
@@ -191,10 +195,13 @@ static int cmd_arx(const std::vector<std::string>& args) {
     ARXBenchmarkResultCPP res;
 
     if (primitive == "blake2b" || primitive == "blake") {
+        if (!rounds_explicit) rounds = 12; // Standard BLAKE2b rounds
         res = arx.benchmark_blake2b(rounds);
     } else if (primitive == "chacha20" || primitive == "chacha") {
+        if (!rounds_explicit) rounds = 20; // Standard ChaCha20 rounds
         res = arx.benchmark_chacha20(rounds);
     } else if (primitive == "sha256" || primitive == "sha") {
+        if (!rounds_explicit) rounds = 64; // Standard SHA-256 compression steps
         res = arx.benchmark_sha256(rounds);
     } else {
         std::cerr << "Unknown primitive '" << primitive << "'. Options: blake2b, chacha20, sha256\n";

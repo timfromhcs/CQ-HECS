@@ -1,12 +1,12 @@
 """
 Test Suite: End-to-End Cryptographic ARX Inversion Solver with Isolated Validator
-Simulates crypto inversion on reduced ARX rounds using the 5 J-Spaces and GWT Meta-Layer.
+Simulates crypto inversion on reduced ARX rounds using the 5 J-Spaces and Vulkan Workload Scheduler.
 """
 
 import unittest
 import random
 from python_bridge.cq_hecs import (
-    GlobalWorkspaceMetaLayer,
+    VulkanComputeScheduler,
     JSpaceAlpha,
     JSpaceGamma,
     JSpaceBeta,
@@ -16,7 +16,7 @@ from python_bridge.cq_hecs import (
 
 class TestEndToEndSolver(unittest.TestCase):
     def setUp(self):
-        self.gwt = GlobalWorkspaceMetaLayer()
+        self.scheduler = VulkanComputeScheduler()
         self.alpha = JSpaceAlpha(bit_width=64)
         self.gamma = JSpaceGamma(table_capacity=2048)
         self.beta = JSpaceBeta()
@@ -43,7 +43,7 @@ class TestEndToEndSolver(unittest.TestCase):
             self.assertTrue(is_new, "Duplicate state detected in fresh run!")
 
             # Validate through Top Non-Master Isolated Validator
-            is_valid = self.gwt.top_non_master_forward_validator(
+            is_valid = self.scheduler.top_non_master_forward_validator(
                 candidate_solution=candidate,
                 forward_oracle_func=forward_oracle,
                 expected_target=target_digest
@@ -76,17 +76,17 @@ class TestEndToEndSolver(unittest.TestCase):
                 a, b, c, d = self.alpha.quarter_round_forward(*quad)
                 return self.alpha.quarter_round_forward(a, b, c, d)
 
-            is_valid = self.gwt.top_non_master_forward_validator(
+            is_valid = self.scheduler.top_non_master_forward_validator(
                 candidate_solution=(ba0, bb0, bc0, bd0),
                 forward_oracle_func=forward_2round,
                 expected_target=(fa2, fb2, fc2, fd2)
             )
             self.assertTrue(is_valid)
 
-    def test_gwt_cross_attention_and_nudge_during_search(self):
-        """Simulate GWT meta-layer heuristic switching and entropy nudge during search."""
+    def test_scheduler_workload_aggregation_and_nudge_during_search(self):
+        """Simulate Vulkan scheduler heuristic switching and entropy nudge during search."""
         # Case 1: High carry pressure
-        attn = self.gwt.cross_attention_aggregation(
+        attn = self.scheduler.aggregate_workload_metrics(
             carry_pressure=0.9,
             phase_cancellation=0.2,
             sat_violation_ratio=0.1,
@@ -96,11 +96,11 @@ class TestEndToEndSolver(unittest.TestCase):
         self.assertEqual(attn["dominant_space"], "Alpha")
 
         # Case 2: Trapped in local minimum -> Dynamic nudge
-        nudge = self.gwt.dynamic_nudge_controller(trapped_in_local_minimum=True)
+        nudge = self.scheduler.dynamic_nudge_controller(trapped_in_local_minimum=True)
         self.assertIn(nudge, (1, 7))
 
         # Case 3: Not trapped -> No nudge
-        no_nudge = self.gwt.dynamic_nudge_controller(trapped_in_local_minimum=False)
+        no_nudge = self.scheduler.dynamic_nudge_controller(trapped_in_local_minimum=False)
         self.assertIsNone(no_nudge)
 
 

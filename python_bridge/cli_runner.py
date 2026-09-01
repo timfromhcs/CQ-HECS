@@ -21,7 +21,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from python_bridge.cq_hecs import (
-    GlobalWorkspaceMetaLayer,
+    VulkanComputeScheduler,
     JSpaceAlpha,
     JSpaceBeta,
     JSpaceGamma,
@@ -66,15 +66,26 @@ def cmd_run_sat(cnf_file: str, timeout: float = 15.0):
     print(f"  > Solve Time: {res.elapsed_ms:.2f} ms")
 
 
-def cmd_run_arx(primitive: str, rounds: int = 1000):
-    print(f"\n[CQ-HECS ARX Cryptanalysis] Benchmarking {primitive.upper()} ({rounds} iterations)...")
+def cmd_run_arx(primitive: str, rounds: Optional[int] = None):
+    p_low = primitive.lower()
+    if rounds is None:
+        if p_low in ("chacha20", "chacha"):
+            rounds = 20
+        elif p_low in ("sha256", "sha"):
+            rounds = 64
+        elif p_low in ("blake2b", "blake"):
+            rounds = 12
+        else:
+            rounds = 20
+
+    print(f"\n[CQ-HECS ARX Cryptanalysis Testbench] Verifying {primitive.upper()} ({rounds} standard rounds)...")
     suite = ARXCryptanalysisSuite()
 
-    if primitive.lower() in ("blake2b", "blake"):
+    if p_low in ("blake2b", "blake"):
         res = suite.benchmark_blake2b(rounds=rounds)
-    elif primitive.lower() in ("chacha20", "chacha"):
+    elif p_low in ("chacha20", "chacha"):
         res = suite.benchmark_chacha20(rounds=rounds)
-    elif primitive.lower() in ("sha256", "sha"):
+    elif p_low in ("sha256", "sha"):
         res = suite.benchmark_sha256(steps=rounds)
     else:
         print(f"Unknown primitive '{primitive}'. Supported: blake2b, chacha20, sha256")
@@ -83,7 +94,7 @@ def cmd_run_arx(primitive: str, rounds: int = 1000):
     print(f"  > Primitive: {res.primitive_name}")
     print(f"  > Forward / Backward Step Invertibility: {'100% VERIFIED' if res.inverse_verified else 'FAILED'}")
     print(f"  > Carry Shadow Exactness: {'100% BIT-IDENTITY' if res.carry_shadow_exact else 'FAILED'}")
-    print(f"  > Path Pruning Efficiency: {res.path_pruning_ratio:.2e}x vs naive search")
+    print(f"  > Verification Pruning: {res.path_pruning_ratio:.2e}x constraint space reduction")
     print(f"  > Throughput: {res.num_rounds / (res.elapsed_ms / 1000.0):,.0f} rounds/sec ({res.elapsed_ms:.2f} ms)")
 
 
@@ -98,7 +109,7 @@ def cmd_run_stress(iterations: int = 100000):
     mps = MPS300QubitSimulator(num_qubits=300, max_chi=64, governor=governor)
     alpha = JSpaceAlpha(bit_width=64)
     eps = JSpaceEpsilon()
-    gwt = GlobalWorkspaceMetaLayer()
+    scheduler = VulkanComputeScheduler()
 
     seed = 0xabcdef1234567890
     check_interval = max(1, iterations // 10)
@@ -112,10 +123,10 @@ def cmd_run_stress(iterations: int = 100000):
         sum_x, carry_s = alpha.linearize_add(i * 0x133713371337, (i ^ 0xDEADBEEF))
         _ = alpha.reconstruct_add(sum_x, carry_s)
 
-        # 3. Dynamic entropy nudge & cross-attention
+        # 3. Dynamic entropy nudge & workload scheduling
         if i % 100 == 0:
-            _ = gwt.harvest_hardware_entropy()
-            _ = gwt.dynamic_nudge_controller(trapped_in_local_minimum=(i % 500 == 0))
+            _ = scheduler.harvest_hardware_entropy()
+            _ = scheduler.dynamic_nudge_controller(trapped_in_local_minimum=(i % 500 == 0))
 
         # Check memory bounds
         if i % check_interval == 0:
@@ -134,10 +145,10 @@ def cmd_run_stress(iterations: int = 100000):
 
 def run_legacy_benchmarks(args):
     print("=" * 68)
-    print(" CQ-HECS v3.5: High-Performance Quantum Hybrid Emulation Benchmark")
+    print(" CQ-HECS v0.2.0: High-Performance Quantum Classical Simulation Benchmark")
     print("=" * 68)
 
-    gwt = GlobalWorkspaceMetaLayer()
+    scheduler = VulkanComputeScheduler()
 
     # 1. MPS 300-Qubit Simulation Benchmark
     print(f"\n[1/4] Running {args.qubits}-Qubit MPS Simulation Benchmark (chi={args.chi})...")
@@ -176,24 +187,24 @@ def run_legacy_benchmarks(args):
     assert (qa, qb, qc, qd) == (ba, bb, bc, bd)
     print("  > ARX Quarter-Round Forward & Inverse: Exact 64-bit match.")
 
-    # 4. GWT Cross-Attention Meta-Layer Aggregator
-    print("\n[4/4] Testing GWT Cross-Attention Aggregator & Entropy Nudge Controller...")
-    attn = gwt.cross_attention_aggregation(
+    # 4. Vulkan Workload & Entropy Scheduler
+    print("\n[4/4] Testing Vulkan Workload Metric Aggregator & Entropy Nudge Controller...")
+    attn = scheduler.aggregate_workload_metrics(
         carry_pressure=0.85, phase_cancellation=0.92,
         sat_violation_ratio=0.15, residual_frobenius_energy=0.04, lyapunov_lambda=1.2
     )
     print(f"  > Dominant Sub-Space: {attn['dominant_space']}")
-    nudge = gwt.dynamic_nudge_controller(trapped_in_local_minimum=True)
+    nudge = scheduler.dynamic_nudge_controller(trapped_in_local_minimum=True)
     print(f"  > Dynamic Entropy Nudge Injected: {nudge} in Z_8 ring")
 
 
 def run_legacy_solver():
     print("=" * 68)
-    print(" CQ-HECS v3.5: Cryptographic ARX Constraint Inversion Solver")
+    print(" CQ-HECS v0.2.0: Cryptographic ARX Constraint Inversion Solver")
     print("=" * 68)
     alpha = JSpaceAlpha(bit_width=64)
     gamma = JSpaceGamma(table_capacity=1024)
-    gwt = GlobalWorkspaceMetaLayer()
+    scheduler = VulkanComputeScheduler()
 
     secret_key = 0xdeadbeef1337c0de
     known_salt = 0x55aa55aa33cc33cc
@@ -206,7 +217,7 @@ def run_legacy_solver():
     def forward_oracle(key_val: int) -> int:
         return (key_val + known_salt) & 0xFFFFFFFFFFFFFFFF
 
-    is_valid = gwt.top_non_master_forward_validator(
+    is_valid = scheduler.top_non_master_forward_validator(
         candidate_solution=candidate_key,
         forward_oracle_func=forward_oracle,
         expected_target=target_digest
@@ -217,7 +228,7 @@ def run_legacy_solver():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="CQ-HECS v3.5 CLI")
+    parser = argparse.ArgumentParser(description="CQ-HECS v0.2.0 CLI")
     subparsers = parser.add_subparsers(dest="subcommand", help="Subcommand to execute")
 
     # 1. run subcommand
@@ -225,7 +236,7 @@ def main():
     parser_run.add_argument("--qasm", type=str, help="Path to .qasm file")
     parser_run.add_argument("--sat", type=str, help="Path to .cnf file")
     parser_run.add_argument("--arx", type=str, choices=["blake2b", "chacha20", "sha256"], help="ARX primitive to invert")
-    parser_run.add_argument("--rounds", type=int, default=1000, help="Number of ARX rounds/steps (default: 1000)")
+    parser_run.add_argument("--rounds", type=int, default=None, help="Number of ARX rounds/steps (default: standard rounds ChaCha20:20, SHA256:64, BLAKE2b:12)")
 
     # 2. dashboard subcommand
     parser_dash = subparsers.add_parser("dashboard", help="Launch interactive Rich TUI dashboard")

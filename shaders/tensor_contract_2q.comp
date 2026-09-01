@@ -44,10 +44,10 @@ AmplitudeQ31 q31_mult(AmplitudeQ31 x, AmplitudeQ31 y) {
 AmplitudeQ31 q31_add(AmplitudeQ31 x, AmplitudeQ31 y) {
     int64_t r = int64_t(x.re) + y.re;
     int64_t i = int64_t(x.im) + y.im;
-    if (r > 0x7FFFFFFFLL) r = 0x7FFFFFFFLL;
-    if (r < -0x80000000LL) r = -0x80000000LL;
-    if (i > 0x7FFFFFFFLL) i = 0x7FFFFFFFLL;
-    if (i < -0x80000000LL) i = -0x80000000LL;
+    if (r > int64_t(2147483647)) r = int64_t(2147483647);
+    if (r < -int64_t(2147483648)) r = -int64_t(2147483648);
+    if (i > int64_t(2147483647)) i = int64_t(2147483647);
+    if (i < -int64_t(2147483648)) i = -int64_t(2147483648);
     return AmplitudeQ31(int(r), int(i));
 }
 

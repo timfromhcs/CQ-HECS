@@ -1,5 +1,5 @@
 """
-Test Suite: J-Space Beta (Exact Z_8 Phase Ring, Clifford+T, Destructive Interference, Anti-Math)
+Test Suite: J-Space Beta (Exact Z_8 Phase Ring, Clifford+T, Destructive Interference, Unitary Adjoint)
 """
 
 import unittest
@@ -39,7 +39,7 @@ class TestZ8Phases(unittest.TestCase):
         self.assertEqual(p_curr, 0)
 
     def test_anti_math_unitary_inversion(self):
-        """Verify exact anti-math inversion (U† U = I) for any gate sequence."""
+        """Verify exact unitary adjoint inversion (U† U = I) for any gate sequence."""
         import random
         random.seed(42)
 
@@ -51,9 +51,9 @@ class TestZ8Phases(unittest.TestCase):
         for shift in gate_shifts:
             curr_phase = self.beta.phase_mult(curr_phase, shift)
 
-        # Anti-Math Inversion: apply adjoints in reverse order
+        # Unitary Adjoint Inversion: apply adjoints in reverse order
         for shift in reversed(gate_shifts):
-            inv_shift = self.beta.anti_math_inverse(shift)
+            inv_shift = self.beta.unitary_adjoint(shift)
             curr_phase = self.beta.phase_mult(curr_phase, inv_shift)
 
         # Must return to exact identity 0

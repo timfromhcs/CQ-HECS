@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(CQ_HECS VERSION 0.1.0 LANGUAGES CXX)
+project(CQ_HECS VERSION 0.2.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -41,6 +41,32 @@ if(WIN32)
 endif()
 
 find_package(Vulkan REQUIRED)
+
+# -----------------------------------------------------------------------------
+# Automated Vulkan 1.3 SPIR-V Shader Compilation Target (glslangValidator)
+# -----------------------------------------------------------------------------
+find_program(GLSLANG_VALIDATOR glslangValidator HINTS "$ENV{VULKAN_SDK}/bin")
+if(GLSLANG_VALIDATOR)
+    message(STATUS "Found glslangValidator for automated SPIR-V compilation: ${GLSLANG_VALIDATOR}")
+    file(GLOB_RECURSE SHADER_COMP_FILES "${CMAKE_SOURCE_DIR}/shaders/*.comp")
+    set(SPIRV_BINARY_FILES "")
+    foreach(SHADER_SRC ${SHADER_COMP_FILES})
+        get_filename_component(SHADER_NAME ${SHADER_SRC} NAME_WE)
+        get_filename_component(SHADER_DIR ${SHADER_SRC} DIRECTORY)
+        set(SPV_OUT "${SHADER_DIR}/${SHADER_NAME}.spv")
+        add_custom_command(
+            OUTPUT ${SPV_OUT}
+            COMMAND ${GLSLANG_VALIDATOR} --target-env vulkan1.3 -V ${SHADER_SRC} -o ${SPV_OUT}
+            DEPENDS ${SHADER_SRC}
+            COMMENT "Compiling Vulkan 1.3 SPIR-V shader: ${SHADER_NAME}.comp -> ${SHADER_NAME}.spv"
+            VERBATIM
+        )
+        list(APPEND SPIRV_BINARY_FILES ${SPV_OUT})
+    endforeach()
+    add_custom_target(vulkan_shaders ALL DEPENDS ${SPIRV_BINARY_FILES})
+else()
+    message(WARNING "glslangValidator not found. Using pre-compiled SPIR-V shaders.")
+endif()
 
 include_directories(
     include
@@ -101,6 +127,9 @@ set(CORE_HEADERS
 # 1. Standalone Monolithic Executable (CLI)
 add_executable(cq_hecs src/main.cpp ${CORE_SOURCES} ${CORE_HEADERS})
 target_link_libraries(cq_hecs PRIVATE ${Vulkan_LIBRARIES})
+if(TARGET vulkan_shaders)
+    add_dependencies(cq_hecs vulkan_shaders)
+endif()
 
 # 2. C-ABI Shared Library (cq_hecs.dll / libcq_hecs.so)
 add_library(cq_hecs_shared SHARED src/cq_hecs_api.cpp ${CORE_SOURCES} ${CORE_HEADERS})
@@ -109,6 +138,9 @@ set_target_properties(cq_hecs_shared PROPERTIES
     DEFINE_SYMBOL "CQ_HECS_EXPORTS"
 )
 target_link_libraries(cq_hecs_shared PRIVATE ${Vulkan_LIBRARIES})
+if(TARGET vulkan_shaders)
+    add_dependencies(cq_hecs_shared vulkan_shaders)
+endif()
 
 # 3. Deterministic Test Executables
 add_executable(test_reversibility tests/test_reversibility.cpp ${VRTS_SOURCES} ${VRTS_HEADERS})
@@ -158,6 +190,9 @@ add_library(cq_hecs_core SHARED
 target_include_directories(cq_hecs_core PUBLIC include src)
 target_link_libraries(cq_hecs_core PRIVATE ${Vulkan_LIBRARIES})
 set_target_properties(cq_hecs_core PROPERTIES OUTPUT_NAME "cq_hecs_core")
+if(TARGET vulkan_shaders)
+    add_dependencies(cq_hecs_core vulkan_shaders)
+endif()
 
 # 6. Test Executables
 add_executable(test_bitexact_and_stress tests/test_bitexact_and_stress.cpp)

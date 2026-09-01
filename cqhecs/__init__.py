@@ -10,7 +10,8 @@ from cqhecs.backend import CQHecsBackend
 from cqhecs.provider import CQHecsProvider
 from cqhecs.result import SimulationResult
 from cqhecs.circuit_analyzer import CircuitAnalyzer, CircuitProperties
-from cqhecs.router import FourPathRouter
+from cqhecs.router import FourPathRouter, EntanglementAdaptiveRouter
+from cqhecs.scheduler import VulkanComputeScheduler
 from cqhecs.backends import (
     PathAStabilizerBackend,
     StabilizerTableauSimulator,
@@ -22,7 +23,7 @@ from cqhecs.backends import (
     SparsePauliDynamicsSimulator,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     "CQHecsBackend",
     "CQHecsProvider",
@@ -30,6 +31,8 @@ __all__ = [
     "CircuitAnalyzer",
     "CircuitProperties",
     "FourPathRouter",
+    "EntanglementAdaptiveRouter",
+    "VulkanComputeScheduler",
     "PathAStabilizerBackend",
     "StabilizerTableauSimulator",
     "PathBStabilizerRankBackend",

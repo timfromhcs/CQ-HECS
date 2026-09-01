@@ -1,9 +1,9 @@
 """
-CQ-HECS v3.5 Interactive Terminal UI (Rich TUI Dashboard)
+CQ-HECS v0.2.0 Interactive Terminal UI (Rich TUI Dashboard)
 Real-time monitoring for:
   - Active VRAM Gauge (0 to 120 MB limit monitor)
-  - 5 J-Spaces Attention Heatmap (Alpha, Beta, Gamma, Delta, Epsilon)
-  - Global Workspace Nudge & Entropy Jitter Oscilloscope
+  - 5 J-Spaces Workload Heatmap (Alpha, Beta, Gamma, Delta, Epsilon)
+  - Vulkan Workload & Entropy Jitter Oscilloscope
   - MPS Tensor Bond Dimension (chi) and Truncation Residual Energy (Lambda_res)
   - Solved states / candidate throughput metrics
 """
@@ -30,7 +30,7 @@ from rich.text import Text
 from rich.live import Live
 
 from python_bridge.cq_hecs import (
-    GlobalWorkspaceMetaLayer,
+    VulkanComputeScheduler,
     MPS300QubitSimulator,
     TieredMemoryGovernor
 )
@@ -87,7 +87,7 @@ class TUIRenderer:
         return layout
 
     def render_header(self, state: TUIRuntimeState) -> Panel:
-        title = Text(" CQ-HECS v3.5 :: CONSCIOUS QUANTUM HYBRID EMULATION & CONSTRAINT SOLVER ", style="bold white on blue")
+        title = Text(" CQ-HECS v0.2.0 :: CLASSICAL QUANTUM VULKAN COMPUTE SIMULATOR & FOUR-PATH ROUTER ", style="bold white on blue")
         sub = Text(f" [Cycle #{state.cycle_count:06d}]  Target: Win11/MSVC/Vulkan1.3  |  Engine: ACTIVE (100% Deterministic) ", style="dim cyan")
         grid = Table.grid(expand=True)
         grid.add_column(justify="center")
@@ -140,7 +140,7 @@ class TUIRenderer:
             bar_str = "[" + "#" * bar_len + "-" * (14 - bar_len) + "]"
             table.add_row(space, f"{pct:5.1f}%", f"[magenta]{bar_str}[/magenta]")
 
-        return Panel(table, title="[bold magenta]Global Workspace Meta-Layer (Cross-Attention)[/bold magenta]", border_style="magenta")
+        return Panel(table, title="[bold magenta]Vulkan Workload & Entropy Scheduler (Workload Router)[/bold magenta]", border_style="magenta")
 
     def render_entropy_widget(self, state: TUIRuntimeState) -> Panel:
         # Mini oscilloscope for QPC hardware jitter (ASCII-safe across all Windows terminals)
@@ -160,11 +160,12 @@ class TUIRenderer:
         grid.add_column(style="bold white", width=18)
         grid.add_column()
 
-        grid.add_row("QPC Drift Jitter:", f"[cyan]{state.entropy_jitter_ns:.1f} ns[/cyan]")
-        grid.add_row("Stochastic Nudge:", f"[bold red]TRIGGERED ({state.nudge_val})[/bold red]" if state.nudge_active else "[green]STABLE[/green]")
+        grid.add_row("Entropy Jitter:", f"[green]{state.entropy_jitter_ns:.2f} ns[/green]")
+        grid.add_row("Hardware Drift:", f"[yellow]{state.qpc_drift_ppm:+.2f} ppm[/yellow]")
+        grid.add_row("Nudge Active:", "[bold green]YES (+1/7)[/bold green]" if state.nudge_active else "[dim]INACTIVE[/dim]")
         grid.add_row("Oscilloscope:", f"[cyan]{wave_str}[/cyan]")
 
-        return Panel(grid, title="[bold green]Multi-Hardware Entropy Oscilloscope[/bold green]", border_style="green")
+        return Panel(grid, title="[bold green]Vulkan Workload Nudge & Entropy Jitter Oscilloscope[/bold green]", border_style="green")
 
     def render_footer(self) -> Panel:
         text = Text("  [Q] Exit Dashboard  |  [V] Force Vulkan Dispatch  |  [S] Run SAT  |  [A] Invert ARX  |  [M] Page Cold Memory", style="dim white on grey23")
@@ -191,7 +192,7 @@ def run_dashboard_loop(max_cycles: Optional[int] = None, refresh_rate: float = 0
     renderer = TUIRenderer(console)
     layout = renderer.build_layout()
     state = TUIRuntimeState()
-    gwt = GlobalWorkspaceMetaLayer()
+    scheduler = VulkanComputeScheduler()
 
     cycle = 0
     with Live(layout, console=console, refresh_per_second=10, screen=False) as live:
@@ -201,7 +202,7 @@ def run_dashboard_loop(max_cycles: Optional[int] = None, refresh_rate: float = 0
                 state.cycle_count = cycle
 
                 # Update live metrics with realistic variations
-                ent = gwt.harvest_hardware_entropy()
+                ent = scheduler.harvest_hardware_entropy()
                 jitter = (ent % 100) * 0.8 + 15.0
                 state.entropy_jitter_ns = jitter
                 state.jitter_history.append(jitter)
@@ -212,8 +213,8 @@ def run_dashboard_loop(max_cycles: Optional[int] = None, refresh_rate: float = 0
                 state.nudge_active = (ent % 17 == 0)
                 state.nudge_val = 1 if (ent & 1) else 7
 
-                # Cross-attention dynamic variation
-                attn = gwt.cross_attention_aggregation(
+                # Workload metric aggregation dynamic variation
+                attn = scheduler.aggregate_workload_metrics(
                     carry_pressure=0.5 + 0.3 * math.sin(cycle * 0.2),
                     phase_cancellation=0.6 + 0.2 * math.cos(cycle * 0.15),
                     sat_violation_ratio=0.3,

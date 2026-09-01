@@ -39,6 +39,23 @@ class TestARXCryptanalysis(unittest.TestCase):
         self.assertTrue(result.carry_shadow_exact, "Multi-term carry decomposition must be 100% exact!")
         self.assertGreater(result.path_pruning_ratio, 1e6)
 
+    def test_standard_specification_rounds(self):
+        """Verify standard rounds: ChaCha20 (20), SHA-256 (64), BLAKE2b (12)."""
+        res_chacha = self.suite.benchmark_chacha20() # default 20 rounds
+        self.assertEqual(res_chacha.num_rounds, 20)
+        self.assertTrue(res_chacha.inverse_verified)
+        self.assertTrue(res_chacha.carry_shadow_exact)
+
+        res_sha = self.suite.benchmark_sha256() # default 64 steps
+        self.assertEqual(res_sha.num_rounds, 64)
+        self.assertTrue(res_sha.inverse_verified)
+        self.assertTrue(res_sha.carry_shadow_exact)
+
+        res_blake = self.suite.benchmark_blake2b() # default 12 rounds
+        self.assertEqual(res_blake.num_rounds, 12)
+        self.assertTrue(res_blake.inverse_verified)
+        self.assertTrue(res_blake.carry_shadow_exact)
+
 
 if __name__ == "__main__":
     unittest.main()

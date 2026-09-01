@@ -6,7 +6,7 @@ Tests concurrent execution across 16+ CPU threads to verify zero data races.
 import unittest
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from python_bridge.cq_hecs import GlobalWorkspaceMetaLayer, JSpaceAlpha, JSpaceBeta, JSpaceGamma, MPS300QubitSimulator
+from python_bridge.cq_hecs import VulkanComputeScheduler, JSpaceAlpha, JSpaceBeta, JSpaceGamma, MPS300QubitSimulator
 from python_bridge.sat_engine import CQSATSolver, DIMACSParser
 
 
@@ -30,12 +30,12 @@ class TestConcurrencyStress(unittest.TestCase):
 
         def mps_worker(thread_id: int):
             try:
-                gwt = GlobalWorkspaceMetaLayer()
+                scheduler = VulkanComputeScheduler()
                 mps = MPS300QubitSimulator(num_qubits=300, max_chi=32)
                 for step in range(20):
                     mps.apply_single_qubit_z8_gate(step % 300, phase_shift=(step % 7) + 1)
-                attn = gwt.cross_attention_aggregation(0.5, 0.5, 0.2, 0.01, 0.8)
-                ent = gwt.harvest_hardware_entropy()
+                attn = scheduler.cross_attention_aggregation(0.5, 0.5, 0.2, 0.01, 0.8)
+                ent = scheduler.harvest_hardware_entropy()
                 return ("mps", thread_id, True, ent > 0)
             except Exception as e:
                 errors.append(f"MPS thread {thread_id} error: {e}")

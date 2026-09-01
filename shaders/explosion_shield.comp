@@ -1,8 +1,8 @@
 #version 450
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
 
-// CQ-HECS v3.0 Explosion Shield Compute Shader
-// Implements: 3-Number Lossless Delta Compression & Anti-Math Unitary Inversion
+// CQ-HECS v0.2.0 Explosion Shield Compute Shader
+// Implements: 3-Number Lossless Delta Compression & Unitary Adjoint Inversion (U†)
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
@@ -19,7 +19,7 @@ layout(std430, binding = 2) buffer DiagnosticBuffer {
 };
 
 layout(push_constant) uniform PushConstants {
-    uint mode;             // 0: Compress (State -> Delta), 1: Decompress (Delta -> State), 2: Anti-Math Invert (U†)
+    uint mode;             // 0: Compress (State -> Delta), 1: Decompress (Delta -> State), 2: Unitary Adjoint Invert (U†)
     uint element_count;    // Total elements to process
     uint64_t header_seed;  // Seed for deterministic base generator
     int scaling_exponent;  // Dyadic exponent E
@@ -70,7 +70,7 @@ void main() {
         state_data[gid] = reconstructed_val;
     }
     else if (pc.mode == 2) {
-        // Mode 2: Anti-Math Unitary Inversion (U†)
+        // Mode 2: Unitary Adjoint Inversion (U†)
         // Reverses phase shift: phi_inv = (8 - phi_shift) mod 8
         // Each entry is packed amplitude: (phase << 16) | magnitude
         uint packed_val = uint(state_data[gid] & 0xFFFFFFFFL);

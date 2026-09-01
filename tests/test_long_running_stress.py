@@ -20,13 +20,13 @@ from python_bridge.cq_hecs import (
     TieredMemoryGovernor,
     JSpaceAlpha,
     JSpaceEpsilon,
-    GlobalWorkspaceMetaLayer
+    VulkanComputeScheduler
 )
 
 
 class TestLongRunningStress(unittest.TestCase):
     def test_continuous_100k_solver_cycles(self):
-        """Execute 100,000 continuous solver cycles and assert VRAM < 120 MB with 0 leaks."""
+        """Execute 100,000 iterations to test 0 memory leaks and <120 MB VRAM ceiling."""
         ram_delta = 0.0
         vram_mb = 0.0
         process = psutil.Process() if psutil else None
@@ -35,7 +35,7 @@ class TestLongRunningStress(unittest.TestCase):
         governor = TieredMemoryGovernor(max_vram_mb=120.0)
         mps = MPS300QubitSimulator(num_qubits=300, max_chi=64, governor=governor)
         alpha = JSpaceAlpha(bit_width=64)
-        gwt = GlobalWorkspaceMetaLayer()
+        scheduler = VulkanComputeScheduler()
 
         total_iterations = 100000
         check_step = 10000

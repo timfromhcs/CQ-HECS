@@ -1,21 +1,21 @@
-# CQ-HECS v4.5.0: Full Technical Reference for LLM Context Ingestion
+# CQ-HECS v0.2.0: Full Technical Reference for LLM Context Ingestion
 
-Project: CQ-HECS (Conscious Quantum Hybrid Emulation & Constraint Solver)
+Project: CQ-HECS (Classical Quantum High-Efficiency Compute Simulator)
 Author: Tim (@timfromhcs) <timfromhcs@gmail.com>
 Repository: https://github.com/timfromhcs/CQ-HECS
-License: Fair-Core Tiered Commercial License (< $100k free, attribution required)
+License: Apache License 2.0 (Open Source, Permissive)
 
 ---
 
 ## 1. System Architecture
 
-CQ-HECS operates as a hybrid quantum-classical state emulator and constraint satisfaction solver.
+CQ-HECS operates as a classical quantum state emulator and constraint satisfaction solver.
 
 ```
                               +-------------------------------------------+
-                              |    Global Workspace Meta-Layer (GWT)     |
-                              |    - Softmax Cross-Attention Across Spaces|
-                              |    - Hardware Entropy Nudge Controller    |
+                              |    Vulkan Workload & Entropy Scheduler    |
+                              |    - Queue Submissions & Memory Barriers  |
+                              |    - Hardware Entropy & Workload Routing  |
                               +---------------------+---------------------+
                                                     |
           +-------------------+---------------------+---------------------+-------------------+
@@ -23,18 +23,18 @@ CQ-HECS operates as a hybrid quantum-classical state emulator and constraint sat
 +---------v---------+ +-------v---------+ +---------v---------+ +---------v---------+ +-------v---------+
 |  J-Space Alpha    | |  J-Space Beta   | |  J-Space Gamma    | |  J-Space Delta    | |  J-Space Epsilon  |
 |  (ARX Modulo)     | |  (Phase Ring)   | |  (SAT & Cuckoo)   | |  (Residual SVD)   | | (Explosion Shield)|
-|  A + B Linearize  | |  Exact Z_8 Ring | |  DIMACS CNF Solve | |  MPS 300 Qubits   | |  Lyapunov Monitor |
+|  A + B Linearize  | |  Exact Ring     | |  DIMACS CNF Solve | |  MPS Area-Law     | |  Lyapunov Monitor |
 |  Carry Shadow     | |  Clifford + T   | |  O(1) Loop Prune  | |  OpenQASM 2.0/3.0 | |  3-Number Compres |
-|  Overflow Reverse | |  Destruct Interf| |  Hilbert Mix      | |  Re-Inflation     | |  0-Bit Loss Round |
+|  Overflow Reverse | |  Interference   | |  Hilbert Mix      | |  Re-Inflation     | |  0-Bit Loss Round |
 +-------------------+ +-----------------+ +-------------------+ +-------------------+ +-----------------+
                                                     |
                               +---------------------v---------------------+
                               |   Vulkan 1.3 Compute & Tiered Memory      |
                               |   - Embedded SPIR-V Shaders in Binary     |
-                              |   - 300 MPS Nodes (chi=64, 2B/amplitude)  |
+                              |   - Cross-Vendor (AMD, Intel, NVIDIA, Mac)|
                               |   - Active VRAM strictly < 120 MB         |
-                              |   - Win32 Memory-Mapped Cold Swap Pool    |
-                              |   - Top Non-Master Isolated Validator     |
+                              |   - Win32 / POSIX Tiered Swap Pool        |
+                              |   - Isolated Deterministic Forward Oracle |
                               +-------------------------------------------+
 ```
 
@@ -43,13 +43,13 @@ Decomposes 64-bit addition into linear and carry terms:
 - `Sum(A, B) = A ^ B`
 - `CarryShadow(A, B) = (A & B) << 1`
 - `(A + B) mod 2^64 = Sum(A, B) + CarryShadow(A, B) mod 2^64`
-Reversible for BLAKE2b G-function, ChaCha20 quarter-round, and SHA-256 schedule expansion without branch explosion.
+Algebraic verification testbench for BLAKE2b G-function (12 rounds), ChaCha20 quarter-round (20 rounds), and SHA-256 schedule expansion (64 rounds).
 
-### J-Space Beta (Z_8 Cyclotomic Phase Ring)
-Quotient ring R_8 = Z[x] / (x^4 + 1). Maps Clifford + T quantum state phases into integers k in {0..7} where phi(k) = exp(i * k * pi / 4).
+### J-Space Beta (Exact Giles-Selinger Ring Z[1/sqrt(2), i] & Z_8 Phase Ring)
+Exact cyclotomic and Giles-Selinger ring arithmetic. Maps Clifford + T quantum state phases without floating-point cancellation drift:
 - Constructive interference: (k1 - k2) == 0 mod 8
 - Destructive interference: (k1 - k2) == 4 mod 8 (exact 0.0 residual without float cancellation)
-- Unitary anti-math inversion: U^dagger U = Identity
+- Unitary adjoint inversion: U^dagger U = Identity
 
 ### J-Space Gamma (DIMACS SAT & O(1) Cuckoo Pruning)
 DPLL solver for propositional satisfiability. Computes 64-bit Murmur3 state signatures and caches branch states in a dual-bucket Cuckoo hash table to prune cycle loops in O(1) time.
@@ -109,10 +109,10 @@ Get-Content circuit.qasm | cq_hecs.exe qasm - --json | ConvertFrom-Json
 cq_hecs.exe sat benchmarks\sat\pigeonhole_6_5.cnf --json
 # Exit codes: 0 = SAT, 10 = UNSAT, 1 = Error
 
-# ARX Cryptanalysis Inversion
-cq_hecs.exe arx blake2b --rounds 1000 --json | ConvertFrom-Json
-cq_hecs.exe arx chacha20 --rounds 1000 --json | ConvertFrom-Json
-cq_hecs.exe arx sha256 --rounds 1000 --json | ConvertFrom-Json
+# ARX Cryptanalysis Inversion / Verification Testbench
+cq_hecs.exe arx blake2b --rounds 12 --json | ConvertFrom-Json
+cq_hecs.exe arx chacha20 --rounds 20 --json | ConvertFrom-Json
+cq_hecs.exe arx sha256 --rounds 64 --json | ConvertFrom-Json
 
 # Stress Test
 cq_hecs.exe stress --cycles 100000 --json | ConvertFrom-Json

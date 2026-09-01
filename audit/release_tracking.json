@@ -1,14 +1,14 @@
 {
   "project": "CQ-HECS",
-  "phase": "phase_2_hardening_and_clean_slate_release",
-  "release_target": "v0.1.0",
-  "release_status": "RELEASED",
+  "phase": "vulkan_hardening_and_v020_release",
+  "release_target": "v0.2.0",
+  "release_status": "READY_FOR_RELEASE_CI_VERIFICATION",
   "target_repo": "https://github.com/timfromhcs/CQ-HECS",
   "target_branch": "main",
-  "release_tag": "v0.1.0",
-  "release_url": "https://github.com/timfromhcs/CQ-HECS/releases/tag/v0.1.0",
+  "release_tag": "v0.2.0",
+  "release_url": "https://github.com/timfromhcs/CQ-HECS/releases/tag/v0.2.0",
   "initialized_at": "2026-09-01T22:17:00+02:00",
-  "released_at": "2026-09-01T22:25:00+02:00",
+  "v020_initialized_at": "2026-09-01T22:45:00+02:00",
   "head_commit": "c369836596d4bbe7aef0ac2fd49717bcc47c5a86",
   "system_environment": {
     "local_os": "Windows_NT x64 10.0.26100",
@@ -18,15 +18,16 @@
     "ci_python": "3.11.16",
     "ci_cxx_compiler": "GCC 12 (g++-12)",
     "vulkan_version": "1.3",
-    "mode": "classical_only"
+    "mode": "classical_vulkan"
   },
   "non_negotiable_principles": {
-    "grounding": "All statements backed by verified test and benchmark execution logs.",
-    "classical_only": "Zero hardware connection, zero hybrid layer, explicit boundary limits.",
-    "verifiable_trust_not_reputation": "Reproducible build, checksums, provenance, third-party inspectable.",
-    "convergent_self_correction": "Isolate causes, targeted minimal fixes, verify green.",
-    "audit_tracking": "Continuous tracking in audit/release_tracking.json.",
-    "clean_slate_release": "v0.1.0 marks the bit-exact zero point."
+    "preserve_vulkan_core": "Vulkan 1.3 / SPIR-V compute shaders are the cross-vendor GPU core across AMD, Intel, NVIDIA, and Apple/MoltenVK.",
+    "scientific_honesty": "Memory-efficient MPS holds strictly for Area Law states (chi=2 GHZ, Clifford). Volume law exponential scaling (chi ~ 2^(L/2)) is acknowledged honestly via Path D or unresolved status.",
+    "zero_buzzwords": "Zero GWT, zero consciousness vocabulary. Replaced with functional technical components: VulkanComputeScheduler, EntanglementAdaptiveRouter.",
+    "crypto_correctness": "ChaCha20 (20 rounds), SHA-256 (64 rounds), BLAKE2b (12 rounds) as algebraic SAT verification testbench. Zero preimage extraction claims.",
+    "single_license_apache2": "Standard Apache License 2.0 everywhere. Zero Fair-Core commercial tiering.",
+    "deterministic_terminal_condition": "Terminate only when remote Cloud Build logs confirm 100% green over 2 consecutive runs.",
+    "audit_tracking": "Continuous tracking in audit/release_tracking.json."
   },
   "ci_verification_runs": [
     {
@@ -127,6 +128,36 @@
       "tag": "v0.1.0",
       "commit_sha": "c369836596d4bbe7aef0ac2fd49717bcc47c5a86",
       "notes": "Official release v0.1.0 published with release notes, checksums, and SBOM."
+    },
+    {
+      "iteration": 7,
+      "timestamp": "2026-09-01T22:50:00+02:00",
+      "action": "vulkan_shader_audit_and_hardening",
+      "notes": "Fixed GLSL 64-bit int literal in tensor_contract_2q.comp. Verified all 12 compute shaders compile cleanly with glslangValidator (--target-env vulkan1.3 -V). Added scripts/verify_vulkan_shaders.py and integrated into CMake vulkan_shaders target and CI workflow."
+    },
+    {
+      "iteration": 8,
+      "timestamp": "2026-09-01T23:10:00+02:00",
+      "action": "single_license_unification",
+      "notes": "Standardized on Apache License 2.0 repository-wide. Removed all Fair-Core tiered commercial licensing references across LICENSE, setup.py, CITATION.cff, llms.txt, and llms-full.txt."
+    },
+    {
+      "iteration": 9,
+      "timestamp": "2026-09-01T23:30:00+02:00",
+      "action": "complete_buzzword_and_gwt_purge",
+      "notes": "Zero GWT / consciousness vocabulary remaining in repository. Refactored into VulkanComputeScheduler (cqhecs/scheduler.py) and EntanglementAdaptiveRouter (cqhecs/router.py). Replaced anti-math with unitary adjoint."
+    },
+    {
+      "iteration": 10,
+      "timestamp": "2026-09-01T23:35:00+02:00",
+      "action": "arx_standard_rounds_and_preimage_claim_removal",
+      "notes": "Corrected ARX benchmark round counts to standard specifications (ChaCha20: 20 rounds, SHA-256: 64 steps, BLAKE2b: 12 rounds). Framed module strictly as an algebraic SAT verification testbench with zero preimage claims."
+    },
+    {
+      "iteration": 11,
+      "timestamp": "2026-09-01T23:38:00+02:00",
+      "action": "vulkan_mps_comparative_benchmark_suite",
+      "notes": "Created benchmarks/run_vulkan_mps_benchmarks.py, generating benchmarks/vulkan_mps_benchmark_results.json and benchmarks/VULKAN_MPS_EVALUATION.md. Documented Area-Law memory efficiency (< 5 MB at 300 qubits) vs Volume-Law exponential explosion, exact Giles-Selinger ring arithmetic Z[1/sqrt(2), i], and cross-vendor Vulkan portability vs proprietary CUDA."
     }
   ],
   "coverage_metrics": {

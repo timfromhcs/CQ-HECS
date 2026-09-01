@@ -18,10 +18,13 @@ from cqhecs.backends.path_c_mps_exact import PathCMPSExactBackend
 from cqhecs.backends.path_d_sparse_pauli import PathDSparsePauliBackend
 
 
-class FourPathRouter:
+class EntanglementAdaptiveRouter:
     """
-    Intelligent classical router enforcing the Four-Path architecture:
-    A -> B -> C -> D.
+    Entanglement-adaptive classical router enforcing the Four-Path architecture:
+    - Path A: Stabilizer (CPU) - exact polynomial Aaronson-Gottesman
+    - Path B: Stabilizer Rank - exact Bravyi-Smith-Smolin scaling with T-count
+    - Path C: Vulkan-MPS - exact tensor contraction for Area-Law states
+    - Path D: Certified Sparse-Pauli-Dynamics with proven error bounds
     """
 
     def __init__(
@@ -98,3 +101,7 @@ class FourPathRouter:
             return res
 
         raise ValueError(f"Unknown path: {selected_path}. Valid paths are 'A', 'B', 'C', 'D'.")
+ 
+ 
+# Alias for backwards compatibility
+FourPathRouter = EntanglementAdaptiveRouter

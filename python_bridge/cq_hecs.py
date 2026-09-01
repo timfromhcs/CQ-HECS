@@ -1,11 +1,11 @@
 """
-CQ-HECS v3.0: Conscious Quantum Hybrid Emulation & Constraint Solver
-Complete Python 3.11 / PyTorch / NumPy Reference Model of all 5 J-Spaces & GWT Meta-Layer.
+CQ-HECS v0.2.0: Classical Quantum High-Efficiency Compute Simulator
+Complete Python 3.11 / PyTorch / NumPy Reference Model of all 5 J-Spaces & Vulkan Workload Scheduler.
 """
 
 from __future__ import annotations
 
-__version__ = "4.5.0"
+__version__ = "0.2.0"
 import math
 import struct
 import time
@@ -133,7 +133,7 @@ class JSpaceBeta:
     Exact Z_8 Phase Ring (k * pi / 4 for k in {0, 1, ..., 7}).
     Features:
       - Unitary Clifford + T algebra
-      - Anti-Math Inversion (U†)
+      - Unitary Adjoint Inversion (U†)
       - Destructive Interference cancellation
     """
     # Cyclotomic angles: k -> k * pi / 4
@@ -148,9 +148,12 @@ class JSpaceBeta:
         return (k1 + k2) % 8
 
     @staticmethod
-    def anti_math_inverse(k: int) -> int:
+    def unitary_adjoint(k: int) -> int:
         """Unitary inverse in Z_8 ring: U† has phase (8 - k) mod 8."""
         return (8 - (k % 8)) % 8
+
+    # Backward compatibility alias
+    anti_math_inverse = unitary_adjoint
 
     @staticmethod
     def to_complex(magnitude: float, phase_k: int) -> complex:
@@ -347,7 +350,7 @@ class JSpaceDelta:
 # =====================================================================
 class JSpaceEpsilon:
     """
-    Lyapunov growth guardian, Unitary Anti-Math Inversion (U†),
+    Lyapunov growth guardian, Unitary Adjoint Inversion (U†),
     and Lossless 3-Number Compression (Header-Seed, Delta-Matrix, Scaling-Exponent).
     Guarantees 100% bit identity in roundtrips.
     """
@@ -551,15 +554,15 @@ class MPS300QubitSimulator:
 
 
 # =====================================================================
-# GLOBAL WORKSPACE META-LAYER (GWT) & DUAL MASTER / VALIDATOR
+# VULKAN COMPUTE SCHEDULER & WORKLOAD ROUTER
 # =====================================================================
-class GlobalWorkspaceMetaLayer:
+class VulkanComputeScheduler:
     """
-    GWT Meta-Layer:
-      - Real-time cross-attention aggregator across all 5 J-spaces.
-      - Dynamic rule synthesis for shader constants and heuristic switching.
-      - Dynamic nudge controller driven by hardware entropy.
-      - Dual Master & Isolated Non-Master Validator.
+    Vulkan Workload & Compute Scheduler:
+      - Workload metric aggregator across all 5 algebraic spaces.
+      - Dynamic rule synthesis for compute shader constants and heuristic switching.
+      - Stochastic escape controller driven by high-resolution timer entropy.
+      - Isolated Non-Master Forward Validator.
     """
     def __init__(self, entropy_seed: Optional[int] = None):
         self.alpha = JSpaceAlpha()
@@ -571,7 +574,7 @@ class GlobalWorkspaceMetaLayer:
         self.entropy_seed = entropy_seed or int(time.perf_counter_ns()) & 0xFFFFFFFFFFFFFFFF
 
     def harvest_hardware_entropy(self) -> int:
-        """Win32/OS high-resolution counter drift and hardware entropy."""
+        """Harvests physical counter jitter from OS monotonic timer."""
         ns = time.perf_counter_ns()
         drift = (ns ^ (ns >> 13) ^ (int(time.time() * 1e6))) & 0xFFFFFFFFFFFFFFFF
         self.entropy_seed = (self.entropy_seed * 6364136223846793005 + drift + 1) & 0xFFFFFFFFFFFFFFFF
@@ -586,8 +589,8 @@ class GlobalWorkspaceMetaLayer:
         lyapunov_lambda: float
     ) -> Dict[str, float]:
         """
-        Aggregates metrics across the 5 J-Spaces via normalized Softmax Attention:
-          Input vector x in R^5 -> Attention weights w in R^5.
+        Aggregates compute metrics across the 5 J-Spaces via normalized Softmax weighting:
+          Input vector x in R^5 -> Normalized weights w in R^5.
         """
         features = np.array([
             carry_pressure,
@@ -611,10 +614,13 @@ class GlobalWorkspaceMetaLayer:
             "dominant_space": ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"][int(np.argmax(weights))]
         }
 
+    # Technical alias
+    aggregate_workload_metrics = cross_attention_aggregation
+
     def dynamic_nudge_controller(self, trapped_in_local_minimum: bool) -> Optional[int]:
         """
-        Injects a stochastic unitary nudge derived from hardware entropy
-        when trapped in a local minimum.
+        Injects a stochastic phase perturbation derived from timer entropy
+        when optimization is trapped in an algebraic local minimum.
         """
         if not trapped_in_local_minimum:
             return None
@@ -633,3 +639,7 @@ class GlobalWorkspaceMetaLayer:
         """
         result = forward_oracle_func(candidate_solution)
         return result == expected_target
+
+
+# Alias for backward compatibility
+GlobalWorkspaceMetaLayer = VulkanComputeScheduler

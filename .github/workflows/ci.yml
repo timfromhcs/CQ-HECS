@@ -42,6 +42,9 @@ jobs:
       - name: "Audit: Verify Zero Silent Truncation (chi=48 Elimination)"
         run: python scripts/verify_no_silent_truncation.py
 
+      - name: "Vulkan Hardening: Compile & Verify All SPIR-V Shaders"
+        run: python scripts/verify_vulkan_shaders.py
+
       - name: Configure CMake
         run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCQ_BUILD_TESTS=ON -DCQ_ENABLE_AVX2=ON
 
