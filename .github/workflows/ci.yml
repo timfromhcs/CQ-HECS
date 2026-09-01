@@ -33,7 +33,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libvulkan-dev vulkan-tools glslang-tools spirv-tools libx11-xcb-dev libxkbcommon-dev libwayland-dev
+          sudo apt-get install -y libvulkan-dev vulkan-tools glslang-tools spirv-tools libx11-xcb-dev libxkbcommon-dev libwayland-dev mesa-vulkan-drivers
 
       - name: Install Vulkan SDK (Windows)
         if: runner.os == 'Windows'

@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cassert>
 #include <iomanip>
+#include <cstring>
 
 #include "vulkan_engine.hpp"
 #include "entropy_harvester.hpp"
