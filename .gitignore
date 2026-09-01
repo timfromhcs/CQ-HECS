@@ -17,3 +17,6 @@ __pycache__/
 *.bin
 *.tmp
 cq_test_swap.bin
+
+# Credentials & deployment scripts
+scripts/github_deploy.py
