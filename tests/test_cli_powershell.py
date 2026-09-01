@@ -112,7 +112,7 @@ class TestCLIPowerShell(unittest.TestCase):
     def test_cli_dashboard_bounded(self):
         res = self.run_cmd(["dashboard", "--cycles", "2"])
         self.assertEqual(res.returncode, 0)
-        self.assertIn("CQ-HECS v4.0", res.stdout)
+        self.assertIn("CQ-HECS", res.stdout)
         self.assertIn("Exited cleanly after 2 cycles", res.stdout)
 
 

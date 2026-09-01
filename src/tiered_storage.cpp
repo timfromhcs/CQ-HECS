@@ -1,9 +1,18 @@
 #include "tiered_storage.hpp"
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
 #include <iostream>
 #include <cstring>
 #include <stdexcept>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#else
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#define INVALID_HANDLE_VALUE ((void*)(intptr_t)-1)
+#endif
 
 namespace cq_hecs {
 
@@ -14,7 +23,7 @@ TieredStorageGovernor::TieredStorageGovernor(size_t max_active_bytes, const std:
     , m_page_fault_count(0)
     , m_swap_path(swap_file_path)
     , m_file_handle(INVALID_HANDLE_VALUE)
-    , m_mapping_handle(NULL)
+    , m_mapping_handle(nullptr)
     , m_mapped_view(nullptr)
     , m_mmf_capacity(256ULL * 1024ULL * 1024ULL) // 256 MB cold swap pool
     , m_next_swap_offset(0)
@@ -35,10 +44,16 @@ TieredStorageGovernor::~TieredStorageGovernor() {
     close_win32_mmf();
 
     // Clean up disk swap file
+#ifdef _WIN32
     DeleteFileW(m_swap_path.c_str());
+#else
+    std::string path(m_swap_path.begin(), m_swap_path.end());
+    unlink(path.c_str());
+#endif
 }
 
 void TieredStorageGovernor::init_win32_mmf() {
+#ifdef _WIN32
     m_file_handle = CreateFileW(
         m_swap_path.c_str(),
         GENERIC_READ | GENERIC_WRITE,
@@ -86,9 +101,25 @@ void TieredStorageGovernor::init_win32_mmf() {
         m_file_handle = INVALID_HANDLE_VALUE;
         throw std::runtime_error("Failed to map view of file for cold storage pool");
     }
+#else
+    std::string path(m_swap_path.begin(), m_swap_path.end());
+    int fd = open(path.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0600);
+    if (fd < 0) {
+        m_mapped_view = static_cast<uint8_t*>(mmap(NULL, m_mmf_capacity, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
+    } else {
+        if (ftruncate(fd, m_mmf_capacity) != 0) {}
+        m_mapped_view = static_cast<uint8_t*>(mmap(NULL, m_mmf_capacity, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
+        close(fd);
+    }
+    if (m_mapped_view == MAP_FAILED) {
+        m_mapped_view = nullptr;
+        throw std::runtime_error("Failed to mmap cold storage pool");
+    }
+#endif
 }
 
 void TieredStorageGovernor::close_win32_mmf() {
+#ifdef _WIN32
     if (m_mapped_view) {
         FlushViewOfFile(m_mapped_view, 0);
         UnmapViewOfFile(m_mapped_view);
@@ -102,6 +133,13 @@ void TieredStorageGovernor::close_win32_mmf() {
         CloseHandle(m_file_handle);
         m_file_handle = INVALID_HANDLE_VALUE;
     }
+#else
+    if (m_mapped_view && m_mapped_view != (uint8_t*)MAP_FAILED) {
+        msync(m_mapped_view, m_mmf_capacity, MS_SYNC);
+        munmap(m_mapped_view, m_mmf_capacity);
+        m_mapped_view = nullptr;
+    }
+#endif
 }
 
 uint32_t TieredStorageGovernor::allocate_page(size_t size_bytes, const void* initial_data) {
