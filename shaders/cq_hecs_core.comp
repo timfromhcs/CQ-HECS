@@ -1,0 +1,125 @@
+#version 450
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : enable
+
+// CQ-HECS v3.0 Core Compute Shader
+// Implements: Z_8 Phase Tracking, ARX Carry Splitting, and Entropy-driven Nudge Injection
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(std430, binding = 0) buffer InputStateBuffer {
+    uint data_in[]; // Packed pairs of [magnitude (16-bit), phase (16-bit)]
+};
+
+layout(std430, binding = 1) buffer OutputStateBuffer {
+    uint data_out[];
+};
+
+layout(std430, binding = 2) buffer ARXDataBuffer {
+    uint64_t arx_a[];
+};
+
+layout(std430, binding = 3) buffer ARXCarryBuffer {
+    uint64_t arx_carry[];
+};
+
+layout(push_constant) uniform PushConstants {
+    uint mode;             // 0: Z8 Phase Gate, 1: Destructive Interference, 2: ARX Carry Split, 3: Nudge Injection
+    uint gate_phase_shift; // Phase rotation delta k (0..7)
+    uint state_count;      // Number of amplitudes / states
+    uint entropy_seed;     // Hardware entropy seed for nudging
+    uint local_minima_flag;// 1 if solver trapped in local minimum
+} pc;
+
+// Fast integer hash for pseudo-random perturbation from entropy
+uint hash32(uint x) {
+    x ^= x >> 16;
+    x *= 0x7feb352dU;
+    x ^= x >> 15;
+    x *= 0x846ca68bU;
+    x ^= x >> 16;
+    return x;
+}
+
+void main() {
+    uint gid = gl_GlobalInvocationID.x;
+    if (gid >= pc.state_count) return;
+
+    if (pc.mode == 0) {
+        // Mode 0: Z_8 Phase Gate Transformation
+        // Each entry in data_in is packed: (phase << 16) | (magnitude & 0xFFFF)
+        uint packed_val = data_in[gid];
+        uint mag = packed_val & 0xFFFFu;
+        uint phase = (packed_val >> 16u) & 0x7u;
+
+        // Apply unitary phase gate in Z_8 ring: phi' = (phi + shift) mod 8
+        uint new_phase = (phase + pc.gate_phase_shift) & 0x7u;
+        data_out[gid] = (new_phase << 16u) | mag;
+    }
+    else if (pc.mode == 1) {
+        // Mode 1: Destructive Interference Pair Cancellation
+        uint idx0 = 2u * gid;
+        uint idx1 = 2u * gid + 1u;
+        if (idx1 >= pc.state_count) return;
+
+        uint p0 = data_in[idx0];
+        uint p1 = data_in[idx1];
+
+        uint mag0 = p0 & 0xFFFFu;
+        uint phase0 = (p0 >> 16u) & 0x7u;
+        uint mag1 = p1 & 0xFFFFu;
+        uint phase1 = (p1 >> 16u) & 0x7u;
+
+        // Check for exact destructive interference (phase diff == 4 mod 8, which is e^(i*pi) = -1)
+        uint phase_diff = (phase0 + 8u - phase1) & 0x7u;
+        if (phase_diff == 4u) {
+            // Exactly anti-phase: amplitudes subtract
+            if (mag0 >= mag1) {
+                mag0 -= mag1;
+                data_out[idx0] = (phase0 << 16u) | mag0;
+                data_out[idx1] = 0u; // completely cancelled
+            } else {
+                mag1 -= mag0;
+                data_out[idx0] = 0u;
+                data_out[idx1] = (phase1 << 16u) | mag1;
+            }
+        } else if (phase_diff == 0u) {
+            // Constructive interference: amplitudes add
+            uint sum_mag = min(mag0 + mag1, 0xFFFFu);
+            data_out[idx0] = (phase0 << 16u) | sum_mag;
+            data_out[idx1] = 0u;
+        } else {
+            // Incommensurate Z_8 phases: retain both states
+            data_out[idx0] = p0;
+            data_out[idx1] = p1;
+        }
+    }
+    else if (pc.mode == 2) {
+        // Mode 2: J-Space Alpha - ARX Non-Linear Modulo Addition Carry-Splitting
+        // A + B = (A ^ B) + ((A & B) << 1)
+        uint64_t a = arx_a[gid];
+        uint64_t b = arx_carry[gid]; // Input B in carry buffer initially
+
+        uint64_t sum_xor = a ^ b;
+        uint64_t carry_shadow = (a & b) << 1;
+
+        arx_a[gid] = sum_xor;
+        arx_carry[gid] = carry_shadow;
+    }
+    else if (pc.mode == 3) {
+        // Mode 3: Hardware Entropy-Driven Nudge Injection
+        uint packed_val = data_in[gid];
+        uint mag = packed_val & 0xFFFFu;
+        uint phase = (packed_val >> 16u) & 0x7u;
+
+        if (pc.local_minima_flag != 0u) {
+            uint rand_val = hash32(pc.entropy_seed ^ (gid * 0x9e3779b9U));
+            if ((rand_val & 0x3u) == 1u) {
+                phase = (phase + 1u) & 0x7u;
+            } else if ((rand_val & 0x3u) == 2u) {
+                phase = (phase + 7u) & 0x7u; // -1 mod 8
+            }
+        }
+        data_out[gid] = (phase << 16u) | mag;
+    }
+}

@@ -1,0 +1,83 @@
+#version 450
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
+
+// CQ-HECS v3.0 Explosion Shield Compute Shader
+// Implements: 3-Number Lossless Delta Compression & Anti-Math Unitary Inversion
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(std430, binding = 0) buffer StateBuffer {
+    int64_t state_data[]; // Raw state or reconstructed state
+};
+
+layout(std430, binding = 1) buffer DeltaBuffer {
+    int64_t delta_data[]; // Delta matrix (sparse/quantized residue)
+};
+
+layout(std430, binding = 2) buffer DiagnosticBuffer {
+    int64_t lyapunov_metrics[]; // Divergence tracking and flags
+};
+
+layout(push_constant) uniform PushConstants {
+    uint mode;             // 0: Compress (State -> Delta), 1: Decompress (Delta -> State), 2: Anti-Math Invert (U†)
+    uint element_count;    // Total elements to process
+    uint64_t header_seed;  // Seed for deterministic base generator
+    int scaling_exponent;  // Dyadic exponent E
+    int anti_phase_shift;  // Inversion phase shift (8 - k mod 8)
+} pc;
+
+// 64-bit SplitMix64 PRNG to generate deterministic baseline tensor from header_seed
+uint64_t splitmix64(inout uint64_t x) {
+    x += 0x9e3779b97f4a7c15UL;
+    uint64_t z = x;
+    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9UL;
+    z = (z ^ (z >> 27)) * 0x94d049bb133111ebUL;
+    return z ^ (z >> 31);
+}
+
+// Deterministic baseline value at index i given header_seed
+int64_t generate_baseline(uint64_t seed, uint index) {
+    uint64_t state = seed + (uint64_t(index) * 0x517cc1b727220a95UL);
+    uint64_t val = splitmix64(state);
+    // Map to signed 32-bit range to serve as structured base predictor
+    return int64_t(int(uint(val & 0xFFFFFFFFu)));
+}
+
+void main() {
+    uint gid = gl_GlobalInvocationID.x;
+    if (gid >= pc.element_count) return;
+
+    if (pc.mode == 0) {
+        // Mode 0: 3-Number Compression: Delta = State - Base(seed) * 2^E
+        int64_t original_val = state_data[gid];
+        int64_t base_val = generate_baseline(pc.header_seed, gid);
+        int64_t scaled_base = (pc.scaling_exponent >= 0) 
+            ? (base_val << pc.scaling_exponent) 
+            : (base_val >> (-pc.scaling_exponent));
+
+        int64_t delta = original_val - scaled_base;
+        delta_data[gid] = delta;
+    }
+    else if (pc.mode == 1) {
+        // Mode 1: 3-Number Lossless Decompression: State = Base(seed) * 2^E + Delta
+        int64_t delta = delta_data[gid];
+        int64_t base_val = generate_baseline(pc.header_seed, gid);
+        int64_t scaled_base = (pc.scaling_exponent >= 0) 
+            ? (base_val << pc.scaling_exponent) 
+            : (base_val >> (-pc.scaling_exponent));
+
+        int64_t reconstructed_val = scaled_base + delta;
+        state_data[gid] = reconstructed_val;
+    }
+    else if (pc.mode == 2) {
+        // Mode 2: Anti-Math Unitary Inversion (U†)
+        // Reverses phase shift: phi_inv = (8 - phi_shift) mod 8
+        // Each entry is packed amplitude: (phase << 16) | magnitude
+        uint packed_val = uint(state_data[gid] & 0xFFFFFFFFL);
+        uint mag = packed_val & 0xFFFFu;
+        uint phase = (packed_val >> 16u) & 0x7u;
+
+        uint inv_phase = (phase + uint((8 - (pc.anti_phase_shift % 8)) % 8)) & 0x7u;
+        state_data[gid] = int64_t((inv_phase << 16u) | mag);
+    }
+}

@@ -1,0 +1,120 @@
+#version 450
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
+
+// CQ-HECS v3.0 Cuckoo Pruning Compute Shader
+// Implements: Fast Hilbert/Murmur Cuckoo Collision Detection & Bitmask SAT Clause Pruning
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+struct SATClause {
+    uint64_t pos_mask; // Bitmask of variables appearing positively
+    uint64_t neg_mask; // Bitmask of variables appearing negatively
+};
+
+layout(std430, binding = 0) buffer CandidateBuffer {
+    uint64_t candidates[]; // 64-bit assignment candidates
+};
+
+layout(std430, binding = 1) buffer PruneFlagsBuffer {
+    uint prune_flags[];    // 0: Keep/Active, 1: Pruned/Dead-end, 2: Cycle Detected
+};
+
+layout(std430, binding = 2) buffer CuckooTableBuffer {
+    uint64_t cuckoo_table[]; // 2-way Cuckoo hash table for cycle detection
+};
+
+layout(std430, binding = 3) readonly buffer ClauseBuffer {
+    SATClause clauses[];     // SAT constraint clauses
+};
+
+layout(push_constant) uniform PushConstants {
+    uint candidate_count; // Number of search candidates
+    uint clause_count;    // Number of SAT clauses
+    uint table_capacity;  // Total slots in cuckoo table (power of 2)
+    uint check_sat_flag;  // 1: Check SAT clauses, 0: Skip
+    uint check_cycle_flag;// 1: Check Cuckoo cycle table, 0: Skip
+} pc;
+
+// Primary hash function (Murmur3 64-bit finalizer mix)
+uint64_t hash_murmur64(uint64_t k) {
+    k ^= k >> 33;
+    k *= 0xff51afd7ed558ccdUL;
+    k ^= k >> 33;
+    k *= 0xc4ceb9fe1a85ec53UL;
+    k ^= k >> 33;
+    return k;
+}
+
+// Secondary hash function for dual-choice cuckoo hashing
+uint64_t hash_secondary64(uint64_t k) {
+    k ^= k >> 30;
+    k *= 0xbf58476d1ce4e5b9UL;
+    k ^= k >> 27;
+    k *= 0x94d049bb133111ebUL;
+    k ^= k >> 31;
+    return k;
+}
+
+void main() {
+    uint gid = gl_GlobalInvocationID.x;
+    if (gid >= pc.candidate_count) return;
+
+    uint64_t cand = candidates[gid];
+
+    // 1. Bitmask SAT Constraint Check
+    if (pc.check_sat_flag != 0u) {
+        bool violated = false;
+        for (uint i = 0u; i < pc.clause_count; ++i) {
+            uint64_t pos = clauses[i].pos_mask;
+            uint64_t neg = clauses[i].neg_mask;
+
+            // Satisfied if (cand & pos) != 0 OR (~cand & neg) != 0
+            bool sat_pos = (cand & pos) != 0UL;
+            bool sat_neg = ((~cand) & neg) != 0UL;
+
+            if (!sat_pos && !sat_neg) {
+                violated = true;
+                break;
+            }
+        }
+
+        if (violated) {
+            prune_flags[gid] = 1u; // Prune: Clause violated
+            return;
+        }
+    }
+
+    // 2. Hilbert/Cuckoo Cycle Detection (O(1) loop pruning)
+    if (pc.check_cycle_flag != 0u && pc.table_capacity > 0u) {
+        uint half_cap = pc.table_capacity / 2u;
+        uint64_t h1 = hash_murmur64(cand);
+        uint slot1 = uint(h1 % uint64_t(half_cap));
+
+        uint64_t h2 = hash_secondary64(cand);
+        uint slot2 = half_cap + uint(h2 % uint64_t(half_cap));
+
+        uint64_t val1 = cuckoo_table[slot1];
+        uint64_t val2 = cuckoo_table[slot2];
+
+        // Zero represents empty slot in Cuckoo table; cand + 1 prevents ambiguity with 0
+        uint64_t stored_val = cand | 1UL;
+
+        if (val1 == stored_val || val2 == stored_val) {
+            // Already visited in search tree: cycle detected!
+            prune_flags[gid] = 2u; // Prune: Cycle detected
+            return;
+        }
+
+        // Insert into table 1 or table 2 if slot is empty
+        if (val1 == 0UL) {
+            cuckoo_table[slot1] = stored_val;
+        } else if (val2 == 0UL) {
+            cuckoo_table[slot2] = stored_val;
+        } else {
+            // Both slots occupied by other entries: replace slot1 (standard Cuckoo displacement)
+            cuckoo_table[slot1] = stored_val;
+        }
+    }
+
+    prune_flags[gid] = 0u; // Valid candidate preserved
+}

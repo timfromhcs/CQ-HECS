@@ -1,0 +1,19 @@
+# Build directory
+build/
+.vs/
+.cache/
+
+# Binary symbols and debug databases
+bin/Release/*.pdb
+bin/Release/*.exp
+bin/Release/*.ilk
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Temporary test swap files
+*.bin
+*.tmp
+cq_test_swap.bin
