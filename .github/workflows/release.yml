@@ -13,6 +13,7 @@ jobs:
     name: Build Artifacts (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest]
 
@@ -68,8 +69,11 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           mkdir -p dist/CQ-HECS-v4.5.0-Linux-x64/bin
-          cp bin/cq_hecs dist/CQ-HECS-v4.5.0-Linux-x64/bin/
-          [ -f bin/libcq_hecs.so ] && cp bin/libcq_hecs.so dist/CQ-HECS-v4.5.0-Linux-x64/bin/ || true
+          BIN_SRC=$(find bin build -name "cq_hecs" -type f -not -name "*.exe" | head -n 1)
+          cp "$BIN_SRC" dist/CQ-HECS-v4.5.0-Linux-x64/bin/cq_hecs
+          chmod +x dist/CQ-HECS-v4.5.0-Linux-x64/bin/cq_hecs
+          SO_SRC=$(find bin build -name "libcq_hecs.so" -type f | head -n 1)
+          [ -n "$SO_SRC" ] && cp "$SO_SRC" dist/CQ-HECS-v4.5.0-Linux-x64/bin/ || true
           cp -r include dist/CQ-HECS-v4.5.0-Linux-x64/
           cp -r benchmarks dist/CQ-HECS-v4.5.0-Linux-x64/
           cp LICENSE dist/CQ-HECS-v4.5.0-Linux-x64/
