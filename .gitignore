@@ -1,4 +1,4 @@
-# Build & output directories
+# Build & Output Directories
 build/
 bin/
 out/
@@ -18,9 +18,14 @@ dist/
 *.obj
 *.o
 
-# SPIR-V compile caches & intermediate outputs
+# SPIR-V Bytecode & Caches
+*.spv
 *.spv.cache
 *.spv.tmp
+
+# Caches & Compiler Database
+.cache/
+compile_commands.json
 
 # IDE & Editor Metadata
 .vscode/
@@ -34,12 +39,12 @@ dist/
 *.suo
 
 # System, Crash & Core Dumps
-core
+/core
 core.*
 *.dmp
 *.core
 
-# Logs and runtime traces
+# Logs and Runtime Traces
 *.log
 *.trace
 logs/
@@ -53,16 +58,15 @@ logs/
 *.pfx
 secrets/
 
-# Python caches
+# Python & Testing Caches
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
 
-# Swap and temporary files
+# Swap and Temporary Files
 *.tmp
 *.bin
 *.swp
 *.bak
 cq_test_swap.bin
-

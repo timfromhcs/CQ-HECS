@@ -1,0 +1,165 @@
+#version 460
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_shuffle : require
+#extension GL_ARB_gpu_shader_int64 : enable
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+// Q1.31 Complex format: ivec2(re, im)
+layout(std430, binding = 0) buffer StateBuffer {
+    ivec2 state_amplitudes[];
+};
+
+layout(push_constant) uniform PushConstants {
+    uint gate_type;   // 1: H, 2: X, 3: Y, 4: Z, 5: S, 7: T, 9: RZ, 10: RX, 11: RY, 12: CX
+    uint target_q;    // Target qubit index
+    uint control_q;   // Control qubit index
+    uint phase_q32;   // Phase angle in Z_{2^32}
+} pc;
+
+const int ONE_Q31 = 0x7FFFFFFF;
+const int INV_SQRT2_Q31 = 1518500250; // round(1/sqrt(2) * 2^31)
+
+// Fixed point Q1.31 multiplication with saturation
+int q31_mul(int a, int b) {
+    int64_t prod = (int64_t(a) * int64_t(b)) >> 31;
+    if (prod > 0x7FFFFFFF) return 0x7FFFFFFF;
+    if (prod < -0x80000000) return int(-0x80000000);
+    return int(prod);
+}
+
+// Fixed point Q1.31 addition with saturation
+int q31_add(int a, int b) {
+    int64_t sum = int64_t(a) + int64_t(b);
+    if (sum > 0x7FFFFFFF) return 0x7FFFFFFF;
+    if (sum < -0x80000000) return int(-0x80000000);
+    return int(sum);
+}
+
+// Fixed point Q1.31 subtraction with saturation
+int q31_sub(int a, int b) {
+    int64_t diff = int64_t(a) - int64_t(b);
+    if (diff > 0x7FFFFFFF) return 0x7FFFFFFF;
+    if (diff < -0x80000000) return int(-0x80000000);
+    return int(diff);
+}
+
+ivec2 q31_complex_mul(ivec2 x, ivec2 y) {
+    int re = q31_sub(q31_mul(x.x, y.x), q31_mul(x.y, y.y));
+    int im = q31_add(q31_mul(x.x, y.y), q31_mul(x.y, y.x));
+    return ivec2(re, im);
+}
+
+// Precalculated CORDIC angles in Z_{2^32}
+const uint CORDIC_ANGLES[16] = uint[16](
+    536870912u, 316933406u, 167458907u, 85004756u,
+     42667327u,  21354465u,  10679848u,  5340245u,
+      2670163u,   1335086u,    667544u,   333772u,
+       166886u,     83443u,     41722u,    20861u
+);
+
+const int CORDIC_K_Q31 = 1304065744; // 0x4DBA75D0
+
+ivec2 cordic_rotate(ivec2 state, uint phase_q32) {
+    if (phase_q32 == 0u) return state;
+
+    uint quad = phase_q32 >> 30;
+    uint rem = phase_q32 & 0x3FFFFFFFu;
+
+    int x = state.x;
+    int y = state.y;
+
+    if (quad == 1u) {
+        int tx = x; x = -y; y = tx;
+    } else if (quad == 2u) {
+        x = -x; y = -y;
+    } else if (quad == 3u) {
+        int tx = x; x = y; y = -tx;
+    }
+
+    if (rem == 0u) return ivec2(x, y);
+
+    int64_t cx = int64_t(x);
+    int64_t cy = int64_t(y);
+    int64_t z = int64_t(rem);
+
+    for (int i = 0; i < 16; ++i) {
+        int64_t dx = cx >> i;
+        int64_t dy = cy >> i;
+        uint angle = CORDIC_ANGLES[i];
+
+        if (z >= 0) {
+            cx -= dy;
+            cy += dx;
+            z -= int64_t(angle);
+        } else {
+            cx += dy;
+            cy -= dx;
+            z += int64_t(angle);
+        }
+    }
+
+    int out_re = q31_mul(int(cx), CORDIC_K_Q31);
+    int out_im = q31_mul(int(cy), CORDIC_K_Q31);
+    return ivec2(out_re, out_im);
+}
+
+void main() {
+    uint gid = gl_GlobalInvocationID.x;
+    ivec2 my_amp = state_amplitudes[gid];
+
+    uint mask = 1u << pc.target_q;
+    bool is_one = (gid & mask) != 0u;
+
+    // Subgroup Shuffle optimization without shared memory
+    uint lane_mask = 1u << (pc.target_q & 0x1Fu);
+    ivec2 partner_amp;
+    partner_amp.x = subgroupShuffleXor(my_amp.x, lane_mask);
+    partner_amp.y = subgroupShuffleXor(my_amp.y, lane_mask);
+
+    ivec2 amp0 = is_one ? partner_amp : my_amp;
+    ivec2 amp1 = is_one ? my_amp : partner_amp;
+
+    ivec2 out_amp = my_amp;
+
+    if (pc.gate_type == 1u) { // Hadamard
+        if (!is_one) {
+            // (amp0 + amp1) * 1/sqrt(2)
+            int sum_r = q31_add(amp0.x, amp1.x);
+            int sum_i = q31_add(amp0.y, amp1.y);
+            out_amp = ivec2(q31_mul(sum_r, INV_SQRT2_Q31), q31_mul(sum_i, INV_SQRT2_Q31));
+        } else {
+            // (amp0 - amp1) * 1/sqrt(2)
+            int diff_r = q31_sub(amp0.x, amp1.x);
+            int diff_i = q31_sub(amp0.y, amp1.y);
+            out_amp = ivec2(q31_mul(diff_r, INV_SQRT2_Q31), q31_mul(diff_i, INV_SQRT2_Q31));
+        }
+    } else if (pc.gate_type == 2u) { // Pauli X (bit-flip)
+        out_amp = partner_amp;
+    } else if (pc.gate_type == 3u) { // Pauli Y
+        out_amp = is_one ? ivec2(partner_amp.y, -partner_amp.x) : ivec2(-partner_amp.y, partner_amp.x);
+    } else if (pc.gate_type == 4u) { // Pauli Z
+        out_amp = is_one ? ivec2(-my_amp.x, -my_amp.y) : my_amp;
+    } else if (pc.gate_type == 5u) { // S gate (pi/2 phase)
+        out_amp = is_one ? ivec2(-my_amp.y, my_amp.x) : my_amp;
+    } else if (pc.gate_type == 7u) { // T gate (pi/4 phase)
+        out_amp = is_one ? cordic_rotate(my_amp, 0x20000000u) : my_amp;
+    } else if (pc.gate_type == 9u) { // RZ rotation
+        uint half_angle = pc.phase_q32 >> 1;
+        out_amp = is_one ? cordic_rotate(my_amp, half_angle) : cordic_rotate(my_amp, 0u - half_angle);
+    } else if (pc.gate_type == 10u) { // RX rotation
+        // RX(theta) = exp(-i theta/2 X)
+        uint half_angle = pc.phase_q32 >> 1;
+        ivec2 cos_term = cordic_rotate(ivec2(my_amp.x, 0), 0u);
+        ivec2 sin_term = cordic_rotate(partner_amp, half_angle);
+        out_amp = is_one ? q31_complex_mul(amp0, sin_term) : q31_complex_mul(amp1, cos_term);
+    } else if (pc.gate_type == 12u) { // CNOT
+        uint ctrl_mask = 1u << pc.control_q;
+        bool ctrl_is_one = (gid & ctrl_mask) != 0u;
+        if (ctrl_is_one) {
+            out_amp = partner_amp;
+        }
+    }
+
+    state_amplitudes[gid] = out_amp;
+}

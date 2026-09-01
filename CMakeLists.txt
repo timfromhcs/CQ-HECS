@@ -121,11 +121,48 @@ target_link_libraries(ghz300_example PRIVATE ${Vulkan_LIBRARIES})
 add_executable(maxcut_example examples/maxcut_example.cpp ${VRTS_SOURCES} ${VRTS_HEADERS})
 target_link_libraries(maxcut_example PRIVATE ${Vulkan_LIBRARIES})
 
-# 5. CTest Verification Suite
+option(CQHECS_BUILD_TESTS "Build test suite" ON)
+option(CQHECS_HEADLESS "Enable Headless SwiftShader / Software Vulkan ICD" OFF)
+
+if(CQHECS_HEADLESS)
+    add_compile_definitions(CQHECS_HEADLESS=1)
+endif()
+
+# 5. Bit-Exact and Stress Test Suite (System Invariants Verification)
+add_executable(test_bitexact_and_stress tests/test_bitexact_and_stress.cpp)
+target_include_directories(test_bitexact_and_stress PRIVATE include src)
+target_link_libraries(test_bitexact_and_stress PRIVATE ${Vulkan_LIBRARIES})
+
+# 6. CTest Verification Suite
 enable_testing()
 add_test(NAME test_reversibility COMMAND test_reversibility)
 add_test(NAME test_ghz300 COMMAND test_ghz300)
 add_test(NAME test_constraint_solver COMMAND test_constraint_solver)
 add_test(NAME cq_hecs_cpp_hardening COMMAND test_engine_cpp)
 add_test(NAME cq_hecs_full_verification COMMAND cq_hecs test)
+add_test(NAME test_bitexact_and_stress COMMAND test_bitexact_and_stress)
+
+# 7. Nanobind Python C++20 Module
+find_package(Python 3.10 COMPONENTS Interpreter Development.Module QUIET)
+if(Python_FOUND)
+    execute_process(
+        COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
+        OUTPUT_VARIABLE NB_DIR
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(EXISTS "${NB_DIR}")
+        list(APPEND CMAKE_PREFIX_PATH "${NB_DIR}")
+        find_package(nanobind CONFIG QUIET)
+        if(nanobind_FOUND)
+            nanobind_add_module(_cq_hecs_core python/binding.cpp)
+            target_include_directories(_cq_hecs_core PRIVATE include src)
+            target_link_libraries(_cq_hecs_core PRIVATE ${Vulkan_LIBRARIES})
+            set_target_properties(_cq_hecs_core PROPERTIES
+                LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/python"
+                RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/python"
+            )
+        endif()
+    endif()
+endif()
 
