@@ -64,7 +64,7 @@ find_package(Vulkan REQUIRED)
 # -----------------------------------------------------------------------------
 # Automated Vulkan 1.3 SPIR-V Shader Compilation Target (glslangValidator)
 # -----------------------------------------------------------------------------
-find_program(GLSLANG_VALIDATOR glslangValidator HINTS "$ENV{VULKAN_SDK}/bin")
+find_program(GLSLANG_VALIDATOR glslangValidator HINTS "$ENV{VULKAN_SDK}/bin" "$ENV{VULKAN_SDK}/Bin")
 if(GLSLANG_VALIDATOR)
     message(STATUS "Found glslangValidator for automated SPIR-V compilation: ${GLSLANG_VALIDATOR}")
     file(GLOB_RECURSE SHADER_COMP_FILES "${CMAKE_SOURCE_DIR}/shaders/*.comp")
