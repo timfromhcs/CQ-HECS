@@ -5,6 +5,7 @@
 #include <cassert>
 #include <iomanip>
 #include <cstring>
+#include <random>
 
 #include "vulkan_engine.hpp"
 #include "entropy_harvester.hpp"
@@ -14,6 +15,13 @@
 #include "arx_engine.hpp"
 #include "terminal_ui.hpp"
 #include "json_formatter.hpp"
+
+#include "cq_hecs/lattice.hpp"
+#include "cq_hecs/cordic_engine.hpp"
+#include "cq_hecs/residual_engine.hpp"
+#include "cq_hecs/tensor_network.hpp"
+#include "cq_hecs/constraint_solver.hpp"
+#include "cq_hecs/vulkan/vulkan_context.hpp"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -25,20 +33,26 @@ using namespace cq_hecs;
 
 static void print_banner(std::ostream& os = std::cout) {
     os << "=================================================================\n";
-    os << " CQ-HECS v4.5.0: Monolithic Unified Binary & Programmatic Solver\n";
+    os << " CQ-HECS v2.0.0-VRTS-Vulkan: Volumetric Reversible Tensor Space\n";
+    os << " Architecture: VRTS-300 (6 x 5 x 10 3D Lattice, 300 Qubits)\n";
+    os << " Compute: Pure Vulkan 1.2+ Compute / Modern C++20 (Zero CUDA)\n";
+    os << " Memory: Strict 3.0 GB VRAM Ceiling with Dual-Layer Residual Folding\n";
     os << " Powered by CQ-HECS (https://github.com/timfromhcs) | @timfromhcs\n";
-    os << " Target: Windows 11 / MSVC (C++20) / Vulkan 1.3 / Embedded Shaders\n";
     os << "=================================================================\n\n";
 }
 
 static void print_usage(const char* prog) {
     print_banner();
     std::cout << "Usage: " << prog << " <command> [options]\n\n"
-              << "Commands:\n"
+              << "VRTS-300 Commands:\n"
+              << "  vrts                          Initialize & verify VRTS-300 3D lattice\n"
+              << "  ghz       [--shots N] [--json] Execute 300-qubit GHZ state & parity measurement\n"
+              << "  echo      [--gates N] [--json] Execute 5,000-gate Loschmidt echo audit\n"
+              << "  maxcut    [--json]            Execute 300-node MaxCut / constraint solver\n\n"
+              << "Legacy Commands:\n"
               << "  qasm <file.qasm|-> [--qubits N] [--chi N] [--json]  Execute OpenQASM simulation\n"
               << "  sat  <file.cnf|->  [--threads N] [--json]          Execute DIMACS SAT solver\n"
               << "  arx  <cipher>      [--rounds N] [--json]           Benchmark ARX Cryptanalysis\n"
-              << "                                                     (ciphers: blake2b, chacha20, sha256)\n"
               << "  dashboard          [--cycles N]                    Launch native ANSI/VT100 TUI monitor\n"
               << "  stress             [--cycles N] [--qubits N] [--json] Run memory leak & stress harness\n"
               << "  test               [--json]                        Execute embedded self-test suite\n\n"
@@ -390,6 +404,133 @@ static int cmd_test(bool json_mode) {
 }
 
 // ---------------------------------------------------------------------
+// VRTS COMMANDS
+// ---------------------------------------------------------------------
+static int cmd_vrts(const std::vector<std::string>& args) {
+    bool json_mode = false;
+    for (const auto& a : args) {
+        if (a == "--json") json_mode = true;
+    }
+
+    auto vulkan = std::make_shared<VulkanContext>();
+    vulkan->initialize();
+    VRTS300Engine engine(vulkan);
+
+    if (!json_mode) {
+        std::cout << "[VRTS-300 Engine] Initialized 3D Lattice 6 x 5 x 10 (300 Qubits)\n";
+        std::cout << "  Device:       " << vulkan->get_device_name() << "\n";
+        std::cout << "  VRAM Ceiling: " << (VulkanMemoryManager::VRAM_HARD_CEILING_BYTES / (1024 * 1024)) << " MB (Strict 3.0 GB Limit)\n";
+        std::cout << "  Ground State: " << (engine.is_bit_exact_ground_state() ? "VERIFIED (|0>^300)" : "DIRTY") << "\n";
+    } else {
+        std::cout << "{\"status\":\"ok\",\"qubits\":300,\"lattice\":\"6x5x10\",\"backend\":\"Vulkan 1.2+\",\"vram_ceiling_mb\":3072}\n";
+    }
+    return 0;
+}
+
+static int cmd_ghz(const std::vector<std::string>& args) {
+    bool json_mode = false;
+    uint32_t shots = 50000;
+    for (size_t i = 0; i < args.size(); ++i) {
+        if (args[i] == "--json") json_mode = true;
+        else if (args[i] == "--shots" && i + 1 < args.size()) shots = std::stoul(args[++i]);
+    }
+
+    auto vulkan = std::make_shared<VulkanContext>();
+    vulkan->initialize();
+    VRTS300Engine engine(vulkan);
+    engine.construct_ghz300();
+    auto [non_parity, zero_shots] = engine.measure_parity_shots(shots);
+    uint64_t one_shots = shots - zero_shots - non_parity;
+
+    if (!json_mode) {
+        std::cout << "[VRTS-300 GHZ Execution]\n";
+        std::cout << "  Total Shots:       " << shots << "\n";
+        std::cout << "  |0>^{\\otimes 300}:  " << zero_shots << "\n";
+        std::cout << "  |1>^{\\otimes 300}:  " << one_shots << "\n";
+        std::cout << "  Parity Violations: " << non_parity << "\n";
+        std::cout << "  Status:            " << (non_parity == 0 ? "PASSED (100% Parity Conserved)" : "FAILED") << "\n";
+    } else {
+        std::cout << "{\"shots\":" << shots << ",\"zeros\":" << zero_shots << ",\"ones\":" << one_shots
+                  << ",\"non_parity\":" << non_parity << ",\"success\":" << (non_parity == 0 ? "true" : "false") << "}\n";
+    }
+    return (non_parity == 0) ? 0 : 1;
+}
+
+static int cmd_reversibility(const std::vector<std::string>& args) {
+    bool json_mode = false;
+    uint32_t num_gates = 5000;
+    for (size_t i = 0; i < args.size(); ++i) {
+        if (args[i] == "--json") json_mode = true;
+        else if (args[i] == "--gates" && i + 1 < args.size()) num_gates = std::stoul(args[++i]);
+    }
+
+    auto vulkan = std::make_shared<VulkanContext>();
+    vulkan->initialize();
+    VRTS300Engine engine(vulkan);
+    VRTS300Engine ground_truth(vulkan);
+
+    std::mt19937 rng(42);
+    std::uniform_int_distribution<uint32_t> q_dist(0, 299);
+    std::uniform_int_distribution<uint32_t> g_dist(0, 5);
+
+    for (uint32_t i = 0; i < num_gates; ++i) {
+        uint32_t q = q_dist(rng);
+        uint32_t g = g_dist(rng);
+        if (g == 0) engine.apply_hadamard(q);
+        else if (g == 1) {
+            auto n = engine.get_lattice().get_neighbors(q);
+            if (!n.empty()) engine.apply_cnot(q, n[0]);
+        }
+        else if (g == 2) engine.apply_t(q);
+        else if (g == 3) engine.apply_s(q);
+        else if (g == 4) engine.apply_rx(q, 0x12345678u);
+        else if (g == 5) engine.apply_ry(q, 0x23456789u);
+    }
+
+    engine.apply_full_inverse();
+    bool exact = engine.is_bit_exact_ground_state();
+    double fidelity = engine.compute_fidelity(ground_truth);
+
+    if (!json_mode) {
+        std::cout << "[Loschmidt Echo Audit]\n";
+        std::cout << "  Gates:       " << num_gates << " forward + " << num_gates << " inverse\n";
+        std::cout << "  Bit-Exact:   " << (exact ? "YES" : "NO") << "\n";
+        std::cout << "  Fidelity:    " << fidelity << "\n";
+    } else {
+        std::cout << "{\"gates\":" << num_gates << ",\"fidelity\":" << fidelity
+                  << ",\"bit_exact\":" << (exact ? "true" : "false") << "}\n";
+    }
+    return (exact && fidelity == 1.0) ? 0 : 1;
+}
+
+static int cmd_maxcut(const std::vector<std::string>& args) {
+    bool json_mode = false;
+    for (const auto& a : args) {
+        if (a == "--json") json_mode = true;
+    }
+
+    auto vulkan = std::make_shared<VulkanContext>();
+    vulkan->initialize();
+    ConstraintSolver solver(vulkan);
+    ConstraintResult res = solver.solve();
+
+    if (!json_mode) {
+        std::cout << "[300-Node MaxCut / Constraint Solver]\n";
+        std::cout << "  Nodes:       " << solver.get_node_count() << "\n";
+        std::cout << "  Edges:       " << solver.get_edge_count() << "\n";
+        std::cout << "  Max Cut:     " << res.max_cut_edges << " / " << solver.get_edge_count() << "\n";
+        std::cout << "  Min Energy:  " << res.minimum_energy << " (Target: " << res.ground_truth_energy << ")\n";
+        std::cout << "  Peak VRAM:   " << (res.peak_vram_bytes / (1024 * 1024)) << " MB\n";
+    } else {
+        std::cout << "{\"nodes\":" << solver.get_node_count() << ",\"edges\":" << solver.get_edge_count()
+                  << ",\"max_cut\":" << res.max_cut_edges << ",\"min_energy\":" << res.minimum_energy
+                  << ",\"peak_vram_mb\":" << (res.peak_vram_bytes / (1024 * 1024))
+                  << ",\"vram_ok\":" << (res.vram_limit_respected ? "true" : "false") << "}\n";
+    }
+    return (res.minimum_energy == res.ground_truth_energy && res.vram_limit_respected) ? 0 : 1;
+}
+
+// ---------------------------------------------------------------------
 // MAIN ENTRYPOINT
 // ---------------------------------------------------------------------
 int main(int argc, char* argv[]) {
@@ -409,7 +550,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (command == "--version" || command == "-v" || command == "version") {
-        std::cout << "CQ-HECS v4.5.0\n"
+        std::cout << "CQ-HECS v2.0.0-VRTS-Vulkan\n"
                   << "Powered by CQ-HECS (https://github.com/timfromhcs)\n"
                   << "Author: Tim (@timfromhcs) <timfromhcs@gmail.com>\n";
         return 0;
@@ -421,7 +562,15 @@ int main(int argc, char* argv[]) {
     }
 
     try {
-        if (command == "qasm") {
+        if (command == "vrts") {
+            return cmd_vrts(sub_args);
+        } else if (command == "ghz") {
+            return cmd_ghz(sub_args);
+        } else if (command == "echo" || command == "reversibility") {
+            return cmd_reversibility(sub_args);
+        } else if (command == "maxcut" || command == "constraint") {
+            return cmd_maxcut(sub_args);
+        } else if (command == "qasm") {
             return cmd_qasm(sub_args);
         } else if (command == "sat") {
             return cmd_sat(sub_args);

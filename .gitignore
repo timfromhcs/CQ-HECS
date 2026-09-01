@@ -1,22 +1,68 @@
-# Build directory
+# Build & output directories
 build/
+bin/
+out/
+dist/
+*.dir/
+
+# Compiled Binaries & Libraries
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.exp
+*.ilk
+*.pdb
+*.obj
+*.o
+
+# SPIR-V compile caches & intermediate outputs
+*.spv.cache
+*.spv.tmp
+
+# IDE & Editor Metadata
+.vscode/
+.idea/
 .vs/
-.cache/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.user
+*.suo
 
-# Binary symbols and debug databases
-bin/Release/*.pdb
-bin/Release/*.exp
-bin/Release/*.ilk
+# System, Crash & Core Dumps
+core
+core.*
+*.dmp
+*.core
 
-# Python bytecode
+# Logs and runtime traces
+*.log
+*.trace
+logs/
+
+# Secrets, Credentials & Environment
+.env
+.env.*
+*.key
+*.token
+*.pem
+*.pfx
+secrets/
+
+# Python caches
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
+.pytest_cache/
 
-# Temporary test swap files
-*.bin
+# Swap and temporary files
 *.tmp
+*.bin
+*.swp
+*.bak
 cq_test_swap.bin
 
-# Credentials & deployment scripts
-scripts/github_deploy.py

@@ -180,7 +180,7 @@ uint32_t VulkanEngine::find_memory_type(uint32_t type_filter, VkMemoryPropertyFl
 }
 
 bool VulkanEngine::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage,
-                                VkMemoryPropertyFlags properties, VulkanBuffer& out_buffer) {
+                                VkMemoryPropertyFlags properties, VulkanBufferLegacy& out_buffer) {
     out_buffer.size = size;
 
     if (m_device == VK_NULL_HANDLE) {
@@ -229,7 +229,7 @@ bool VulkanEngine::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage,
     return true;
 }
 
-void VulkanEngine::destroy_buffer(VulkanBuffer& buffer) {
+void VulkanEngine::destroy_buffer(VulkanBufferLegacy& buffer) {
     if (m_device == VK_NULL_HANDLE) {
         if (buffer.mapped) {
             std::free(buffer.mapped);
@@ -427,7 +427,7 @@ bool VulkanEngine::run_cq_hecs_core_phase(uint32_t* state_data, uint32_t count, 
     }
 
     size_t buffer_size = sizeof(uint32_t) * count;
-    VulkanBuffer in_buf, out_buf, dummy_a, dummy_carry;
+    VulkanBufferLegacy in_buf, out_buf, dummy_a, dummy_carry;
     create_buffer(buffer_size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, in_buf);
     create_buffer(buffer_size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,

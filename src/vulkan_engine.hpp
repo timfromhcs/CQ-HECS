@@ -7,7 +7,7 @@
 
 namespace cq_hecs {
 
-struct VulkanBuffer {
+struct VulkanBufferLegacy {
     VkBuffer buffer = VK_NULL_HANDLE;
     VkDeviceMemory memory = VK_NULL_HANDLE;
     VkDeviceSize size = 0;
@@ -20,7 +20,7 @@ struct MPSNode {
     uint32_t chi_right;
     uint32_t physical_dim; // 2 for qubit
     size_t byte_size;
-    VulkanBuffer buffer;
+    VulkanBufferLegacy buffer;
 };
 
 class VulkanEngine {
@@ -33,8 +33,8 @@ public:
 
     // Buffer Operations
     bool create_buffer(VkDeviceSize size, VkBufferUsageFlags usage, 
-                       VkMemoryPropertyFlags properties, VulkanBuffer& out_buffer);
-    void destroy_buffer(VulkanBuffer& buffer);
+                       VkMemoryPropertyFlags properties, VulkanBufferLegacy& out_buffer);
+    void destroy_buffer(VulkanBufferLegacy& buffer);
 
     // Compute Shader Pipeline Setup
     bool load_compute_pipeline(const std::string& spv_path, 

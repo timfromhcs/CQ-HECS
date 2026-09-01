@@ -1,111 +1,106 @@
-# CQ-HECS v4.5: Conscious Quantum Hybrid Emulation & Constraint Solver
-## Technical and Mathematical Architecture Manual
+# CQ-HECS Architecture Specification
+## Volumetric Reversible Tensor Space (VRTS-300) & Pure Vulkan Compute Core
+**Target Version:** `v2.0.0-VRTS-Vulkan`  
+**License:** Apache 2.0  
+**Author:** Tim (@timfromhcs) <timfromhcs@gmail.com>
 
-### 1. Architectural Overview
-CQ-HECS (Conscious Quantum Hybrid Emulation & Constraint Solver) v4.5 is a production-grade monolithic hybrid quantum-classical emulation and constraint satisfaction system for Windows 11. It combines C++20, embedded Vulkan 1.3 compute pipelines, and native C-ABI shared library interoperability.
+---
 
-The core architecture unites **Global Workspace Theory (GWT)** cognitive metacognition with **Tensor Network Matrix Product States (MPS)**, **Cyclotomic Phase Rings ($\mathbb{Z}_8$)**, and **Lossless Integer Constraint Linearization (ARX Carry-Shadow)**.
+## 1. Executive Architectural Overview
 
-```
-                              +-------------------------------------------+
-                              |    Global Workspace Meta-Layer (GWT)     |
-                              |    - Softmax Cross-Attention Across Spaces|
-                              |    - Hardware Entropy Nudge Controller    |
-                              +---------------------+---------------------+
-                                                    |
-          +-------------------+---------------------+---------------------+-------------------+
-          |                   |                     |                     |                   |
-+---------v---------+ +-------v---------+ +---------v---------+ +---------v---------+ +-------v---------+
-|  J-Space Alpha    | |  J-Space Beta   | |  J-Space Gamma    | |  J-Space Delta    | |  J-Space Epsilon  |
-|  (ARX Modulo)     | |  (Phase Ring)   | |  (SAT & Cuckoo)   | |  (Residual SVD)   | | (Explosion Shield)|
-|  A + B Linearize  | |  Exact Z_8 Ring | |  DIMACS CNF Solve | |  MPS 300 Qubits   | |  Lyapunov Monitor |
-|  Carry Shadow     | |  Clifford + T   | |  O(1) Loop Prune  | |  OpenQASM 2.0/3.0 | |  3-Number Compres |
-|  Overflow Reverse | |  Destruct Interf| |  Hilbert Mix      | |  Re-Inflation     | |  0-Bit Loss Round |
-+-------------------+ +-----------------+ +-------------------+ +-------------------+ +-----------------+
-                                                    |
-                              +---------------------v---------------------+
-                              |   Vulkan 1.3 Compute & Tiered Memory      |
-                              |   - Embedded SPIR-V Shaders in Binary     |
-                              |   - 300 MPS Nodes (chi=64, 2B/amplitude)  |
-                              |   - Active VRAM strictly < 120 MB         |
-                              |   - Win32 Memory-Mapped Cold Swap Pool    |
-                              |   - Top Non-Master Isolated Validator     |
-                              +-------------------------------------------+
-                                                    |
-                              +---------------------v---------------------+
-                              |          Unified Entrypoints              |
-                              |   - Standalone CLI: bin/Release/cq_hecs.exe|
-                              |   - Shared DLL:     bin/Release/cq_hecs.dll|
-                              |   - C-ABI Header:   include/cq_hecs_api.h |
-                              +-------------------------------------------+
+**CQ-HECS** (`v2.0.0-VRTS-Vulkan`) introduces the **Volumetric Reversible Tensor Space (VRTS-300)** architecture. VRTS-300 represents a major paradigm shift: replacing 1D/2D chain approximations with an exact **3D orthogonal volumetric lattice** initialized to 300 physical qubits ($6 \times 5 \times 10$). Hardware acceleration is delivered via **pure Vulkan 1.2+ Compute** (SPIR-V bytecode, zero CUDA dependencies), governed by a **strict 3.0 GB VRAM hard ceiling**, **dual-layer residual folding** ($T = T_{\text{Active}} + T_{\text{Residual}}$), and a **bit-exact $\mathbb{Z}_{2^{32}}$ integer phase ring** driven by CORDIC micro-rotations.
+
+```mermaid
+graph TD
+    subgraph HostSystem [Host System - Windows / Linux]
+        CLI[Standalone CLI & C-ABI API] --> Engine[VRTS300Engine Coordinator]
+        Engine --> Lattice[3D Lattice Topology 6x5x10]
+        Engine --> Cordic[Bit-Exact Phase Engine Z_2^32]
+        Engine --> Residual[Dual-Layer Residual Engine Host RAM]
+    end
+
+    subgraph VulkanCompute [Pure Vulkan 1.2+ Compute Core]
+        Engine --> VMM[VulkanMemoryManager <= 3.0 GB VRAM]
+        VMM --> BufferPool[Active Tensor SSBO Storage Buffers]
+        BufferPool --> Shader1[cordic.comp: Micro-Rotations]
+        BufferPool --> Shader2[tensor_contract.comp: Parallel Contraction]
+        BufferPool --> Shader3[bond_svd.comp: Jacobi / Polar Rotations]
+        BufferPool --> Shader4[state_reset.comp: Ground State Reset]
+    end
+
+    subgraph HardwareExecution [Execution Tier]
+        Shader1 & Shader2 & Shader3 & Shader4 --> GPU[Hardware Discrete / Integrated GPU]
+        Shader1 & Shader2 & Shader3 & Shader4 -. Fallback .-> Lavapipe[Mesa Lavapipe CPU ICD]
+    end
 ```
 
 ---
 
-### 2. Multi-J-Spaces Mathematical Formulation
+## 2. Mathematical Formalism & Modules
 
-#### 2.1 J-Space Alpha (ARX Modulo Linearization & Carry Shadow)
-Standard addition over $\mathbb{Z}_{2^{64}}$ is non-linear due to carries. CQ-HECS linearizes modular addition by decomposing $A + B$ into:
-$$\text{Sum}(A, B) = A \oplus B$$
-$$\text{CarryShadow}(A, B) = (A \ \& \ B) \ll 1$$
+### 2.1 3D-Volumetric Lattice Topology (`Lattice3D`)
+The physical qubits are mapped to an orthogonal three-dimensional grid:
+$$\mathcal{L} = \{ (x, y, z) \in \mathbb{N}^3 \mid 0 \le x < 6, \; 0 \le y < 5, \; 0 \le z < 10 \}$$
+$$\text{Total Qubits: } N = 6 \times 5 \times 10 = 300$$
 
-Exact modular sum reconstruction is guaranteed via:
-$$(A + B) \pmod{2^{64}} = \text{Sum}(A, B) + \text{CarryShadow}(A, B) \pmod{2^{64}}$$
-
-Reversibility for symmetric crypto primitives (BLAKE2b $G$-function, ChaCha20 quarter-round, SHA-256 schedule expansion) isolates carry shadows:
-$$A = (C - B) \pmod{2^{64}}$$
-
-When candidate preimages are evaluated, carry shadows prune inconsistent branches before exploration.
-
-#### 2.2 J-Space Beta (Cyclotomic Phase Ring $\mathbb{Z}_8$)
-Quantum state phases for universal fault-tolerant Clifford + T quantum circuits are mapped into the cyclotomic quotient ring:
-$$\mathcal{R}_8 = \mathbb{Z}[x] / (x^4 + 1)$$
-where primitive root of unity $\zeta_8 = e^{i \pi / 4}$ maps each state into integer phase indices $k \in \{0, 1, 2, 3, 4, 5, 6, 7\}$:
-$$\phi(k) = e^{i k \pi / 4}$$
-
-- **Constructive Interference**: When $(k_1 - k_2) \equiv 0 \pmod 8$, amplitudes reinforce coherently.
-- **Destructive Interference**: When $(k_1 - k_2) \equiv 4 \pmod 8$, amplitudes cancel out exactly ($e^{i \pi} = -1$, yielding zero residual without floating-point error).
-- **Anti-Math Unitary Inversion**: For any unitary operator sequence $U = G_m \dots G_1$, the exact anti-math adjoint is:
-$$U^\dagger = G_1^\dagger \dots G_m^\dagger, \quad U^\dagger U = \mathbb{I}$$
-
-#### 2.3 J-Space Gamma (DIMACS CNF SAT Engine & Hilbert-Cuckoo Pruning)
-Propositional satisfiability formulas are evaluated using DPLL search with an $O(1)$ Hilbert-Cuckoo cycle loop pruner.
-
-State signatures are generated via Murmur3 64-bit hashing:
-$$h(S) = \bigoplus_{v=1}^{\min(N, 32)} \left( (v \cdot \gamma) + \text{bit}(v) \right) \lll 7$$
-
-A dual-bucket Cuckoo hash table stores candidate assignments with alternative positions:
-$$s_1 = h(S) \pmod{M/2}, \quad s_2 = (M/2) + \left( h'(S) \pmod{M/2} \right)$$
-If a state has been visited within the current search branch, it is detected in $O(1)$ time and pruned as a cycle loop.
-
-#### 2.4 J-Space Delta (MPS 300-Qubit Tensor Chain & SVD Residual Tracking)
-A 300-qubit entangled system is represented as a 1D Matrix Product State (MPS):
-$$|\psi\rangle = \sum_{i_1, \dots, i_N} A^{[1]i_1} A^{[2]i_2} \dots A^{[N]i_N} |i_1 \dots i_N\rangle$$
-where each tensor site $A^{[k]}$ has bond dimension $\chi \le 64$ and physical dimension $d=2$.
-
-During two-site gate application, singular value decomposition (SVD) decomposes the contract tensor:
-$$M = U \Sigma V^\dagger$$
-
-Singular values $\Sigma = \text{diag}(s_1, \dots, s_r)$ are truncated at $r = \chi = 64$. Truncated Frobenius energy is tracked as:
-$$\Lambda_{\text{res}} = \sqrt{\sum_{j > \chi} s_j^2}$$
-
-The truncated subspace $(U_{\text{res}}, \Sigma_{\text{res}}, V^\dagger_{\text{res}})$ is cached for lossless re-inflation.
-
-#### 2.5 J-Space Epsilon (Explosion Shield & 3-Number Lossless Compression)
-- **Lyapunov Growth Guardian**: At each cycle $t$, state divergence is monitored:
-$$\lambda = \frac{1}{\Delta t} \ln\left( \frac{\|\delta x(t)\|}{\|\delta x(0)\|} \right)$$
-If $\lambda > \lambda_{\text{threshold}} = 2.5$, the engine triggers an immediate stabilizing unitary deflation.
-- **3-Number Lossless Compression**: Tensors are stored as $(H, \Delta, E)$, where $H$ is a 64-bit deterministic hash/seed, $\Delta$ is a compact delta array, and $E$ is an integer scaling exponent. Guarantees 0-bit loss roundtrips across all ranges.
+- **Linear Index Bijection:**
+  $$\text{Index}(x, y, z) = x + 6 \cdot y + 30 \cdot z, \quad \text{Index} \in [0, 299]$$
+- **6-Neighbor Spatial Bonds:**
+  Each interior node connects along axes $(\pm x, \pm y, \pm z)$. The total number of unique physical bonds across the lattice is:
+  $$|B| = (6-1)\cdot 5 \cdot 10 + 6 \cdot (5-1) \cdot 10 + 6 \cdot 5 \cdot (10-1) = 250 + 240 + 270 = 760 \text{ bonds}$$
+- **Topological Manhattan Distance:**
+  $$d((x_1, y_1, z_1), (x_2, y_2, z_2)) = |x_1 - x_2| + |y_1 - y_2| + |z_1 - z_2|$$
+  $$\text{Max Contraction Path: } \max d = (6-1) + (5-1) + (10-1) = 5 + 4 + 9 = 18 \text{ hops}$$
+- **Optimal Routing:** Routing between non-adjacent qubits decomposes along coordinate axes $(X \to Y \to Z)$, requiring strictly $\le 18$ SWAP hops.
 
 ---
 
-### 3. Tiered Storage Architecture & VRAM Budget
+### 2.2 Bit-Exact Phase Engine & Integer CORDIC (`CordicEngine`)
+To completely eliminate IEEE-754 floating-point drift over thousands of gates, phase angles are represented on the discrete ring:
+$$\mathbb{Z}_{2^{32}} = \{ 0, 1, \dots, 2^{32}-1 \} \quad \text{where } 2^{32} \equiv 2\pi$$
 
-To guarantee operation on entry-level hardware with $< 120.0$ MB active VRAM:
-1. **Active Hot VRAM**:
-   - 300 MPS tensor nodes $\times$ 64 bond dimension $\times$ 2 physical states $\times$ 16 bytes/amplitude $\approx 4.53$ MB resident VRAM.
-   - Descriptor sets and command buffers $\approx 2.1$ MB.
-   - Peak active memory: $\approx 6.63$ MB ($\ll 120.0$ MB ceiling).
-2. **Cold Paging Pool**:
-   - Win32 Memory-Mapped File (`FILE_FLAG_DELETE_ON_CLOSE`) backing a 256 MB swap partition.
-   - Least-recently-used (LRU) eviction automatically offloads non-active tensor pages when active allocation approaches 90 MB.
+- **Exact Clifford+T Angles:**
+  $$\text{Identity} = 0x00000000, \quad T = \pi/4 = 0x20000000, \quad S = \pi/2 = 0x40000000, \quad Z = \pi = 0x80000000$$
+- **Reversible Integer Lifting Scheme:**
+  Arbitrary 2D rotation $\begin{pmatrix} \cos\theta & -\sin\theta \\ \sin\theta & \cos\theta \end{pmatrix}$ decomposes into three integer shear steps:
+  $$x_1 = x_0 - \lfloor y_0 \cdot \tan(\theta/2) \rfloor$$
+  $$y_1 = y_0 + \lfloor x_1 \cdot \sin(\theta) \rfloor$$
+  $$x_2 = x_1 - \lfloor y_1 \cdot \tan(\theta/2) \rfloor$$
+  The exact inverse:
+  $$x_1 = x_2 + \lfloor y_1 \cdot \tan(\theta/2) \rfloor$$
+  $$y_0 = y_1 - \lfloor x_1 \cdot \sin(\theta) \rfloor$$
+  $$x_0 = x_1 + \lfloor y_0 \cdot \tan(\theta/2) \rfloor$$
+  Because each shear modifies one coordinate using the unmodified other, the forward and reverse integer roundings cancel identically, ensuring **bit-exact reversibility ($U^\dagger U = I$)**.
+
+---
+
+### 2.3 Dual-Layer Residual Folding Architecture (`ResidualEngine`)
+Standard tensor truncation discards small singular values, causing irreversible cumulative error. VRTS-300 replaces destructive truncation with **Dual-Layer Residual Folding**:
+$$T = T_{\text{Active}} + T_{\text{Residual}}$$
+
+1. **$T_{\text{Active}}$ (GPU VRAM Layer):**
+   Stores the dominant components in high-speed Vulkan Storage Buffers (SSBOs). Capped to fit strictly within the **3.0 GB VRAM limit**.
+2. **$T_{\text{Residual}}$ (Host RAM Layer):**
+   Stores sparse bit-packed integer delta vectors streamed directly into Host RAM:
+   $$\text{Residual} = \{ (\text{coord}_k, \Delta\text{real}_k, \Delta\text{imag}_k) \}$$
+3. **On-Demand Bit-Exact Reconstruction:**
+   When a local gate or inverse contraction activates a folded node, $T_{\text{Residual}}$ is fetched from Host RAM and recombined into $T_{\text{Active}}$ without precision loss.
+
+---
+
+### 2.4 Pure Vulkan 1.2+ Compute Core (`VulkanContext`)
+- **Zero CUDA:** All GPU computation executes via Khronos Vulkan 1.2+ Compute pipelines.
+- **Embedded SPIR-V Bytecode:** Shaders (`cordic.comp`, `tensor_contract.comp`, `bond_svd.comp`, `state_reset.comp`) are compiled via `glslangValidator` and embedded directly as `uint32_t` arrays in binary headers, eliminating external file path dependencies.
+- **3.0 GB Memory Governor (`VulkanMemoryManager`):** Tracks every active byte allocated across GPU buffers. Hard limits are enforced with `track_allocation` and `track_deallocation`.
+- **Automatic Lavapipe Fallback:** If no discrete or integrated physical GPU is discovered (e.g. headless CI runners), the engine automatically selects Mesa Lavapipe (`VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json`) or software emulation.
+
+---
+
+### 2.5 Combinatorial Constraint & MaxCut Solver (`ConstraintSolver`)
+The 3D volumetric lattice maps directly to 300-node graph optimization problems:
+- **300-Node Bipartite Ground Truth:**
+  The $6 \times 5 \times 10$ orthogonal grid forms a natural bipartite graph with 760 edges.
+  Partitioning vertices by spatial parity $(x + y + z) \pmod 2$ cuts all 760 edges.
+  $$\text{Ground Truth Max Cut: } 760 / 760 \quad | \quad \text{Ground Truth Energy: } -760$$
+- **Continuous VRAM Polling:** The solver contracts planar slices along $z \in [0, 9]$, polling allocated VRAM and asserting:
+  $$\text{Peak Allocated VRAM } \le 3072 \text{ MB (3.0 GB)}$$

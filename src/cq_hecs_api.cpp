@@ -113,7 +113,7 @@ CQ_API void cq_destroy_context(cq_context_t* ctx) {
 }
 
 CQ_API const char* cq_get_version(void) {
-    return "4.5.0";
+    return "v2.0.0-VRTS-Vulkan";
 }
 
 CQ_API double cq_get_active_vram_mb(cq_context_t* ctx) {

@@ -1,0 +1,103 @@
+#version 450
+#extension GL_ARB_gpu_shader_int64 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+// State buffer: array of complex amplitudes (real, imag) as 32-bit fixed point
+struct ComplexAmp {
+    int real_val;
+    int imag_val;
+};
+
+layout(std430, binding = 0) buffer StateBuffer {
+    ComplexAmp amplitudes[];
+};
+
+// Push constants for gate operation
+layout(push_constant) uniform PushConstants {
+    uint gate_type;   // 0: PhaseShift, 1: PauliX, 2: PauliY, 3: PauliZ, 4: Hadamard, 5: Rx, 6: Ry, 7: Rz
+    uint phase_angle; // in Z_{2^32}
+    uint is_inverse;  // 0: forward, 1: inverse
+    uint total_pairs; // number of amplitude pairs (or amplitudes)
+} pc;
+
+const int FIXED_SCALE = 1073741824; // 2^30
+
+int fixed_mul(int a, int b) {
+    // 64-bit intermediate multiplication
+    int64_t prod = int64_t(a) * int64_t(b);
+    return int(prod >> 30);
+}
+
+void cordic_rotate_2d(inout int x, inout int y, uint angle, uint inv) {
+    if (angle == 0u) return;
+
+    uint quad = angle >> 30u;
+    uint rem_phase = angle & 0x3FFFFFFFu;
+
+    // In inverse mode, do inverse lifting then inverse quadrant
+    if (inv == 1u) {
+        if (rem_phase != 0u) {
+            float theta = float(rem_phase) * (6.283185307 / 4294967296.0);
+            int p = int(round(tan(theta * 0.5) * float(FIXED_SCALE)));
+            int q = int(round(sin(theta) * float(FIXED_SCALE)));
+
+            x += fixed_mul(y, p);
+            y -= fixed_mul(x, q);
+            x += fixed_mul(y, p);
+        }
+        if (quad == 1u) {
+            int tx = x; x = y; y = -tx;
+        } else if (quad == 2u) {
+            x = -x; y = -y;
+        } else if (quad == 3u) {
+            int tx = x; x = -y; y = tx;
+        }
+    } else {
+        if (quad == 1u) {
+            int tx = x; x = -y; y = tx;
+        } else if (quad == 2u) {
+            x = -x; y = -y;
+        } else if (quad == 3u) {
+            int tx = x; x = y; y = -tx;
+        }
+        if (rem_phase != 0u) {
+            float theta = float(rem_phase) * (6.283185307 / 4294967296.0);
+            int p = int(round(tan(theta * 0.5) * float(FIXED_SCALE)));
+            int q = int(round(sin(theta) * float(FIXED_SCALE)));
+
+            x -= fixed_mul(y, p);
+            y += fixed_mul(x, q);
+            x -= fixed_mul(y, p);
+        }
+    }
+}
+
+void main() {
+    uint gid = gl_GlobalInvocationID.x;
+    if (gid >= pc.total_pairs) return;
+
+    if (pc.gate_type == 0u) {
+        // Phase shift on amplitudes[gid]
+        cordic_rotate_2d(amplitudes[gid].real_val, amplitudes[gid].imag_val, pc.phase_angle, pc.is_inverse);
+    } else if (pc.gate_type == 1u) {
+        // Pauli X (swap pair)
+        uint idx0 = gid * 2u;
+        uint idx1 = idx0 + 1u;
+        ComplexAmp t = amplitudes[idx0];
+        amplitudes[idx0] = amplitudes[idx1];
+        amplitudes[idx1] = t;
+    } else if (pc.gate_type == 3u) {
+        // Pauli Z: negate amplitude 1
+        uint idx1 = gid * 2u + 1u;
+        amplitudes[idx1].real_val = -amplitudes[idx1].real_val;
+        amplitudes[idx1].imag_val = -amplitudes[idx1].imag_val;
+    } else if (pc.gate_type == 6u) {
+        // Ry rotation between pair amplitudes
+        uint idx0 = gid * 2u;
+        uint idx1 = idx0 + 1u;
+        uint half_angle = pc.phase_angle >> 1u;
+        cordic_rotate_2d(amplitudes[idx0].real_val, amplitudes[idx1].real_val, half_angle, pc.is_inverse);
+        cordic_rotate_2d(amplitudes[idx0].imag_val, amplitudes[idx1].imag_val, half_angle, pc.is_inverse);
+    }
+}
