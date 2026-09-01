@@ -29,12 +29,20 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libvulkan-dev vulkan-tools glslang-tools spirv-tools
+          sudo apt-get install -y libvulkan-dev vulkan-tools glslang-tools spirv-tools libx11-xcb-dev libxkbcommon-dev libwayland-dev mesa-vulkan-drivers
 
       - name: Install Vulkan SDK (Windows)
         if: runner.os == 'Windows'
         run: |
           choco install vulkan-sdk -y --no-progress
+          $vdir = (Get-ChildItem C:\VulkanSDK -Directory -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+          if ($vdir) {
+            echo "VULKAN_SDK=$vdir" >> $env:GITHUB_ENV
+            echo "$vdir\Bin" >> $env:GITHUB_PATH
+          } else {
+            echo "VULKAN_SDK=C:\VulkanSDK\1.3.296.0" >> $env:GITHUB_ENV
+            echo "C:\VulkanSDK\1.3.296.0\Bin" >> $env:GITHUB_PATH
+          }
 
       - name: Build Release
         run: |
