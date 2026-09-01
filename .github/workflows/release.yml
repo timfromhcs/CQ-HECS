@@ -35,6 +35,9 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           choco install vulkan-sdk -y --no-progress
+          $vulkanDir = (Get-ChildItem -Path "C:\VulkanSDK" -Directory | Sort-Object Name -Descending | Select-Object -First 1).FullName
+          echo "VULKAN_SDK=$vulkanDir" >> $env:GITHUB_ENV
+          echo "$vulkanDir\Bin" >> $env:GITHUB_PATH
 
       - name: Build Release Artifacts
         run: |

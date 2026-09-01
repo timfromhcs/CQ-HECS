@@ -19,6 +19,18 @@ else()
     add_compile_options(-Wall -Wextra)
 endif()
 
+if(WIN32)
+    if(NOT DEFINED ENV{VULKAN_SDK} OR NOT EXISTS "$ENV{VULKAN_SDK}")
+        file(GLOB _VULKAN_CANDIDATE_DIRS "C:/VulkanSDK/*")
+        if(_VULKAN_CANDIDATE_DIRS)
+            list(SORT _VULKAN_CANDIDATE_DIRS ORDER DESCENDING)
+            list(GET _VULKAN_CANDIDATE_DIRS 0 _LATEST_VULKAN_DIR)
+            set(ENV{VULKAN_SDK} "${_LATEST_VULKAN_DIR}")
+            message(STATUS "Auto-detected Vulkan SDK at: ${_LATEST_VULKAN_DIR}")
+        endif()
+    endif()
+endif()
+
 find_package(Vulkan REQUIRED)
 
 include_directories(
