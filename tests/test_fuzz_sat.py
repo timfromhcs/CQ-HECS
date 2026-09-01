@@ -6,14 +6,29 @@ Tests edge-case, degenerate, malformed, and contradictory formulas against the C
 import unittest
 import subprocess
 import json
+import os
 from pathlib import Path
 
 
 class TestFuzzSAT(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.exe_path = Path(__file__).parent.parent / "bin" / "Release" / "cq_hecs.exe"
+        base_dir = Path(__file__).parent.parent
+        if os.name == 'nt':
+            candidates = [
+                base_dir / "bin" / "Release" / "cq_hecs.exe",
+                base_dir / "bin" / "cq_hecs.exe",
+            ]
+        else:
+            candidates = [
+                base_dir / "bin" / "cq_hecs",
+                base_dir / "bin" / "Release" / "cq_hecs",
+                base_dir / "build" / "cq_hecs",
+            ]
+        cls.exe_path = next((p for p in candidates if p.exists()), candidates[0])
         cls.assertTrue(cls, cls.exe_path.exists(), f"Missing {cls.exe_path}")
+        if os.name != 'nt':
+            os.chmod(cls.exe_path, 0o755)
 
     def run_cpp_sat(self, cnf_str: str):
         res = subprocess.run(

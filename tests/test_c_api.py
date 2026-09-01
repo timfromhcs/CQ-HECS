@@ -35,7 +35,20 @@ class CQSATResult(ctypes.Structure):
 class TestCAPI(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        dll_path = Path(__file__).parent.parent / "bin" / "Release" / "cq_hecs.dll"
+        base_dir = Path(__file__).parent.parent
+        import os
+        if os.name == 'nt':
+            candidates = [
+                base_dir / "bin" / "Release" / "cq_hecs.dll",
+                base_dir / "bin" / "cq_hecs.dll",
+            ]
+        else:
+            candidates = [
+                base_dir / "bin" / "libcq_hecs.so",
+                base_dir / "bin" / "Release" / "libcq_hecs.so",
+                base_dir / "build" / "libcq_hecs.so",
+            ]
+        dll_path = next((p for p in candidates if p.exists()), candidates[0])
         cls.assertTrue(cls, dll_path.exists(), f"Missing {dll_path}")
         cls.lib = ctypes.CDLL(str(dll_path))
 
