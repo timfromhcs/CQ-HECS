@@ -1,0 +1,33 @@
+﻿name: Bug Report
+description: File a reproducible bug or runtime error in CQ-HECS.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for reporting an issue in CQ-HECS!
+  - type: input
+    id: version
+    attributes:
+      label: Binary / Library Version
+      placeholder: "e.g. v4.5.0 (Windows x64 / Linux x64)"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment & Hardware
+      placeholder: "e.g. Windows 11 / RTX 4090 / Vulkan 1.3 / Driver 551.23"
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal Reproducible Example
+      description: Provide the command, QASM circuit, or CNF instance that triggered the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Diagnostic Logs & Stderr Output
+      render: shell

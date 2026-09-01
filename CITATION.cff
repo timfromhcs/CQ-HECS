@@ -1,0 +1,16 @@
+﻿cff-version: 1.2.0
+message: "If you use this software in your research or business, please cite it as below."
+authors:
+  - family-names: "Stark"
+    given-names: "Tim Johann"
+    alias: "timfromhcs"
+title: "CQ-HECS: Conscious Quantum Hybrid Emulation & Constraint Solver"
+version: 4.5.0
+date-released: 2026-09-01
+url: "https://github.com/timfromhcs/CQ-HECS"
+keywords:
+  - "quantum-simulation"
+  - "matrix-product-states"
+  - "vulkan-compute"
+  - "cryptanalysis"
+  - "sat-solver"
