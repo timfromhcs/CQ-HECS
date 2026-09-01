@@ -4,6 +4,7 @@
 #include "types.hpp"
 #include "cordic.hpp"
 #include <vector>
+#include <tuple>
 #include <cmath>
 #include <algorithm>
 #include <stdexcept>

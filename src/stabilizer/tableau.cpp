@@ -299,6 +299,7 @@ bool StabilizerTableau::is_stabilizer_satisfied(
     const std::vector<uint32_t>& x_qubits,
     const std::vector<uint32_t>& z_qubits,
     uint8_t expected_phase) const {
+    (void)expected_phase;
     
     // Check if the target Pauli commutes with all current stabilizers
     auto symplectic_with_pauli = [&](size_t row) -> int {
