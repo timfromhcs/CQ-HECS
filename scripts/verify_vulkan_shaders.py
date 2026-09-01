@@ -23,15 +23,17 @@ def find_glslang_validator() -> str:
     # 2. VULKAN_SDK env
     vulkan_sdk = os.environ.get("VULKAN_SDK")
     if vulkan_sdk:
-        candidate = Path(vulkan_sdk) / "bin" / ("glslangValidator.exe" if sys.platform == "win32" else "glslangValidator")
-        if candidate.exists():
-            return str(candidate)
+        for sub in ("bin", "Bin"):
+            candidate = Path(vulkan_sdk) / sub / ("glslangValidator.exe" if sys.platform == "win32" else "glslangValidator")
+            if candidate.exists():
+                return str(candidate)
 
     # 3. Windows standard paths
     if sys.platform == "win32":
-        for p in Path("C:/VulkanSDK").glob("*/bin/glslangValidator.exe"):
-            if p.exists():
-                return str(p)
+        for sub in ("bin", "Bin"):
+            for p in Path("C:/VulkanSDK").glob(f"*/{sub}/glslangValidator.exe"):
+                if p.exists():
+                    return str(p)
 
     raise RuntimeError("glslangValidator not found on PATH or VULKAN_SDK.")
 
