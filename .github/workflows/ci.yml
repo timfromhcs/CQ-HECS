@@ -32,12 +32,12 @@ jobs:
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install numpy qiskit pytest nanobind setuptools wheel flake8
+          pip install numpy qiskit qiskit-aer stim pytest nanobind setuptools wheel flake8 coverage
 
       - name: Code Quality & Syntax Linting
         run: |
           python -m compileall cqhecs/ tests/
-          flake8 cqhecs/ tests/test_four_path_architecture.py --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 cqhecs/ tests/test_four_path_architecture.py tests/test_path_transitions_and_boundaries.py tests/test_adversarial_aer_and_stim.py --count --select=E9,F63,F7,F82 --show-source --statistics
 
       - name: "Audit: Verify Zero Silent Truncation (chi=48 Elimination)"
         run: python scripts/verify_no_silent_truncation.py
@@ -57,10 +57,20 @@ jobs:
           PYTHONPATH: .
         run: |
           pip install -e .
-          pytest tests/test_four_path_architecture.py -v
+          pytest tests/test_four_path_architecture.py tests/test_path_transitions_and_boundaries.py tests/test_adversarial_aer_and_stim.py -v
 
-      - name: Full Classical Test Suite
+      - name: Run Deterministic Mutation Testing
+        env:
+          PYTHONPATH: .
+        run: python scripts/run_mutation_tests.py
+
+      - name: Full Classical Test Suite with Coverage
         env:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
           PYTHONPATH: .
-        run: pytest tests/ -v --durations=15
+        run: |
+          coverage run --source=cqhecs -m pytest tests/ -v --durations=15
+          coverage report -m
+
+      - name: Build Release Distribution & Verify Checksums
+        run: python scripts/generate_sbom_and_checksums.py

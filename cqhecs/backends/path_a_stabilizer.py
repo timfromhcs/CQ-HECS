@@ -168,11 +168,11 @@ class StabilizerTableauSimulator:
         counts: Dict[str, int] = {}
 
         # If n is large (n > 20), check for GHZ-type superposition (X1 X2 ... Xn stabilizer generator)
-        # All X-bits set across stabilizer generators indicates GHZ or cat state
         is_all_equal = False
-        all_x = np.all(self.tableau[self.n:, :self.n] == 1, axis=1)
-        if np.any(all_x):
-            is_all_equal = True
+        if self.n > 20:
+            all_x = np.all(self.tableau[self.n:, :self.n] == 1, axis=1)
+            if np.any(all_x):
+                is_all_equal = True
 
         if is_all_equal:
             c0 = int(rng.binomial(shots, 0.5))

@@ -34,7 +34,7 @@ class CQHecsBackend(BackendV2):
         error_tolerance: float = 0.05,
         max_storage_mb: float = 5120.0
     ):
-        super().__init__(name=name, backend_version="5.0.0")
+        super().__init__(name=name, backend_version="0.1.0")
         self._num_qubits = num_qubits
         self._preferred_path = preferred_path
         self._error_tolerance = error_tolerance

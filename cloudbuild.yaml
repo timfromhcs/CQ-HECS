@@ -1,5 +1,5 @@
 # Google Cloud Build Pipeline for CQ-HECS Classical Four-Path Architecture
-# Deterministic build, zero-silent-truncation audit, and bit-exact differential testing.
+# Deterministic build, zero-silent-truncation audit, mutation testing, and differential benchmarks.
 
 steps:
   # Step 1: Environment & Linting
@@ -12,14 +12,14 @@ steps:
         pip install --upgrade pip
         pip install flake8
         python -m compileall cqhecs/ tests/
-        flake8 cqhecs/ tests/test_four_path_architecture.py --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 cqhecs/ tests/test_four_path_architecture.py tests/test_path_transitions_and_boundaries.py tests/test_adversarial_aer_and_stim.py --count --select=E9,F63,F7,F82 --show-source --statistics
 
   # Step 2: Audit: Verify Zero Silent Truncation (chi=48 Elimination)
   - name: 'python:3.11'
     entrypoint: 'python'
     args: ['scripts/verify_no_silent_truncation.py']
 
-  # Step 3: Four-Path Architecture & Differential Tests
+  # Step 3: Four-Path Architecture, Boundaries & Comparative Tests
   - name: 'python:3.11'
     entrypoint: 'bash'
     env:
@@ -29,11 +29,22 @@ steps:
       - '-c'
       - |
         set -euo pipefail
-        pip install numpy qiskit pytest setuptools wheel
+        pip install numpy qiskit qiskit-aer stim pytest setuptools wheel coverage
         pip install -e .
-        pytest tests/test_four_path_architecture.py -v
+        pytest tests/test_four_path_architecture.py tests/test_path_transitions_and_boundaries.py tests/test_adversarial_aer_and_stim.py -v
 
-  # Step 4: Full Deterministic Test Suite
+  # Step 4: Mutation Testing Harness
+  - name: 'python:3.11'
+    entrypoint: 'bash'
+    env:
+      - 'PYTHONPATH=.'
+    args:
+      - '-c'
+      - |
+        set -euo pipefail
+        python scripts/run_mutation_tests.py
+
+  # Step 5: Full Deterministic Test Suite with Coverage
   - name: 'python:3.11'
     entrypoint: 'bash'
     env:
@@ -43,7 +54,13 @@ steps:
       - '-c'
       - |
         set -euo pipefail
-        pytest tests/ -v --durations=10
+        coverage run --source=cqhecs -m pytest tests/ -v --durations=10
+        coverage report -m
+
+  # Step 6: Artifact & SBOM Generation
+  - name: 'python:3.11'
+    entrypoint: 'python'
+    args: ['scripts/generate_sbom_and_checksums.py']
 
 options:
   logging: CLOUD_LOGGING_ONLY

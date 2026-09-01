@@ -22,7 +22,7 @@ from cqhecs.backends import (
     SparsePauliDynamicsSimulator,
 )
 
-__version__ = "5.0.0"
+__version__ = "0.1.0"
 __all__ = [
     "CQHecsBackend",
     "CQHecsProvider",

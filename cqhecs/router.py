@@ -29,7 +29,8 @@ class FourPathRouter:
         t_rank_threshold: int = 14,
         mps_entanglement_threshold: int = 32,
         max_storage_mb: float = 5120.0,
-        error_tolerance: float = 0.05
+        error_tolerance: float = 0.05,
+        max_pauli_terms: int = 1024
     ):
         self.analyzer = CircuitAnalyzer(
             t_rank_threshold=t_rank_threshold,
@@ -38,7 +39,10 @@ class FourPathRouter:
         self.backend_a = PathAStabilizerBackend()
         self.backend_b = PathBStabilizerRankBackend()
         self.backend_c = PathCMPSExactBackend(max_storage_mb=max_storage_mb)
-        self.backend_d = PathDSparsePauliBackend(error_tolerance=error_tolerance)
+        self.backend_d = PathDSparsePauliBackend(
+            max_pauli_terms=max_pauli_terms,
+            error_tolerance=error_tolerance
+        )
         self.error_tolerance = error_tolerance
 
     def route_and_execute(

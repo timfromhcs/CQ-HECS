@@ -66,6 +66,9 @@ __pycache__/
 *.egg-info/
 .venv/
 .pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
 
 # Swap and Temporary Files
 *.tmp

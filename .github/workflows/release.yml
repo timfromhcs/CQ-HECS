@@ -1,4 +1,4 @@
-name: Multi-Platform Release Build
+name: CQ-HECS Clean Slate Release Pipeline
 
 on:
   push:
@@ -7,88 +7,40 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
-  build-release:
-    name: Build Release (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-latest, ubuntu-latest]
-
+  release:
+    name: Build, Sign, and Publish Release v0.1.0
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      - name: Setup Python
+      - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install Vulkan SDK (Linux)
-        if: runner.os == 'Linux'
+      - name: Install Dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libvulkan-dev vulkan-tools glslang-tools spirv-tools
+          python -m pip install --upgrade pip
+          pip install wheel setuptools
 
-      - name: Install Vulkan SDK (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          choco install vulkan-sdk -y --no-progress
-          $vulkanDir = (Get-ChildItem -Path "C:\VulkanSDK" -Directory | Sort-Object Name -Descending | Select-Object -First 1).FullName
-          echo "VULKAN_SDK=$vulkanDir" >> $env:GITHUB_ENV
-          echo "$vulkanDir\Bin" >> $env:GITHUB_PATH
-
-      - name: Build Release Artifacts
-        run: |
-          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --config Release --parallel
-
-      - name: Package Windows Artifacts
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: |
-          New-Item -ItemType Directory -Path dist/CQ-HECS-Windows-x64/bin -Force
-          Copy-Item bin/Release/cq_hecs.exe dist/CQ-HECS-Windows-x64/bin/
-          Copy-Item bin/Release/cq_hecs.dll dist/CQ-HECS-Windows-x64/bin/
-          Copy-Item bin/Release/cq_hecs.lib dist/CQ-HECS-Windows-x64/bin/
-          Copy-Item include dist/CQ-HECS-Windows-x64/include -Recurse
-          Copy-Item benchmarks dist/CQ-HECS-Windows-x64/benchmarks -Recurse
-          Copy-Item LICENSE dist/CQ-HECS-Windows-x64/
-          Copy-Item README.md dist/CQ-HECS-Windows-x64/
-          Compress-Archive -Path dist/CQ-HECS-Windows-x64/* -DestinationPath dist/CQ-HECS-v4.5.0-Windows-x64.zip
-
-      - name: Package Linux Artifacts
-        if: runner.os == 'Linux'
-        run: |
-          mkdir -p dist/CQ-HECS-Linux-x64/bin
-          cp build/cq_hecs dist/CQ-HECS-Linux-x64/bin/ || cp bin/cq_hecs dist/CQ-HECS-Linux-x64/bin/ || true
-          cp -r include dist/CQ-HECS-Linux-x64/
-          cp -r benchmarks dist/CQ-HECS-Linux-x64/
-          cp LICENSE README.md dist/CQ-HECS-Linux-x64/
-          tar -czvf dist/CQ-HECS-v4.5.0-Linux-x64.tar.gz -C dist/CQ-HECS-Linux-x64 .
-
-      - name: Upload Release Assets
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-${{ matrix.os }}
-          path: dist/*.zip
-          if-no-files-found: ignore
-
-  publish-github-release:
-    needs: build-release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Download Built Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: release-assets
+      - name: Generate Release Packages, SHA256 Checksums and SPDX SBOM
+        run: python scripts/generate_sbom_and_checksums.py
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: release-assets/**/*
-          generate_release_notes: true
+          files: |
+            dist/cqhecs-0.1.0-py3-none-any.whl
+            dist/cqhecs-0.1.0.tar.gz
+            dist/sha256sums.txt
+            dist/cqhecs-sbom.spdx.json
+          generate_release_notes: false
+          draft: false
+          prerelease: false
+          body_path: RELEASE_NOTES.md

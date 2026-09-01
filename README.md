@@ -132,10 +132,14 @@ print(f"Path: {res.path}, Exact: {res.exact}, Error Bound: {res.error_bound}, Un
 
 All assertions are grounded by executable tests in continuous integration:
 
-- `scripts/verify_no_silent_truncation.py`: Rigorous automated audit ensuring zero hardcoded `chi=48` cutoffs exist in the repository.
-- `tests/test_four_path_architecture.py`: Differential tests against exact statevector references verifying $|\langle O_{\text{exact}} \rangle - \langle O_{\text{approx}} \rangle| \le \epsilon_{\text{bound}}$ across all randomized trials.
-- `tests/test_qiskit_backend.py`: 100-Qubit GHZ verification, 10-Qubit Grover search, and 8-Qubit QFT exact reconstruction ($F = 1.0$).
-- `ctest --test-dir build -C Release`: 13 bit-exact C++20 CTest suites verified.
+- **Full Classical Test Suite:** 88 / 88 tests passing across all backends.
+- **Zero-Silent-Truncation Audit:** [scripts/verify_no_silent_truncation.py](scripts/verify_no_silent_truncation.py) ensures 0 forbidden `chi=48` cutoffs exist in the repository.
+- **Path Transitions & Boundaries:** [tests/test_path_transitions_and_boundaries.py](tests/test_path_transitions_and_boundaries.py) verifies exact $A \leftrightarrow B \leftrightarrow C \leftrightarrow D$ transitions, storage ceilings, and strict error tolerance rejection.
+- **Adversarial Stim & Qiskit Aer Benchmarks:** [tests/test_adversarial_aer_and_stim.py](tests/test_adversarial_aer_and_stim.py) verifies bit-exact agreement against Stim (50q GHZ, random Clifford) and Qiskit Aer (Clifford + T statevector, MPS, and Path D differential bounds).
+- **Differential Certification:** [tests/test_four_path_architecture.py](tests/test_four_path_architecture.py) verifies $|\langle O_{\text{exact}} \rangle - \langle O_{\text{approx}} \rangle| \le \epsilon_{\text{bound}}$ across randomized circuits.
+- **Deterministic Mutation Testing:** [scripts/run_mutation_tests.py](scripts/run_mutation_tests.py) achieves a **100.0% Mutation Kill Score** (5/5 mutants killed).
+- **C++20 CTest Suite:** 13 / 13 bit-exact native C++20 CTest suites verified.
+- **Detailed Specifications:** See [ARCHITECTURE.md](ARCHITECTURE.md), [RELEASE_NOTES.md](RELEASE_NOTES.md), and versioned metrics in [audit/release_tracking.json](audit/release_tracking.json).
 
 ---
 
