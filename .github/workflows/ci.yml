@@ -39,7 +39,7 @@ jobs:
           python -m compileall cqhecs/ tests/
           flake8 cqhecs/ tests/test_four_path_architecture.py --count --select=E9,F63,F7,F82 --show-source --statistics
 
-      - name: Audit: Verify Zero Silent Truncation (chi=48 Elimination)
+      - name: "Audit: Verify Zero Silent Truncation (chi=48 Elimination)"
         run: python scripts/verify_no_silent_truncation.py
 
       - name: Configure CMake
