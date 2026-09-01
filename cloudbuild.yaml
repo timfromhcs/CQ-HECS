@@ -24,6 +24,7 @@ steps:
     entrypoint: 'bash'
     env:
       - 'PYTEST_DISABLE_PLUGIN_AUTOLOAD=1'
+      - 'PYTHONPATH=.'
     args:
       - '-c'
       - |
@@ -37,6 +38,7 @@ steps:
     entrypoint: 'bash'
     env:
       - 'PYTEST_DISABLE_PLUGIN_AUTOLOAD=1'
+      - 'PYTHONPATH=.'
     args:
       - '-c'
       - |

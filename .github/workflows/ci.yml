@@ -54,6 +54,7 @@ jobs:
       - name: Execute Four-Path Architecture & Differential Tests
         env:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+          PYTHONPATH: .
         run: |
           pip install -e .
           pytest tests/test_four_path_architecture.py -v
@@ -61,4 +62,5 @@ jobs:
       - name: Full Classical Test Suite
         env:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+          PYTHONPATH: .
         run: pytest tests/ -v --durations=15
