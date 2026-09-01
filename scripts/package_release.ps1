@@ -40,5 +40,10 @@ Copy-Item "CHANGELOG.md" "$dist\"
 Write-Host "Compressing distribution zip archive..." -ForegroundColor Cyan
 Compress-Archive -Path "$dist\*" -DestinationPath $zip -Force
 
+Write-Host "Generating SHA-256 checksums..." -ForegroundColor Cyan
+$sha256 = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+"$sha256  CQ-HECS-v4.5.0-Windows-x64.zip" | Out-File -Encoding ascii "dist\checksums.txt"
+
 Write-Host "Release packaging complete:" -ForegroundColor Green
 Get-ChildItem -Recurse "dist"
+Get-Content "dist\checksums.txt"

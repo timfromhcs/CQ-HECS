@@ -90,7 +90,7 @@ void TerminalUICPP::render_frame(const TUIStateCPP& state) {
 
     // Header Banner
     ss << "\x1b[1;37;44m===============================================================================\x1b[0m\n";
-    ss << "\x1b[1;37;44m   CQ-HECS v4.0 :: CONSCIOUS QUANTUM HYBRID EMULATION & CONSTRAINT SOLVER       \x1b[0m\n";
+    ss << "\x1b[1;37;44m   CQ-HECS v4.5.0 :: Powered by CQ-HECS (https://github.com/timfromhcs)       \x1b[0m\n";
     ss << "\x1b[1;37;44m===============================================================================\x1b[0m\n";
     ss << " \x1b[90mCycle #" << std::setw(6) << std::setfill('0') << state.cycle_count
        << " | Target: Win11/MSVC/Vulkan1.3 | Monolithic Engine: ACTIVE (Deterministic)\x1b[0m\n\n";

@@ -1,0 +1,24 @@
+# CQ-HECS: 300-Qubit Quantum MPS Emulator & ARX Constraint Solver
+
+> Deterministic 300-qubit quantum emulator & ARX constraint solver with Z8-phase ring, Global Workspace Theory meta-layer, and NVMe tiered memory (<120MB VRAM).
+
+CQ-HECS (Conscious Quantum Hybrid Emulation & Constraint Solver) is a high-performance compute engine and constraint solver written in C++20 and Vulkan 1.3 with embedded SPIR-V shaders.
+
+## Core Capabilities & Architectural Axioms
+
+- **Matrix Product State (MPS) Quantum Emulation**: Simulates 300-qubit quantum circuits (OpenQASM 2.0/3.0) with maximum bond dimension chi=64 under 4.5 MB resident VRAM.
+- **Z_8 Cyclotomic Phase Ring**: Exact integer phase tracking without floating-point cancellation drift. Full Clifford + T gate sets with anti-math unitary inversion ($U^\dagger U = I$).
+- **ARX Carry-Shadow Separation**: Linearizes modular addition over Z_{2^64} via carry-shadow splitting for symmetric cryptanalysis (BLAKE2b, ChaCha20, SHA-256) achieving > 270M ops/sec.
+- **DIMACS CNF SAT Solving**: DPLL search with an O(1) Hilbert-Cuckoo cycle loop pruner running Murmur3 state signatures.
+- **Global Workspace Theory (GWT)**: Cognitive cross-attention meta-layer switching heuristics dynamically, stabilized by hardware entropy harvested from Win32 QueryPerformanceCounter oscillator drift.
+- **Zero Runtime Dependencies**: Monolithic executable (`cq_hecs.exe`) and pure C-ABI shared library (`cq_hecs.dll`). Shaders are embedded as static C++ byte arrays.
+
+## Key Links & Documentation
+
+- [User & CLI Guide](docs/USAGE_GUIDE.md): CLI command reference, PowerShell pipeline integration, exit codes.
+- [API Reference](docs/API_REFERENCE.md): Pure C-ABI function signatures, struct layouts, and thread safety contracts.
+- [Embedding Guide](docs/EMBEDDING_GUIDE.md): Code examples for C++, Python, C#, Rust, and Node.js.
+- [Technical Architecture](docs/ARCHITECTURE.md): Mathematical formulations for the 5 J-Spaces, phase ring, and Lyapunov stability.
+- [Benchmarks Report](docs/BENCHMARKS.md): Empirical throughput, memory measurements, and pruning ratios.
+- [Change Log](CHANGELOG.md): Release version history and milestone logs.
+- [License](LICENSE): Fair-core commercial tiered license ($100k startup exemption).

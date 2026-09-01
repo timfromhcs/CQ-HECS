@@ -24,7 +24,8 @@ using namespace cq_hecs;
 
 static void print_banner(std::ostream& os = std::cout) {
     os << "=================================================================\n";
-    os << " CQ-HECS v4.5: Monolithic Unified Binary & Programmatic Solver\n";
+    os << " CQ-HECS v4.5.0: Monolithic Unified Binary & Programmatic Solver\n";
+    os << " Powered by CQ-HECS (https://github.com/timfromhcs) | @timfromhcs\n";
     os << " Target: Windows 11 / MSVC (C++20) / Vulkan 1.3 / Embedded Shaders\n";
     os << "=================================================================\n\n";
 }
@@ -407,7 +408,9 @@ int main(int argc, char* argv[]) {
     }
 
     if (command == "--version" || command == "-v" || command == "version") {
-        std::cout << "CQ-HECS v4.5.0\n";
+        std::cout << "CQ-HECS v4.5.0\n"
+                  << "Powered by CQ-HECS (https://github.com/timfromhcs)\n"
+                  << "Author: Tim (@timfromhcs) <timfromhcs@gmail.com>\n";
         return 0;
     }
 
