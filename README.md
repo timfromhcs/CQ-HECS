@@ -5,7 +5,7 @@
 *Pure Vulkan 1.2+ Compute Core & Modern C++20 Emulator for 300-Qubit 3D Lattices*
 
 [![Release](https://img.shields.io/badge/VERSION-v2.0.0--VRTS--Vulkan-7C4DFF?style=flat-square&logo=git&logoColor=white)](https://github.com/timfromhcs/CQ-HECS)
-[![CI Release Pipeline](https://img.shields.io/github/actions/workflow/status/timfromhcs/CQ-HECS/ci_release.yml?branch=main&style=flat-square&logo=github-actions&logoColor=white&label=CI%20BUILD)](https://github.com/timfromhcs/CQ-HECS/actions)
+[![CI Build](https://img.shields.io/github/actions/workflow/status/timfromhcs/CQ-HECS/ci.yml?branch=main&style=flat-square&logo=github-actions&logoColor=white&label=CI%20BUILD)](https://github.com/timfromhcs/CQ-HECS/actions)
 [![Deterministic Tests](https://img.shields.io/badge/TESTS-100%25%20PASS%20(5%2F5)-00C853?style=flat-square&logo=checkmarx&logoColor=white)](tests/)
 [![Qubits](https://img.shields.io/badge/QUBITS-300%20(6x5x10%20LATTICE)-00B0FF?style=flat-square&logo=atom&logoColor=white)](#3d-volumetric-lattice-topology)
 [![VRAM Ceiling](https://img.shields.io/badge/VRAM%20CEILING-%E2%89%A4%203.0%20GB%20(STRICT)-FF6D00?style=flat-square&logo=vulkan&logoColor=white)](#strict-30-gb-vram-ceiling)
@@ -150,12 +150,13 @@ CQ-HECS provides standalone C++ examples in `examples/`:
 ---
 
 ## Automated Multi-Platform CI/CD
-
-Automated Cloud Build pipelines are configured in `.github/workflows/ci_release.yml`:
-- **Build Matrix:** `ubuntu-latest` (GCC 13, Clang 17) and `windows-latest` (MSVC v143).
-- **Headless Vulkan:** Executes against Mesa Lavapipe CPU ICD on Linux runners.
-- **Strict Quality Gate:** Warnings treated as errors, all deterministic tests executed via CTest.
-- **Release Packaging:** Standalone CLI, dynamic libraries (`.dll` / `.so`), headers, and SHA-256 checksums generated on release tags.
+ 
+Automated Cloud Build pipelines are configured in `.github/workflows/ci.yml` and `.github/workflows/release.yml`:
+- **Build Matrix:** `ubuntu-latest` and `windows-latest`.
+- **Native Toolchain:** Automatic Vulkan SDK installation via `apt` (Linux) and `choco` (Windows).
+- **Headless Vulkan:** Executes against Mesa / Vulkan loader drivers.
+- **Strict Quality Gate:** All deterministic tests executed via CTest and Python test suite.
+- **Release Packaging:** Multi-platform packaging and GitHub release creation on release tags.
 
 ---
 
