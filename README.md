@@ -155,7 +155,9 @@ All assertions are grounded by executable tests in continuous integration:
 - **Adversarial Stim & Qiskit Aer Benchmarks:** [tests/test_adversarial_aer_and_stim.py](tests/test_adversarial_aer_and_stim.py) verifies bit-exact agreement against Stim (50q GHZ, random Clifford) and Qiskit Aer (Clifford + T statevector, MPS, and Path D differential bounds).
 - **Differential Certification:** [tests/test_four_path_architecture.py](tests/test_four_path_architecture.py) verifies $|\langle O_{\text{exact}} \rangle - \langle O_{\text{approx}} \rangle| \le \epsilon_{\text{bound}}$ across randomized circuits.
 - **Deterministic Mutation Testing:** [scripts/run_mutation_tests.py](scripts/run_mutation_tests.py) achieves a **100.0% Mutation Kill Score** (5/5 mutants killed).
-- **C++20 CTest Suite:** 13 / 13 bit-exact native C++20 CTest suites verified.
+- **Continuous Integration (100% Green on GitHub Actions):**
+  - [Run 33562814848 (v0.2.0 Hardening)](https://github.com/timfromhcs/CQ-HECS/actions/runs/33562814848) — 12/12 Shaders, 89/89 Pytest, 13/13 CTest, 100% Mutation Killed.
+  - [Run 33563158293 (v0.2.0 Verification)](https://github.com/timfromhcs/CQ-HECS/actions/runs/33563158293) — 12/12 Shaders, 89/89 Pytest, 13/13 CTest, 100% Mutation Killed.
 - **Detailed Specifications:** See [ARCHITECTURE.md](ARCHITECTURE.md), [CHANGELOG.md](CHANGELOG.md), and versioned metrics in [audit/release_tracking.json](audit/release_tracking.json).
 
 ---

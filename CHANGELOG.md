@@ -20,6 +20,10 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 - **Cryptographic Testbench Correction**: Standardized round counts to real specifications (ChaCha20: 20 rounds, SHA-256: 64 steps, BLAKE2b: 12 rounds) and clarified module as an algebraic verification testbench with zero preimage claims.
 - **Unified License**: Resolved all licensing contradictions by standardizing exclusively on the Apache License 2.0.
 
+### Verified Remote CI Logs (2 Consecutive 100% Green Runs)
+- **CI Run 1 (Commit `88dc726`):** [GitHub Actions Run 33562814848](https://github.com/timfromhcs/CQ-HECS/actions/runs/33562814848) — Duration: 2m55s | 12/12 Vulkan Shaders | 89/89 Pytest | 13/13 CTest | 100% Mutation Killed.
+- **CI Run 2 (Commit `9c98d9d`):** [GitHub Actions Run 33563158293](https://github.com/timfromhcs/CQ-HECS/actions/runs/33563158293) — Duration: 3m03s | 12/12 Vulkan Shaders | 89/89 Pytest | 13/13 CTest | 100% Mutation Killed.
+
 ---
 
 ## [v0.1.0] - 2026-09-01
