@@ -550,7 +550,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (command == "--version" || command == "-v" || command == "version") {
-        std::cout << "CQ-HECS v2.0.0-VRTS-Vulkan\n"
+        std::cout << "CQ-HECS v4.5.0\n"
                   << "Powered by CQ-HECS (https://github.com/timfromhcs)\n"
                   << "Author: Tim (@timfromhcs) <timfromhcs@gmail.com>\n";
         return 0;

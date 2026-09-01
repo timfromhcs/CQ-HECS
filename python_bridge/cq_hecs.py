@@ -4,6 +4,8 @@ Complete Python 3.11 / PyTorch / NumPy Reference Model of all 5 J-Spaces & GWT M
 """
 
 from __future__ import annotations
+
+__version__ = "4.5.0"
 import math
 import struct
 import time

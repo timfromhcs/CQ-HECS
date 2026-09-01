@@ -27,6 +27,8 @@ from python_bridge.cq_hecs import (
 class TestLongRunningStress(unittest.TestCase):
     def test_continuous_100k_solver_cycles(self):
         """Execute 100,000 continuous solver cycles and assert VRAM < 120 MB with 0 leaks."""
+        ram_delta = 0.0
+        vram_mb = 0.0
         process = psutil.Process() if psutil else None
         ram_initial = (process.memory_info().rss / (1024 * 1024)) if process else 0
 
