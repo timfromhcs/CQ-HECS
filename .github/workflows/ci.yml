@@ -1,4 +1,4 @@
-name: CQ-HECS Production CI & Showroom Validation
+name: CQ-HECS Deterministic CI & Four-Path Architecture Validation
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build-and-test:
-    name: Ubuntu Linux C++20, Vulkan & Qiskit CI
+  build-and-verify:
+    name: Ubuntu C++20, Vulkan & Classical Four-Path CI
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -32,7 +32,15 @@ jobs:
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install numpy qiskit pytest nanobind setuptools wheel
+          pip install numpy qiskit pytest nanobind setuptools wheel flake8
+
+      - name: Code Quality & Syntax Linting
+        run: |
+          python -m compileall cqhecs/ tests/
+          flake8 cqhecs/ tests/test_four_path_architecture.py --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Audit: Verify Zero Silent Truncation (chi=48 Elimination)
+        run: python scripts/verify_no_silent_truncation.py
 
       - name: Configure CMake
         run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCQ_BUILD_TESTS=ON -DCQ_ENABLE_AVX2=ON
@@ -43,9 +51,14 @@ jobs:
       - name: Execute CTest Zero-Mock Suite
         run: ctest --test-dir build --output-on-failure --schedule-random -j$(nproc)
 
-      - name: Python Integration Tests
+      - name: Execute Four-Path Architecture & Differential Tests
         env:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
         run: |
           pip install -e .
-          pytest tests/python/ -v --durations=10
+          pytest tests/test_four_path_architecture.py -v
+
+      - name: Full Classical Test Suite
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+        run: pytest tests/ -v --durations=15

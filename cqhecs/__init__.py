@@ -1,10 +1,41 @@
 """
-CQ-HECS Quantum Computing Engine
-Bit-Exact Giles-Selinger Ring Z[1/sqrt(2), i] & Hybrid Stabilizer-MPS Backend
+CQ-HECS Quantum Computing Engine (Classical-Only Four-Path Architecture)
+A) Stabilizer-Tableau (exact, Clifford)
+B) Stabilizer-Rank-Decomposition (exact, scales with T-Count)
+C) MPS without Cutoff + NVMe-Offload (exact up to memory limit)
+D) Certified Classical Approximation (Sparse-Pauli-Dynamics) with proven error bound
 """
 
 from cqhecs.backend import CQHecsBackend
 from cqhecs.provider import CQHecsProvider
+from cqhecs.result import SimulationResult
+from cqhecs.circuit_analyzer import CircuitAnalyzer, CircuitProperties
+from cqhecs.router import FourPathRouter
+from cqhecs.backends import (
+    PathAStabilizerBackend,
+    StabilizerTableauSimulator,
+    PathBStabilizerRankBackend,
+    StabilizerRankSimulator,
+    PathCMPSExactBackend,
+    ExactMPSTensorChain,
+    PathDSparsePauliBackend,
+    SparsePauliDynamicsSimulator,
+)
 
-__version__ = "4.5.0"
-__all__ = ["CQHecsBackend", "CQHecsProvider"]
+__version__ = "5.0.0"
+__all__ = [
+    "CQHecsBackend",
+    "CQHecsProvider",
+    "SimulationResult",
+    "CircuitAnalyzer",
+    "CircuitProperties",
+    "FourPathRouter",
+    "PathAStabilizerBackend",
+    "StabilizerTableauSimulator",
+    "PathBStabilizerRankBackend",
+    "StabilizerRankSimulator",
+    "PathCMPSExactBackend",
+    "ExactMPSTensorChain",
+    "PathDSparsePauliBackend",
+    "SparsePauliDynamicsSimulator",
+]

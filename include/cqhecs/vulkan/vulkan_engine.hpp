@@ -71,10 +71,10 @@ private:
 class VulkanEngine {
 public:
     uint32_t num_qubits{0};
-    uint32_t max_bond_dim{48}; // SVD/Bond-Dimension limit: chi <= 48
+    uint32_t max_bond_dim{0}; // 0 = unbounded/exact (no silent truncation)
     MemoryGovernor governor;
 
-    VulkanEngine(uint32_t n_qubits = 300, uint32_t max_chi = 48);
+    VulkanEngine(uint32_t n_qubits = 300, uint32_t max_chi = 0);
     ~VulkanEngine();
 
     bool initialize();

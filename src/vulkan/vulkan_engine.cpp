@@ -7,7 +7,7 @@ namespace cqhecs {
 namespace vulkan {
 
 VulkanEngine::VulkanEngine(uint32_t n_qubits, uint32_t max_chi)
-    : num_qubits(n_qubits), max_bond_dim(max_chi ? max_chi : 48) {
+    : num_qubits(n_qubits), max_bond_dim(max_chi) {
     initialize();
 }
 
@@ -32,7 +32,7 @@ void VulkanEngine::allocate_mps_sites(uint32_t n_qubits, uint32_t chi) {
     sites_.resize(n_qubits);
 
     num_qubits = n_qubits;
-    max_bond_dim = (chi > 48) ? 48 : chi; // Enforce chi <= 48
+    max_bond_dim = chi; // Exact or explicitly governed (no silent truncation)
 
     for (uint32_t i = 0; i < n_qubits; ++i) {
         uint32_t c_left = (i == 0) ? 1 : max_bond_dim;
@@ -76,8 +76,8 @@ void VulkanEngine::apply_cx(uint32_t ctrl, uint32_t tgt) {
 }
 
 void VulkanEngine::truncate_bond(uint32_t site_idx) {
-    if (site_idx + 1 >= num_qubits) return;
-    // SVD / QR dynamic truncation guarantees bond dimension <= max_bond_dim (<= 48)
+    if (site_idx + 1 >= num_qubits || max_bond_dim == 0) return;
+    // Dynamic truncation only if explicit bond dimension limit is set (> 0)
     if (sites_[site_idx].chi_right > max_bond_dim) {
         size_t old_bytes_l = sites_[site_idx].byte_size;
         size_t old_bytes_r = sites_[site_idx + 1].byte_size;

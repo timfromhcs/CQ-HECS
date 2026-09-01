@@ -12,7 +12,7 @@ void test_300q_deep_entanglement_walk() {
     const uint32_t N = 300;
     const uint32_t LAYERS = 10000;
 
-    VulkanEngine engine(N, 48);
+    VulkanEngine engine(N, 64);
 
     auto t0 = std::chrono::high_resolution_clock::now();
 
@@ -58,7 +58,7 @@ void test_vram_hard_exception() {
 void test_1m_shots_born_rule_sampling() {
     std::cout << "[STRESS] Running 1,000,000 Shots Born-Rule Sampling (< 10 ms)...\n";
     const uint32_t SHOTS = 1000000;
-    VulkanEngine engine(300, 48);
+    VulkanEngine engine(300, 64);
 
     auto t0 = std::chrono::high_resolution_clock::now();
     auto samples = engine.sample_fast_shots(SHOTS, 42);

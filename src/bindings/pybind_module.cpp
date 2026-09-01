@@ -56,7 +56,7 @@ NB_MODULE(_cqhecs_pybind, m) {
 
     // 3. VulkanEngine
     nb::class_<VulkanEngine>(m, "VulkanEngine")
-        .def(nb::init<uint32_t, uint32_t>(), nb::arg("n_qubits") = 300, nb::arg("max_chi") = 48)
+        .def(nb::init<uint32_t, uint32_t>(), nb::arg("n_qubits") = 300, nb::arg("max_chi") = 0)
         .def("initialize", &VulkanEngine::initialize)
         .def("apply_h", &VulkanEngine::apply_h)
         .def("apply_x", &VulkanEngine::apply_x)
