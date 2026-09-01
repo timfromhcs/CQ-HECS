@@ -53,15 +53,29 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          New-Item -ItemType Directory -Path dist/CQ-HECS-Windows-x64/bin -Force
-          Copy-Item bin/Release/cq_hecs.exe dist/CQ-HECS-Windows-x64/bin/
-          Copy-Item bin/Release/cq_hecs.dll dist/CQ-HECS-Windows-x64/bin/
-          Copy-Item bin/Release/cq_hecs.lib dist/CQ-HECS-Windows-x64/bin/
-          Copy-Item include dist/CQ-HECS-Windows-x64/include -Recurse
-          Copy-Item benchmarks dist/CQ-HECS-Windows-x64/benchmarks -Recurse
-          Copy-Item LICENSE dist/CQ-HECS-Windows-x64/
-          Copy-Item README.md dist/CQ-HECS-Windows-x64/
-          Compress-Archive -Path dist/CQ-HECS-Windows-x64/* -DestinationPath dist/CQ-HECS-v4.5.0-Windows-x64.zip
+          New-Item -ItemType Directory -Path dist/CQ-HECS-v4.5.0-Windows-x64/bin -Force
+          Copy-Item bin/Release/cq_hecs.exe dist/CQ-HECS-v4.5.0-Windows-x64/bin/
+          Copy-Item bin/Release/cq_hecs.dll dist/CQ-HECS-v4.5.0-Windows-x64/bin/
+          Copy-Item bin/Release/cq_hecs.lib dist/CQ-HECS-v4.5.0-Windows-x64/bin/
+          Copy-Item include dist/CQ-HECS-v4.5.0-Windows-x64/include -Recurse -Force
+          Copy-Item benchmarks dist/CQ-HECS-v4.5.0-Windows-x64/benchmarks -Recurse -Force
+          Copy-Item LICENSE dist/CQ-HECS-v4.5.0-Windows-x64/
+          Copy-Item README.md dist/CQ-HECS-v4.5.0-Windows-x64/
+          Remove-Item dist/*.zip -Force -ErrorAction SilentlyContinue
+          Compress-Archive -Path dist/CQ-HECS-v4.5.0-Windows-x64/* -DestinationPath dist/CQ-HECS-v4.5.0-Windows-x64.zip -Force
+
+      - name: Package Linux Artifacts
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p dist/CQ-HECS-v4.5.0-Linux-x64/bin
+          cp bin/cq_hecs dist/CQ-HECS-v4.5.0-Linux-x64/bin/
+          [ -f bin/libcq_hecs.so ] && cp bin/libcq_hecs.so dist/CQ-HECS-v4.5.0-Linux-x64/bin/ || true
+          cp -r include dist/CQ-HECS-v4.5.0-Linux-x64/
+          cp -r benchmarks dist/CQ-HECS-v4.5.0-Linux-x64/
+          cp LICENSE dist/CQ-HECS-v4.5.0-Linux-x64/
+          cp README.md dist/CQ-HECS-v4.5.0-Linux-x64/
+          rm -f dist/*.zip
+          cd dist && zip -r CQ-HECS-v4.5.0-Linux-x64.zip CQ-HECS-v4.5.0-Linux-x64/
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -80,9 +94,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: release-assets
+          merge-multiple: true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: release-assets/**/*.zip
+          files: release-assets/*.zip
           generate_release_notes: true
