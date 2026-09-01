@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   release:
-    name: Build, Sign, and Publish Release v0.1.0
+    name: Build, Sign, and Publish Release v0.2.0
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -36,11 +36,13 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/cqhecs-0.1.0-py3-none-any.whl
-            dist/cqhecs-0.1.0.tar.gz
+            dist/cqhecs-0.2.0-py3-none-any.whl
+            dist/cqhecs-0.2.0.tar.gz
             dist/sha256sums.txt
             dist/cqhecs-sbom.spdx.json
+            benchmarks/vulkan_mps_benchmark_results.json
+            benchmarks/VULKAN_MPS_EVALUATION.md
           generate_release_notes: false
           draft: false
           prerelease: false
-          body_path: RELEASE_NOTES.md
+          body_path: dist/RELEASE_NOTES_v0.2.0.md

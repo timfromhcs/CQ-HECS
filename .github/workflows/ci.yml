@@ -77,3 +77,74 @@ jobs:
 
       - name: Build Release Distribution & Verify Checksums
         run: python scripts/generate_sbom_and_checksums.py
+
+  windows-build-and-verify:
+    name: Windows C++20, Vulkan & Classical Four-Path CI
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Vulkan SDK
+        uses: humbletim/install-vulkan-sdk@v1.2
+        with:
+          version: latest
+          cache: true
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy qiskit qiskit-aer stim pytest nanobind setuptools wheel flake8 coverage
+
+      - name: Code Quality & Syntax Linting
+        run: |
+          python -m compileall cqhecs/ tests/
+          flake8 cqhecs/ tests/test_four_path_architecture.py tests/test_path_transitions_and_boundaries.py tests/test_adversarial_aer_and_stim.py --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: "Audit: Verify Zero Silent Truncation (chi=48 Elimination)"
+        run: python scripts/verify_no_silent_truncation.py
+
+      - name: "Vulkan Hardening: Compile & Verify All SPIR-V Shaders"
+        run: python scripts/verify_vulkan_shaders.py
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCQ_BUILD_TESTS=ON
+
+      - name: Build C++20 Core & Shaders
+        run: cmake --build build --config Release --parallel
+
+      - name: Execute CTest Zero-Mock Suite
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Execute Four-Path Architecture & Differential Tests
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+          PYTHONPATH: .
+        run: |
+          pip install -e .
+          python -m pytest tests/test_four_path_architecture.py tests/test_path_transitions_and_boundaries.py tests/test_adversarial_aer_and_stim.py -v
+
+      - name: Run Deterministic Mutation Testing
+        env:
+          PYTHONPATH: .
+        run: python scripts/run_mutation_tests.py
+
+      - name: Full Classical Test Suite with Coverage
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+          PYTHONPATH: .
+        run: |
+          coverage run --source=cqhecs -m pytest tests/ -v --durations=15
+          coverage report -m
+
+      - name: Build Release Distribution & Verify Checksums
+        run: python scripts/generate_sbom_and_checksums.py
+

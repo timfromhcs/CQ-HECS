@@ -79,7 +79,7 @@ class TestCAPI(unittest.TestCase):
 
     def test_version_query(self):
         ver = self.lib.cq_get_version().decode("utf-8")
-        self.assertEqual(ver, "4.5.0")
+        self.assertEqual(ver, "0.2.0")
 
     def test_context_lifecycle_and_vram(self):
         ctx = self.lib.cq_create_context(300, 64)
