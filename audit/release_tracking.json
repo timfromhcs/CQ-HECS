@@ -2,12 +2,14 @@
   "project": "CQ-HECS",
   "phase": "phase_2_hardening_and_clean_slate_release",
   "release_target": "v0.1.0",
-  "release_status": "READY_FOR_RELEASE",
+  "release_status": "RELEASED",
   "target_repo": "https://github.com/timfromhcs/CQ-HECS",
   "target_branch": "main",
+  "release_tag": "v0.1.0",
+  "release_url": "https://github.com/timfromhcs/CQ-HECS/releases/tag/v0.1.0",
   "initialized_at": "2026-09-01T22:17:00+02:00",
-  "last_updated_at": "2026-09-01T22:20:30+02:00",
-  "head_commit": "d5914970e67dabc4cc180eb143d306a0a2a001f7",
+  "released_at": "2026-09-01T22:25:00+02:00",
+  "head_commit": "c369836596d4bbe7aef0ac2fd49717bcc47c5a86",
   "system_environment": {
     "local_os": "Windows_NT x64 10.0.26100",
     "local_python": "3.14.6",
@@ -41,6 +43,25 @@
       "ctest_failed": 0,
       "audit_zero_silent_truncation": "PASSED (0 violations)",
       "url": "https://github.com/timfromhcs/CQ-HECS/actions/runs/33553766549"
+    },
+    {
+      "run_id": "33554871525",
+      "commit_sha": "c369836596d4bbe7aef0ac2fd49717bcc47c5a86",
+      "branch": "main",
+      "status": "success",
+      "conclusion": "success",
+      "duration_seconds": 132,
+      "workflow": "CQ-HECS Deterministic CI & Four-Path Architecture Validation",
+      "tests_passed": 88,
+      "tests_failed": 0,
+      "mutation_score_percent": 100.0,
+      "mutants_killed": 5,
+      "mutants_tested": 5,
+      "coverage_percent": 61.0,
+      "ctest_passed": 13,
+      "ctest_failed": 0,
+      "audit_zero_silent_truncation": "PASSED (0 violations)",
+      "url": "https://github.com/timfromhcs/CQ-HECS/actions/runs/33554871525"
     }
   ],
   "iterations": [
@@ -89,6 +110,23 @@
         "dist/sha256sums.txt"
       ],
       "notes": "Generated clean-slate release artifacts, SPDX 2.3 SBOM, and SHA256 checksums."
+    },
+    {
+      "iteration": 5,
+      "timestamp": "2026-09-01T22:24:10+02:00",
+      "action": "consecutive_ci_verification",
+      "commit_sha": "c369836596d4bbe7aef0ac2fd49717bcc47c5a86",
+      "ci_status": "GREEN",
+      "active_run_id": "33554871525",
+      "notes": "Second consecutive 100% green run on main (88 tests passed, 100% mutation score, SBOM verified). Definition of Done fulfilled."
+    },
+    {
+      "iteration": 6,
+      "timestamp": "2026-09-01T22:25:00+02:00",
+      "action": "release_tag_and_publication",
+      "tag": "v0.1.0",
+      "commit_sha": "c369836596d4bbe7aef0ac2fd49717bcc47c5a86",
+      "notes": "Official release v0.1.0 published with release notes, checksums, and SBOM."
     }
   ],
   "coverage_metrics": {
