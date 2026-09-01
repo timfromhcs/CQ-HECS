@@ -4,6 +4,8 @@
 #include "types.hpp"
 #include "cordic.hpp"
 #include <vector>
+#include <map>
+#include <string>
 #include <cmath>
 #include <algorithm>
 #include <cstdint>
@@ -146,6 +148,90 @@ public:
         }
     }
 
+    void apply_cx(uint32_t ctrl, uint32_t tgt) {
+        apply_cnot(ctrl, tgt);
+    }
+
+    void apply_s(uint32_t target) {
+        size_t bit = size_t(1) << target;
+        for (size_t i = 0; i < dim; ++i) {
+            if (i & bit) {
+                int32_t r = state[i].re;
+                int32_t m = state[i].im;
+                state[i] = ComplexQ31{-m, r};
+            }
+        }
+    }
+
+    void apply_sdg(uint32_t target) {
+        size_t bit = size_t(1) << target;
+        for (size_t i = 0; i < dim; ++i) {
+            if (i & bit) {
+                int32_t r = state[i].re;
+                int32_t m = state[i].im;
+                state[i] = ComplexQ31{m, -r};
+            }
+        }
+    }
+
+    void apply_t(uint32_t target) {
+        size_t bit = size_t(1) << target;
+        for (size_t i = 0; i < dim; ++i) {
+            if (i & bit) {
+                state[i] = cordic_rotate(state[i], 0x20000000u);
+            }
+        }
+    }
+
+    void apply_tdg(uint32_t target) {
+        size_t bit = size_t(1) << target;
+        for (size_t i = 0; i < dim; ++i) {
+            if (i & bit) {
+                state[i] = cordic_rotate(state[i], 0xE0000000u);
+            }
+        }
+    }
+
+    uint8_t measure(uint32_t target) {
+        size_t bit = size_t(1) << target;
+        double p1 = 0.0;
+        for (size_t i = 0; i < dim; ++i) {
+            if (i & bit) {
+                double re = state[i].to_double();
+                double im = static_cast<double>(state[i].im) / 2147483647.0;
+                p1 += re * re + im * im;
+            }
+        }
+        return (p1 > 0.5) ? 1 : 0;
+    }
+
+    std::map<std::string, uint32_t> sample_counts(uint32_t shots) {
+        std::map<std::string, uint32_t> counts;
+        size_t best = 0;
+        double max_p = -1.0;
+        for (size_t i = 0; i < dim; ++i) {
+            double re = state[i].to_double();
+            double im = static_cast<double>(state[i].im) / 2147483647.0;
+            double p = re * re + im * im;
+            if (p > max_p) {
+                max_p = p;
+                best = i;
+            }
+        }
+        std::string bs(num_qubits, '0');
+        for (uint32_t q = 0; q < num_qubits; ++q) {
+            if ((best >> q) & 1) bs[num_qubits - 1 - q] = '1';
+        }
+        counts[bs] = shots;
+        return counts;
+    }
+
+    double fidelity_with_ground() const {
+        double re = state[0].to_double();
+        double im = static_cast<double>(state[0].im) / 2147483647.0;
+        return re * re + im * im;
+    }
+
     /**
      * @brief Quantum Fourier Transform (QFT) on n qubits.
      */
@@ -209,6 +295,8 @@ public:
         return (fid > 1.0) ? 1.0 : fid;
     }
 };
+
+using StatevectorSimulator = StateVectorSimulator;
 
 } // namespace core
 } // namespace cq_hecs

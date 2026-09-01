@@ -121,19 +121,54 @@ target_link_libraries(ghz300_example PRIVATE ${Vulkan_LIBRARIES})
 add_executable(maxcut_example examples/maxcut_example.cpp ${VRTS_SOURCES} ${VRTS_HEADERS})
 target_link_libraries(maxcut_example PRIVATE ${Vulkan_LIBRARIES})
 
+option(CQ_BUILD_TESTS "Build test suite" ON)
 option(CQHECS_BUILD_TESTS "Build test suite" ON)
 option(CQHECS_HEADLESS "Enable Headless SwiftShader / Software Vulkan ICD" OFF)
+option(CQ_ENABLE_SANITIZERS "Enable Address and UB sanitizers" OFF)
 
 if(CQHECS_HEADLESS)
     add_compile_definitions(CQHECS_HEADLESS=1)
 endif()
 
-# 5. Bit-Exact and Stress Test Suite (System Invariants Verification)
+if(CQ_ENABLE_SANITIZERS AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address,undefined)
+endif()
+
+# 5. Shared Library: cq_hecs_core (C-API & Core Engine)
+add_library(cq_hecs_core SHARED
+    src/cq_c_api.cpp
+    src/hybrid_engine.cpp
+    src/stabilizer_tableau.cpp
+    src/mps_sampler.cpp
+    src/cq_qasm_parser.cpp
+)
+target_include_directories(cq_hecs_core PUBLIC include src)
+target_link_libraries(cq_hecs_core PRIVATE ${Vulkan_LIBRARIES})
+set_target_properties(cq_hecs_core PROPERTIES OUTPUT_NAME "cq_hecs_core")
+
+# 6. Test Executables
 add_executable(test_bitexact_and_stress tests/test_bitexact_and_stress.cpp)
 target_include_directories(test_bitexact_and_stress PRIVATE include src)
 target_link_libraries(test_bitexact_and_stress PRIVATE ${Vulkan_LIBRARIES})
 
-# 6. CTest Verification Suite
+add_executable(test_exact_algebra tests/test_exact_algebra.cpp)
+target_include_directories(test_exact_algebra PRIVATE include src)
+target_link_libraries(test_exact_algebra PRIVATE ${Vulkan_LIBRARIES})
+
+add_executable(test_stabilizer tests/test_stabilizer.cpp src/stabilizer_tableau.cpp)
+target_include_directories(test_stabilizer PRIVATE include src)
+target_link_libraries(test_stabilizer PRIVATE ${Vulkan_LIBRARIES})
+
+add_executable(test_hybrid_mps tests/test_hybrid_mps.cpp src/hybrid_engine.cpp src/stabilizer_tableau.cpp)
+target_include_directories(test_hybrid_mps PRIVATE include src)
+target_link_libraries(test_hybrid_mps PRIVATE ${Vulkan_LIBRARIES})
+
+add_executable(test_stress_limits tests/test_stress_limits.cpp src/mps_sampler.cpp)
+target_include_directories(test_stress_limits PRIVATE include src)
+target_link_libraries(test_stress_limits PRIVATE ${Vulkan_LIBRARIES})
+
+# 7. CTest Verification Suite
 enable_testing()
 add_test(NAME test_reversibility COMMAND test_reversibility)
 add_test(NAME test_ghz300 COMMAND test_ghz300)
@@ -141,8 +176,12 @@ add_test(NAME test_constraint_solver COMMAND test_constraint_solver)
 add_test(NAME cq_hecs_cpp_hardening COMMAND test_engine_cpp)
 add_test(NAME cq_hecs_full_verification COMMAND cq_hecs test)
 add_test(NAME test_bitexact_and_stress COMMAND test_bitexact_and_stress)
+add_test(NAME test_exact_algebra COMMAND test_exact_algebra)
+add_test(NAME test_stabilizer COMMAND test_stabilizer)
+add_test(NAME test_hybrid_mps COMMAND test_hybrid_mps)
+add_test(NAME test_stress_limits COMMAND test_stress_limits)
 
-# 7. Nanobind Python C++20 Module
+# 8. Nanobind Python C++20 Modules
 find_package(Python 3.10 COMPONENTS Interpreter Development.Module QUIET)
 if(Python_FOUND)
     execute_process(
@@ -158,11 +197,20 @@ if(Python_FOUND)
             nanobind_add_module(_cq_hecs_core python/binding.cpp)
             target_include_directories(_cq_hecs_core PRIVATE include src)
             target_link_libraries(_cq_hecs_core PRIVATE ${Vulkan_LIBRARIES})
-            set_target_properties(_cq_hecs_core PROPERTIES
+
+            nanobind_add_module(_cqhecs_core python/cqhecs_bindings.cpp
+                src/stabilizer_tableau.cpp
+                src/mps_sampler.cpp
+                src/hybrid_engine.cpp
+                src/cq_qasm_parser.cpp
+            )
+            target_include_directories(_cqhecs_core PRIVATE include src)
+            target_link_libraries(_cqhecs_core PRIVATE ${Vulkan_LIBRARIES})
+            
+            set_target_properties(_cq_hecs_core _cqhecs_core PROPERTIES
                 LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/python"
                 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/python"
             )
         endif()
     endif()
 endif()
-

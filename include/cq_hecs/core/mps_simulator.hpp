@@ -83,6 +83,22 @@ public:
         return static_cast<double>(get_total_memory_bytes()) / (1024.0 * 1024.0);
     }
 
+    size_t total_memory_bytes() const noexcept {
+        return get_total_memory_bytes();
+    }
+
+    void apply_h(uint32_t q) {
+        apply_1q_gate(q, 1);
+    }
+
+    void apply_cx(uint32_t c, uint32_t t) {
+        apply_cnot_adjacent(c, t);
+    }
+
+    void prepare_ghz_state() {
+        create_ghz();
+    }
+
     /**
      * @brief Apply single-qubit gate on site q.
      */

@@ -62,6 +62,8 @@ secrets/
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
+.venv/
 .pytest_cache/
 
 # Swap and Temporary Files

@@ -38,6 +38,10 @@ struct alignas(8) ComplexQ31 {
     constexpr bool operator!=(const ComplexQ31& o) const noexcept {
         return !(*this == o);
     }
+
+    double to_double() const noexcept {
+        return static_cast<double>(re) / 2147483647.0;
+    }
 };
 
 static_assert(sizeof(ComplexQ31) == 8, "ComplexQ31 must be exactly 8 bytes (alignas 8)");

@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, windows-latest]
+        os: [ubuntu-latest, windows-latest]
 
     steps:
       - name: Checkout Repository
@@ -37,7 +37,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libvulkan-dev vulkan-tools glslang-tools spirv-tools \
-            libx11-xcb-dev libxkbcommon-dev libwayland-dev mesa-vulkan-drivers
+            libx11-xcb-dev libxkbcommon-dev libwayland-dev mesa-vulkan-drivers ninja-build
 
       - name: Install Vulkan SDK (Windows)
         if: runner.os == 'Windows'
@@ -48,21 +48,23 @@ jobs:
           echo "$vulkanDir\Bin" >> $env:GITHUB_PATH
 
       - name: Configure CMake
-        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCQHECS_BUILD_TESTS=ON -DCQHECS_HEADLESS=ON
+        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCQ_BUILD_TESTS=ON -DCQHECS_BUILD_TESTS=ON -DCQHECS_HEADLESS=ON
 
-      - name: Build Binaries and Shaders
+      - name: Build Binaries, Shared Libraries and Tests
         run: cmake --build build --config Release --parallel
 
       - name: Run CTest Suite (All Tests Must Pass)
         run: ctest --test-dir build -C Release --output-on-failure
 
-      - name: Run Python Automated Tests (65 Tests)
+      - name: Run Python Automated Unit Tests (65 Tests)
         run: python -m unittest discover -s tests -v
 
-      - name: Run Pytest Suite
+      - name: Run Pytest End-to-End Qiskit Suites
         env:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
-        run: python -m pytest tests/test_qiskit_and_transpiler.py -v
+        run: |
+          python -m pytest tests/python/ -v
+          python -m pytest tests/test_qiskit_and_transpiler.py -v
 
       - name: Run PowerShell IPC and CLI Tests (Windows Only)
         if: runner.os == 'Windows'

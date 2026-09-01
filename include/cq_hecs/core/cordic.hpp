@@ -103,11 +103,16 @@ static inline ComplexQ31 cordic_rotate(ComplexQ31 state, uint32_t phase_q32) noe
         }
     }
 
-    // Scale back by K_16 factor in Q1.31
-    int32_t out_re = q31_mul(static_cast<int32_t>(cx), CORDIC_K_Q31);
-    int32_t out_im = q31_mul(static_cast<int32_t>(cy), CORDIC_K_Q31);
+    // Scale back by K_16 factor in Q1.31 using 64-bit accumulator to avoid overflow from CORDIC gain
+    int64_t scaled_x = (cx * CORDIC_K_Q31) >> 31;
+    int64_t scaled_y = (cy * CORDIC_K_Q31) >> 31;
 
-    return ComplexQ31{out_re, out_im};
+    if (scaled_x > 0x7FFFFFFFLL) scaled_x = 0x7FFFFFFFLL;
+    if (scaled_x < -0x80000000LL) scaled_x = -0x80000000LL;
+    if (scaled_y > 0x7FFFFFFFLL) scaled_y = 0x7FFFFFFFLL;
+    if (scaled_y < -0x80000000LL) scaled_y = -0x80000000LL;
+
+    return ComplexQ31{static_cast<int32_t>(scaled_x), static_cast<int32_t>(scaled_y)};
 }
 
 /**
