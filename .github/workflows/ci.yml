@@ -116,7 +116,18 @@ jobs:
         run: python scripts/verify_vulkan_shaders.py
 
       - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCQ_BUILD_TESTS=ON
+        shell: pwsh
+        run: |
+          $v_h = Get-ChildItem -Path "$env:VULKAN_SDK" -Filter "vulkan.h" -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
+          $v_lib = Get-ChildItem -Path "$env:VULKAN_SDK" -Filter "*vulkan*.lib" -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($v_h -and $v_lib) {
+            $v_inc = $v_h.Directory.Parent.FullName.Replace('\', '/')
+            $v_l = $v_lib.FullName.Replace('\', '/')
+            Write-Host "Configuring CMake with Vulkan Include: $v_inc and Lib: $v_l"
+            cmake -B build -DCMAKE_BUILD_TYPE=Release -DCQ_BUILD_TESTS=ON -DVulkan_INCLUDE_DIR="$v_inc" -DVulkan_LIBRARY="$v_l"
+          } else {
+            cmake -B build -DCMAKE_BUILD_TYPE=Release -DCQ_BUILD_TESTS=ON
+          }
 
       - name: Build C++20 Core & Shaders
         run: cmake --build build --config Release --parallel
