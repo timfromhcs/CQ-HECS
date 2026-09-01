@@ -156,8 +156,9 @@ All assertions are grounded by executable tests in continuous integration:
 - **Differential Certification:** [tests/test_four_path_architecture.py](tests/test_four_path_architecture.py) verifies $|\langle O_{\text{exact}} \rangle - \langle O_{\text{approx}} \rangle| \le \epsilon_{\text{bound}}$ across randomized circuits.
 - **Deterministic Mutation Testing:** [scripts/run_mutation_tests.py](scripts/run_mutation_tests.py) achieves a **100.0% Mutation Kill Score** (5/5 mutants killed).
 - **Continuous Integration (100% Green on GitHub Actions):**
-  - [Run 33562814848 (v0.2.0 Hardening)](https://github.com/timfromhcs/CQ-HECS/actions/runs/33562814848) — 12/12 Shaders, 89/89 Pytest, 13/13 CTest, 100% Mutation Killed.
-  - [Run 33563158293 (v0.2.0 Verification)](https://github.com/timfromhcs/CQ-HECS/actions/runs/33563158293) — 12/12 Shaders, 89/89 Pytest, 13/13 CTest, 100% Mutation Killed.
+  - [Run 33562814848 (v0.2.0 Hardening)](https://github.com/timfromhcs/CQ-HECS/actions/runs/33562814848) — Ubuntu: 12/12 Shaders, 89/89 Pytest, 13/13 CTest, 100% Mutation Killed.
+  - [Run 33563158293 (v0.2.0 Verification)](https://github.com/timfromhcs/CQ-HECS/actions/runs/33563158293) — Ubuntu: 12/12 Shaders, 89/89 Pytest, 13/13 CTest, 100% Mutation Killed.
+  - [Run 33564612795 (Dual-OS Matrix: Ubuntu & Windows)](https://github.com/timfromhcs/CQ-HECS/actions/runs/33564612795) — **Ubuntu 24.04 & Windows Server 2025 (MSVC 19.51)**: 12/12 Shaders, 89/89 Pytest, 13/13 CTest, 100% Mutation Killed on both OSs.
 - **Detailed Specifications:** See [ARCHITECTURE.md](ARCHITECTURE.md), [CHANGELOG.md](CHANGELOG.md), and versioned metrics in [audit/release_tracking.json](audit/release_tracking.json).
 
 ---

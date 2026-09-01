@@ -10,7 +10,7 @@
   "initialized_at": "2026-09-01T22:17:00+02:00",
   "v020_initialized_at": "2026-09-01T22:45:00+02:00",
   "v020_released_at": "2026-09-01T23:54:00+02:00",
-  "head_commit": "9c98d9dc640b114456c5f8e7dbe07e8abb9f85eb",
+  "head_commit": "62d31491a44a48e87ca2640de2f66a93019e5e9a",
   "system_environment": {
     "local_os": "Windows_NT x64 10.0.26100",
     "local_python": "3.14.6",
@@ -102,6 +102,26 @@
       "ctest_failed": 0,
       "audit_zero_silent_truncation": "PASSED (0 violations)",
       "url": "https://github.com/timfromhcs/CQ-HECS/actions/runs/33563158293"
+    },
+    {
+      "run_id": "33564612795",
+      "commit_sha": "62d31491a44a48e87ca2640de2f66a93019e5e9a",
+      "branch": "main",
+      "status": "success",
+      "conclusion": "success",
+      "matrix": "Ubuntu 24.04 (GCC 12, Ninja) & Windows Server 2025 (MSVC 19.51, CMake, Vulkan SDK 1.4.357.0)",
+      "duration_seconds": 310,
+      "workflow": "CQ-HECS Deterministic CI & Four-Path Architecture Validation",
+      "tests_passed": 89,
+      "tests_failed": 0,
+      "mutation_score_percent": 100.0,
+      "mutants_killed": 5,
+      "mutants_tested": 5,
+      "vulkan_shaders_verified": 12,
+      "ctest_passed": 13,
+      "ctest_failed": 0,
+      "audit_zero_silent_truncation": "PASSED (0 violations)",
+      "url": "https://github.com/timfromhcs/CQ-HECS/actions/runs/33564612795"
     }
   ],
   "iterations": [
@@ -215,6 +235,15 @@
       "ci_status": "GREEN",
       "active_run_id": "33563158293",
       "notes": "Second consecutive 100% green run on main (3m03s). Confirmed 2 consecutive green runs. Git tag v0.2.0 created, official GitHub Release v0.2.0 published with SPDX 2.3 SBOM and SHA256 checksums. Status: RELEASED_V0.2.0."
+    },
+    {
+      "iteration": 14,
+      "timestamp": "2026-09-02T00:12:00+02:00",
+      "action": "windows_and_linux_dual_os_matrix_ci_verification",
+      "commit_sha": "62d31491a44a48e87ca2640de2f66a93019e5e9a",
+      "ci_status": "GREEN",
+      "active_run_id": "33564612795",
+      "notes": "Both Ubuntu 24.04 (2m04s) and Windows Server 2025 (5m06s) CI runners passed 100% green in parallel. 12/12 Vulkan 1.3 shaders verified on both OSs, 13/13 CTest native suites passed, 89/89 Python tests passed, 100% mutation test score (5/5 killed). Windows binary distribution zip (cqhecs-0.2.0-windows-x64.zip) built and attached to GitHub Release v0.2.0."
     }
   ],
   "coverage_metrics": {
