@@ -54,8 +54,8 @@ steps:
       - '-c'
       - |
         set -euo pipefail
-        coverage run --source=cqhecs -m pytest tests/ -v --durations=10
-        coverage report -m
+        python -m coverage run --source=cqhecs -m pytest tests/ -v --durations=10
+        python -m coverage report -m
 
   # Step 6: Artifact & SBOM Generation
   - name: 'python:3.11'

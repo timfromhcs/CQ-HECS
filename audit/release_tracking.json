@@ -270,15 +270,15 @@
   },
   "release_artifacts": {
     "dist_directory": "dist",
-    "commit_sha": "87aba98434093a06f9938ef076e5bbf3a210e926",
+    "commit_sha": "15b9bb45053aec2d6433b345f0305eaa7305641b",
     "checksums": {
       "cqhecs-0.1.0-py3-none-any.whl": "f6fb92a3ce6b78d16a6ecc6a55e8b246d2d2c22f5476864f5f8c57b9d1d4a3fd",
       "cqhecs-0.1.0.tar.gz": "66ca81a69d530417a31ee95816a59422efc96c7ab9d8052dc5a42bfec9347fdc",
-      "cqhecs-0.2.0-py3-none-any.whl": "31f1a8dd4fc8e7a9a98b2b1631186f7c50c5e9828cf21fdd49bbf29827434127",
+      "cqhecs-0.2.0-py3-none-any.whl": "27225c52ea13673bfa6cd642dd399ced8799868311837274c3a1547ea5e58ea3",
       "cqhecs-0.2.0-windows-x64.zip": "dfb0a19205005dff492f7cbb8351cf8d781fa6161c79d6a53a163480d6a2bb1b",
-      "cqhecs-0.2.0.tar.gz": "11f826a56312cbda949153431f2ecb07c652a77a3aaf18aba8187dac80998b95",
-      "RELEASE_NOTES_v0.2.0.md": "533feab497f90a75d3fefbd29d6bc4ac46bfcca11884fe664a65ecf3613f8337",
-      "sha256sums.txt": "3af554c8e74c6c8371c1fd5406e3a9159faddd8ec2ef9c6e91217e56dc0eeca2"
+      "cqhecs-0.2.0.tar.gz": "916235e4c34b0a39924b2e48b73811e09a415ed01f054c98c254b3bf434969e0",
+      "RELEASE_NOTES_v0.2.0.md": "76d9f6b2e3b76974839e6590a281fcfe162c922ab7589dce706faa169e7ddc1c",
+      "sha256sums.txt": "0fc97b794affea7bac3ffc069546b03587630ff45b1c9a831f3d89360973c54a"
     },
     "sbom_file": "dist/cqhecs-sbom.spdx.json"
   }

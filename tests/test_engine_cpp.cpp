@@ -81,6 +81,27 @@ int main() {
         }
     }
 
+    std::cout << "[CPP Self-Test] Testing VulkanEngine Lifecycle and Invalid Shader Handling...\n";
+    {
+        VulkanEngine ve;
+        if (ve.initialize()) {
+            VkPipeline dummy_pipe = VK_NULL_HANDLE;
+            VkPipelineLayout dummy_layout = VK_NULL_HANDLE;
+            VkDescriptorSetLayout dummy_desc = VK_NULL_HANDLE;
+            uint32_t invalid_bytecode[] = { 0x07230203, 0x00010000, 0x00000000 };
+            bool res = ve.load_compute_pipeline_from_memory(invalid_bytecode, sizeof(invalid_bytecode), 0, 1, dummy_pipe, dummy_layout, dummy_desc);
+            if (res) {
+                std::cerr << "Failed: invalid bytecode was unexpectedly accepted\n";
+                return 1;
+            }
+            if (dummy_pipe != VK_NULL_HANDLE || dummy_layout != VK_NULL_HANDLE || dummy_desc != VK_NULL_HANDLE) {
+                std::cerr << "Failed: handles not cleaned up after invalid shader rejection\n";
+                return 1;
+            }
+            ve.cleanup();
+        }
+    }
+
     std::cout << "[CPP Self-Test] ALL NATIVE C++ HARDENING CHECKS PASSED.\n";
     return 0;
 }

@@ -72,8 +72,8 @@ jobs:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
           PYTHONPATH: .
         run: |
-          coverage run --source=cqhecs -m pytest tests/ -v --durations=15
-          coverage report -m
+          python -m coverage run --source=cqhecs -m pytest tests/ -v --durations=15
+          python -m coverage report -m
 
       - name: Build Release Distribution & Verify Checksums
         run: python scripts/generate_sbom_and_checksums.py
@@ -155,8 +155,8 @@ jobs:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
           PYTHONPATH: .
         run: |
-          coverage run --source=cqhecs -m pytest tests/ -v --durations=15
-          coverage report -m
+          python -m coverage run --source=cqhecs -m pytest tests/ -v --durations=15
+          python -m coverage report -m
 
       - name: Build Release Distribution & Verify Checksums
         run: python scripts/generate_sbom_and_checksums.py

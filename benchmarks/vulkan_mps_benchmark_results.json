@@ -1,7 +1,7 @@
 {
   "project": "CQ-HECS",
   "version": "0.2.0",
-  "timestamp": "2026-09-01T21:38:22Z",
+  "timestamp": "2026-09-04T22:27:09Z",
   "environment": {
     "os_name": "Windows",
     "os_release": "11",
@@ -27,7 +27,7 @@
           "exact_bond_dimension_chi": 2,
           "allocated_vram_mb": 0.011,
           "vram_ceiling_mb": 120.0,
-          "elapsed_ms": 0.638,
+          "elapsed_ms": 0.596,
           "status": "PASS (Exact bit-identity)"
         },
         {
@@ -37,7 +37,7 @@
           "exact_bond_dimension_chi": 2,
           "allocated_vram_mb": 0.625,
           "vram_ceiling_mb": 120.0,
-          "elapsed_ms": 1.743,
+          "elapsed_ms": 1.718,
           "status": "PASS (Exact bit-identity)"
         },
         {
@@ -47,7 +47,7 @@
           "exact_bond_dimension_chi": 2,
           "allocated_vram_mb": 1.406,
           "vram_ceiling_mb": 120.0,
-          "elapsed_ms": 2.27,
+          "elapsed_ms": 2.359,
           "status": "PASS (Exact bit-identity)"
         },
         {
@@ -57,7 +57,7 @@
           "exact_bond_dimension_chi": 2,
           "allocated_vram_mb": 2.968,
           "vram_ceiling_mb": 120.0,
-          "elapsed_ms": 2.942,
+          "elapsed_ms": 3.022,
           "status": "PASS (Exact bit-identity)"
         },
         {
@@ -67,7 +67,7 @@
           "exact_bond_dimension_chi": 2,
           "allocated_vram_mb": 4.531,
           "vram_ceiling_mb": 120.0,
-          "elapsed_ms": 3.563,
+          "elapsed_ms": 3.647,
           "status": "PASS (Exact bit-identity)"
         }
       ]
@@ -125,15 +125,15 @@
       "suite": "Exact Ring Arithmetic vs Floating Point",
       "iterations": 100000,
       "ieee754_complex128": {
-        "elapsed_ms": 6.061,
+        "elapsed_ms": 5.223,
         "accumulated_unitarity_drift": 2.220446049250313e-16,
         "bit_exact": false
       },
       "giles_selinger_ring_z_sqrt2_i": {
-        "elapsed_ms": 3.571,
+        "elapsed_ms": 3.734,
         "accumulated_unitarity_drift": 0.0,
         "bit_exact": true,
-        "speedup_vs_float": 1.7
+        "speedup_vs_float": 1.4
       }
     },
     "cross_vendor_comparison": {

@@ -1,7 +1,7 @@
 # Vulkan-MPS Hardening & Entanglement Boundary Evaluation Report
 
 **Version:** v0.2.0  
-**Date:** 2026-09-01T21:38:22Z  
+**Date:** 2026-09-04T22:27:09Z  
 **Vulkan Environment:** Vulkan 1.3 / SPIR-V 1.6 on Windows (AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD)  
 **License:** Apache License 2.0  
 
@@ -11,11 +11,11 @@
 
 | Qubits | Entanglement Class | Exact Bond Dim (chi) | Resident VRAM | Elapsed Time | Status |
 | :---: | :---: | :---: | :---: | :---: | :---: |
-| 10 | Area Law (GHZ) | 2 | 0.011 MB | 0.638 ms | PASS (Exact bit-identity) |
-| 50 | Area Law (GHZ) | 2 | 0.625 MB | 1.743 ms | PASS (Exact bit-identity) |
-| 100 | Area Law (GHZ) | 2 | 1.406 MB | 2.27 ms | PASS (Exact bit-identity) |
-| 200 | Area Law (GHZ) | 2 | 2.968 MB | 2.942 ms | PASS (Exact bit-identity) |
-| 300 | Area Law (GHZ) | 2 | 4.531 MB | 3.563 ms | PASS (Exact bit-identity) |
+| 10 | Area Law (GHZ) | 2 | 0.011 MB | 0.596 ms | PASS (Exact bit-identity) |
+| 50 | Area Law (GHZ) | 2 | 0.625 MB | 1.718 ms | PASS (Exact bit-identity) |
+| 100 | Area Law (GHZ) | 2 | 1.406 MB | 2.359 ms | PASS (Exact bit-identity) |
+| 200 | Area Law (GHZ) | 2 | 2.968 MB | 3.022 ms | PASS (Exact bit-identity) |
+| 300 | Area Law (GHZ) | 2 | 4.531 MB | 3.647 ms | PASS (Exact bit-identity) |
 
 > **Physical Takeaway:** For states obeying the 1D Area Law ($S_{vN} \le \text{const}$), the bond dimension $\chi$ is constant. The active resident memory remains bounded under 4.54 MB even at 300 qubits.
 
@@ -41,7 +41,7 @@
 - **Evaluated Operations:** 100,000 Clifford+T phase rotations
 - **IEEE-754 complex128 Accumulated Drift:** `2.22e-16`
 - **Giles-Selinger Ring Accumulated Drift:** `0.0` (Bit-Exact $0.0$)
-- **Ring Arithmetic Speedup:** `1.7x` faster than floating-point trigonometric rotation.
+- **Ring Arithmetic Speedup:** `1.4x` faster than floating-point trigonometric rotation.
 
 ---
 

@@ -64,25 +64,32 @@ bool VulkanEngine::initialize() {
 
     std::vector<VkPhysicalDevice> devices(device_count);
     vkEnumeratePhysicalDevices(m_instance, &device_count, devices.data());
-    m_physical_device = devices[0]; // Pick primary GPU
+    bool found_device = false;
+    for (const auto& dev : devices) {
+        uint32_t qf_count = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(dev, &qf_count, nullptr);
+        std::vector<VkQueueFamilyProperties> qf_props(qf_count);
+        vkGetPhysicalDeviceQueueFamilyProperties(dev, &qf_count, qf_props.data());
 
-    // Find compute queue family
-    uint32_t queue_family_count = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(m_physical_device, &queue_family_count, nullptr);
-    std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
-    vkGetPhysicalDeviceQueueFamilyProperties(m_physical_device, &queue_family_count, queue_families.data());
-
-    bool found_compute = false;
-    for (uint32_t i = 0; i < queue_family_count; ++i) {
-        if (queue_families[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
-            m_compute_queue_family_index = i;
-            found_compute = true;
-            break;
+        for (uint32_t i = 0; i < qf_count; ++i) {
+            if (qf_props[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
+                m_physical_device = dev;
+                m_compute_queue_family_index = i;
+                found_device = true;
+                break;
+            }
+        }
+        if (found_device) {
+            VkPhysicalDeviceProperties props;
+            vkGetPhysicalDeviceProperties(dev, &props);
+            if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+                break;
+            }
         }
     }
 
-    if (!found_compute) {
-        std::cerr << "[VulkanEngine] No compute-capable queue family found" << std::endl;
+    if (!found_device) {
+        std::cerr << "[VulkanEngine] No compute-capable physical device found" << std::endl;
         return false;
     }
 
@@ -94,8 +101,13 @@ bool VulkanEngine::initialize() {
     queue_create_info.queueCount = 1;
     queue_create_info.pQueuePriorities = &queue_priority;
 
+    VkPhysicalDeviceFeatures supported_features{};
+    vkGetPhysicalDeviceFeatures(m_physical_device, &supported_features);
+
     VkPhysicalDeviceFeatures device_features{};
-    device_features.shaderInt64 = VK_TRUE;
+    if (supported_features.shaderInt64) {
+        device_features.shaderInt64 = VK_TRUE;
+    }
 
     VkDeviceCreateInfo dev_create_info{};
     dev_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -330,6 +342,8 @@ bool VulkanEngine::load_compute_pipeline_from_memory(
     }
 
     if (vkCreatePipelineLayout(m_device, &pipeline_layout_info, nullptr, &out_layout) != VK_SUCCESS) {
+        vkDestroyDescriptorSetLayout(m_device, out_desc_layout, nullptr);
+        out_desc_layout = VK_NULL_HANDLE;
         vkDestroyShaderModule(m_device, shader_module, nullptr);
         return false;
     }
@@ -348,7 +362,15 @@ bool VulkanEngine::load_compute_pipeline_from_memory(
     VkResult res = vkCreateComputePipelines(m_device, VK_NULL_HANDLE, 1, &compute_info, nullptr, &out_pipeline);
     vkDestroyShaderModule(m_device, shader_module, nullptr);
 
-    return res == VK_SUCCESS;
+    if (res != VK_SUCCESS) {
+        vkDestroyPipelineLayout(m_device, out_layout, nullptr);
+        vkDestroyDescriptorSetLayout(m_device, out_desc_layout, nullptr);
+        out_layout = VK_NULL_HANDLE;
+        out_desc_layout = VK_NULL_HANDLE;
+        return false;
+    }
+
+    return true;
 }
 
 bool VulkanEngine::load_compute_pipeline(const std::string& spv_path,
