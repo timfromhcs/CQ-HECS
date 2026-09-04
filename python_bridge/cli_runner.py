@@ -222,8 +222,8 @@ def run_legacy_solver():
         forward_oracle_func=forward_oracle,
         expected_target=target_digest
     )
-    print(f"  > Candidate Preimage: 0x{candidate_key:016X}")
-    print(f"  > Non-Master Validator Verdict: {'VALIDATED' if is_valid else 'REJECTED'}")
+    print(f"  > Candidate Algebraic State: 0x{candidate_key:016X}")
+    print(f"  > Forward Validator Verdict: {'VALIDATED' if is_valid else 'REJECTED'}")
     assert is_valid and candidate_key == secret_key
 
 

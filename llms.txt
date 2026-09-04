@@ -1,25 +1,31 @@
-# CQ-HECS: Classical Quantum High-Efficiency Compute Simulator & Four-Path Engine
+# CQ-HECS: Classical Quantum High-Efficiency Compute Simulator
 
-> Deterministic classical quantum emulator & ARX constraint solver with Z[1/sqrt(2), i] exact ring arithmetic, Vulkan 1.3 compute backend, and Four-Path architecture.
+> Deterministic classical quantum emulator & algebraic constraint solver with Z[1/sqrt(2), i] exact ring arithmetic, cross-vendor Vulkan 1.3 compute backend, and honest four-path architecture.
 
-CQ-HECS (Classical Quantum High-Efficiency Compute Simulator) is a high-performance compute engine and constraint solver written in C++20 and Vulkan 1.3 with cross-vendor SPIR-V compute shaders (AMD, Intel, NVIDIA, Apple/MoltenVK).
+CQ-HECS (Classical Quantum High-Efficiency Compute Simulator) is an open-source compute engine written in C++20 and Vulkan 1.3 with cross-vendor SPIR-V compute shaders (AMD, Intel, NVIDIA, Apple Silicon via MoltenVK).
 
-## Core Capabilities & Architectural Axioms
+## Core Capabilities & Architectural Invariants
 
-- **Cross-Vendor Vulkan 1.3 Compute Backend**: Hardware-agnostic SPIR-V compute shaders for tensor contraction and exact ring arithmetic without proprietary CUDA lock-in.
-- **Exact Giles-Selinger Ring Arithmetic Z[1/sqrt(2), i]**: Bit-exact algebraic tracking without floating-point rounding drift. Complete Clifford+T gate set representation ($U^\dagger U = I$).
-- **Scientific Entanglement Scaling**: Memory-efficient MPS for Area-Law states (GHZ, 1D lattices); transparent fallback to Path D (Sparse-Pauli with proven error bound) or unresolved state for Volume-Law states.
-- **ARX Carry-Shadow Separation**: Linearizes modular addition via carry-shadow splitting for symmetric cryptanalysis verification (ChaCha20: 20 rounds, SHA-256: 64 rounds, BLAKE2b: 12 rounds) as an algebraic verification testbench.
-- **DIMACS CNF SAT Solving**: DPLL search with an O(1) Hilbert-Cuckoo cycle loop pruner running Murmur3 state signatures.
-- **Vulkan Workload & Entropy Scheduler**: Dynamic queue submission, memory barriers, and heuristic routing stabilized by hardware entropy harvested from OS timer jitter.
-- **Zero Runtime Dependencies**: Monolithic executable (`cq_hecs.exe`) and pure C-ABI shared library (`cq_hecs.dll`). Shaders are embedded as static C++ byte arrays.
+- **Cross-Vendor Vulkan 1.3 Compute Backend**: Standardized SPIR-V compute shaders for tensor network contraction and ring arithmetic without proprietary CUDA lock-in.
+- **Exact Giles-Selinger Ring Arithmetic Z[1/sqrt(2), i]**: Bit-exact algebraic tracking for Clifford+T circuits without floating-point rounding drift (unitary integrity U^dagger U = I).
+- **Four-Path Classical Architecture**:
+  - Path A: Stabilizer-Tableau O(N^2) for pure Clifford (T = 0).
+  - Path B: Exact Stabilizer-Rank decomposition (Bravyi-Smith-Smolin) for low T-count (T <= 14).
+  - Path C: Vulkan-MPS for Area-Law entanglement (GHZ-300 requires < 5 MB VRAM with chi=2) without silent truncation.
+  - Path D: Heisenberg-Picture Sparse-Pauli-Dynamics with mathematically certified error bound (Delta <= sum |c_P|); flags unresolved=True if tolerance is exceeded.
+- **Honest Complexity Boundaries**:
+  - No claims of quantum supremacy or collapsing complexity classes (BPP != BQP).
+  - Exponential entanglement scaling (Volume-Law / Random Circuit Sampling) is acknowledged honestly; SVD terminates as unresolved rather than guessing.
+  - ARX module is an algebraic SAT verification testbench for reduced rounds; no claims of full cryptographic preimage extraction.
+- **Zero Silent Cutoffs**: Enforces an explicit opt-in policy. Forbidden chi=48 truncations are audited to zero.
+- **Single Permissive License**: Licensed under the Apache License 2.0 repository-wide.
 
 ## Key Links & Documentation
 
-- [User & CLI Guide](docs/USAGE_GUIDE.md): CLI command reference, PowerShell pipeline integration, exit codes.
+- [Project README](README.md): Architecture overview, capabilities and boundaries table, installation guides, and benchmarks.
+- [Technical Architecture](ARCHITECTURE.md): Mathematical formulations for the Four-Path architecture, exact ring, and Lyapunov stability.
+- [Vulkan MPS Evaluation](benchmarks/VULKAN_MPS_EVALUATION.md): Comparative benchmarks against Qiskit Aer MPS and cuTensorNet.
 - [API Reference](docs/API_REFERENCE.md): Pure C-ABI function signatures, struct layouts, and thread safety contracts.
 - [Embedding Guide](docs/EMBEDDING_GUIDE.md): Code examples for C++, Python, C#, Rust, and Node.js.
-- [Technical Architecture](docs/ARCHITECTURE.md): Mathematical formulations for the Four-Path architecture, exact ring, and Lyapunov stability.
-- [Benchmarks Report](docs/BENCHMARKS.md): Empirical throughput, memory measurements, and pruning ratios.
 - [Change Log](CHANGELOG.md): Release version history and milestone logs.
-- [License](LICENSE): Apache License 2.0 (Open Source, Permissive).
+- [License](LICENSE): Apache License 2.0.

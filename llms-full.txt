@@ -1,4 +1,4 @@
-# CQ-HECS v0.2.0: Full Technical Reference for LLM Context Ingestion
+# CQ-HECS: Full Technical Reference for LLM Context Ingestion
 
 Project: CQ-HECS (Classical Quantum High-Efficiency Compute Simulator)
 Author: Tim (@timfromhcs) <timfromhcs@gmail.com>
@@ -7,58 +7,41 @@ License: Apache License 2.0 (Open Source, Permissive)
 
 ---
 
-## 1. System Architecture
+## 1. System Architecture & Module Design
 
-CQ-HECS operates as a classical quantum state emulator and constraint satisfaction solver.
+CQ-HECS operates as a classical quantum circuit simulation engine and algebraic constraint solver. Its execution model avoids silent bond-dimension cutoffs through an adaptive four-path routing architecture backed by Vulkan 1.3 SPIR-V compute shaders.
 
-```
-                              +-------------------------------------------+
-                              |    Vulkan Workload & Entropy Scheduler    |
-                              |    - Queue Submissions & Memory Barriers  |
-                              |    - Hardware Entropy & Workload Routing  |
-                              +---------------------+---------------------+
-                                                    |
-          +-------------------+---------------------+---------------------+-------------------+
-          |                   |                     |                     |                   |
-+---------v---------+ +-------v---------+ +---------v---------+ +---------v---------+ +-------v---------+
-|  J-Space Alpha    | |  J-Space Beta   | |  J-Space Gamma    | |  J-Space Delta    | |  J-Space Epsilon  |
-|  (ARX Modulo)     | |  (Phase Ring)   | |  (SAT & Cuckoo)   | |  (Residual SVD)   | | (Explosion Shield)|
-|  A + B Linearize  | |  Exact Ring     | |  DIMACS CNF Solve | |  MPS Area-Law     | |  Lyapunov Monitor |
-|  Carry Shadow     | |  Clifford + T   | |  O(1) Loop Prune  | |  OpenQASM 2.0/3.0 | |  3-Number Compres |
-|  Overflow Reverse | |  Interference   | |  Hilbert Mix      | |  Re-Inflation     | |  0-Bit Loss Round |
-+-------------------+ +-----------------+ +-------------------+ +-------------------+ +-----------------+
-                                                    |
-                              +---------------------v---------------------+
-                              |   Vulkan 1.3 Compute & Tiered Memory      |
-                              |   - Embedded SPIR-V Shaders in Binary     |
-                              |   - Cross-Vendor (AMD, Intel, NVIDIA, Mac)|
-                              |   - Active VRAM strictly < 120 MB         |
-                              |   - Win32 / POSIX Tiered Swap Pool        |
-                              |   - Isolated Deterministic Forward Oracle |
-                              +-------------------------------------------+
-```
+### Core Functional Modules
 
-### J-Space Alpha (ARX Carry-Shadow Separation)
-Decomposes 64-bit addition into linear and carry terms:
-- `Sum(A, B) = A ^ B`
-- `CarryShadow(A, B) = (A & B) << 1`
-- `(A + B) mod 2^64 = Sum(A, B) + CarryShadow(A, B) mod 2^64`
-Algebraic verification testbench for BLAKE2b G-function (12 rounds), ChaCha20 quarter-round (20 rounds), and SHA-256 schedule expansion (64 rounds).
+#### 1. VulkanComputeScheduler & Dynamic Pipeline
+Manages queue submissions, memory barriers, and shader dispatch across Vulkan 1.3 physical devices (AMD, Intel, NVIDIA, Apple Silicon via MoltenVK). Embedded SPIR-V shaders execute tensor contractions and ring operations natively.
 
-### J-Space Beta (Exact Giles-Selinger Ring Z[1/sqrt(2), i] & Z_8 Phase Ring)
-Exact cyclotomic and Giles-Selinger ring arithmetic. Maps Clifford + T quantum state phases without floating-point cancellation drift:
-- Constructive interference: (k1 - k2) == 0 mod 8
-- Destructive interference: (k1 - k2) == 4 mod 8 (exact 0.0 residual without float cancellation)
-- Unitary adjoint inversion: U^dagger U = Identity
+#### 2. ARX Modular Decomposition (Algebraic SAT Testbench)
+Decomposes 64-bit addition into linear and carry terms for algebraic step verification:
+- Sum(A, B) = A ^ B
+- CarryShadow(A, B) = (A & B) << 1
+- (A + B) mod 2^64 = Sum(A, B) + CarryShadow(A, B) mod 2^64
+Serves as an algebraic SAT verification testbench for reduced rounds of standard primitives (ChaCha20: 20 rounds specification, SHA-256: 64 steps specification, BLAKE2b: 12 rounds specification). It does not claim full cryptographic preimage extraction.
 
-### J-Space Gamma (DIMACS SAT & O(1) Cuckoo Pruning)
-DPLL solver for propositional satisfiability. Computes 64-bit Murmur3 state signatures and caches branch states in a dual-bucket Cuckoo hash table to prune cycle loops in O(1) time.
+#### 3. Exact Giles-Selinger Ring Z[1/sqrt(2), i]
+Bit-exact arithmetic over the dyadic cyclotomic ring for Clifford+T quantum gates:
+- Element form: (a + b*sqrt(2) + c*i + d*i*sqrt(2)) / (sqrt(2)^k), where a, b, c, d in Z, k in N.
+- Eliminates floating-point cancellation drift: constructive ((k1 - k2) == 0 mod 8) and destructive ((k1 - k2) == 4 mod 8) interference are evaluated with exact integer arithmetic.
+- Unitary integrity: U^dagger U = Identity is strictly maintained.
 
-### J-Space Delta (300-Qubit MPS Tensor Chain)
-1D Matrix Product State with 300 sites and maximum bond dimension chi=64. Truncated SVD stores singular values above chi in a residual cache (Lambda_res), allowing lossless re-inflation.
+#### 4. Propositional SAT & O(1) Cuckoo Cycle Pruning
+DPLL solver for CNF satisfiability. Computes 64-bit Murmur3 state signatures and caches branch states in a dual-bucket Cuckoo hash table to detect and prune cycle loops in O(1) amortized time.
 
-### J-Space Epsilon (Explosion Shield & Compression)
-Lyapunov exponent monitor: lambda = (1 / dt) * ln(||delta x(t)|| / ||delta x(0)||). If lambda > 2.5, applies stabilizing unitary deflation. Lossless 3-number compression achieves 100% bit identity roundtrips across 64-bit boundaries.
+#### 5. Vulkan Matrix Product State (MPS) Engine (Path C)
+1D Matrix Product State representation supporting dynamic bond dimension chi without silent cutoffs:
+- Area-Law states (e.g. 300-qubit GHZ with chi=2) consume < 5 MB resident VRAM.
+- Volume-Law states (exponential entropy S ~ L/2): When the memory ceiling is reached, execution refuses uncertified truncation and escalates to Path D or flags unresolved=True.
+
+#### 6. Heisenberg Sparse-Pauli-Dynamics (Path D)
+Evolves target observables backwards under Heisenberg dynamics: O(t) = U^dagger O U = sum_P c_P P.
+- Controlled pruning of terms below coefficient threshold: Delta_trunc = sum_{P in D} |c_P|.
+- Certified bound: |<psi| O_exact |psi> - <psi| O_approx |psi>| <= Delta_trunc.
+- If Delta_trunc > epsilon_tolerance, the result is marked unresolved=True without guessing.
 
 ---
 
@@ -98,28 +81,39 @@ CQ_API double cq_get_active_vram_mb(cq_context_t* ctx);
 
 ---
 
-## 3. CLI Command Cheat Sheet & Exit Codes
+## 3. CLI Command Reference & Exit Codes
 
-```powershell
+```bash
 # OpenQASM Simulation
-cq_hecs.exe qasm benchmarks\qasm\ghz_300.qasm --json
-Get-Content circuit.qasm | cq_hecs.exe qasm - --json | ConvertFrom-Json
+./build/bin/cq_hecs qasm benchmarks/qasm/ghz_300.qasm --json
 
 # SAT Constraint Solving
-cq_hecs.exe sat benchmarks\sat\pigeonhole_6_5.cnf --json
+./build/bin/cq_hecs sat benchmarks/sat/pigeonhole_6_5.cnf --json
 # Exit codes: 0 = SAT, 10 = UNSAT, 1 = Error
 
-# ARX Cryptanalysis Inversion / Verification Testbench
-cq_hecs.exe arx blake2b --rounds 12 --json | ConvertFrom-Json
-cq_hecs.exe arx chacha20 --rounds 20 --json | ConvertFrom-Json
-cq_hecs.exe arx sha256 --rounds 64 --json | ConvertFrom-Json
+# ARX Constraint-Analyse auf Standardspezifikationen
+./build/bin/cq_hecs arx blake2b --rounds 12 --json
+./build/bin/cq_hecs arx chacha20 --rounds 20 --json
+./build/bin/cq_hecs arx sha256 --rounds 64 --json
 
 # Stress Test
-cq_hecs.exe stress --cycles 100000 --json | ConvertFrom-Json
+./build/bin/cq_hecs stress --cycles 100000 --json
 
 # Interactive TUI Monitor
-cq_hecs.exe dashboard [--cycles N]
+./build/bin/cq_hecs dashboard [--cycles N]
 
 # Self-Test
-cq_hecs.exe test --json | ConvertFrom-Json
+./build/bin/cq_hecs test --json
 ```
+
+---
+
+## 4. Scientific Capabilities vs. Known Boundaries
+
+| Capability | Scope & Verification | Known Boundary / Non-Goal |
+| :--- | :--- | :--- |
+| Clifford Simulation | Exact O(N^2) Stabilizer Tableau | Non-universal without T-gates |
+| Stabilizer Rank | Exact decomposition for T <= 14 | Exponential scaling O(2^{alpha T}) |
+| Vulkan MPS | Exact Area-Law states (GHZ chi=2 < 5MB) | Volume-Law states escalate or halt |
+| Sparse-Pauli (Path D) | Certified error bound Delta <= sum \|c_P\| | Fails gracefully if bound > tolerance |
+| ARX SAT Analysis | Reduced-round algebraic testbench | No full-cipher cryptographic preimage break |
