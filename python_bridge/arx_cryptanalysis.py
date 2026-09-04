@@ -257,3 +257,11 @@ class ARXCryptanalysisSuite:
             path_pruning_ratio=pruning_ratio,
             elapsed_ms=elapsed_ms
         )
+
+    def benchmark_all(self, num_trials: int = 12) -> List[ARXBenchmarkResult]:
+        """Run standard benchmarks for all supported ARX primitives."""
+        return [
+            self.benchmark_blake2b(rounds=num_trials),
+            self.benchmark_chacha20(rounds=min(num_trials, 20)),
+            self.benchmark_sha256(steps=min(num_trials, 64)),
+        ]

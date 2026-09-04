@@ -8,7 +8,7 @@ D) Certified Classical Approximation (Sparse-Pauli-Dynamics) with proven error b
 
 from cqhecs.backend import CQHecsBackend
 from cqhecs.provider import CQHecsProvider
-from cqhecs.result import SimulationResult
+from cqhecs.result import SimulationResult, SimulationState
 from cqhecs.circuit_analyzer import CircuitAnalyzer, CircuitProperties
 from cqhecs.router import FourPathRouter, EntanglementAdaptiveRouter
 from cqhecs.scheduler import VulkanComputeScheduler
@@ -28,6 +28,7 @@ __all__ = [
     "CQHecsBackend",
     "CQHecsProvider",
     "SimulationResult",
+    "SimulationState",
     "CircuitAnalyzer",
     "CircuitProperties",
     "FourPathRouter",

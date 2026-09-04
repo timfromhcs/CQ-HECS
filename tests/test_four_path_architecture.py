@@ -18,7 +18,7 @@ from qiskit import QuantumCircuit
 
 from cqhecs.circuit_analyzer import CircuitAnalyzer
 from cqhecs.router import FourPathRouter
-from cqhecs.result import SimulationResult
+from cqhecs.result import SimulationResult, SimulationState
 from cqhecs.backends.path_a_stabilizer import PathAStabilizerBackend, StabilizerTableauSimulator
 from cqhecs.backends.path_b_stabilizer_rank import PathBStabilizerRankBackend, StabilizerRankSimulator
 from cqhecs.backends.path_c_mps_exact import PathCMPSExactBackend, ExactMPSTensorChain
@@ -305,6 +305,59 @@ class TestFourPathArchitecture(unittest.TestCase):
         self.assertFalse(resD.exact)
         self.assertFalse(resD.unresolved)
         self.assertGreaterEqual(resD.error_bound, 0.0)
+
+    # -------------------------------------------------------------
+    # 7. Explicit Simulation Result States (EXACT, CERTIFIED, UNRESOLVED)
+    # -------------------------------------------------------------
+    def test_explicit_simulation_result_states(self):
+        """Verifies explicit, machine-readable SimulationState enum resolution."""
+        # 1. Exact states (Path A, B, C)
+        qcA = QuantumCircuit(2)
+        qcA.h(0)
+        qcA.cx(0, 1)
+        resA = self.router.route_and_execute(qcA, shots=100)
+        self.assertEqual(resA.state, SimulationState.EXACT)
+        self.assertTrue(resA.is_exact)
+        self.assertFalse(resA.is_certified)
+        self.assertFalse(resA.is_unresolved)
+        self.assertFalse(resA.is_failed)
+
+        dictA = resA.to_dict()
+        self.assertEqual(dictA["state"], "EXACT")
+        self.assertEqual(dictA["status"], "SUCCESS")
+
+        # 2. Certified state (Path D with satisfied tolerance)
+        qcD = QuantumCircuit(2)
+        qcD.h(0)
+        qcD.rz(0.4, 0)
+        resD = self.router.route_and_execute(qcD, preferred_path="D", shots=100, error_tolerance=0.5)
+        self.assertEqual(resD.state, SimulationState.CERTIFIED)
+        self.assertTrue(resD.is_certified)
+        self.assertFalse(resD.is_exact)
+        self.assertFalse(resD.is_unresolved)
+
+        dictD = resD.to_dict()
+        self.assertEqual(dictD["state"], "CERTIFIED")
+        self.assertEqual(dictD["status"], "SUCCESS")
+
+        # 3. Unresolved state (Path D exceeding strict tolerance)
+        backend_unres = PathDSparsePauliBackend(max_pauli_terms=2, error_tolerance=1e-5)
+        qc_unres = QuantumCircuit(4)
+        for _ in range(3):
+            for i in range(4):
+                qc_unres.h(i)
+                qc_unres.rz(0.7, i)
+            for i in range(3):
+                qc_unres.cx(i, i + 1)
+        res_unres = backend_unres.execute(qc_unres, shots=50)
+        self.assertEqual(res_unres.state, SimulationState.UNRESOLVED)
+        self.assertTrue(res_unres.is_unresolved)
+        self.assertFalse(res_unres.is_exact)
+        self.assertFalse(res_unres.is_certified)
+
+        dict_unres = res_unres.to_dict()
+        self.assertEqual(dict_unres["state"], "UNRESOLVED")
+        self.assertEqual(dict_unres["status"], "UNRESOLVED")
 
 
 if __name__ == "__main__":

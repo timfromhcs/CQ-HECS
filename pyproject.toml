@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cqhecs"
+version = "0.2.0"
+description = "CQ-HECS: Deterministic Classical Four-Path Quantum Circuit Simulation Engine"
+readme = "README.md"
+authors = [{ name = "timfromhcs" }]
+license = "Apache-2.0"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.24.0",
+    "qiskit>=0.45.0",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: C++",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "qiskit-aer>=0.12.0",
+    "stim>=1.12.0",
+    "coverage>=7.0.0",
+    "flake8>=6.0.0",
+    "nanobind>=1.8.0",
+]
+benchmark = [
+    "psutil>=5.9.0",
+    "rich>=13.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/timfromhcs/CQ-HECS"
+Repository = "https://github.com/timfromhcs/CQ-HECS"
+
+[tool.setuptools.packages.find]
+include = ["cqhecs*", "python_bridge*"]
+exclude = ["tests*", "benchmarks*", "audit*"]

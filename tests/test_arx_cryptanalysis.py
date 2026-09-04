@@ -56,6 +56,14 @@ class TestARXCryptanalysis(unittest.TestCase):
         self.assertTrue(res_blake.inverse_verified)
         self.assertTrue(res_blake.carry_shadow_exact)
 
+    def test_benchmark_all(self):
+        """Verify benchmark_all runs all primitives and returns results."""
+        results = self.suite.benchmark_all(num_trials=5)
+        self.assertEqual(len(results), 3)
+        for r in results:
+            self.assertTrue(r.inverse_verified)
+            self.assertTrue(r.carry_shadow_exact)
+
 
 if __name__ == "__main__":
     unittest.main()

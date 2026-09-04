@@ -1,7 +1,7 @@
 {
   "project": "CQ-HECS",
   "version": "0.2.0",
-  "timestamp": "2026-09-04T22:27:09Z",
+  "timestamp": "2026-09-04T22:50:19Z",
   "environment": {
     "os_name": "Windows",
     "os_release": "11",
@@ -27,7 +27,7 @@
           "exact_bond_dimension_chi": 2,
           "allocated_vram_mb": 0.011,
           "vram_ceiling_mb": 120.0,
-          "elapsed_ms": 0.596,
+          "elapsed_ms": 0.586,
           "status": "PASS (Exact bit-identity)"
         },
         {
@@ -37,7 +37,7 @@
           "exact_bond_dimension_chi": 2,
           "allocated_vram_mb": 0.625,
           "vram_ceiling_mb": 120.0,
-          "elapsed_ms": 1.718,
+          "elapsed_ms": 1.694,
           "status": "PASS (Exact bit-identity)"
         },
         {
@@ -47,7 +47,7 @@
           "exact_bond_dimension_chi": 2,
           "allocated_vram_mb": 1.406,
           "vram_ceiling_mb": 120.0,
-          "elapsed_ms": 2.359,
+          "elapsed_ms": 2.277,
           "status": "PASS (Exact bit-identity)"
         },
         {
@@ -57,7 +57,7 @@
           "exact_bond_dimension_chi": 2,
           "allocated_vram_mb": 2.968,
           "vram_ceiling_mb": 120.0,
-          "elapsed_ms": 3.022,
+          "elapsed_ms": 3.155,
           "status": "PASS (Exact bit-identity)"
         },
         {
@@ -67,15 +67,108 @@
           "exact_bond_dimension_chi": 2,
           "allocated_vram_mb": 4.531,
           "vram_ceiling_mb": 120.0,
-          "elapsed_ms": 3.647,
+          "elapsed_ms": 3.72,
           "status": "PASS (Exact bit-identity)"
+        }
+      ]
+    },
+    "1d_cluster_states": {
+      "suite": "1D Cluster States",
+      "description": "Measurement-based quantum computing 1D cluster state evaluation.",
+      "datapoints": [
+        {
+          "num_qubits": 10,
+          "state_class": "1D Cluster Graph State",
+          "bond_dimension_chi": 2,
+          "shots": 500,
+          "exact": true,
+          "state": "EXACT",
+          "elapsed_ms": 0.791,
+          "status": "PASS (Area-law certified)"
+        },
+        {
+          "num_qubits": 30,
+          "state_class": "1D Cluster Graph State",
+          "bond_dimension_chi": 2,
+          "shots": 500,
+          "exact": true,
+          "state": "EXACT",
+          "elapsed_ms": 1.804,
+          "status": "PASS (Area-law certified)"
+        },
+        {
+          "num_qubits": 50,
+          "state_class": "1D Cluster Graph State",
+          "bond_dimension_chi": 2,
+          "shots": 500,
+          "exact": true,
+          "state": "EXACT",
+          "elapsed_ms": 3.675,
+          "status": "PASS (Area-law certified)"
+        },
+        {
+          "num_qubits": 100,
+          "state_class": "1D Cluster Graph State",
+          "bond_dimension_chi": 2,
+          "shots": 500,
+          "exact": true,
+          "state": "EXACT",
+          "elapsed_ms": 12.415,
+          "status": "PASS (Area-law certified)"
+        },
+        {
+          "num_qubits": 200,
+          "state_class": "1D Cluster Graph State",
+          "bond_dimension_chi": 2,
+          "shots": 500,
+          "exact": true,
+          "state": "EXACT",
+          "elapsed_ms": 47.338,
+          "status": "PASS (Area-law certified)"
+        }
+      ]
+    },
+    "nearest_neighbor_brickwork": {
+      "suite": "Nearest-Neighbor Brickwork",
+      "description": "1D Brickwork entangling layers simulated via exact MPS contraction.",
+      "datapoints": [
+        {
+          "num_qubits": 10,
+          "circuit_depth": 3,
+          "two_qubit_gates": 9,
+          "exact": true,
+          "elapsed_ms": 1.617,
+          "status": "PASS (Exact MPS)"
+        },
+        {
+          "num_qubits": 20,
+          "circuit_depth": 3,
+          "two_qubit_gates": 19,
+          "exact": true,
+          "elapsed_ms": 1.304,
+          "status": "PASS (Exact MPS)"
+        },
+        {
+          "num_qubits": 30,
+          "circuit_depth": 3,
+          "two_qubit_gates": 29,
+          "exact": true,
+          "elapsed_ms": 1.79,
+          "status": "PASS (Exact MPS)"
+        },
+        {
+          "num_qubits": 40,
+          "circuit_depth": 3,
+          "two_qubit_gates": 39,
+          "exact": true,
+          "elapsed_ms": 2.139,
+          "status": "PASS (Exact MPS)"
         }
       ]
     },
     "volume_law_boundaries": {
       "suite": "Volume-Law Physical Boundaries",
       "scientific_law": "Area Law (S ~ const) vs Volume Law (S ~ L)",
-      "explanation": "MPS represents Area-Law states with polynomial resources. For Volume-Law entangled states, the bond dimension chi grows exponentially with cut size L/2. CQ-HECS refuses silent truncation and transparently routes to Path D (Sparse-Pauli with mathematically proven error bounds) or refuses simulation with unresolved=True.",
       "datapoints": [
         {
           "num_qubits": 10,
@@ -121,24 +214,258 @@
         }
       ]
     },
+    "clifford_scaling": {
+      "suite": "Clifford Circuit Scaling",
+      "description": "Polynomial scaling of Aaronson-Gottesman binary symplectic tableau across 300 qubits.",
+      "datapoints": [
+        {
+          "num_qubits": 10,
+          "gate_count": 60,
+          "shots": 500,
+          "exact": true,
+          "error_bound": 0.0,
+          "state": "EXACT",
+          "elapsed_ms": 0.808,
+          "status": "PASS (Bit-exact symplectic)"
+        },
+        {
+          "num_qubits": 50,
+          "gate_count": 300,
+          "shots": 500,
+          "exact": true,
+          "error_bound": 0.0,
+          "state": "EXACT",
+          "elapsed_ms": 5.522,
+          "status": "PASS (Bit-exact symplectic)"
+        },
+        {
+          "num_qubits": 100,
+          "gate_count": 600,
+          "shots": 500,
+          "exact": true,
+          "error_bound": 0.0,
+          "state": "EXACT",
+          "elapsed_ms": 15.543,
+          "status": "PASS (Bit-exact symplectic)"
+        },
+        {
+          "num_qubits": 200,
+          "gate_count": 1200,
+          "shots": 500,
+          "exact": true,
+          "error_bound": 0.0,
+          "state": "EXACT",
+          "elapsed_ms": 52.295,
+          "status": "PASS (Bit-exact symplectic)"
+        },
+        {
+          "num_qubits": 300,
+          "gate_count": 1800,
+          "shots": 500,
+          "exact": true,
+          "error_bound": 0.0,
+          "state": "EXACT",
+          "elapsed_ms": 108.325,
+          "status": "PASS (Bit-exact symplectic)"
+        }
+      ]
+    },
+    "low_t_clifford_plus_t": {
+      "suite": "Low-T Clifford+T Branching",
+      "description": "Exact Bravyi-Gosset / Bravyi-Smith-Smolin stabilizer rank scaling with T-count.",
+      "datapoints": [
+        {
+          "t_count": 2,
+          "num_qubits": 4,
+          "rank_branches": 4,
+          "exact": true,
+          "error_bound": 0.0,
+          "state": "EXACT",
+          "elapsed_ms": 0.783,
+          "status": "PASS (Bit-exact rank decomposition)"
+        },
+        {
+          "t_count": 4,
+          "num_qubits": 4,
+          "rank_branches": 16,
+          "exact": true,
+          "error_bound": 0.0,
+          "state": "EXACT",
+          "elapsed_ms": 0.859,
+          "status": "PASS (Bit-exact rank decomposition)"
+        },
+        {
+          "t_count": 6,
+          "num_qubits": 4,
+          "rank_branches": 64,
+          "exact": true,
+          "error_bound": 0.0,
+          "state": "EXACT",
+          "elapsed_ms": 2.54,
+          "status": "PASS (Bit-exact rank decomposition)"
+        },
+        {
+          "t_count": 8,
+          "num_qubits": 4,
+          "rank_branches": 256,
+          "exact": true,
+          "error_bound": 0.0,
+          "state": "EXACT",
+          "elapsed_ms": 9.791,
+          "status": "PASS (Bit-exact rank decomposition)"
+        },
+        {
+          "t_count": 10,
+          "num_qubits": 4,
+          "rank_branches": 1024,
+          "exact": true,
+          "error_bound": 0.0,
+          "state": "EXACT",
+          "elapsed_ms": 44.22,
+          "status": "PASS (Bit-exact rank decomposition)"
+        },
+        {
+          "t_count": 12,
+          "num_qubits": 4,
+          "rank_branches": 4096,
+          "exact": true,
+          "error_bound": 0.0,
+          "state": "EXACT",
+          "elapsed_ms": 204.243,
+          "status": "PASS (Bit-exact rank decomposition)"
+        },
+        {
+          "t_count": 14,
+          "num_qubits": 4,
+          "rank_branches": 16384,
+          "exact": true,
+          "error_bound": 0.0,
+          "state": "EXACT",
+          "elapsed_ms": 909.973,
+          "status": "PASS (Bit-exact rank decomposition)"
+        }
+      ]
+    },
+    "sparse_pauli_dynamics": {
+      "suite": "Sparse-Pauli Certified Dynamics",
+      "description": "Heisenberg-picture operator evolution with proven triangular error bound Delta <= sum |c_P|.",
+      "datapoints": [
+        {
+          "term_budget": 4,
+          "expectation_value": 0.0,
+          "certified_error_bound": 0.0,
+          "unresolved": false,
+          "state": "CERTIFIED",
+          "elapsed_ms": 0.055,
+          "status": "PASS (Mathematical certificate valid)"
+        },
+        {
+          "term_budget": 8,
+          "expectation_value": 0.0,
+          "certified_error_bound": 0.0,
+          "unresolved": false,
+          "state": "CERTIFIED",
+          "elapsed_ms": 0.024,
+          "status": "PASS (Mathematical certificate valid)"
+        },
+        {
+          "term_budget": 16,
+          "expectation_value": 0.0,
+          "certified_error_bound": 0.0,
+          "unresolved": false,
+          "state": "CERTIFIED",
+          "elapsed_ms": 0.021,
+          "status": "PASS (Mathematical certificate valid)"
+        },
+        {
+          "term_budget": 32,
+          "expectation_value": 0.0,
+          "certified_error_bound": 0.0,
+          "unresolved": false,
+          "state": "CERTIFIED",
+          "elapsed_ms": 0.018,
+          "status": "PASS (Mathematical certificate valid)"
+        },
+        {
+          "term_budget": 64,
+          "expectation_value": 0.0,
+          "certified_error_bound": 0.0,
+          "unresolved": false,
+          "state": "CERTIFIED",
+          "elapsed_ms": 0.018,
+          "status": "PASS (Mathematical certificate valid)"
+        }
+      ]
+    },
     "exact_ring_arithmetic": {
       "suite": "Exact Ring Arithmetic vs Floating Point",
       "iterations": 100000,
       "ieee754_complex128": {
-        "elapsed_ms": 5.223,
+        "elapsed_ms": 5.196,
         "accumulated_unitarity_drift": 2.220446049250313e-16,
         "bit_exact": false
       },
       "giles_selinger_ring_z_sqrt2_i": {
-        "elapsed_ms": 3.734,
+        "elapsed_ms": 3.732,
         "accumulated_unitarity_drift": 0.0,
         "bit_exact": true,
-        "speedup_vs_float": 1.4
+        "speedup_vs_float": 1.39
       }
+    },
+    "sat_and_arx_solvers": {
+      "suite": "SAT and ARX Solvers",
+      "description": "DIMACS CNF constraint solving and algebraic ARX step-inversion benchmarks.",
+      "sat_benchmarks": [
+        {
+          "benchmark": "pigeonhole_6_5.cnf",
+          "variables": 30,
+          "clauses": 81,
+          "satisfiable": false,
+          "decisions": 359,
+          "pruned_cycles": 0,
+          "elapsed_ms": 16.224,
+          "verified": true
+        },
+        {
+          "benchmark": "uf50_hard.cnf",
+          "variables": 50,
+          "clauses": 218,
+          "satisfiable": true,
+          "decisions": 19,
+          "pruned_cycles": 0,
+          "elapsed_ms": 5.91,
+          "verified": true
+        }
+      ],
+      "arx_benchmarks": [
+        {
+          "primitive": "BLAKE2b G-Function",
+          "rounds": 100,
+          "forward_verified": true,
+          "inverse_verified": true,
+          "carry_shadow_exact": true,
+          "elapsed_ms": 0.541
+        },
+        {
+          "primitive": "ChaCha20 Quarter-Round",
+          "rounds": 20,
+          "forward_verified": true,
+          "inverse_verified": true,
+          "carry_shadow_exact": true,
+          "elapsed_ms": 0.114
+        },
+        {
+          "primitive": "SHA-256 Schedule Expansion",
+          "rounds": 64,
+          "forward_verified": true,
+          "inverse_verified": true,
+          "carry_shadow_exact": true,
+          "elapsed_ms": 0.432
+        }
+      ]
     },
     "cross_vendor_comparison": {
       "suite": "Cross-Vendor Backend Comparison",
-      "summary": "Vulkan 1.3 enables hardware-agnostic tensor compute with zero CUDA lock-in.",
       "backends": [
         {
           "backend": "CQ-HECS Vulkan-MPS",
