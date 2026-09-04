@@ -298,14 +298,18 @@ bool VulkanEngine::load_compute_pipeline_from_memory(
     VkPipelineLayout& out_layout,
     VkDescriptorSetLayout& out_desc_layout)
 {
+    if (m_device == VK_NULL_HANDLE || spv_words == nullptr || size_bytes == 0) {
+        return false;
+    }
+
     VkShaderModuleCreateInfo create_info{};
     create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     create_info.codeSize = size_bytes;
     create_info.pCode = spv_words;
 
-    VkShaderModule shader_module;
+    VkShaderModule shader_module = VK_NULL_HANDLE;
     if (vkCreateShaderModule(m_device, &create_info, nullptr, &shader_module) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create shader module from memory buffer!");
+        return false;
     }
 
     std::vector<VkDescriptorSetLayoutBinding> bindings(buffer_binding_count);
