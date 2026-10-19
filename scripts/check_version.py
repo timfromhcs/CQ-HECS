@@ -91,6 +91,56 @@ def check() -> list:
             f"current version line ({VERSION})"
         )
 
+    # The changelog must contain a section for the released version. An
+    # [Unreleased] section is allowed on top (in-progress development).
+    changelog_version = re.search(
+        r"^##\s+\[?\[" + re.escape(VERSION) + r"\]?\]",
+        _read("CHANGELOG.md"),
+        re.MULTILINE,
+    )
+    if not changelog_version:
+        problems.append(
+            f"CHANGELOG.md has no '## [{VERSION}]' section for the released version"
+        )
+
+    # RELEASE_NOTES.md must not still describe an old version as current.
+    notes = _read("RELEASE_NOTES.md")
+    projected = re.findall(r"\bv?(?:0\.1\.0|0\.2\.0)\b", notes)
+    if projected:
+        problems.append(
+            "RELEASE_NOTES.md references version(s) "
+            f"{sorted(set(projected))}; it must describe {VERSION} only"
+        )
+
+    # Surfaces that report the version at runtime must agree too. Historical
+    # records (CHANGELOG, release_tracking.json, benchmark archives) are
+    # intentionally excluded here.
+    for relative, pattern, name in (
+        (
+            "include/cq_hecs_api.h",
+            r'#define CQ_HECS_VERSION\s+"([^"]+)"',
+            "C API version macro",
+        ),
+        (
+            "python_bridge/cq_hecs.py",
+            r'^__version__\s*=\s*"([^"]+)"',
+            "python_bridge version",
+        ),
+        (
+            "tests/test_c_api.py",
+            r'assertEqual\(ver,\s*"([^"]+)"\)',
+            "C API version test",
+        ),
+    ):
+        match = re.search(pattern, _read(relative), re.MULTILINE)
+        if not match:
+            problems.append(f"{name} not found in {relative}")
+        elif match.group(1) != VERSION:
+            problems.append(
+                f"{name} in {relative} is {match.group(1)!r}, "
+                f"expected {VERSION!r}"
+            )
+
     return problems
 
 

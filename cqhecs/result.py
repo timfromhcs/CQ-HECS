@@ -31,26 +31,34 @@ class SimulationState(str, Enum):
     FAILED = "FAILED"
 
 
-def hoeffding_total_variation_bound(shots: int, delta: float = 0.05) -> float:
+def hoeffding_proportion_bound(
+    shots: int,
+    delta: float = 0.05,
+    support_size: int = 2,
+) -> float:
     """
-    Rigorous two-sided Hoeffding bound on the total-variation distance between an
-    empirical distribution over `shots` iid samples and the true distribution.
+    Two-sided Hoeffding bound on the error of a **single** categorical outcome.
 
-    TV(P_emp, P_true) <= sqrt(ln(2/delta) / (2 * shots))
+    For one fixed outcome ``y`` observed ``n`` times, Hoeffding's inequality
+    gives
 
-    This covers the *sampling* error only. It is intentionally kept separate from
-    the numerical/approximation `error_bound` so that a result never claims
-    "zero error" when it is in fact a finite-shot estimate.
+        |P_hat(y) - P(y)| <= sqrt(ln(2/delta) / (2n))
+
+    with probability at least ``1 - delta``. This is a bound on one coordinate
+    only.
 
     Args:
-        shots: Number of measurement samples. Must be > 0.
-        delta: Total failure probability, in (0, 1). Default 0.05.
+        shots: Number of iid samples. Must be > 0.
+        delta: Failure probability for this single coordinate, in (0, 1).
+        support_size: Number of distinct outcomes. Defaults to 2 (a binary
+            measurement). It only widens the per-coordinate bound via the
+            Bonferroni-corrected ``delta/support_size`` below.
 
     Returns:
-        A non-negative TV-distance upper bound.
+        Upper bound on |P_hat(y) - P(y)| for one outcome.
 
     Raises:
-        ValueError: If shots <= 0 or delta is outside (0, 1).
+        ValueError: If shots <= 0, delta outside (0, 1), or support_size < 1.
     """
     import math
 
@@ -58,8 +66,94 @@ def hoeffding_total_variation_bound(shots: int, delta: float = 0.05) -> float:
         raise ValueError(f"shots must be a positive integer, got {shots}")
     if not (0.0 < delta < 1.0):
         raise ValueError(f"delta must lie strictly in (0, 1), got {delta}")
+    if support_size < 1:
+        raise ValueError(f"support_size must be >= 1, got {support_size}")
 
-    return math.sqrt(math.log(2.0 / delta) / (2.0 * shots))
+    return math.sqrt(math.log(2.0 * support_size / delta) / (2.0 * shots))
+
+
+def hoeffding_total_variation_bound(
+    shots: int,
+    support_size: int = 2,
+    delta: float = 0.05,
+) -> float:
+    """
+    Rigorous bound on the total-variation distance between an empirical
+    distribution over ``shots`` iid samples and the true distribution, holding
+    with probability at least ``1 - delta``.
+
+        TV(P_emp, P_true) = 1/2 * ||P_emp - P_true||_1
+                          <= sqrt( ln((2^K - 2)/delta) / (2 * shots) )
+
+    where ``K = support_size`` is the number of distinct outcomes.
+
+    Derivation
+    ----------
+    Weissman, Ordentlich, Seroussi, Verdú and Weinberger (2003), Theorem 2.1,
+    via Lemma 1 of Mardia, Jiao, Tánczos, Nowak and Weissman (2019), gives
+
+        Pr(||P_hat - P||_1 >= eps) <= (2^K - 2) * exp(-n * phi(pi_P) * eps^2 / 4)
+
+    where ``phi(p) = ln((1-p)/p) / (1 - 2p) >= 2`` and ``pi_P`` is the
+    concentration function of P. Solving for ``eps`` and using ``phi >= 2``
+    gives the L1 bound ``2*sqrt(ln((2^K-2)/delta) / (2n))``; total variation is
+    half the L1 distance, hence the expression above. Using ``phi >= 2`` makes
+    the bound distribution-independent, which is what a result schema needs.
+
+    Why the support size is required
+    -------------------------------
+    Hoeffding's per-outcome inequality is dimension-free, but total variation
+    sums over all K outcomes and the concentration prefactor ``2^K - 2``
+    depends on K. Dropping it is not conservative, it is wrong: for a uniform
+    distribution over K = 64 outcomes with 1000 shots, the dimension-free
+    expression ``sqrt(ln(2/delta)/(2n)) = 0.0429`` is exceeded 100% of the
+    time, whereas this bound is never exceeded at its stated confidence.
+
+    Note the bound is a *confidence statement*: it may be violated with
+    probability up to ``delta``. For K = 2 it reduces exactly to the familiar
+    ``sqrt(ln(2/delta)/(2n))``.
+
+    For large K this becomes vacuous (it exceeds the maximum possible value of
+    TV distance, which is 1.0, and the result is clamped to 1.0). That is an
+    honest outcome, not a defect. For high-support cases prefer per-outcome
+    confidence intervals (:func:`hoeffding_proportion_bound`).
+
+    Args:
+        shots: Number of iid samples. Must be > 0.
+        support_size: Number of distinct outcomes (e.g. ``1 << num_qubits``).
+        delta: Failure probability, in (0, 1).
+
+    Returns:
+        Total-variation upper bound, clamped to 1.0.
+
+    Raises:
+        ValueError: If shots <= 0, support_size < 1, or delta outside (0, 1).
+    """
+    import math
+
+    if shots <= 0:
+        raise ValueError(f"shots must be a positive integer, got {shots}")
+    if support_size < 1:
+        raise ValueError(f"support_size must be >= 1, got {support_size}")
+    if not (0.0 < delta < 1.0):
+        raise ValueError(f"delta must lie strictly in (0, 1), got {delta}")
+
+    if support_size <= 2:
+        # 2^K - 2 = 2 for K = 2 and 0 for K = 1; K = 1 is a degenerate
+        # distribution with no deviation possible.
+        if support_size == 1:
+            return 0.0
+        log_prefactor = math.log(2.0)
+    else:
+        # ln(2^K - 2), computed stably. For K >= 2 the correction from the
+        # subtracted 2 is below double precision, so ln(2^K - 2) = K*ln2 to
+        # machine accuracy; writing it this way avoids overflowing 2^K for
+        # wide registers (K = 1000 overflows exp()).
+        log_prefactor = support_size * math.log(2.0)
+
+    log_ratio = log_prefactor - math.log(delta)
+    bound = math.sqrt(log_ratio / (2.0 * shots))
+    return min(bound, 1.0)
 
 
 @dataclass
@@ -83,8 +177,10 @@ class SimulationResult:
        into ``shots`` sampled counts, via
        :func:`hoeffding_total_variation_bound`.
 
-    ``total_error_bound`` is their sum, so the overall guarantee on the returned
-    distribution is always visible and honest.
+    ``total_error_bound`` composes these into one figure *only* when they share
+    a metric that makes the triangle inequality applicable; it is ``None``
+    otherwise. See the property for the exact conditions - a bound on
+    expectation values does not bound a bitstring distribution.
 
     Attributes:
         path (str): Execution path used ('A', 'B', 'C', or 'D').
@@ -126,14 +222,40 @@ class SimulationResult:
                 self.state = SimulationState.CERTIFIED
 
     @property
-    def total_error_bound(self) -> float:
-        """Total bound on distance between the returned distribution and the true one."""
-        total = float(self.error_bound)
+    def total_error_bound(self) -> Optional[float]:
+        """
+        Sum of the component bounds, on the same metric where justified.
+
+        Composition is only meaningful when every component bounds the *same*
+        quantity in the *same* metric, so that the triangle inequality applies.
+        That holds when all components are total-variation-like distances
+        between a returned distribution and the ideal one:
+
+        * ``error_bound`` - deliberate approximation of the distribution.
+        * ``numerical_error_bound`` - measured roundoff in the state, which
+          propagates to the distribution.
+        * ``sampling_error_bound`` - finite-shot deviation of the empirical
+          distribution from the exact one.
+
+        Returns ``None`` when the components do not share a metric - in
+        particular when the backend reports only expectation values, because a
+        bound on observables does not bound a bitstring distribution. Summing in
+        that case would produce a number that means nothing.
+
+        The confidence levels differ too: the sampling bound holds with
+        probability >= 1 - delta, not deterministically. Treat the sum as a
+        confidence statement, not a worst case.
+        """
+        if self.expectation_values is not None and not self.counts:
+            # Observable-space bound only; there is no distribution to bound.
+            return None
+
+        components = [float(self.error_bound)]
         if self.numerical_error_bound is not None:
-            total += float(self.numerical_error_bound)
+            components.append(float(self.numerical_error_bound))
         if self.sampling_error_bound is not None:
-            total += float(self.sampling_error_bound)
-        return total
+            components.append(float(self.sampling_error_bound))
+        return sum(components)
 
     @property
     def is_exact(self) -> bool:
@@ -161,6 +283,9 @@ class SimulationResult:
             "numerical_error_bound": self.numerical_error_bound,
             "sampling_error_bound": self.sampling_error_bound,
             "total_error_bound": self.total_error_bound,
+            "error_bound_metric": (
+                "total_variation" if self.total_error_bound is not None else None
+            ),
             "unresolved": self.unresolved,
             "state": self.state.value if self.state else status_compat,
             "status": status_compat,

@@ -4,7 +4,6 @@
 
 <p align="center">
   <a href="https://github.com/timfromhcs/CQ-HECS/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/timfromhcs/CQ-HECS/ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=CI%2FCD" alt="CI/CD Status"/></a>
-  <a href="https://www.vulkan.org/"><img src="https://img.shields.io/badge/VULKAN-1.3%20SPIR--V%20COMPUTE-red?style=for-the-badge&logo=vulkan&logoColor=white" alt="Vulkan 1.3"/></a>
   <a href="https://isocpp.org/"><img src="https://img.shields.io/badge/C%2B%2B-20%20STANDARD-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white" alt="C++20"/></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/PYTHON-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.10+"/></a>
   <a href="scripts/verify_no_silent_truncation.py"><img src="https://img.shields.io/badge/TRUNCATION-ZERO%20SILENT%20CUTOFFS-brightgreen?style=for-the-badge" alt="Zero Silent Truncation"/></a>
@@ -14,129 +13,141 @@
 
 ---
 
-## 1. Überblick & Projektstand
+## 1. Überblick
 
-**CQ-HECS** (Classical Quantum High-Efficiency Compute Simulator) ist ein hardwarenaher, herstellerunabhängiger Quantenschaltungsemulator und algebraischer Constraint-Solver. Er kombiniert ein **Vulkan 1.3 SPIR-V Compute-Backend** mit einer **Four-Path-Architektur**, exakter **Giles-Selinger-Ring-Arithmetik** $\mathbb{Z}[1/\sqrt{2}, i]$ und deterministischer Fehlerüberwachung.
+**CQ-HECS** (Classical Quantum High-Efficiency Compute Simulator) ist ein klassischer Quantenschaltungsemulator mit einer geprüften **Four-Path-Architektur**, einer `cq-hecs`-CLI mit festem JSON-Vertrag, Qiskit-BackendV2-Integration und einem eigenständigen C++20/Vulkan-Nativkern. Alle vier Simulationspfade rechnen **ausschließlich auf der CPU**; der Nativkern ist ein separat gebautes, separat getestetes Artefakt.
 
-Im Gegensatz zu Heuristik-Simulatoren mit stillschweigenden Bond-Dimension-Cutoffs (wie $\chi = 48$) garantiert CQ-HECS:
-- **Keine stillen Approximationen:** Bindungsdimensionen werden nie heimlich abgeschnitten. Überschreitet ein Zustand das Speicher- oder Fehlertoleranzbudget, wird das Ergebnis explizit als `unresolved=True` markiert – niemals geraten.
-- **Herstellerunabhängiges Vulkan-Backend:** Standardisierte SPIR-V Compute-Shader laufen nativ auf AMD (RDNA 1/2/3/4), Intel (Arc Alchemist/Battlemage), NVIDIA (RTX/Tesla) und Apple Silicon (via MoltenVK) als offene, portable Alternative zu proprietären CUDA-Stacks (cuStateVec / cuTensorNet).
-- **Exakte Giles-Selinger-Arithmetik $\mathbb{Z}[1/\sqrt{2}, i]$:** Alle Clifford+T-Gatteroperationen werden verlustfrei im dyadischen zyklotomischen Ring $\mathbb{Z}[1/\sqrt{2}, i]$ abgebildet, wodurch kumulative Fließkomma-Rundungsfehler ($U^\dagger U = \mathbb{I}$) physikalisch ausgeschlossen sind.
-- **Wissenschaftliche Entropie-Ehrlichkeit:** Unverkürztes Matrix Product State (MPS) Parsing gilt strikt für **Area-Law**-Verschränkung ($S_{vN} \le \text{const}$). Bei **Volume-Law** (Random Circuit Sampling) wird die Entropie-Explosion ($\chi \sim 2^{L/2}$) offen deklariert: Die Ausführung eskaliert zu Pfad D (Sparse-Pauli mit zertifizierter Fehlerschranke) oder bricht kontrolliert ab.
+Das Versprechen dieses Projekts ist **nicht** universelle effiziente Simulation, sondern:
+
+- **Keine stillen Approximationen.** Bindungsdimensionen werden nie heimlich abgeschnitten. Wo eine Grenze erreicht wird, eskaliert das Ergebnis oder wird als `unresolved=True` markiert — niemals geraten.
+- **Keine erfundenen Resultate.** Zählungen, die nicht wirklich gemessen wurden, werden nicht ausgegeben; unbekannte Gatter werden mit typisiertem Fehler abgelehnt, nicht als Identität behandelt.
+- **Fehlerschranken mit Namen.** `error_bound` (bewusste Näherung), `numerical_error_bound` (numerische Diagnostik) und `sampling_error_bound` (endliche Stichprobe) sind getrennt. Wo keine gültige Schranke ableitbar ist, steht `None` — keine Zahl zum Schein.
+- **Ehrliche Grenzen.** Keine Aussage über Bereiche, die nicht tatsächlich gemessen oder bewiesen wurden; die Hardware-Verifikationsstufen sind je Plattform ausgewiesen ([§8](#8-hardware-support-matrix--verifikationsstufen)).
 
 ---
 
-## 2. Fähigkeiten und Grenzen: Was CQ-HECS kann / Was CQ-HECS nicht kann
+## 2. Fähigkeiten und Grenzen
 
-Um falschen Erwartungen und Hype vorzubeugen, sind die theoretischen und praktischen Grenzen des Systems verbindlich definiert:
-
-| Domäne / Schaltungsklasse | Was CQ-HECS kann (Verifizierte Fähigkeiten) | Was CQ-HECS nicht kann (Wissenschaftliche Grenzen) |
+| Domäne / Schaltungsklasse | Was CQ-HECS kann (verifiziert) | Was CQ-HECS nicht kann (Grenzen) |
 | :--- | :--- | :--- |
-| **Reine Clifford-Schaltungen ($T = 0$)** | **Bit-exakte Simulation** via Gottesman-Knill Stabilizer-Tableau in polynomialer Zeit $O(N^2)$ und Speicher für hunderte Qubits (z.B. 100-Qubit GHZ-Zustände mit exakten Zählungen). | **Nicht anwendbar auf universelle Quantenrechnung** ohne T-Gatter. Nicht-Clifford-Operationen erfordern automatische Eskalation zu Pfad B/C/D. |
-| **Moderater $T$-Count ($T \le 14$)** | **Bit-exakte Stabilizer-Rank-Dekomposition** (Bravyi-Smith-Smolin) im dyadischen Ring $\mathbb{Z}[1/\sqrt{2}, i]$ ohne Gleitkomma-Drift ($0.0$ Fehler). | **Skaliert exponentiell** mit dem T-Count: $O(2^{\alpha T})$. Schaltungen mit tiefem T-Count ($T > 50$) übersteigen jedes klassische Rang-Budget. |
-| **1D Area-Law Verschränkung** | **Speichereffizientes Vulkan-MPS** ohne Silent Cutoffs. Zustände mit konstanter Entropie (z.B. GHZ-300 mit $\chi=2$) benötigen **$< 5$ MB residenten VRAM** auf Vulkan 1.3 Compute-Pipelines. | **Keine effiziente Repräsentation für 2D/3D All-to-All Cluster.** Bei Schaltungen mit dichter Quervernetzung wächst $\chi$ exponentiell. |
-| **Volume-Law / Deep Random Circuits** | **Transparente Fehlerkontrolle:** Erreicht die Verschränkung das Speicherbudget, wird die Schaltung nicht heimlich verkürzt, sondern an Pfad D übergeben oder als `unresolved=True` deklariert. | **Keine Lösung von Quantensuprematie** ($\text{BPP} \ne \text{BQP}$). Tiefe Zufallsschaltungen (Random Circuit Sampling) können klassisch nicht verlustfrei in Polynomialzeit simuliert werden. |
-| **Zertifizierte Approximation (Pfad D)** | **Heisenberg-Picture Sparse-Pauli-Dynamics** mit mathematisch bewiesener oberer Fehlerschranke: $\Delta \le \sum_{P \in \mathcal{D}} \|c_P\|$. Toleranzüberschreitung liefert `unresolved=True`. | **Kein Allheilmittel für chaotische Operatorexpansion:** Streuen die Pauli-Gewichte exponentiell, übersteigt die Schranke die Nutzertoleranz $\epsilon$, und die Simulation verweigert das Raten. |
-| **ARX & Krypto-Testbench** | **Algebraische SAT-Analyse** für reduzierte Runden von ChaCha20 (20 Runden Spezifikation), SHA-256 (64 Schritte Spezifikation) und BLAKE2b (12 Runden Spezifikation) als Constraint-Solver-Benchmark. | **Kein Brechen voller kryptografischer Primitives.** Keine Preimage-Inversion für 256-Bit-Vollverschlüsselungen (kein Bruch von SHA-256 oder ChaCha20). |
+| **Reine Clifford-Schaltungen ($T = 0$)** | Exakte Simulation über das Gottesman-Knill-Tableau (GF(2)-symplektische Arithmetik); polynomielle Zeit- und Speicherskalierung; GHZ-Strukturen bis in den Bereich von über 100 Qubits über Pfad A. | Kein universeller Simulator: das erste nicht-Clifford-Gatter verlangt einen anderen Pfad. |
+| **Niedriger $T$-Count** | Pfad B: exakte Stabilizer-Rank-Zerlegung der nicht-Clifford-Gatter (kein Term wird gestrichen), Auswertung in IEEE-754 float64. Implementierter Deckel: **22 Qubits** (Implementation-Deckel, kein Theorem). | Skaliert exponentiell mit dem T-Count ($O(2^{\alpha T})$); tiefe zufällige Clifford+T-Schaltungen übersteigen jedes Rangbudget. |
+| **1D Area-Law Verschränkung** | Pfad C: untruncated MPS — die Bindungsdimension wächst zur vollen numerischen Rangstufe; die SVD-Rangwahl verwirft nur Werte unterhalb einer relativen Rundungsschwelle (1e-13 × σ_max); Speicherbudgetüberschreitung verlässt den Zustand kohärent. | Keine effiziente Repräsentation für dichte 2D-/3D-Verschränkung; χ kann exponentiell wachsen. |
+| **Volume-Law / tiefe Zufallsschaltungen** | Pfad C eskaliert bei Speichergrenze transparent auf Pfad D oder markiert `unresolved=True`. | Kein Brechen von BQP ≠ BPP: Random Circuit Sampling bleibt klassisch nicht verlustfrei in Polynomialzeit simulierbar. |
+| **Zertifizierte Observable-Näherung (Pfad D)** | Heisenberg Sparse-Pauli-Dynamics mit bewiesener Schranke $\Delta \le \sum_{P \in \mathcal{D}} |c_P|$ für die angefragten Observablen ($\langle Z_q \rangle$, $\langle Z_q Z_r \rangle$); `unresolved=True` ohne Werte, wenn die Schranke die Toleranz überschreitet. | Keine zertifizierte Schranke auf einer gemeinsamen Messverteilung; gemeinsame Counts nur opt-in und als keine gemeinsame Verteilung markiert. |
+| **ARX & Krypto-Testbench** | Algebraische SAT-Analyse für reduzierte Runden von ChaCha20 (20-Runden-Spezifikation), SHA-256 (64 Schritte) und BLAKE2b (12 Runden). | **Kein Brechen voller kryptografischer Primitives** — keine Preimage-Inversion für 256-Bit-Vollverschlüsselungen. |
+| **Endliche Stichproben** | Der Stichprobenfehler ist eine supportgrößen-abhängige Konzentrationsschranke (Weissman et al. 2003): $\mathrm{TV} \le \sqrt{\ln((2^K - 2)/\delta)/(2n)}$; bei $K = 2$ exakt der klassische Hoeffding-Wert; in Log-Domäne berechnet (kein Overflow bei großen $K$). | Keine dimensionsfreie Schranke auf beliebigen Supportgrößen; bei sehr großem $K$ wird die Schranke ehrlicherweise trivial (nahe 1). |
 
 ---
 
-## 3. Die Four-Path-Architektur
+## 3. Four-Path-Architektur
 
 ```mermaid
 flowchart TD
     A["Quantum Circuit / OpenQASM / Qiskit"] --> B["EntanglementAdaptiveRouter / CircuitAnalyzer"]
-    B -->|"T-Count = 0 (Pure Clifford)"| PathA["Path A: Stabilizer-Tableau (Exact, O-N2)"]
-    B -->|"T-Count <= 14 (Low Non-Clifford)"| PathB["Path B: Stabilizer-Rank-Decomposition (Exact, Giles-Selinger Ring)"]
-    B -->|"Area-Law Entanglement (1D Topology)"| PathC["Path C: Vulkan-MPS without Cutoff (Exact, Dynamic Chi)"]
-    B -->|"Volume-Law / Budget Exceeded"| PathD["Path D: Certified Classical Approximation (Sparse-Pauli-Dynamics)"]
+    B -->|"T-Count = 0 (Pure Clifford)"| PathA["Path A: Stabilizer-Tableau (Exact)"]
+    B -->|"Low T-Count"| PathB["Path B: Stabilizer-Rank-Decomposition (Exact algebra, float64)"]
+    B -->|"Area-Law/1D + Memory-aware"| PathC["Path C: Untruncated MPS (CPU)"]
+    B -->|"Observable-only, zertifiziert / Erzwungen fallback von C"| PathD["Path D: Sparse-Pauli (Certified Observables)"]
 
     PathA --> R["SimulationResult (path, exact, error_bound, unresolved)"]
     PathB --> R
-    PathC -->|"Storage Limit Exceeded w/o Opt-in"| PathD
-    PathC -->|"Exact within Memory"| R
-    PathD -->|"Error Bound <= Tolerance"| R
-    PathD -->|"Error Bound > Tolerance"| U["Mark as 'unresolved=True' (No Guessing)"]
+    PathC --> R
+    PathD -->|"Δ > ε"| U["unresolved=True (kein Rat)"]
+    PathD -->|"Δ ≤ ε"| R
 ```
 
 ### Spezifikation der Pfade
 
-| Pfad | Methode | Zielklasse | Exaktheit | Fehlerschranke ($\epsilon$) | Ressourcen-Skalierung | Verhalten bei Grenzüberschreitung |
-| :--- | :--- | :--- | :---: | :---: | :--- | :--- |
-| **Pfad A** | Stabilizer-Tableau | Reines Clifford ($T = 0$) | **Exakt** | $0.0$ | Polynomial $O(N^2)$ Zeit & Speicher | Erstes T-Gatter eskaliert zu Pfad B |
-| **Pfad B** | Stabilizer-Rank | Niedriger $T$-Count ($T \le 14$) | **Exakt** | $0.0$ | Exakte Rangzerlegung $O(2^{\alpha T})$ | Budget überschritten eskaliert zu Pfad C/D |
-| **Pfad C** | Vulkan-MPS | Area-Law (1D Verschränkung) | **Exakt** | $0.0$ | Dynamisches $\chi$ ohne Silent Cutoffs | Speicherbudget überschritten eskaliert zu Pfad D |
-| **Pfad D** | Sparse-Pauli-Dynamics | Arbiträr / Volume-Law | **Zertifiziert** | $\Delta \le \sum_{P \in \mathcal{D}} \|c_P\|$ | Heisenberg-Operator-Tracking | $\Delta > \epsilon_{\text{tol}}$ setzt `unresolved=True` |
+| Pfad | Methode | Zielklasse | Algebra | Fehlerschranke | Ressourcengrenze | Verhalten an der Grenze |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **A** | Stabilizer-Tableau | Reines Clifford ($T = 0$) | GF(2)-symplektisch, exakt | $0{,}0$ (keine Approximation) | polynomiell $O(N^2)$ | Nicht-Clifford-Gatter → typisierte Ablehnung (kein stilles Ignorieren) |
+| **B** | Stabilizer-Rank | Niedriger $T$-Count | exakte Zerlegung, Auswertung float64 | exakte Algebra; numerische Diagnostik separat | $O(2^{\alpha T})$ Zweige; **22-Qubit-Deckel** | Deckel-/Gate-Überschreitung → typisierter Fehler (keine Fake-Counts) |
+| **C** | MPS | 1D Area-Law | float64; SVD nur unterhalb der Relativschwelle | `numerical_error_bound=None`; `discarded_spectral_mass_diagnostic` | Speicherbudget; dense Sampling ≤ 20 Qubits | Budget → kohärenter Abbruch, dann D/unresolved; Sampling-Grenze → keine Counts statt Platzhalter |
+| **D** | Sparse-Pauli | Observable-Queries | Konjugation in der $X^x Z^z$-Basis (Tabelle gegen explizite Matrizen geprüft) | $\Delta \le \sum_{P \in \mathcal{D}} \|c_P\|$ | Pauli-Termbudget K | $\Delta > \epsilon$ → sofort `unresolved=True`, ohne Werte |
 
 ### Explizite Simulationszustände (`SimulationState`)
 
-Jedes `SimulationResult` liefert einen verbindlichen, maschinenlesbaren Zustand über das Enum `SimulationState`:
+Jedes `SimulationResult` trägt einen verbindlichen, maschinenlesbaren Zustand:
 
-| Zustand (`SimulationState`) | Kriterien | Bedeutung / Semantik |
+| Zustand (`SimulationState`) | Kriterien | Bedeutung |
 | :--- | :--- | :--- |
-| `EXACT` | `exact == True` und `error_bound == 0.0` | Bit-exaktes Ergebnis ohne Approximationsfehler (Pfad A, Pfad B oder ungeschnittenes Pfad C). |
-| `CERTIFIED` | `not exact` und `not unresolved` | Klassische Näherung (Pfad D) mit mathematisch garantierter Fehlerschranke $\Delta \le \epsilon_{\text{tol}}$. |
-| `UNRESOLVED` | `unresolved == True` oder $\Delta > \epsilon_{\text{tol}}$ | Schaltung überschreitet Verschränkungs- oder Toleranzgrenzen. Die Simulation verweigert Raten. |
-| `FAILED` | Ausnahme / Validierungsfehler | Technischer Fehler in Ausführung oder Pipeline. |
+| `EXACT` | `exact == True`, kein bewusster Näherungsschritt | Algebraisch exakt; die float64-Fehlerklasse ist über `numerical_mode` separat ausgewiesen (Pfad A, B, untruncated C). |
+| `CERTIFIED` | `not exact` und `not unresolved` | Zertifizierte Näherung mit bewiesener Schranke über die tatsächlich zurückgegebene Größe (Pfad D). |
+| `UNRESOLVED` | `unresolved == True` oder $\Delta > \epsilon_{\text{tol}}$ | Schaltung überschreitet Verschränkungs-, Speicher- oder Toleranzgrenzen. Die Simulation verweigert das Raten und liefert keine Werte. |
+| `FAILED` | Ausnahme / Validierungsfehler | Technischer Fehler in Ausführung oder Pipeline; nie „erfolgreich aussehend". |
+
+Wichtig: `exact=True` heißt **keine bewusste Näherung angewendet**,
+nicht *(mathematisch exakte Arithmetik)*. Die Arithmetik-Klasse ist auf jedem
+Resultat über `numerical_mode` explizit benannt (z. B.
+`exact-symplectic-gf2`, `float64-exact-decomposition`, `float64-untruncated-mps`,
+`float64-heisenberg-certified`).
 
 ---
 
 ## 4. Mathematische Grundlagen
 
-### Pfad A: Gottesman-Knill Tableau
-Clifford-Gatter ($H, S, CX, CZ, SWAP$) überführen Pauli-Operatoren bijektiv in Pauli-Operatoren:
+### Pfad A: Gottesman-Knill-Tableau
+Clifford-Gatter ($H, S, CX, CZ, SWAP$) bilden Pauli-Operatoren bijektiv ab:
+
 $$U^\dagger P U = P' \in \mathcal{P}_n$$
-Der Zustand wird durch ein binäres symplektisches Tableau der Dimension $(2N + 1) \times (2N + 1)$ nach Aaronson-Gottesman verlustfrei nachverfolgt.
 
-### Pfad B: Dyadischer Zyklotomischer Ring $\mathbb{Z}[1/\sqrt{2}, i]$
-Alle Matrixelemente von Clifford+T-Gattern liegen exakt im Ring $\mathbb{Z}[1/\sqrt{2}, i]$:
-$$\frac{a + b\sqrt{2} + c i + d i\sqrt{2}}{(\sqrt{2})^k}, \quad a,b,c,d \in \mathbb{Z}, \; k \in \mathbb{N}$$
-Die Zerlegung nach Bravyi-Smith-Smolin überführt $t$ Nicht-Clifford-Gatter in eine Summe von $2^{\alpha t}$ Stabilizer-Zuständen mit exakter Integrität ($U^\dagger U = \mathbb{I}$).
+Der Zustand wird über ein binäres symplektisches Tableau (Aaronson-Gottesman) verlustfrei nachverfolgt. Die Arithmetik ist vollständig ganzzahlig — kein Gleitkommawert beteiligt, weshalb `error_bound = 0.0` hier eine algebraische Aussage ist.
 
-### Pfad C: Unverkürztes Vulkan-MPS (Area-Law)
-Bei zweistelligen unitären Kontraktionen wird die Singulärwertzerlegung (SVD) berechnet:
+### Pfad B: Stabilizer-Rank-Zerlegung
+Nicht-Clifford-Rotationen ($T$, T†, RX, RY, RZ/P/U1 mit den korrekt zugeteilten Clifford-Generatoren X/Y/Z) werden in eine endliche Summe von Clifford-Zweigen zerlegt — kein Term wird weggestrichen:
+
+$$|\psi\rangle = \sum_{j=1}^{2^{\alpha t}} c_j |s_j\rangle, \qquad |s_j\rangle \text{ Clifford}$$
+
+Die Zerlegung selbst ist mathematisch exakt; die Auswertung nutzt IEEE-754 float64 und ist als `numerical_mode = float64-exact-decomposition` benannt. Der Sampling-Fehler wird separat über die supportgrößen-abhängige Schranke berichtet.
+
+### Pfad C: Untruncated MPS (Area-Law)
+Bei zwei-Qubit-Kontraktionen wird eine SVD auf dem zweistelligen Block berechnet:
+
 $$M = U S V^\dagger$$
-Für Area-Law-Zustände bleibt die von-Neumann-Verschränkungsentropie $S_{vN} = -\sum s_i^2 \ln(s_i^2)$ konstant. Für einen 300-Qubit-GHZ-Zustand ($\chi = 2$) belegt die Tensor-Kette lediglich **4.531 MB VRAM**.
+
+Es gibt **keine Budget-Truncation**: die Bindungsdimension wächst zur vollen numerischen Rangstufe. Die Rangwahl verwirft nur Werte unterhalb einer relativen Rundungsschwelle (1e-13 × σ_max) — eine Gleitkomma-Aussage, keine mathematische Approximation. Die verworfene Spektralmasse ist als `discarded_spectral_mass_diagnostic` gemeldet, aber sie ist **keine** zertifizierte Schranke für die zurückgegebenen Amplituden; `numerical_error_bound` bleibt deshalb `None`.
 
 ### Pfad D: Zertifizierte Pauli-Fehlerschranke
-Observablen evolvieren in der Heisenberg-Darstellung rückwärts: $O(t) = U^\dagger O U = \sum_{P} c_P P$.
+Observablen werden in der Heisenberg-Darstellung rückwärts evolviert: $O(t) = U^\dagger O U = \sum_P c_P P$.
+
 Werden Operatoren mit kleinen Koeffizienten verworfen ($\mathcal{D}$), gilt über die Dreiecksungleichung und $\|P\|_\infty = 1$:
-$$|\langle \psi | O_{\text{exact}} | \psi \rangle - \langle \psi | O_{\text{approx}} | \psi \rangle| \le \sum_{P \in \mathcal{D}} |c_P| = \Delta_{\text{trunc}}$$
-Wird $\Delta_{\text{trunc}} > \epsilon_{\text{toleranz}}$, verweigert CQ-HECS das Raten und setzt `unresolved=True`.
+
+$$\left|\langle O_{\text{exact}}\rangle - \langle O_{\text{approx}}\rangle\right| \le \sum_{P \in \mathcal{D}} |c_P| = \Delta_{\text{trunc}}$$
+
+Diese Schranke gilt **nur für die angefragten Observablen**, nicht für eine gemeinsame Messverteilung. Sobald $\Delta_{\text{trunc}}$ die Toleranz überschreitet, wird sofort `unresolved=True` **ohne Werte** gemeldet.
+
+### Endliche Stichproben: Support-abhängige Konzentrationsschranke
+Für eine kategoriale Verteilung mit Stützgröße $K$ (Anzahl möglicher Ausgänge), gemessen mit $n$ Shots, gilt die L1-Konzentration nach Weissman et al. (2003); mit TV $= \|\hat P - P\|_1 / 2$:
+
+$$\mathrm{TV}(\hat{P}, P) \le \sqrt{ \ln\!\left(\frac{2^K - 2}{\delta}\right) / (2 n) } \quad \text{mit Wahrscheinlichkeit } \ge 1 - \delta$$
+
+Bei $K = 2$ reduziert sich die Schranke exakt auf den klassischen Hoeffding-Wert $\sqrt{\ln(2/\delta)/(2n)}$. Der Faktor $(2^K-2)$ zählt die nicht-trivialen Teilmengen-Ereignisse des Supports (Alphabetgröße im Weissman-Bound). Wächst $K$, wird die Schranke groß — das wird ehrlich mitberichtet, nicht kaschiert. Die Schranke wird in Log-Domäne berechnet (kein Overflow) und bei 1.0 so angeklippt, dass sie als Wahrscheinlichkeitsabstand gültig bleibt.
 
 ---
 
 ## 5. Installation & Setup
 
-### Voraussetzungen
-- **C++ Compiler:** C++20-konform (GCC 12+, Clang 15+, MSVC 19.38+)
-- **CMake & Build:** CMake 3.22+, Ninja oder Visual Studio Build Tools
-- **Vulkan SDK:** Version 1.3+ (inkl. `glslangValidator` und Vulkan Loader)
-- **Python:** Version 3.10 bis 3.14
-
 ### 5.0 Nur Python (kein Vulkan erforderlich)
-
-Das Python-Paket, die CLI `cq-hecs` und alle vier klassischen Backends laufen
-**ausschließlich auf der CPU** und benötigen **kein Vulkan-SDK**:
+Das Python-Paket, die `cq-hecs`-CLI und alle vier Pfade laufen **ausschließlich
+auf der CPU** und benötigen **kein Vulkan-SDK**:
 
 ```bash
-pip install cqhecs
+pip install .             # aus dem Projektverzeichnis (Checkout)
 cq-hecs doctor
 cq-hecs run name:bell --shots 1000 --format json
 ```
 
-> Der native C++-Core (`cq_hecs`, `cq_hecs.dll` und die Python-Erweiterung
-> `_cqhecs_core`) benötigt das Vulkan-SDK, weil die öffentlichen Header
-> `vulkan/vulkan.h` direkt einbinden. Das ist eine Eigenschaft des nativen
-> Builds, nicht der Python-Oberfläche.
+> Der Nativkern (`cq_hecs.exe` / `cq_hecs.dll` / `_cqhecs_core`) benötigt das
+> Vulkan-SDK (die öffentlichen Header inkludieren `vulkan/vulkan.h`). Das
+> betrifft nur den nativen Build — nicht die Python-Oberfläche.
 
 ### 5.1 Linux (Ubuntu 22.04 / 24.04)
 ```bash
-# Systempakete und Vulkan SDK installieren
+# CMake/Ninja, C++-Compiler, Vulkan SDK (nur für den Nativkern)
 sudo apt-get update
 sudo apt-get install -y cmake ninja-build g++ libvulkan-dev glslang-tools vulkan-tools
 
-# Repository klonen & Python-Umgebung einrichten
 git clone https://github.com/timfromhcs/CQ-HECS.git
 cd CQ-HECS
 python3 -m venv .venv
@@ -148,10 +159,9 @@ pip install -e .
 
 ### 5.2 Windows 10 / 11 (PowerShell)
 ```powershell
-# Vulkan SDK via Chocolatey oder offiziellen Installer installieren
+# Vulkan SDK via Chocolatey oder offiziellen Installer (nur für den Nativkern)
 choco install vulkan-sdk cmake ninja -y --no-progress
 
-# Repository klonen & Python-Umgebung einrichten
 git clone https://github.com/timfromhcs/CQ-HECS.git
 cd CQ-HECS
 python -m venv .venv
@@ -159,98 +169,70 @@ python -m venv .venv
 pip install --upgrade pip
 pip install -r requirements.txt
 pip install -e .
+.\build.bat        # Nativkern (optional)
 ```
 
-### 5.3 macOS (Apple Silicon via MoltenVK)
+### 5.3 Wheel / sdist bauen
 ```bash
-# Abhängigkeiten via Homebrew installieren
-brew install cmake ninja molten-vk vulkan-headers vulkan-loader glslang spirv-tools
-
-# Environment auf MoltenVK konfigurieren
-export VULKAN_SDK=$(brew --prefix molten-vk)
-export VK_ICD_FILENAMES=$(brew --prefix molten-vk)/share/vulkan/icd.d/MoltenVK_icd.json
-
-# Repository klonen & Setup ausführen
-git clone https://github.com/timfromhcs/CQ-HECS.git
-cd CQ-HECS
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-pip install -e .
+python -m build
+# => dist/cqhecs-2.0.0-py3-none-any.whl und dist/cqhecs-2.0.0.tar.gz
 ```
 
 ---
 
 ## 6. Workflow & Ausführung
 
-### 6.0 CLI (`cq-hecs`)
-
+### 6.1 CLI (`cq-hecs`)
 ```bash
-cq-hecs doctor                        # Umgebung: OS, Python, Native-Binding, Vulkan
-cq-hecs backend list                  # Fähigkeiten der Pfade A-D
-cq-hecs analyze name:ghz8             # statische Analyse + Pfadempfehlung
-cq-hecs run name:bell --shots 1000    # Simulation
-cq-hecs verify name:bell --reference aer   # Vergleich gegen Qiskit Aer
-cq-hecs benchmark smoke               # reproduzierbarer Smoke-Benchmark
+cq-hecs version                        # Versionsinformation
+cq-hecs doctor                         # Umgebung: OS, Python, Nativ-Binding, Vulkan-Stufen
+cq-hecs backend list                   # Fähigkeiten und Gate-Sets der Pfade A-D
+cq-hecs analyze name:ghz8              # statische Analyse + Pfadempfehlung
+cq-hecs run name:bell --shots 1000 --seed 42
+cq-hecs verify name:bell --reference aer
+cq-hecs benchmark smoke                # reproduzierbarer Smoke-Benchmark
 ```
 
 `--format json` schreibt **genau ein** JSON-Dokument auf stdout; Diagnosen gehen
 immer an stderr. Exit-Codes: `0` Erfolg, `1` unerwarteter Fehler, `2`
 Verwendungsfehler, `3` unresolved, `4` Umgebung nicht verfügbar.
 
-Verfügbare Referenzschaltungen: `ghz8`, `ghz16`, `bell`, `clifford6`,
-`low_t_rank4`, `mps6`, `sparse_pauli4`, `ghz8_measured`, `bell_measured`
-(`cq-hecs analyze name:<name>`).
+Verfügbare Referenzschaltungen (`cq-hecs analyze name:<name>`): `bell`,
+`bell_measured`, `clifford6`, `ghz8`, `ghz8_measured`, `ghz16`, `low_t_rank4`,
+`mps6`, `sparse_pauli4`.
 
-### 6.1 Vulkan Compute-Shader kompilieren & verifizieren
-Kompiliert alle 12 Vulkan 1.3 SPIR-V Compute-Shader mit `glslangValidator`:
+### 6.2 Vulkan Compute-Shader kompilieren & verifizieren
+Kompiliert alle Vulkan-Compute-Shader mit `glslangValidator`:
 ```bash
 python scripts/verify_vulkan_shaders.py
 ```
 
-### 6.2 C++20 Core & Test-Suite bauen
+### 6.3 C++20 Core & Test-Suite bauen
 ```bash
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCQ_BUILD_TESTS=ON
 cmake --build build --config Release
 ctest --test-dir build --output-on-failure
 ```
 
-### 6.3 Python-Testsuite ausführen
+### 6.4 Python-Testsuite ausführen
 ```bash
-# Vollständige Suite:
-pytest tests/ -ra
-
-# Korrektheitsverträge der vier Pfade (Fabrikations- und Trunkierungsregressionen):
-pytest tests/test_correctness_contracts.py -v
-
-# CLI-Vertrag (JSON-Reinheit, Exit-Codes):
-pytest tests/test_cli_contract.py -v
-
-# Versionskonsistenz über alle öffentlichen Oberflächen:
-python scripts/check_version.py
-
-# Audit gegen verbotene Silent Cutoffs (chi=48):
-python scripts/verify_no_silent_truncation.py
+pytest tests/ -ra                                        # vollständige Suite
+pytest tests/test_correctness_contracts.py -v            # 4-Pfad-Korrekturregressionen
+pytest tests/test_cli_contract.py -v                     # JSON-Reinheit, Exit-Codes
+python scripts/check_version.py                          # Versionskonsistenz aller Flächen
+python scripts/verify_no_silent_truncation.py            # Audit gegen Silent Cutoffs
+python scripts/run_mutation_tests.py                     # Mutation harness (fail-closed)
 ```
 
-### 6.4 Benchmarks ausführen
-Die Benchmark-Suite deckt 10 Schaltungs- und Solver-Klassen systematisch ab:
-1. **Area-Law Entanglement Scaling (GHZ):** 10 bis 300 Qubits mit konstanter Bindungsdimension $\chi=2$ (< 5 MB VRAM).
-2. **1D Cluster Graph States:** Messungsbasierte Quantenzustände (MBQC) bis 200 Qubits.
-3. **Nearest-Neighbor Brickwork Layers:** 2-Qubit Gatterkontraktionen mit exakter MPS-Repräsentation.
-4. **Volume-Law Entanglement Boundaries:** Entropie-Explosion ($S \sim L/2 \implies \chi \sim 2^{L/2}$) mit transparenter Eskalation zu Pfad D oder `unresolved=True`.
-5. **Clifford Random Circuits (Pfad A):** Bit-exakte symplektische Skalierung für 10 bis 300 Qubits.
-6. **Low-T Stabilizer Rank Decomposition (Pfad B):** T=2 bis 14 mit 100% Ring-Integrität.
-7. **Sparse-Pauli Observable Dynamics (Pfad D):** Heisenberg-Picture Dynamik mit zertifizierter Fehlerschranke $\Delta \le \sum |c_P|$.
-8. **Giles-Selinger Ring $\mathbb{Z}[1/\sqrt{2}, i]$ vs Float64:** 100.000 Zyklen mit $0.0$ numerischem Drift.
-9. **Klassische SAT & ARX Solver:** DIMACS CNF (Pigeonhole & Hard-UF50) und ARX Step-Inversion (BLAKE2b, ChaCha20, SHA-256).
-10. **Cross-Vendor GPU Architektur-Matrix:** Direkter Vergleich CQ-HECS Vulkan vs Qiskit Aer vs cuTensorNet.
-
+### 6.5 Benchmarks ausführen
+Reproduzierbarer Smoke-Benchmark — der Datensatz, an dem die aktuellen Claims
+hinterlegt sind:
 ```bash
-python benchmarks/run_vulkan_mps_benchmarks.py
+cq-hecs --format json benchmark smoke
 ```
+Die Rohdaten liegen in [`benchmarks/smoke_results_current.json`](benchmarks/smoke_results_current.json); Provenienz (Commit, Version, Hardware, Abhängigkeiten) ist in [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) erfasst.
 
-Ergebnisse werden maschinenlesbar in [`benchmarks/vulkan_mps_benchmark_results.json`](benchmarks/vulkan_mps_benchmark_results.json) und aufbereitet im Evaluierungsbericht [`benchmarks/VULKAN_MPS_EVALUATION.md`](benchmarks/VULKAN_MPS_EVALUATION.md) ausgegeben.
+Die historischen Mess-Tabellen bleiben in [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) als **historisch/STALE** gekennzeichnet und werden nicht als v2-Messwerte gelesen.
 
 ---
 
@@ -261,10 +243,8 @@ Ergebnisse werden maschinenlesbar in [`benchmarks/vulkan_mps_benchmark_results.j
 from qiskit import QuantumCircuit
 from cqhecs.backend import CQHecsBackend
 
-# CQ-HECS Backend initialisieren (automatische Four-Path-Routenwahl)
-backend = CQHecsBackend(num_qubits=100)
+backend = CQHecsBackend(num_qubits=100)   # backend_version == cqhecs.__version__
 
-# 100-Qubit GHZ-Schaltung (wird bit-exakt über Pfad A ausgeführt)
 qc = QuantumCircuit(100)
 qc.h(0)
 for i in range(99):
@@ -273,80 +253,104 @@ qc.measure_all()
 
 job = backend.run(qc, shots=1000)
 result = job.result()
-print("Messzählungen:", result.get_counts())
+print(result.get_counts())
 ```
 
-### 7.2 Entanglement-Adaptive Schaltungs-Router
+Klassische Bit-Abbildung: Bei `measure_all()` erscheint Qubit `q` rechtsbündig
+innerhalb des hinten angehängten klassischen Registers (Qiskit-Konvention,
+Qubit 0 am weitesten rechts) — das Verhalten ist gegen Aer getestet.
+
+### 7.2 Router
 ```python
 from qiskit import QuantumCircuit
 from cqhecs.router import EntanglementAdaptiveRouter
 
-# Router mit strikter Fehlertoleranz von 1% konfigurieren
 router = EntanglementAdaptiveRouter(error_tolerance=0.01)
 
 qc = QuantumCircuit(4)
-qc.h(0)
-qc.t(0)
-qc.cx(0, 1)
+qc.h(0); qc.t(0); qc.cx(0, 1)
 
 res = router.route_and_execute(qc, shots=1000)
-print(f"Gewählter Pfad: {res.path}")
-print(f"Exakt: {res.exact} | Fehlerschranke: {res.error_bound} | Unresolved: {res.unresolved}")
+print(res.path, res.exact, res.error_bound, res.unresolved)
 ```
 
-### 7.3 CLI-Ausführung
-```bash
-# OpenQASM Simulation
-./build/bin/cq_hecs qasm benchmarks/qasm/ghz_300.qasm --json
+Der Router ist fail-closed: erzwungene Pfade werden nicht still umgeleitet;
+nur typisierte Capability-/Ressourcenfehler lösen eine Eskalation aus —
+keine willkürlichen `Exception`s.
 
-# SAT-Solving via DPLL & Cuckoo Loop Pruner
-./build/bin/cq_hecs sat benchmarks/sat/pigeonhole_6_5.cnf --json
+### 7.3 Pfad D explizit
+```python
+from qiskit import QuantumCircuit
+from cqhecs.backends import PathDSparsePauliBackend
 
-# ARX Constraint-Analyse auf Standardspezifikationen
-./build/bin/cq_hecs arx chacha20 --rounds 20 --json
-./build/bin/cq_hecs arx sha256 --rounds 64 --json
-./build/bin/cq_hecs arx blake2b --rounds 12 --json
+qc = QuantumCircuit(3)
+qc.h(0); qc.cx(0, 1); qc.t(0); qc.cx(0, 2)
+
+backend = PathDSparsePauliBackend(max_pauli_terms=512)
+res = backend.execute(qc, shots=100)
+print(res.expectation_values)    # {"Z[0]": ..., "Z[0]Z[1]": ...} mit zertifizierter Schranke
+print(res.error_bound)           # Δ ≤ Σ|c_P| über alle ausgegebenen Werte
 ```
+
+Ein gemeinsames Counts-Dict stammt von diesem Pfad **nicht** automatisch:
+gemeinsame Verteilungen sind opt-in via `allow_uncertified_joint_counts=True`
+und werden dann als keine gemeinsame Verteilung (`counts_are_joint_distribution=False`) markiert.
 
 ---
 
 ## 8. Hardware Support Matrix & Verifikationsstufen
 
-CQ-HECS unterscheidet strikt zwischen physisch auf Bare-Metal Silizium verifizierten Plattformen, CI-verifizierten Umgebungen und theoretischer Standard-Spezifikationskompatibilität:
+CQ-HECS unterscheidet strikt zwischen physisch verifizierter Ausführung, CI-Verifizierung und reiner Lade-/Prüfbarkeit:
 
-| Plattform / GPU | Vulkan / Compute API | Verifikationsstufe | Status & Verifikationsnachweis |
+| Plattform / GPU | Vulkan / Compute API | Verifikationsstufe | Status & Nachweis |
 | :--- | :--- | :---: | :--- |
-| **Ubuntu Linux x64 + Mesa Lavapipe** | Vulkan 1.3 SPIR-V (CPU-Rasterizer) | **`CI_VERIFIED`** | GitHub Actions (ubuntu-latest). Shader- und Pipeline-Konformität automatisiert geprüft. **Software-Rasterizer, keine physische GPU.** |
-| **Windows Headless CI** | Headless-Fallback / Null-Device-Guard | **`CI_VERIFIED`** | GitHub Actions (`windows-latest`). |
-| **Lokale Windows-Workstation** | Vulkan 1.3/1.4 Loader | **`LOADER_VERIFIED`** | Vulkan-Loader lädt und enumeriert genau ein logisches Gerät. **Kein Compute-Dispatch von CQ-HECS auf diesem Gerät nachgewiesen; keine physische GPU-Verifikation.** |
-| **Apple Silicon (M1/M2/M3/M4)** | MoltenVK / Metal Compute | **`NOT_VERIFIED`** | Kein Test auf dieser Hardware durchgeführt. |
-| **Intel Arc / NVIDIA / AMD diskret** | Vulkan 1.3 Treiber | **`NOT_VERIFIED`** | Kein Test auf dieser Hardware durchgeführt. |
+| **Ubuntu Linux x64 + Mesa Lavapipe** | Vulkan 1.3 SPIR-V (Software-Rasterizer) | `CI_VERIFIED` (Software-Vulkan) | GitHub Actions (ubuntu-latest); Shader- und Pipeline-Konformität automatisiert geprüft. **Keine physische GPU.** |
+| **Windows Headless CI** | Headless-Fallback / Null-Device-Guard | `CI_VERIFIED` (CI-Stufe) | GitHub Actions (`windows-latest`). |
+| **Lokale Windows-Workstation** | Vulkan 1.4 Loader | `LOADER_VERIFIED` | Vulkan-Loader lädt und enumeriert genau ein Gerät. **Kein Compute-Dispatch von CQ-HECS auf diesem Gerät nachgewiesen.** |
+| **Apple Silicon (M1–M4)** | MoltenVK / Metal | `NOT_VERIFIED` | Kein Test auf dieser Hardware durchgeführt. |
+| **Intel Arc / NVIDIA / AMD diskret** | Vulkan 1.3 Treiber | `NOT_VERIFIED` | Kein Test auf dieser Hardware durchgeführt. |
 
-> **Wichtig:** Der Python-Pfad (Paket, CLI, alle vier Backends) rechnet
-> ausschließlich auf der **CPU**. Eine Vulkan-Ausführung wird nur über den
-> nativen Core (`_cqhecs_core`) erreicht. Software-Vulkan in CI belegt
-> Integrationsverhalten, **nicht** physische GPU-Performance und **nicht**
-> Vendor-übergreifende Kompatibilität.
+> **Wichtig:** Der Python-Pfad (Paket, CLI, alle vier Pfade) rechnet
+> ausschließlich auf der **CPU**. Vulkan wird nur über den Nativkern genutzt;
+> Shader-Kompilierung und Software-Vulkan belegen Integrationsverhalten,
+> **nicht** physische GPU-Beschleunigung und **keine** Vendor-übergreifende
+> Kompatibilität.
 
 ---
 
-## 9. Vergleichende Einordnung gegen Qiskit Aer & cuTensorNet
+## 9. Einordnung gegenüber Qiskit Aer & cuTensorNet
 
-| Metrik / Feature | CQ-HECS | Qiskit Aer MPS | NVIDIA cuTensorNet |
+| Merkmal | CQ-HECS | Qiskit Aer MPS | NVIDIA cuTensorNet |
 | :--- | :--- | :--- | :--- |
-| **GPU-Portabilität** | Vulkan-API, vendor-neutral per Spezifikation. Physisch verifiziert bisher auf **keinem** GPU-Vendor (siehe Abschnitt 8) | CPU / Nvidia GPU | NVIDIA GPU exklusiv (CUDA-Lock-in) |
-| **Clifford+T Arithmetik** | **Bit-exakt $\mathbb{Z}[1/\sqrt{2}, i]$** (Giles-Selinger Ring) im nativen Core | Float64 / Float32 Drift | Float64 / Float32 Drift |
-| **Bond-Dimension Cutoff** | **Kein Cutoff im Python-Pfad C**; Rundungsfehler wird gemessen und als `numerical_error_bound` ausgewiesen | Standardmäßig stiller Cutoff ($\chi=48$) | SVD-Truncation mit Näherung |
-| **Fehlerüberwachung** | Drei getrennte Quellen: `error_bound` (bewusste Näherung), `numerical_error_bound` (Rundungsfehler), `sampling_error_bound` (Hoeffding, endliche Shots) | Nicht-zertifizierte Truncation | Approximate Truncation Error |
+| **Pfade** | Vier explizit abgedeckte Pfade mit je eigenen Tests und dokumentierten Grenzen | MPS für 1D-artige Chains (CPU/GPU-Backend) | Tensor-Netzwerke, CUDA-GPU exklusiv (Lock-in) |
+| **Bind-Dimension Cutoff** | **Kein Cutoff im Python-Pfad C**; verworfene Spektralmasse wird berichtet, zertifizierte Truncation nur in Pfad D | Standard-Truncation (Standard-χ) | SVD-Truncation mit Näherung |
+| **Fehlerüberwachung** | Drei getrennte Quellen (Approximation / Numerik / Sampling) mit support-abhängiger Konzentrationsschranke | Nicht-zertifiziert | Approximate Truncation Error |
+| **Zustand bei Grenzüberschreitung** | `unresolved=True` ohne Werte, bzw. kohärenter Abbruch | Error / Fail ohne klare Grenzklassifikation | Truncation Error |
 
 > **Keine Leistungs- oder Portabilitätsaussage ohne Messung.** Die
-> VRAM-/Zeitwerte aus früheren Benchmark-Tabellen wurden nach den Korrekturen
-> in diesem Releasezyklus **nicht** neu gemessen und sind daher nicht als
-> aktuelle Ergebnisse zu lesen. Siehe `docs/BENCHMARKS.md` für den
-> Reproduktionsstand.
+> VRAM-/Zeitwerte aus früheren Benchmark-Tabellen wurden nach den
+> Korrekturen in diesem Releasezyklus **nicht** neu gemessen und sind daher
+> nicht als aktuelle Ergebnisse zu lesen. Siehe [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md)
+> für den Reproduktionsstand.
 
 ---
 
-## 10. Lizenz
+## 10. Dokumentenverweise
+
+| Dokument | Inhalt |
+| :--- | :--- |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Verbindliche Architekturübersicht |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Komponentenmatrix und Verifizierungsstufen |
+| [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md) | CLI-, Python- und C-ABI-Verträge |
+| [`docs/USAGE_GUIDE.md`](docs/USAGE_GUIDE.md) | Geprüfte Kommandos und Nutzung |
+| [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) | Aktuelle und historische Benchmarks (sauber getrennt) |
+| [`docs/V2_IMPLEMENTATION_MATRIX.md`](docs/V2_IMPLEMENTATION_MATRIX.md) | Was v2 implementiert, mit Test-Ankern |
+| [`research/v2/METHOD_CATALOG.md`](research/v2/METHOD_CATALOG.md) | Methodenentscheidungen inkl. Verwerfungen |
+| [`research/v2/FORMALIZATION_STATUS.md`](research/v2/FORMALIZATION_STATUS.md) | Beweisstatus jeder verwendeten Aussage |
+| [`CHANGELOG.md`](CHANGELOG.md) · [`RELEASE_NOTES.md`](RELEASE_NOTES.md) | Versionsgeschichte und Freigabedaten |
+
+---
+
+## 11. Lizenz
 
 CQ-HECS ist lizenziert unter der **Apache License 2.0**. Siehe [LICENSE](LICENSE) für den vollständigen Lizenztext.

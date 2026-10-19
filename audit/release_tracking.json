@@ -270,11 +270,11 @@
   },
   "release_artifacts": {
     "dist_directory": "dist",
-    "commit_sha": "c4967637299a9ba83b5ad86ac80d9cd63e51ec2d",
+    "commit_sha": "a6fb75bcb348c705359a569024be944dc741d5a9",
     "checksums": {
-      "cqhecs-0.2.0-py3-none-any.whl": "573676b4b7cfe26aa29284711e6396e34844804f959f18f592315d202fcd9d2a",
-      "cqhecs-0.2.0.tar.gz": "b8ab7c481fdcc1a95d5dcde175c65ecb4804abbf3e1bedf57724083680317a00",
-      "sha256sums.txt": "a99c667237fe8eed1e1548b03a4017389f615ed26aea8daf7876afef27e407f3"
+      "cqhecs-2.0.0-py3-none-any.whl": "a00f45eecd263b6c2c6bd675ae6d1048a019462a59e79003f3d3f4cf5b07bb8d",
+      "cqhecs-2.0.0.tar.gz": "1f83b868e5a78e024681603e5d65fd3546ebee9ee20156810c6e88d9def795d7",
+      "sha256sums.txt": "ec8a1c3c25c083e3c9887e1b3877fb3063be2cf0269ab0ebc54e7bb627851b43"
     },
     "sbom_file": "dist/cqhecs-sbom.spdx.json"
   }

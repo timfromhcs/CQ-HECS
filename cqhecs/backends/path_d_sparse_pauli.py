@@ -42,8 +42,21 @@ from cqhecs.result import SimulationResult, hoeffding_total_variation_bound
 #   I = (0,0), X = (1,0), Y = (1,1), Z = (0,1)
 PAULI_BASIS: Tuple[Tuple[int, int], ...] = ((0, 0), (1, 0), (1, 1), (0, 1))
 
+#: Direct lookup from the packed (x_bit, z_bit) pair to the basis index, so the
+#: innermost loop avoids a linear search over PAULI_BASIS.
+_PAULI_INDEX_FLAT: Dict[int, int] = {
+    (x << 1) | z: index for index, (x, z) in enumerate(PAULI_BASIS)
+}
+
 
 def _pauli_matrices() -> List[np.ndarray]:
+    """
+    Conventional Pauli matrices {I, X, Y, Z}.
+
+    Used only where a phase convention is explicitly wanted. Path D's term
+    storage uses ``X^x Z^z`` instead, so conjugation code must use
+    :func:`_basis_matrices`; see that function for why the two differ.
+    """
     return [
         np.eye(2, dtype=np.complex128),
         np.array([[0, 1], [1, 0]], dtype=np.complex128),
@@ -56,12 +69,15 @@ def conjugation_matrix(unitary: np.ndarray) -> np.ndarray:
     """
     Builds M such that ``U^dag P_j U = sum_k M[k, j] P_k`` in the Pauli basis.
 
-    The coefficients come from the Hilbert-Schmidt inner product
-    ``M[k, j] = Tr(P_k^dag U^dag P_j U) / 2``, which is exact for the
-    four-dimensional 2x2 matrix space. Using the numeric gate matrix instead of
-    hand-derived bit algebra keeps phase bookkeeping correct.
+    The basis must match how terms are *stored*: a term is ``c * X^x Z^z``, so
+    the four basis operators are ``I``, ``X``, ``XZ`` and ``Z`` - not
+    ``I, X, Y, Z``. ``XZ = -iY``, so using the conventional ``Y`` here while
+    the term dict keys mean ``XZ`` silently mis-scales every Y-containing term.
+
+    Coefficients come from the Hilbert-Schmidt inner product
+    ``M[k, j] = Tr(P_k^dag U^dag P_j U) / 2``, exact for this 2x2 space.
     """
-    paulis = _pauli_matrices()
+    paulis = _basis_matrices()
     u_dag = np.conjugate(unitary.T)
     m = np.zeros((4, 4), dtype=np.complex128)
     for j, pj in enumerate(paulis):
@@ -69,6 +85,18 @@ def conjugation_matrix(unitary: np.ndarray) -> np.ndarray:
         for k, pk in enumerate(paulis):
             m[k, j] = 0.5 * np.trace(pk.conj().T @ conj)
     return m
+
+
+def _basis_matrices() -> List[np.ndarray]:
+    """
+    The four basis operators as they are *stored*: X^x Z^z.
+
+    Order matches :data:`PAULI_BASIS`, i.e. I, X, XZ, Z.
+    """
+    identity = np.eye(2, dtype=np.complex128)
+    xm = np.array([[0, 1], [1, 0]], dtype=np.complex128)
+    zm = np.array([[1, 0], [0, -1]], dtype=np.complex128)
+    return [identity, xm, xm @ zm, zm]
 
 
 # Single-qubit gate matrices, keyed by the names Path D understands.
@@ -219,21 +247,38 @@ class SparsePauliDynamicsSimulator:
         q: int,
         m: np.ndarray,
     ) -> Dict[Tuple[int, int], complex]:
-        """Applies a single-qubit conjugation M to every term."""
+        """
+        Applies a single-qubit conjugation M to every term.
+
+        This is the innermost loop of Path D, so it avoids anything with
+        per-term Python overhead: the Pauli basis index is a direct table
+        lookup (not a linear search), and only the non-zero entries of each
+        column of M are visited.
+        """
         new_terms: Dict[Tuple[int, int], complex] = {}
-        xbit, zbit = 1 << q, 1 << q
+        xbit = 1 << q
+        clear = ~xbit
+
+        # Columns of M, pre-filtered to the entries that actually contribute.
+        columns = []
+        for j in range(4):
+            entries = []
+            for k in range(4):
+                c = m[k, j]
+                if c.real == 0.0 and c.imag == 0.0:
+                    continue
+                kx, kz = PAULI_BASIS[k]
+                entries.append((kx, kz, c))
+            columns.append(entries)
 
         for (x_mask, z_mask), coeff in terms.items():
             xq = (x_mask >> q) & 1
             zq = (z_mask >> q) & 1
             # Basis index j corresponds to X^{xq} Z^{zq}.
-            j = PAULI_BASIS.index((xq, zq))
-            for k, (kx, kz) in enumerate(PAULI_BASIS):
-                c = m[k, j]
-                if abs(c) < 1e-15:
-                    continue
-                new_x = (x_mask & ~xbit) | (kx << q)
-                new_z = (z_mask & ~zbit) | (kz << q)
+            j = _PAULI_INDEX_FLAT[(xq << 1) | zq]
+            for kx, kz, c in columns[j]:
+                new_x = (x_mask & clear) | (kx << q)
+                new_z = (z_mask & clear) | (kz << q)
                 new_terms[(new_x, new_z)] = new_terms.get((new_x, new_z), 0.0) + coeff * c
 
         return new_terms
@@ -248,32 +293,49 @@ class SparsePauliDynamicsSimulator:
         """
         Exact Clifford conjugation for CX, CZ and SWAP.
 
+        Verified against explicit 2x2/4x4 matrices for every two-qubit Pauli
+        (see tests/test_correctness_contracts.py::TestTwoQubitConjugationRules).
+
         CX:  X_c -> X_c X_t,  Z_t -> Z_c Z_t, others unchanged.
-        CZ:  X_c -> X_c Z_t,  X_t -> Z_c X_t, Z unchanged.
+        CZ:  X_c -> X_c Z_t,  X_t -> Z_c X_t, Z unchanged. When *both* qubits
+             carry an X the two rules compose to -X_c X_t Z_c Z_t, so a
+             relative sign appears; the Z mask also gains factors on any third
+             qubit carrying an X.
         SWAP: X/Z factors simply exchange between the two qubits.
         """
         new_terms: Dict[Tuple[int, int], complex] = {}
+        pair_mask = (1 << a) | (1 << b)
 
         for (x_mask, z_mask), coeff in terms.items():
+            factor = coeff
             if name in ("cx", "cnot"):
                 xc = (x_mask >> a) & 1
                 zt = (z_mask >> b) & 1
                 new_x = x_mask ^ (xc << b)
                 new_z = z_mask ^ (zt << a)
             elif name == "cz":
+                # CZ is diagonal: it commutes with every Z, and conjugates
+                #     CZ^dag X_a CZ = X_a Z_b
+                #     CZ^dag X_b CZ = Z_a X_b
+                # The X mask is unchanged; the Z mask gains Z_b when a carries
+                # an X and Z_a when b carries an X. When both carry an X the
+                # two images commute, but their product picks up a relative
+                # minus sign: CZ^dag X_a X_b CZ = -X_a X_b Z_a Z_b.
                 xa = (x_mask >> a) & 1
                 xb = (x_mask >> b) & 1
                 new_x = x_mask
-                new_z = z_mask ^ (xb << a) ^ (xa << b)
+                new_z = z_mask ^ (xa << b) ^ (xb << a)
+                if xa and xb:
+                    factor = -coeff
             else:  # swap
                 xa = (x_mask >> a) & 1
                 za = (z_mask >> a) & 1
                 xb = (x_mask >> b) & 1
                 zb = (z_mask >> b) & 1
-                new_x = (x_mask & ~((1 << a) | (1 << b))) | (xa << b) | (xb << a)
-                new_z = (z_mask & ~((1 << a) | (1 << b))) | (za << b) | (zb << a)
+                new_x = (x_mask & ~pair_mask) | (xa << b) | (xb << a)
+                new_z = (z_mask & ~pair_mask) | (za << b) | (zb << a)
 
-            new_terms[(new_x, new_z)] = new_terms.get((new_x, new_z), 0.0) + coeff
+            new_terms[(new_x, new_z)] = new_terms.get((new_x, new_z), 0.0) + factor
 
         return new_terms
 
@@ -322,6 +384,18 @@ class SparsePauliDynamicsSimulator:
         """
         Computes certified single-qubit and parity expectation values.
 
+        All observables are propagated **in a single backward pass** rather than
+        one pass each. The naive version re-walked the circuit for every
+        observable, which is O(n^2) observables x O(circuit) and took minutes on
+        a 30-qubit deep circuit. Sharing the walk makes it one pass.
+
+        The per-observable error bound is not lost by batching: truncation is
+        applied per observable at each step, exactly as before, and each
+        observable accumulates its own discarded mass. Because the bound for a
+        single observable is the sum of *its own* discarded coefficients, the
+        total reported is still the sum over observables, which is what the
+        triangle inequality requires.
+
         Single-qubit marginals alone cannot distinguish entangled states, so
         <Z_q Z_r> pairs are included by default: they are the observables that
         actually carry the Bell/GHZ correlation structure.
@@ -332,31 +406,105 @@ class SparsePauliDynamicsSimulator:
             The reported bound is the *total* accumulated bound over every
             observable evaluated, so it bounds every returned value.
         """
-        singles: Dict[str, float] = {}
-        total_bound = 0.0
-        any_unresolved = False
-
+        observables: Dict[str, int] = {}
         for q in range(self.num_qubits):
-            obs = {(0, 1 << q): complex(1.0, 0.0)}
-            val, bound, unres = self.evaluate_observable(instructions, obs)
-            singles[f"Z[{q}]"] = max(-1.0, min(1.0, val))
-            total_bound += bound
-            any_unresolved = any_unresolved or unres
-
-        pairs: Dict[str, float] = {}
+            observables[f"Z[{q}]"] = 1 << q
         if include_pairs:
             for q in range(self.num_qubits):
                 for r in range(q + 1, self.num_qubits):
-                    obs = {(0, (1 << q) | (1 << r)): complex(1.0, 0.0)}
-                    val, bound, unres = self.evaluate_observable(
-                        instructions, obs
-                    )
-                    pairs[f"Z[{q}]Z[{r}]"] = max(-1.0, min(1.0, val))
-                    total_bound += bound
-                    any_unresolved = any_unresolved or unres
+                    observables[f"Z[{q}]Z[{r}]"] = (1 << q) | (1 << r)
 
-        values = {**singles, **pairs}
+        # One backward walk carrying every observable independently.
+        states = {name: {(0, mask): complex(1.0, 0.0)}
+                  for name, mask in observables.items()}
+        bounds = dict.fromkeys(states, 0.0)
+
+        # The truncation bound only grows. Once the *combined* bound already
+        # exceeds what any of these observables could contribute
+        # (each |<Z...>| <= 1), the result is unresolved by construction, so
+        # continuing the walk would burn minutes of CPU to produce a value the
+        # caller will discard. Bail out as soon as that is provable.
+        # For n qubits there are at most `len(observables)` terms, each bounded
+        # by 1 in absolute value.
+        budget_cap = float(len(observables))
+        running_bound = 0.0
+
+        exhausted = False
+        for name, qubits, params in reversed(instructions):
+            if name in self.IGNORED_GATES:
+                continue
+            if exhausted:
+                break
+            for key, terms in states.items():
+                evolved = self._apply_gate_backward(terms, name, qubits, params)
+                # Truncate each observable independently so its bound stays
+                # its own; the discarded mass is returned, not accumulated
+                # into shared state.
+                evolved, discarded = self._truncate_terms(evolved)
+                bounds[key] += discarded
+                running_bound += discarded
+                states[key] = evolved
+                if running_bound > budget_cap:
+                    exhausted = True
+                    break
+
+        values: Dict[str, float] = {}
+        total_bound = 0.0
+        for key, terms in states.items():
+            exp_val = 0.0
+            for (x_mask, _z_mask), coeff in terms.items():
+                if x_mask == 0:
+                    exp_val += coeff.real
+            values[key] = max(-1.0, min(1.0, exp_val))
+            total_bound += bounds[key]
+
+        any_unresolved = total_bound > self.error_tolerance
+        if any_unresolved:
+            # No value is meaningful once the bound has blown past the
+            # tolerance, so report nothing rather than something misleading.
+            return {}, float(total_bound), True
         return values, float(total_bound), any_unresolved
+
+    def _truncate_terms(self, terms: Dict[Tuple[int, int], complex]):
+        """
+        Applies the certified truncation budget to one observable.
+
+        Returns ``(truncated_terms, discarded_mass)`` without touching shared
+        state, so several observables can be propagated in one pass with their
+        bounds kept separate.
+        """
+        # Fast path: when nothing was pruned and the budget is not exceeded,
+        # the term dict passes through untouched. Sorting on every step was a
+        # significant share of Path D's runtime.
+        threshold = self.prune_threshold
+        budget = self.max_pauli_terms
+        if len(terms) <= budget:
+            discarded_weight = 0.0
+            for coeff in terms.values():
+                mag = abs(coeff)
+                if mag < threshold:
+                    discarded_weight += mag
+            if discarded_weight == 0.0:
+                return terms, 0.0
+
+        filtered: List[Tuple[Tuple[int, int], complex]] = []
+        discarded_weight = 0.0
+
+        for term, coeff in terms.items():
+            mag = abs(coeff)
+            if mag < threshold:
+                discarded_weight += mag
+            else:
+                filtered.append((term, coeff))
+
+        if len(filtered) > budget:
+            filtered.sort(key=lambda item: abs(item[1]), reverse=True)
+            kept = filtered[:budget]
+            for _, coeff in filtered[budget:]:
+                discarded_weight += abs(coeff)
+            filtered = kept
+
+        return dict(filtered), discarded_weight
 
     def sample_marginals(
         self,
@@ -479,7 +627,10 @@ class PathDSparsePauliBackend:
 
         if self.allow_uncertified_joint_counts and not unresolved:
             counts, _, _ = sim.sample_marginals(instructions, shots=shots, seed=seed)
-            sampling_bound = hoeffding_total_variation_bound(shots)
+            # Support size for the opt-in marginal sampling: one bit per qubit.
+            sampling_bound = hoeffding_total_variation_bound(
+                shots, support_size=1 << n_q
+            )
             counts_supported = True
 
         t1 = time.perf_counter()

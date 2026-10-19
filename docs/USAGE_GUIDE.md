@@ -1,154 +1,223 @@
 # CQ-HECS: User and Operator Guide
 
-This guide provides step-by-step instructions for configuring, building, executing, and programmatically orchestrating CQ-HECS.
+There are **two** command-line interfaces in this project. They are different
+programs with different purposes; do not mix their commands.
+
+| | `cq-hecs` (Python CLI) | `cq_hecs` (native C++ binary) |
+| :--- | :--- | :--- |
+| Installed by | `pip install cqhecs` | built from source |
+| Purpose | Four-path circuit simulation | QASM execution, SAT solving, ARX inversion, self-test |
+| Requires Vulkan | **No** | Yes (build-time) |
+| Documented below | §1–§4 | §5 |
 
 ---
 
-### 1. Build Artifacts
+## 1. Install
 
-Following build completion, all primary artifacts reside under `bin/Release/`:
-- **Standalone Binary**: `bin/Release/cq_hecs.exe` (Single monolithic executable, zero external file dependencies; compute shaders are embedded directly as static byte arrays).
-- **C-ABI Shared Library**: `bin/Release/cq_hecs.dll` and import library `cq_hecs.lib`.
-- **C Header**: `include/cq_hecs_api.h`.
+### Python only (no Vulkan, no compiler)
+
+```bash
+pip install cqhecs
+```
+
+This gives you the package, the `cq-hecs` CLI, and all four classical
+simulation paths. They run entirely on the CPU.
+
+Verify:
+
+```bash
+cq-hecs doctor
+```
+
+`doctor` distinguishes `available`, `not_installed` and `not_available` rather
+than collapsing them. It also reports that the Python paths are CPU-only, and
+makes no physical-GPU claim.
+
+### Native component (adds the C++ binary and bindings)
+
+Requires the Vulkan SDK, because the native headers include `vulkan/vulkan.h`
+unconditionally.
+
+```powershell
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCQ_BUILD_TESTS=ON
+cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
+```
+
+Artifacts land in `${CMAKE_BINARY_DIR}/bin/Release` — i.e. `build/bin/Release`
+for an out-of-source build, **not** in the source tree.
 
 ---
 
-### 2. One-Click Automated Build
+## 2. `cq-hecs` — circuit simulation
 
-To compile shaders, embed them into static C++ headers, configure CMake, compile the C++ Release executable and shared library, and execute the verification suite, run:
+```bash
+cq-hecs version
+cq-hecs doctor
+cq-hecs backend list          # capabilities of Paths A–D
+cq-hecs analyze name:ghz8     # static analysis + path recommendation
+cq-hecs run name:bell --shots 1000 --seed 42
+cq-hecs verify name:bell --reference aer
+cq-hecs benchmark smoke
+```
+
+### Circuits
+
+A circuit argument is one of:
+
+* `path/to/circuit.qasm` — OpenQASM 2.0 source
+* `name:<builtin>` — a library circuit, listed below
+* `module.py:NAME` — import `NAME` from a Python module
+
+Builtins: `ghz8`, `ghz16`, `bell`, `clifford6`, `low_t_rank4`, `mps6`,
+`sparse_pauli4`, `ghz8_measured`, `bell_measured`.
+
+### Output contract
+
+`--format json` writes **exactly one** JSON document to stdout. All
+diagnostics go to stderr, never stdout.
+
+```bash
+cq-hecs --format json run name:bell --shots 1000 | jq '.result.path'
+```
+
+Exit codes:
+
+| Code | Meaning |
+| ---: | :--- |
+| 0 | success |
+| 1 | unexpected error |
+| 2 | usage error (bad file, invalid shots, unsupported forced backend) |
+| 3 | circuit unresolved / verification failed |
+| 4 | environment unavailable |
+
+Verbosity: `--quiet`, `-v`, `-vv`. Errors are logged to stderr via the
+`logging` module, never printed to stdout.
+
+---
+
+## 3. Reading the result
+
+Every result separates three error sources:
+
+| Field | Meaning |
+| :--- | :--- |
+| `error_bound` | Deliberate approximation. `0.0` = nothing was deliberately approximated. |
+| `numerical_error_bound` | Measured float roundoff, **or `null`** if not derivable. |
+| `sampling_error_bound` | Finite-shot confidence bound, support-size dependent. |
+| `total_error_bound` | Sum of the above, **only when they share a metric**; `null` otherwise. |
+
+`state` is `EXACT`, `CERTIFIED`, `UNRESOLVED` or `FAILED`. `EXACT` requires
+`exact = true` **and** `error_bound = 0.0`.
+
+### Path-specific expectations
+
+* **A / B / C** return `counts`. Bitstrings use the Qiskit convention: qubit 0
+  is **rightmost**.
+* **D** returns `expectation_values`, not `counts`. Its error bound certifies
+  observables, not a bitstring distribution. If you need counts, force A, B or
+  C.
+* **C** returns no counts above 20 measured qubits. It reports the fact rather
+  than inventing a result.
+
+### Forces
+
+```bash
+cq-hecs run name:low_t_rank4 --backend B
+```
+
+A forced path never silently reroutes. If the circuit uses a gate that path
+cannot execute, the command exits 2 and names the offending gate.
+
+Forcing Path D on a circuit it *can* evolve is allowed even when a cheaper path
+exists — it reports `CERTIFIED` and prints `expectation_values` rather than
+counts. Forcing it on a circuit it cannot evolve at all (unsupported gate) exits
+2.
+
+---
+
+## 4. Python API
+
+```python
+from qiskit import QuantumCircuit
+from cqhecs import FourPathRouter
+
+qc = QuantumCircuit(3)
+qc.h(0); qc.cx(0, 1); qc.t(1)
+
+result = FourPathRouter().route_and_execute(qc, shots=1000, seed=42)
+
+print(result.path, result.state.value)
+print(result.error_bound, result.sampling_error_bound)
+print(result.to_dict())        # JSON-serialisable
+```
+
+Qiskit `BackendV2`:
+
+```python
+from cqhecs import CQHecsBackend
+from qiskit import transpile
+
+backend = CQHecsBackend(num_qubits=8)
+compiled = transpile(qc, backend)
+counts = backend.run(compiled, shots=1000, seed_simulator=42).result().get_counts()
+```
+
+Measurement mapping follows the circuit's own `measure` instructions, so
+`measure_all()` circuits produce the same keys as Aer.
+
+---
+
+## 5. Native C++ binary
+
+The native executable is a separate program. Its commands are **not** the
+`cq-hecs` commands.
 
 ```cmd
-build.bat
+bin\Release\cq_hecs.exe --help
+```
+
+Exit codes differ from the Python CLI:
+
+| Code | Meaning |
+| ---: | :--- |
+| 0 | success / verified / SAT |
+| 1 | generic error |
+| 10 | UNSAT / refuted |
+
+Global options: `--json` (strict JSON on stdout, diagnostics on stderr) and
+`--help`.
+
+```powershell
+.\build\bin\Release\cq_hecs.exe qasm benchmarks\qasm\ghz_300.qasm --json
 ```
 
 ---
 
-### 3. CLI Command Reference & Exit Codes
+## 6. Troubleshooting
 
-```cmd
-bin\Release\cq_hecs.exe <command> [options]
-```
+**`cq-hecs: command not found`** — the console script directory is not on
+`PATH`. Use `python -m cqhecs.cli` or add the scripts directory.
 
-#### Exit Code Semantics:
-- **`0`**: Success / Target Verified / Satisfiable (SAT).
-- **`10`**: Unsatisfiable (UNSAT) / Refuted.
-- **`1`**: Generic Error / Syntax Error / Out of Bounds.
+**`doctor` reports `native_binding: not_available`** — expected for a
+Python-only install. The classical backends work without it.
 
-#### Global Options:
-- **`--json`**: Outputs strict machine-readable JSON to `stdout` with all diagnostic messages redirected to `stderr`.
-- **`--help, -h`**: Displays usage and help summary.
+**Exit 2 with "does not support the following gate(s)"** — a forced path cannot
+run that circuit. Drop `--backend` to let the router choose.
 
----
+**Exit 3 `unresolved`** — the circuit exceeded a resource budget or the
+certified bound exceeded the tolerance. This is a real refusal, not a failure.
+Raise `--error-tolerance` or reduce the circuit width.
 
-### 4. OpenQASM 2.0 / 3.0 Circuit Simulation
-
-Simulate canonical quantum circuits on the 300-qubit MPS chain with $\mathbb{Z}_8$ phase mapping and J-Space Delta residual tracking:
-
-#### Direct File Execution:
-```powershell
-.\bin\Release\cq_hecs.exe qasm benchmarks\qasm\ghz_300.qasm
-```
-
-#### JSON Output & PowerShell Piping:
-```powershell
-Get-Content benchmarks\qasm\ghz_300.qasm | .\bin\Release\cq_hecs.exe qasm - --json | ConvertFrom-Json
-```
-
-#### Output Schema:
-```json
-{
-  "engine": "CQ-HECS QASM Engine",
-  "status": "SUCCESS",
-  "circuit": "benchmarks\\qasm\\ghz_300.qasm",
-  "qubit_count": 300,
-  "gate_count": 600,
-  "elapsed_ms": 2.265,
-  "active_vram_mb": 4.531,
-  "vram_budget_mb": 120.0,
-  "vram_satisfied": true,
-  "lambda_res": 0.000000
-}
-```
+**Counts look wrong for a wide circuit** — Path C produces no counts above 20
+measured qubits, and Path D produces none at all. Check `result.state` and
+`result.path` before trusting `counts`.
 
 ---
 
-### 5. DIMACS CNF SAT Constraint Solving
+## 7. Verifying the claims in this guide
 
-Solve standard propositional satisfiability problems with $O(1)$ Hilbert-Cuckoo cycle loop pruning:
-
-#### Solve Unsatisfiable Benchmark (Pigeonhole 6-into-5):
-```powershell
-.\bin\Release\cq_hecs.exe sat benchmarks\sat\pigeonhole_6_5.cnf --json
-# $LASTEXITCODE will be 10 (UNSAT)
-```
-
-#### Solve via PowerShell Pipe:
-```powershell
-Get-Content benchmarks\sat\uf50_hard.cnf | .\bin\Release\cq_hecs.exe sat - --json | ConvertFrom-Json
-```
-
-#### Output Schema:
-```json
-{
-  "engine": "CQ-HECS SAT Engine",
-  "status": "UNSAT",
-  "source": "benchmarks\\sat\\pigeonhole_6_5.cnf",
-  "num_vars": 30,
-  "num_clauses": 81,
-  "decisions": 359,
-  "pruned_cycles": 0,
-  "elapsed_ms": 2.927,
-  "verified": true
-}
-```
-
----
-
-### 6. Real-World ARX Cryptanalysis Suite
-
-Benchmark step-inversion, carry-shadow separation, and path pruning efficiency on symmetric cryptographic primitives:
-
-```powershell
-# BLAKE2b G-function
-.\bin\Release\cq_hecs.exe arx blake2b --rounds 1000 --json
-
-# ChaCha20 quarter-round
-.\bin\Release\cq_hecs.exe arx chacha20 --rounds 1000 --json
-
-# SHA-256 schedule expansion
-.\bin\Release\cq_hecs.exe arx sha256 --rounds 1000 --json
-```
-
----
-
-### 7. Interactive Terminal Dashboard (Native ANSI / VT100 TUI)
-
-Launch the live terminal dashboard displaying real-time VRAM telemetry, cross-attention heatmaps, QPC oscillator jitter oscilloscope, and throughput gauges:
-
-```powershell
-.\bin\Release\cq_hecs.exe dashboard
-```
-
-Options:
-- `--cycles <N>`: Run for a fixed number of refresh cycles and exit (ideal for automated headless testing).
-
----
-
-### 8. Continuous 100k-Iteration Stress & Leak Test
-
-Execute the continuous endurance stress harness to test long-running memory stability, VRAM bound adherence (< 120 MB), and Lyapunov explosion shielding:
-
-```powershell
-.\bin\Release\cq_hecs.exe stress --cycles 100000 --json | ConvertFrom-Json
-```
-
----
-
-### 9. Embedded Self-Test Suite
-
-Execute all internal subsystem unit tests:
-
-```powershell
-.\bin\Release\cq_hecs.exe test
-.\bin\Release\cq_hecs.exe test --json | ConvertFrom-Json
-```
+Every command above was executed on the environment recorded in
+`research/v2/METHOD_CATALOG.md` §5. If a command in this document does not work,
+that is a documentation bug — please report it rather than working around it
+silently.

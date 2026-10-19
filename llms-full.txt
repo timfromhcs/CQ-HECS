@@ -34,8 +34,13 @@ DPLL solver for CNF satisfiability. Computes 64-bit Murmur3 state signatures and
 
 #### 5. Vulkan Matrix Product State (MPS) Engine (Path C)
 1D Matrix Product State representation supporting dynamic bond dimension chi without silent cutoffs:
-- Area-Law states (e.g. 300-qubit GHZ with chi=2) consume < 5 MB resident VRAM.
+- Area-Law states (e.g. wide GHZ with chi=2) are representable in a few MB of
+  tensor data; the specific MB figure depends on bond dimension and dtype and
+  has not been certified against a physical GPU's VRAM accounting (no physical
+  GPU execution verified in this release cycle).
 - Volume-Law states (exponential entropy S ~ L/2): When the memory ceiling is reached, execution refuses uncertified truncation and escalates to Path D or flags unresolved=True.
+- Counts from Path C stop at a documented 20-qubit dense-sampling limit; wider
+  circuits report no counts rather than a placeholder.
 
 #### 6. Heisenberg Sparse-Pauli-Dynamics (Path D)
 Evolves target observables backwards under Heisenberg dynamics: O(t) = U^dagger O U = sum_P c_P P.

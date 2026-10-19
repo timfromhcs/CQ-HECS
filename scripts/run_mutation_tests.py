@@ -163,6 +163,117 @@ def _circuit(instrs):
     return qc
 
 
+# Baseline invariants: statements that must hold against the *unmutated* code.
+# If any fails, the harness itself is broken and the mutation score is void.
+BASELINE_CHECKS: List[Tuple[str, Callable[[], bool], str]] = [
+    (
+        "Bell state is parity-even",
+        lambda: set(
+            StabilizerTableauSimulator(2).sample(shots=200, seed=42)[0]
+        ) <= {"00", "11"},
+        "Path A must produce only |00> and |11> for a Bell circuit",
+    ),
+    (
+        "Path B matches the exact Born rule",
+        lambda: 0.5 * np.abs(
+            _counts_to_probs(
+                StabilizerRankSimulator(2).execute_circuit(
+                    [("h", [0], []), ("t", [0], []), ("cx", [0, 1], [])],
+                    shots=40000, seed=1,
+                ),
+                2,
+            )
+            - Statevector(
+                _circuit([("h", [0], []), ("t", [0], []), ("cx", [0, 1], [])])
+            ).probabilities()
+        ).sum() < 0.02,
+        "Path B must agree with the exact statevector",
+    ),
+    (
+        "MPS preserves the state norm",
+        lambda: abs(
+            float(np.linalg.norm(
+                _mps_with_h().to_statevector()
+            )) - 1.0
+        ) < 1e-9,
+        "Path C must keep the state normalized after a Hadamard",
+    ),
+    (
+        "Sparse-Pauli reports a positive bound under truncation",
+        lambda: SparsePauliDynamicsSimulator(
+            num_qubits=2, max_pauli_terms=1
+        ).evaluate_observable(
+            [("rz", [0], [0.8]), ("rz", [1], [0.6]), ("cx", [0, 1], [])],
+            {(1, 0): complex(1.0, 0.0)},
+        )[1] > 0.0,
+        "Path D must report truncation when the term budget forces it",
+    ),
+    (
+        "Unresolved results carry no expectation values",
+        lambda: (
+            lambda r: r.unresolved and r.expectation_values is None
+        )(_unresolved_result()),
+        "Path D must not return values while marked unresolved",
+    ),
+    (
+        "Wide chains refuse to fabricate counts",
+        lambda: (
+            lambda c: (not c[1]) and not c[0]
+        )(ExactMPSTensorChain(
+            num_qubits=ExactMPSTensorChain.MAX_SAMPLING_QUBITS + 1
+        ).sample(shots=10, seed=1)),
+        "Path C must return no counts beyond its sampling limit",
+    ),
+    (
+        "Bit order is Qiskit-convention",
+        lambda: "001" in StabilizerRankSimulator(3).execute_circuit(
+            [("x", [0], [])], shots=100, seed=1
+        ),
+        "X on qubit 0 of 3 qubits must render as '001'",
+    ),
+]
+
+
+def _mps_with_h() -> ExactMPSTensorChain:
+    mps = ExactMPSTensorChain(3)
+    mps.apply_single_qubit_gate(
+        0, np.array([[1, 1], [1, -1]], dtype=np.complex128) / np.sqrt(2.0)
+    )
+    return mps
+
+
+def _unresolved_result():
+    qc = QuantumCircuit(4)
+    for _ in range(4):
+        for q in range(4):
+            qc.h(q)
+            qc.rz(0.5, q)
+        for q in range(3):
+            qc.cx(q, q + 1)
+    from cqhecs.backends.path_d_sparse_pauli import PathDSparsePauliBackend
+    return PathDSparsePauliBackend(
+        max_pauli_terms=4, error_tolerance=1e-4
+    ).execute(qc, shots=100)
+
+
+def baseline_self_check() -> List[Tuple[int, str, str]]:
+    """
+    Verifies every baseline invariant against the unmutated code.
+
+    Returns a list of failures; empty means the harness is trustworthy.
+    """
+    failures = []
+    for index, (name, check, detail) in enumerate(BASELINE_CHECKS, start=1):
+        try:
+            ok = bool(check())
+        except Exception as exc:
+            failures.append((index, name, f"{type(exc).__name__}: {exc}"))
+            continue
+        if not ok:
+            failures.append((index, name, detail))
+    return failures
+
+
 MUTANTS: List[Tuple[str, Callable[[], bool]]] = [
     ("Tableau phase corruption", mutant_1_tableau_phase_corruption),
     ("Stabilizer-rank branch coefficient", mutant_2_rank_branch_coefficient_dropped),
@@ -179,14 +290,29 @@ def main() -> int:
     print(" CQ-HECS Deterministic Mutation Testing Harness")
     print("=" * 66)
 
+    # Baseline gate: every check must hold against the *unmutated* code. A
+    # check that is already failing would otherwise "kill" its mutant for the
+    # wrong reason, inflating the score while proving nothing.
+    baseline_failures = baseline_self_check()
+    if baseline_failures:
+        print("\n[FAIL] Baseline is broken; the mutation score would be")
+        print("       meaningless. Fix these before trusting any score:\n")
+        for index, name, detail in baseline_failures:
+            print(f"   - Baseline {index} ({name}): {detail}")
+        print("=" * 66)
+        return 1
+    print(f"  Baseline OK: all {len(BASELINE_CHECKS)} checks hold on unmutated code.")
+
     killed = 0
     survivors = []
+    errors = []
     for index, (name, fn) in enumerate(MUTANTS, start=1):
         try:
             detected = bool(fn())
-        except Exception as exc:  # pragma: no cover - harness error
-            print(f"  [HARNESS ERROR] Mutant {index}: {name}: {type(exc).__name__}: {exc}")
-            survivors.append((index, name))
+        except Exception as exc:  # a harness error is not a kill
+            print(f"  [HARNESS ERROR] Mutant {index}: {name}: "
+                  f"{type(exc).__name__}: {exc}")
+            errors.append((index, name))
             continue
         if detected:
             killed += 1
@@ -204,6 +330,16 @@ def main() -> int:
             print(f"   - Mutant {index}: {name}")
     else:
         print(" Every injected defect was detected by an independent check.")
+    if errors:
+        print(" Harness errors (not counted as kills):")
+        for index, name in errors:
+            print(f"   - Mutant {index}: {name}")
+
+    # Fail closed: a surviving mutant or a harness error is a failed gate.
+    if survivors or errors:
+        print("\n[FAIL] Mutation gate not met.")
+        print("=" * 66)
+        return 1
     print("=" * 66)
     return 0
 

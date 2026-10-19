@@ -57,12 +57,76 @@ class TestResultSchema(unittest.TestCase):
 
     def test_hoeffding_bound_is_rigorous_and_monotonic(self):
         # More shots can only reduce the sampling bound.
-        small = hoeffding_total_variation_bound(100)
-        large = hoeffding_total_variation_bound(10000)
+        small = hoeffding_total_variation_bound(100, support_size=2)
+        large = hoeffding_total_variation_bound(10000, support_size=2)
         self.assertLess(large, small)
         self.assertGreater(small, 0.0)
-        # Loose sanity: sqrt(ln(40)/200) ~ 0.042 for 100 shots.
-        self.assertAlmostEqual(small, math.sqrt(math.log(40.0) / 200.0), places=12)
+        # For a binary outcome it is exactly the classic Hoeffding expression.
+        self.assertAlmostEqual(
+            small, math.sqrt(math.log(40.0) / 200.0), places=12
+        )
+
+    def test_bound_reduces_to_classic_hoeffding_for_binary(self):
+        """K=2 must reproduce sqrt(ln(2/delta)/(2n)) exactly."""
+        for shots in (100, 1000):
+            for delta in (0.05, 0.01):
+                ours = hoeffding_total_variation_bound(shots, support_size=2,
+                                                      delta=delta)
+                classic = math.sqrt(math.log(2.0 / delta) / (2.0 * shots))
+                self.assertAlmostEqual(ours, classic, places=15)
+
+    def test_bound_grows_with_support_size(self):
+        """A wider measurement alphabet needs a looser bound."""
+        bounds = [
+            hoeffding_total_variation_bound(1000, support_size=k)
+            for k in (2, 4, 16, 64)
+        ]
+        for smaller, larger in zip(bounds, bounds[1:]):
+            self.assertLess(smaller, larger)
+
+    def test_degenerate_support_is_exactly_zero(self):
+        """A single-outcome distribution cannot deviate."""
+        self.assertEqual(hoeffding_total_variation_bound(1000, support_size=1), 0.0)
+
+    def test_bound_is_clamped_to_one(self):
+        """TV distance cannot exceed 1, so the bound must not claim otherwise."""
+        huge = hoeffding_total_variation_bound(2, support_size=1 << 40)
+        self.assertLessEqual(huge, 1.0)
+
+    def test_bound_does_not_overflow_for_wide_registers(self):
+        """2**K overflows float64 around K=1024; the log-space form must not."""
+        for k in (512, 1024, 4096):
+            value = hoeffding_total_variation_bound(1000, support_size=k)
+            self.assertGreaterEqual(value, 0.0)
+            self.assertLessEqual(value, 1.0)
+
+    def test_bound_holds_at_stated_confidence_for_high_cardinality(self):
+        """
+        The bound may be violated with probability up to delta, so this checks
+        the *violation rate*, not each individual trial.
+
+        This is the counterexample for a dimension-free claim: the previous
+        implementation used sqrt(ln(2/delta)/(2n)) regardless of support, which
+        is exceeded on essentially every trial once K reaches 64.
+        """
+        shots, delta, trials = 200, 0.05, 1500
+        rng = np.random.default_rng(12345)
+        naive = math.sqrt(math.log(2.0 / delta) / (2.0 * shots))
+
+        for k in (4, 16, 64):
+            bound = hoeffding_total_variation_bound(shots, support_size=k,
+                                                    delta=delta)
+            p = np.ones(k) / k  # uniform is the worst case for TV
+            samples = rng.integers(0, k, size=(trials, shots))
+            counts = np.stack(
+                [np.bincount(row, minlength=k) for row in samples]
+            ) / shots
+            tv = 0.5 * np.abs(counts - p).sum(axis=1)
+            with self.subTest(support_size=k):
+                self.assertLessEqual(float((tv > bound).mean()), delta)
+                if k >= 16:
+                    # The dimension-free bound really is violated here.
+                    self.assertGreater(float((tv > naive).mean()), delta)
 
     def test_hoeffding_rejects_invalid_arguments(self):
         with self.assertRaises(ValueError):
@@ -73,14 +137,29 @@ class TestResultSchema(unittest.TestCase):
             hoeffding_total_variation_bound(100, delta=0.0)
         with self.assertRaises(ValueError):
             hoeffding_total_variation_bound(100, delta=1.0)
+        with self.assertRaises(ValueError):
+            hoeffding_total_variation_bound(100, support_size=0)
 
-    def test_total_error_bound_sums_all_sources(self):
+    def test_total_error_bound_sums_distribution_metrics(self):
         from cqhecs.result import SimulationResult
         res = SimulationResult(
             path="X", exact=False, error_bound=0.1, unresolved=False,
             numerical_error_bound=1e-12, sampling_error_bound=0.05,
         )
         self.assertAlmostEqual(res.total_error_bound, 0.1 + 1e-12 + 0.05, places=15)
+
+    def test_total_error_bound_is_none_for_observable_only_results(self):
+        """
+        A bound on expectation values does not bound a bitstring distribution,
+        so the two must not be summed into one number.
+        """
+        from cqhecs.result import SimulationResult
+        res = SimulationResult(
+            path="D", exact=False, error_bound=0.01, unresolved=False,
+            expectation_values={"Z[0]": 0.5}, counts={},
+        )
+        self.assertIsNone(res.total_error_bound)
+        self.assertIsNone(res.to_dict()["error_bound_metric"])
 
     def test_exact_state_requires_zero_approximation_error(self):
         from cqhecs.result import SimulationResult
@@ -149,10 +228,37 @@ class TestPathCContract(unittest.TestCase):
         # No deliberate approximation was applied.
         self.assertTrue(res.exact)
         self.assertEqual(res.error_bound, 0.0)
-        # But roundoff is still surfaced, and is tiny.
-        self.assertIsNotNone(res.numerical_error_bound)
-        self.assertLess(res.numerical_error_bound, 1e-12)
         self.assertFalse(res.metadata["silent_truncation"])
+
+        # Path C does NOT claim a certified roundoff bound: the per-SVD
+        # discarded mass does not compose into a state-norm error without a
+        # propagation analysis it does not perform. Claiming otherwise would
+        # overstate what is known.
+        self.assertIsNone(res.numerical_error_bound)
+        self.assertIn(
+            "not derived", res.metadata["numerical_error_bound_reason"]
+        )
+        # The measured mass is still reported, labelled as a diagnostic.
+        self.assertLess(
+            res.metadata["discarded_spectral_mass_diagnostic"], 1e-12
+        )
+
+    def test_discarded_mass_is_not_presented_as_a_bound(self):
+        """The diagnostic must never masquerade as a certified bound."""
+        qc = QuantumCircuit(4)
+        qc.h(0)
+        qc.cx(0, 1)
+        qc.cx(1, 2)
+        qc.rz(0.31, 2)
+        qc.cx(2, 3)
+        res = self.backend.execute(qc, shots=100, seed=5)
+        payload = res.to_dict()
+        self.assertIsNone(payload["numerical_error_bound"])
+        # The sampling bound is still valid and is a different metric.
+        self.assertIsNotNone(payload["sampling_error_bound"])
+        self.assertNotIn(
+            "discarded_spectral_norm", res.metadata
+        )
 
     def test_matches_exact_statevector(self):
         n = 3
@@ -302,6 +408,122 @@ class TestPathBContract(unittest.TestCase):
         qc.rx(0.9, 1)
         qc.ry(0.3, 0)
         self._check_matches_statevector(qc)
+
+    def test_wide_circuits_match_exact_statevector(self):
+        """
+        Path B now vectorises its two-qubit gates, so it handles widths that a
+        per-amplitude Python loop could not.
+
+        Shot count is chosen against the *state* support: a dense n-qubit state
+        has 2**n outcomes, and far fewer shots than that leaves a large
+        statistical gap that has nothing to do with correctness.
+        """
+        for n in (14, 18):
+            qc = QuantumCircuit(n)
+            qc.h(0)
+            for i in range(n - 1):
+                qc.cx(i, i + 1)
+            qc.t(1)
+            qc.rz(0.37, n - 1)
+            shots = 400000
+            res = self.backend.execute(qc, shots=shots, seed=3)
+            self.assertEqual(res.path, "B")
+            exact = Statevector(qc).probabilities()
+            got = _counts_to_probs(res.counts, n)
+            self.assertEqual(sum(res.counts.values()), shots)
+            self.assertLess(0.5 * np.abs(got - exact).sum(), 0.05)
+
+    def test_two_qubit_gates_are_vectorised_correctly(self):
+        """CX/CZ/SWAP must be exact for every control/target orientation."""
+        from cqhecs.backends.path_b_stabilizer_rank import (
+            _apply_cx, _apply_cz, _apply_swap,
+        )
+        n = 4
+        dim = 1 << n
+        rng = np.random.default_rng(0)
+        for a in range(n):
+            for b in range(n):
+                if a == b:
+                    continue
+                with self.subTest(pair=(a, b)):
+                    state = rng.normal(size=dim) + 1j * rng.normal(size=dim)
+
+                    # CX: only the ctrl=1 row swaps its target halves.
+                    want = state.copy()
+                    for i in range(dim):
+                        if (i >> a) & 1 and not (i >> b) & 1:
+                            want[i], want[i | (1 << b)] = (
+                                state[i | (1 << b)], state[i],
+                            )
+                    self.assertTrue(
+                        np.allclose(_apply_cx(state.copy(), n, a, b), want,
+                                    atol=1e-12)
+                    )
+
+                    # CZ: negate |1,1>.
+                    want = state.copy()
+                    for i in range(dim):
+                        if (i >> a) & 1 and (i >> b) & 1:
+                            want[i] = -state[i]
+                    self.assertTrue(
+                        np.allclose(_apply_cz(state.copy(), n, a, b), want,
+                                    atol=1e-12)
+                    )
+
+                    # SWAP: exchange the differing-bit amplitudes.
+                    want = state.copy()
+                    for i in range(dim):
+                        ba, bb = (i >> a) & 1, (i >> b) & 1
+                        if ba != bb:
+                            j = (i & ~(1 << a) & ~(1 << b)) | (ba << b) | (bb << a)
+                            want[i], want[j] = state[j], state[i]
+                    self.assertTrue(
+                        np.allclose(_apply_swap(state.copy(), n, a, b), want,
+                                    atol=1e-12)
+                    )
+
+    def test_two_qubit_gates_do_not_mutate_their_input(self):
+        """
+        Regression: reshape() returns a view, so writing through it modified the
+        caller's statevector. A gate applied to an already-permuted vector
+        therefore produced the wrong result.
+        """
+        from cqhecs.backends.path_b_stabilizer_rank import (
+            _apply_cx, _apply_cz, _apply_swap,
+        )
+        n = 3
+        dim = 1 << n
+        rng = np.random.default_rng(2)
+        for fn in (_apply_cx, _apply_cz, _apply_swap):
+            for a, b in ((0, 1), (1, 0), (0, 2), (2, 0)):
+                with self.subTest(gate=fn.__name__, pair=(a, b)):
+                    state = rng.normal(size=dim) + 1j * rng.normal(size=dim)
+                    before = state.copy()
+                    fn(state, n, a, b)      # deliberately NOT .copy()
+                    np.testing.assert_array_equal(state, before)
+
+    def test_cx_and_cz_are_orientation_symmetric(self):
+        """CX(c,t) and CX(t,c) must both be correct unitaries."""
+        from cqhecs.backends.path_b_stabilizer_rank import _apply_cx, _apply_swap
+        n = 3
+        dim = 1 << n
+        rng = np.random.default_rng(1)
+        state = rng.normal(size=dim) + 1j * rng.normal(size=dim)
+        forward = _apply_cx(state.copy(), n, 0, 1)
+        backward = _apply_cx(state.copy(), n, 1, 0)
+        # Both are involutions.
+        self.assertTrue(
+            np.allclose(_apply_cx(forward, n, 0, 1), state, atol=1e-12)
+        )
+        self.assertTrue(
+            np.allclose(_apply_cx(backward, n, 1, 0), state, atol=1e-12)
+        )
+        # Reversing the orientation conjugates by SWAP on that qubit pair:
+        # CX(t,c) == SWAP . CX(c,t) . SWAP
+        conjugated = _apply_swap(
+            _apply_cx(_apply_swap(state.copy(), n, 0, 1), n, 0, 1), n, 0, 1
+        )
+        self.assertTrue(np.allclose(conjugated, backward, atol=1e-12))
 
     def test_no_sampling_error_claim_of_zero_total_error(self):
         qc = QuantumCircuit(2)
@@ -579,6 +801,213 @@ class TestFailClosedRouting(unittest.TestCase):
         router.backend_b.execute = boom
         with self.assertRaises(TypeError):
             router.route_and_execute(qc, preferred_path="B", shots=10)
+
+
+class TestTwoQubitConjugationRules(unittest.TestCase):
+    """
+    Path D's two-qubit Clifford rules, checked against explicit matrices.
+
+    Regression: the CZ rule was written from the single-Pauli identities
+    CZ^dag X_a CZ = X_a Z_b without accounting for the relative sign that
+    appears when *both* qubits carry an X. That silently corrupted every
+    circuit containing CZ, and no test covered it.
+    """
+
+    @staticmethod
+    def _build(n, x_mask, z_mask):
+        import numpy as _np
+        ident = _np.eye(2, dtype=complex)
+        xm = _np.array([[0, 1], [1, 0]], dtype=complex)
+        zm = _np.array([[1, 0], [0, -1]], dtype=complex)
+        mat = _np.array([[1]], dtype=complex)
+        for q in range(n):
+            op = zm if (z_mask >> q) & 1 else ident
+            if (x_mask >> q) & 1:
+                op = op @ xm
+            mat = _np.kron(mat, op)
+        return mat
+
+    @classmethod
+    def _gate_matrix(cls, label, n, a, b):
+        """
+        Builds the full n-qubit matrix for a 2-qubit gate on (a, b).
+
+        CX has a as control and b as target; the pair is applied directly to
+        computational-basis states so the little-endian bit ordering is
+        explicit rather than assumed.
+        """
+        import numpy as _np
+        dim = 1 << n
+        full = _np.zeros((dim, dim), dtype=complex)
+        pair = (1 << a) | (1 << b)
+        for col in range(dim):
+            if label == "cx":
+                row = col ^ ((1 << a) if ((col >> b) & 1) else 0)
+                full[row, col] = 1.0
+            elif label == "swap":
+                ba = (col >> a) & 1
+                bb = (col >> b) & 1
+                row = (col & ~pair) | (bb << a) | (ba << b)
+                full[row, col] = 1.0
+            else:  # cz: diagonal, -1 exactly when both qubits are set
+                full[col, col] = (
+                    -1.0 if ((col >> a) & 1 and (col >> b) & 1) else 1.0
+                )
+        return full
+
+    def test_all_two_qubit_paulis_conjugate_correctly(self):
+        from cqhecs.backends.path_d_sparse_pauli import SparsePauliDynamicsSimulator
+        n, a, b = 3, 0, 2
+        sim = SparsePauliDynamicsSimulator(num_qubits=n)
+        for label in ("cx", "cz", "swap"):
+            gate = self._gate_matrix(label, n, a, b)
+            with self.subTest(gate=label):
+                for x in range(1 << n):
+                    for z in range(1 << n):
+                        pauli = self._build(n, x, z)
+                        expected = np.conj(gate.T) @ pauli @ gate
+                        evolved = sim._apply_two_qubit_backward(
+                            {(x, z): complex(1.0)}, label, a, b
+                        )
+                        self.assertEqual(len(evolved), 1)
+                        (gx, gz), coeff = next(iter(evolved.items()))
+                        got = coeff * self._build(n, gx, gz)
+                        np.testing.assert_allclose(
+                            got, expected, atol=1e-12,
+                            err_msg=f"{label}: X{x:03b}Z{z:03b}",
+                        )
+
+    def test_cz_xa_xb_gets_relative_sign(self):
+        """The specific case the old rule missed."""
+        from cqhecs.backends.path_d_sparse_pauli import SparsePauliDynamicsSimulator
+        sim = SparsePauliDynamicsSimulator(num_qubits=2)
+        evolved = sim._apply_two_qubit_backward({(0b11, 0): complex(1.0)}, "cz", 0, 1)
+        (gx, gz), coeff = next(iter(evolved.items()))
+        # CZ^dag X_a X_b CZ = -X_a X_b Z_a Z_b
+        self.assertEqual((gx, gz), (0b11, 0b11))
+        self.assertAlmostEqual(coeff.real, -1.0)
+
+
+class TestPathDPerformanceAndContract(unittest.TestCase):
+    """Path D must stay correct and must not waste time on hopeless circuits."""
+
+    def _random_circuit(self, nq, depth, seed):
+        rng = np.random.default_rng(seed)
+        qc = QuantumCircuit(nq)
+        for _ in range(depth):
+            for q in range(nq):
+                choice = rng.integers(0, 3)
+                if choice == 0:
+                    qc.h(q)
+                elif choice == 1:
+                    qc.t(q)
+                else:
+                    qc.rz(float(rng.uniform(0, 3)), q)
+            for i in range(0, nq - 2, 2):
+                qc.cx(i, i + 1)
+                qc.cx(i + 1, i + 2)
+            for q in range(nq):
+                qc.cx(q, (q + 7) % nq)
+        return qc
+
+    def test_batched_evaluation_matches_single_observable_walk(self):
+        """
+        The batched evaluator must agree with evaluating each observable on its
+        own, otherwise the shared-walk optimisation silently changed results.
+        """
+        import re
+        from cqhecs.circuit_parsing import parse_circuit
+        from cqhecs.backends.path_d_sparse_pauli import SparsePauliDynamicsSimulator
+
+        qc = self._random_circuit(5, 6, seed=11)
+        instructions, n_q = parse_circuit(qc)
+
+        batched_sim = SparsePauliDynamicsSimulator(
+            num_qubits=n_q, max_pauli_terms=32, prune_threshold=1e-7
+        )
+        batched, _, _ = batched_sim.evaluate_expectation_values(instructions)
+
+        single_sim = SparsePauliDynamicsSimulator(
+            num_qubits=n_q, max_pauli_terms=32, prune_threshold=1e-7
+        )
+        for key, value in batched.items():
+            qubits = [int(x) for x in re.findall(r"Z\[(\d+)\]", key)]
+            mask = 0
+            for q in qubits:
+                mask |= 1 << q
+            single, _, _ = single_sim.evaluate_observable(
+                instructions, {(0, mask): complex(1.0)}
+            )
+            self.assertAlmostEqual(value, single, places=12, msg=key)
+
+    def test_expectation_values_match_exact_statevector(self):
+        import re
+        from qiskit.quantum_info import SparsePauliOp
+
+        backend = PathDSparsePauliBackend(max_pauli_terms=4096)
+        for seed in (21, 22, 23):
+            qc = self._random_circuit(4, 5, seed=seed)
+            result = backend.execute(qc, shots=10)
+            self.assertFalse(result.unresolved)
+            state = Statevector(qc)
+            for key, value in result.expectation_values.items():
+                qubits = [int(x) for x in re.findall(r"Z\[(\d+)\]", key)]
+                label = ["I"] * 4
+                for q in qubits:
+                    label[3 - q] = "Z"
+                expected = float(
+                    state.expectation_value(SparsePauliOp("".join(label))).real
+                )
+                self.assertAlmostEqual(value, expected, places=6, msg=key)
+
+    def test_certified_bound_dominates_actual_error(self):
+        """The triangle-inequality bound must never understate the real error."""
+        import re
+        from qiskit.quantum_info import SparsePauliOp
+        from cqhecs.circuit_parsing import parse_circuit
+        from cqhecs.backends.path_d_sparse_pauli import SparsePauliDynamicsSimulator
+
+        qc = self._random_circuit(4, 12, seed=31)
+        instructions, n_q = parse_circuit(qc)
+        sim = SparsePauliDynamicsSimulator(
+            num_qubits=n_q, max_pauli_terms=8, prune_threshold=1e-7
+        )
+        values, bound, _ = sim.evaluate_expectation_values(instructions)
+        # The bound is reported as the total across observables; a single
+        # observable's error cannot exceed the total.
+        state = Statevector(qc)
+        for key, value in values.items():
+            qubits = [int(x) for x in re.findall(r"Z\[(\d+)\]", key)]
+            label = ["I"] * 4
+            for q in qubits:
+                label[3 - q] = "Z"
+            expected = float(
+                state.expectation_value(SparsePauliOp("".join(label))).real
+            )
+            self.assertLessEqual(abs(expected - value), bound + 1e-9, msg=key)
+
+    def test_unresolved_circuit_terminates_promptly(self):
+        """
+        Regression: a deep circuit previously ran for minutes and then
+        returned unresolved anyway. Once the bound exceeds what any observable
+        could contribute, the walk must stop.
+        """
+        import time
+        qc = self._random_circuit(20, 25, seed=5)
+        start = time.perf_counter()
+        result = PathDSparsePauliBackend().execute(qc, shots=10)
+        elapsed = time.perf_counter() - start
+        self.assertTrue(result.unresolved)
+        self.assertEqual(result.expectation_values, None)
+        self.assertLess(elapsed, 60.0, "Path D should give up quickly")
+
+    def test_unresolved_returns_no_values(self):
+        """An unresolved result must not carry misleading expectation values."""
+        qc = self._random_circuit(12, 30, seed=3)
+        result = PathDSparsePauliBackend(max_pauli_terms=64).execute(qc, shots=10)
+        if result.unresolved:
+            self.assertIsNone(result.expectation_values)
+            self.assertEqual(result.counts, {})
 
 
 class TestSeedDeterminism(unittest.TestCase):

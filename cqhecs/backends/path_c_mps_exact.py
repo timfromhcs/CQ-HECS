@@ -91,7 +91,10 @@ class ExactMPSTensorChain:
     indistinguishable from zero, not physically small. The discarded mass is
     measured and reported rather than discarded silently:
 
-    * ``discarded_spectral_norm`` - sum of discarded singular values.
+    * ``discarded_spectral_norm`` - sum of discarded singular values across all
+      rewrites. This is a **diagnostic**, not a certified error bound: the
+      per-step masses do not compose into a state-norm error without a
+      propagation analysis this backend does not perform.
     * ``max_retained_singular_value`` - reference scale for the cutoff.
 
     Because double precision cannot represent the norm of a state exactly, this
@@ -200,8 +203,16 @@ class ExactMPSTensorChain:
 
         # Rank selection is a *roundoff* decision, not an approximation: we keep
         # every singular value above the numerical noise floor relative to the
-        # largest one. The discarded mass is measured so the caller can report
-        # it, instead of being silently dropped.
+        # largest one.
+        #
+        # The discarded mass is accumulated as a DIAGNOSTIC only. It is *not* a
+        # certified error bound on the final state: each SVD step perturbs the
+        # tensors that later steps act on, so the per-step spectral masses do
+        # not compose by a triangle inequality into a state-norm error. Deriving
+        # a rigorous propagation bound would require tracking products of the
+        # retained singular values across every rewrite, which this backend does
+        # not do. Reporting the sum as `numerical_error_bound` would therefore
+        # overstate what is known, so it is not used for that.
         if S.size:
             s_max = float(S[0])
             cutoff = s_max * self.SINGULAR_VALUE_ROUNDOFF_RATIO
@@ -584,7 +595,7 @@ class PathCMPSExactBackend:
                     path="C",
                     exact=True,
                     error_bound=0.0,
-                    numerical_error_bound=float(mps.discarded_spectral_norm),
+                    numerical_error_bound=None,
                     unresolved=False,
                     counts={},
                     execution_time_ms=(t1 - t0) * 1000.0,
@@ -598,7 +609,13 @@ class PathCMPSExactBackend:
                             f"{ExactMPSTensorChain.MAX_SAMPLING_QUBITS} qubits; "
                             f"this circuit has {n_q}. No counts were fabricated."
                         ),
-                        "discarded_spectral_norm": mps.discarded_spectral_norm,
+                        "discarded_spectral_mass_diagnostic":
+                            mps.discarded_spectral_norm,
+                        "numerical_error_bound_reason": (
+                            "not derived: per-SVD discarded mass does not "
+                            "compose into a state-norm bound without "
+                            "propagation analysis across rewrites"
+                        ),
                         "truncation_applied": False,
                         "numerical_mode": "float64-untruncated-mps",
                     }
@@ -607,17 +624,23 @@ class PathCMPSExactBackend:
             counts, supported = mps.sample(
                 shots=shots, seed=seed, measured_qubits=measured_qubits
             )
+            # Support size: only the reported (measured) qubits contribute.
+            n_reported = (
+                n_q if measured_qubits is None else len(measured_qubits)
+            )
             t1 = time.perf_counter()
 
             return SimulationResult(
                 path="C",
                 exact=True,
                 error_bound=0.0,
-                numerical_error_bound=float(mps.discarded_spectral_norm),
+                numerical_error_bound=None,
                 unresolved=False,
                 counts=counts if supported else {},
                 sampling_error_bound=(
-                    hoeffding_total_variation_bound(shots) if supported else None
+                    hoeffding_total_variation_bound(
+                        shots, support_size=1 << n_reported
+                    ) if supported else None
                 ),
                 execution_time_ms=(t1 - t0) * 1000.0,
                 metadata={
@@ -629,9 +652,15 @@ class PathCMPSExactBackend:
                     "nvme_swap_pages": len(mps.swap_files),
                     "shots": shots,
                     "seed": seed,
-                    # Roundoff discarded at the rank-selection floor. This is a
-                    # floating-precision measure, not an approximation budget.
-                    "discarded_spectral_norm": mps.discarded_spectral_norm,
+                    # Roundoff discarded at the rank-selection floor. Diagnostic
+                    # only: not a certified bound on the state.
+                    "discarded_spectral_mass_diagnostic":
+                        mps.discarded_spectral_norm,
+                    "numerical_error_bound_reason": (
+                        "not derived: per-SVD discarded mass does not compose "
+                        "into a state-norm bound without propagation analysis "
+                        "across rewrites"
+                    ),
                     "max_retained_singular_value": mps.max_retained_singular_value,
                     "two_qubit_rewrites": mps.num_two_qubit_rewrites,
                     "singular_value_roundoff_ratio":

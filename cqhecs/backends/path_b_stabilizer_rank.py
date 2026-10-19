@@ -44,8 +44,11 @@ class StabilizerRankSimulator:
     where each C_x is a pure Clifford circuit branch.
     """
 
-    #: Dense statevector evaluation costs O(2**n); refuse beyond this width.
-    MAX_STATEVECTOR_QUBITS = 16
+    #: Dense statevector evaluation costs O(2**n) memory. This is an implementation
+    #: limit, not a mathematical one: it exists because a 2**n complex vector at
+    #: 16 bytes/amplitude runs out of memory well before the rank decomposition
+    #: itself becomes infeasible.
+    MAX_STATEVECTOR_QUBITS = 22
 
     def __init__(self, num_qubits: int, max_rank_branches: int = 16384):
         self.n = num_qubits
@@ -121,7 +124,7 @@ class StabilizerRankSimulator:
             )
 
         # 2. For small to moderate circuits (n <= 16), evaluate statevectors directly
-        if self.n <= 16:
+        if self.n <= self.MAX_STATEVECTOR_QUBITS:
             dim = 1 << self.n
             total_statevector = np.zeros(dim, dtype=np.complex128)
 
@@ -255,23 +258,12 @@ class StabilizerRankSimulator:
                 state = np.einsum("ij,ajb->aib", ry_mat, state).reshape(dim)
             elif name in ("cx", "cnot"):
                 c, t = qubits[0], qubits[1]
-                for i in range(dim):
-                    if (i & (1 << c)) and not (i & (1 << t)):
-                        partner = i | (1 << t)
-                        state[i], state[partner] = state[partner], state[i]
+                state = _apply_cx(state, self.n, c, t)
             elif name == "cz":
                 c, t = qubits[0], qubits[1]
-                for i in range(dim):
-                    if (i & (1 << c)) and (i & (1 << t)):
-                        state[i] *= -1.0
+                state = _apply_cz(state, self.n, c, t)
             elif name == "swap":
-                q1, q2 = qubits[0], qubits[1]
-                for i in range(dim):
-                    b1 = (i >> q1) & 1
-                    b2 = (i >> q2) & 1
-                    if b1 != b2 and b1 == 1:
-                        partner = (i & ~(1 << q1)) | (1 << q2)
-                        state[i], state[partner] = state[partner], state[i]
+                state = _apply_swap(state, self.n, qubits[0], qubits[1])
             else:
                 raise StabilizerRankError(
                     f"Path B Clifford branch simulator cannot apply gate '{name}'. "
@@ -280,6 +272,81 @@ class StabilizerRankSimulator:
                 )
 
         return state
+
+
+def _apply_cx(state: np.ndarray, num_qubits: int, ctrl: int, tgt: int) -> np.ndarray:
+    """Applies CX by swapping amplitude blocks. Fully vectorised.
+
+    CX maps |c,t> -> |c, t XOR c>, so within the ctrl=1 block the two target
+    values are exchanged. Expressed as a reshape with the control as the outer
+    of the two manipulated axes, which avoids any transposes entirely.
+    """
+    if ctrl == tgt:
+        return state
+    dim = state.size
+    lo, hi = (ctrl, tgt) if ctrl < tgt else (tgt, ctrl)
+    # Reshape puts `hi` on axis 1 and `lo` on axis 3.
+    # `.copy()` because reshape returns a view; writing through it would
+    # otherwise mutate the caller's statevector in place.
+    view = state.reshape(_two_qubit_reshape(num_qubits, hi, lo)).copy()
+    if ctrl == lo:
+        # Swap the two qubit axes so the control is always axis 1.
+        # Axis order after transpose: (0, 3, 2, 1, 4).
+        # `.copy()` matters: transpose returns a view, so writing through it
+        # would otherwise mutate the caller's array in place.
+        view = view.transpose(0, 3, 2, 1, 4).copy()
+    row0 = view[:, 1, :, 0, :].copy()
+    row1 = view[:, 1, :, 1, :].copy()
+    view[:, 1, :, 0, :] = row1
+    view[:, 1, :, 1, :] = row0
+    if ctrl == lo:
+        view = view.transpose(0, 3, 2, 1, 4)
+    return view.reshape(dim)
+
+
+def _two_qubit_reshape(num_qubits: int, outer: int, inner: int):
+    """
+    Reshape with qubit `outer` as axis 1 and qubit `inner` as axis 3.
+
+    Shape: [above outer] x [outer] x [between] x [inner] x [below inner].
+    """
+    return (
+        1 << (num_qubits - 1 - outer),
+        2,
+        1 << (outer - inner - 1),
+        2,
+        1 << inner,
+    )
+
+
+def _apply_cz(state: np.ndarray, num_qubits: int, a: int, b: int) -> np.ndarray:
+    """Applies CZ by negating the |1,1> block. Fully vectorised.
+
+    Returns a new array; the input is never modified.
+    """
+    if a == b:
+        return state
+    lo, hi = (a, b) if a < b else (b, a)
+    # `reshape` on a contiguous array returns a view, so copy before writing.
+    view = state.reshape(_two_qubit_reshape(num_qubits, hi, lo)).copy()
+    view[:, 1, :, 1, :] *= -1.0
+    return view.reshape(state.size)
+
+
+def _apply_swap(state: np.ndarray, num_qubits: int, a: int, b: int) -> np.ndarray:
+    """Applies SWAP by exchanging the |01> and |10> blocks. Fully vectorised.
+
+    Returns a new array; the input is never modified.
+    """
+    if a == b:
+        return state
+    lo, hi = (a, b) if a < b else (b, a)
+    view = state.reshape(_two_qubit_reshape(num_qubits, hi, lo)).copy()
+    block01 = view[:, 0, :, 1, :].copy()
+    block10 = view[:, 1, :, 0, :].copy()
+    view[:, 0, :, 1, :] = block10
+    view[:, 1, :, 0, :] = block01
+    return view.reshape(state.size)
 
 
 class PathBStabilizerRankBackend:
@@ -332,7 +399,11 @@ class PathBStabilizerRankBackend:
             error_bound=0.0,
             unresolved=False,
             counts=counts,
-            sampling_error_bound=hoeffding_total_variation_bound(shots),
+            # Support size is the number of distinct measurement outcomes,
+            # i.e. 2**num_qubits for a full-register readout.
+            sampling_error_bound=hoeffding_total_variation_bound(
+                shots, support_size=1 << n_q
+            ),
             execution_time_ms=(t1 - t0) * 1000.0,
             metadata={
                 "backend": "StabilizerRankSimulator",
