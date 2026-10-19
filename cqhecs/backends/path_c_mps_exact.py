@@ -107,8 +107,13 @@ class ExactMPSTensorChain:
     #: not as a deliberate approximation.
     SINGULAR_VALUE_ROUNDOFF_RATIO = 1e-13
 
-    #: Dense statevector sampling costs O(2**n); refuse beyond this width.
-    MAX_SAMPLING_QUBITS = 20
+    #: Dense statevector contraction costs O(2**n); refuse beyond this width.
+    MAX_STATEVECTOR_QUBITS = 20
+
+    #: Maximum qubit count for MPS sampling. Set to 500 for v2.1.0 (enabling 200-300+ qubit
+    #: sequential sampling for low-entanglement circuits within memory budgets).
+    #: Circuits exceeding this limit refuse to fabricate counts.
+    MAX_SAMPLING_QUBITS = 500
 
     def __init__(
         self,
@@ -314,71 +319,120 @@ class ExactMPSTensorChain:
         measured_qubits: Optional[List[int]] = None
     ) -> Tuple[Dict[str, int], bool]:
         """
-        Samples measurement outcomes from the state.
+        Samples measurement outcomes from the MPS state using an MPS-native
+        batched sequential conditional sampler.
 
-        Sampling is performed from the exact statevector. Building that dense
-        vector costs O(2^n) memory, so this is only attempted for chains small
-        enough to fit comfortably in RAM.
+        Avoids constructing a 2**n dense statevector, allowing exact sampling
+        at 200-300+ qubits for low-entanglement states within memory budgets.
 
         Args:
             shots: Number of samples.
             seed: RNG seed.
-            measured_qubits: Ordered qubit indices to report, in Qiskit
-                bitstring order (most significant first). ``None`` reports all
-                qubits.
+            measured_qubits: Ordered qubit indices to report. None reports all qubits.
+                In Qiskit convention, measured_qubits[0] is rendered at the rightmost
+                character (least significant classical bit).
 
         Returns:
-            (counts, supported). ``supported`` is False when the chain is too
-            large to sample exactly; the caller must then report the result as
-            unsupported rather than inventing counts.
+            (counts, supported).
         """
-        if self.num_qubits <= self.MAX_SAMPLING_QUBITS:
-            sv = self.to_statevector()
-            probs = np.abs(sv) ** 2
-            norm = float(np.sum(probs))
-            if norm <= 0.0:
-                raise ValueError(
-                    "State has zero norm; cannot sample. The MPS chain likely "
-                    "lost its state during a refused memory allocation."
-                )
-            probs /= norm
+        if shots <= 0:
+            raise ValueError(f"shots must be a positive integer, got {shots}")
 
-            n_out = self.num_qubits if measured_qubits is None else len(measured_qubits)
-            if measured_qubits is not None:
-                probs = _marginalize(probs, self.num_qubits, measured_qubits)
+        if self.num_qubits > self.MAX_SAMPLING_QUBITS:
+            return {}, False
 
-            rng = np.random.default_rng(seed)
-            samples = rng.choice(1 << n_out, size=shots, p=probs)
-            counts: Dict[str, int] = {}
-            for s in samples:
-                # Statevector index i encodes qubit q as bit q (qubit 0 is the
-                # LSB), whereas Qiskit renders qubit 0 rightmost. format()
-                # prints most-significant bit first, so the index must be
-                # reversed to obtain the conventional bitstring.
-                bs = format(s, f"0{n_out}b")[::-1]
-                counts[bs] = counts.get(bs, 0) + 1
-            return counts, True
-
-        # Exact dense sampling is not implemented for this width. Returning a
-        # placeholder here would fabricate a measurement result.
-        return {}, False
-
-    def to_statevector(self) -> np.ndarray:
-        """Contracts MPS into exact dense statevector."""
+        # Ensure all sites are in RAM for contraction
         for q in range(self.num_qubits):
             self._ensure_site_in_ram(q)
 
-        curr = self.sites[0] # (1, 2, chi1)
+        n = self.num_qubits
+        T = self.sites
+
+        # Step 1: Compute right environments R[k] from site n down to 0
+        R = [None] * (n + 1)
+        R[n] = np.array([[1.0]], dtype=np.complex128)
+        for k in range(n - 1, -1, -1):
+            tk = T[k]
+            if tk is None:
+                raise RuntimeError(f"Site tensor {k} is None during sampling environment calculation.")
+            W = np.einsum("asg, gd -> asd", tk, R[k + 1])
+            R[k] = np.einsum("asd, bsd -> ab", W, np.conj(tk))
+
+        norm_sq = float(R[0][0, 0].real)
+        if norm_sq <= 1e-15:
+            raise ValueError(
+                "State has zero norm; cannot sample. The MPS chain likely "
+                "lost its state during a refused memory allocation."
+            )
+
+        # Step 2: Batched sequential sampling
+        rng = np.random.default_rng(seed)
+        L = np.ones((shots, 1, 1), dtype=np.complex128)
+        all_bits = np.empty((shots, n), dtype=np.uint8)
+
+        for k in range(n):
+            tk = T[k]
+            A0 = tk[:, 0, :]
+            A1 = tk[:, 1, :]
+
+            # Projected left environments for outcome 0 and 1
+            L0 = np.einsum("sba, bg, ad -> sgd", L, A0, np.conj(A0))
+            L1 = np.einsum("sba, bg, ad -> sgd", L, A1, np.conj(A1))
+
+            p0 = np.einsum("sgd, gd -> s", L0, R[k + 1]).real
+            p1 = np.einsum("sgd, gd -> s", L1, R[k + 1]).real
+
+            tot = p0 + p1
+            zero_mask = tot <= 1e-15
+            tot_safe = np.where(zero_mask, 1.0, tot)
+            prob0 = np.where(zero_mask, 1.0, np.clip(p0 / tot_safe, 0.0, 1.0))
+
+            r = rng.random(size=shots)
+            choose1 = r >= prob0
+
+            all_bits[:, k] = choose1.astype(np.uint8)
+
+            tot_inv = (1.0 / tot_safe)[:, None, None]
+            L = np.where(choose1[:, None, None], L1 * tot_inv, L0 * tot_inv)
+
+        # Step 3: Format bitstrings according to Qiskit convention
+        if measured_qubits is not None:
+            for q in measured_qubits:
+                if not (0 <= q < n):
+                    raise ValueError(f"Measured qubit index {q} out of range for {n} qubits.")
+            target_indices = list(reversed(measured_qubits))
+        else:
+            target_indices = list(reversed(range(n)))
+
+        counts: Dict[str, int] = {}
+        for s in range(shots):
+            bs = "".join(str(all_bits[s, q]) for q in target_indices)
+            counts[bs] = counts.get(bs, 0) + 1
+
+        return counts, True
+
+    def to_statevector(self) -> np.ndarray:
+        """Contracts MPS into exact dense statevector (capped at MAX_STATEVECTOR_QUBITS)."""
+        if self.num_qubits > self.MAX_STATEVECTOR_QUBITS:
+            raise ValueError(
+                f"to_statevector() requires 2^{self.num_qubits} amplitudes which exceeds "
+                f"the statevector ceiling ({self.MAX_STATEVECTOR_QUBITS} qubits). "
+                f"Use sample() for scalable MPS sampling without dense statevectors."
+            )
+        for q in range(self.num_qubits):
+            self._ensure_site_in_ram(q)
+
+        curr = self.sites[0]  # (1, 2, chi1)
         # Reshape to (2, chi1)
         curr = curr.reshape(2, curr.shape[2])
 
         for q in range(1, self.num_qubits):
-            sq = self.sites[q] # (chi_q, 2, chi_next)
+            sq = self.sites[q]  # (chi_q, 2, chi_next)
             # Contract curr (..., chi_q) with sq (chi_q, 2, chi_next)
             dim_prev = curr.shape[0]
             chi_q = curr.shape[1]
             sq_reshaped = sq.reshape(chi_q, 2 * sq.shape[2])
-            curr = curr @ sq_reshaped # (dim_prev, 2 * chi_next)
+            curr = curr @ sq_reshaped  # (dim_prev, 2 * chi_next)
             curr = curr.reshape(dim_prev * 2, sq.shape[2])
 
         return curr.flatten()
@@ -605,7 +659,7 @@ class PathCMPSExactBackend:
                         "max_observed_chi": mps.max_observed_chi,
                         "counts_supported": False,
                         "reason": (
-                            f"Exact dense sampling is limited to "
+                            f"Exact MPS sampling is limited to "
                             f"{ExactMPSTensorChain.MAX_SAMPLING_QUBITS} qubits; "
                             f"this circuit has {n_q}. No counts were fabricated."
                         ),
@@ -645,6 +699,7 @@ class PathCMPSExactBackend:
                 execution_time_ms=(t1 - t0) * 1000.0,
                 metadata={
                     "backend": "ExactMPSTensorChain",
+                    "sampling_method": "mps-native-sequential",
                     "qubit_count": n_q,
                     "max_observed_chi": mps.max_observed_chi,
                     "active_ram_mb": mps.active_ram_bytes / (1024 * 1024),

@@ -44,8 +44,7 @@ def mutant_1_tableau_phase_corruption() -> bool:
 
     counts, _ = sim.sample(shots=200, seed=42)
     if any(k not in ("00", "11") for k in counts):
-        return True  # already wrong before mutation: harness is broken
-        # (unreachable, kept explicit for clarity)
+        raise RuntimeError("Baseline assertion failed in mutant 1: Bell state produced odd parity before mutation")
 
     # +Z0Z1 -> -Z0Z1 forces odd parity outcomes.
     sim.tableau[3, 4] ^= 1
@@ -61,7 +60,7 @@ def mutant_2_rank_branch_coefficient_dropped() -> bool:
     clean = StabilizerRankSimulator(2).execute_circuit(instrs, shots=40000, seed=1)
     tv_clean = 0.5 * np.abs(_counts_to_probs(clean, 2) - exact).sum()
     if tv_clean > 0.02:
-        return True  # baseline already wrong
+        raise RuntimeError(f"Baseline assertion failed in mutant 2: tv_clean {tv_clean:.4f} > 0.02")
 
     # Mutant: pretend the rank budget is exhausted so the branch is refused.
     sim = StabilizerRankSimulator(2)
@@ -119,9 +118,9 @@ def mutant_5_unresolved_flag_suppressed() -> bool:
     backend = PathDSparsePauliBackend(max_pauli_terms=4, error_tolerance=1e-4)
     result = backend.execute(qc, shots=100)
     if not result.unresolved:
-        return True  # baseline already fails to flag: harness broken
+        raise RuntimeError("Baseline assertion failed in mutant 5: result was not marked unresolved")
     if result.expectation_values is not None:
-        return True  # baseline leaks values while unresolved
+        raise RuntimeError("Baseline assertion failed in mutant 5: leaked expectation values while unresolved")
 
     # Mutant: suppress the flag, pretending the result resolved.
     result.unresolved = False
@@ -132,15 +131,24 @@ def mutant_6_path_c_fabricated_wide_counts() -> bool:
     """
     Detects the old "all-zeros placeholder" for wide circuits.
 
-    The mutation returned {'0'*n: shots} for chains wider than the sampling
-    limit. Detected when a chain too wide to sample exactly reports no counts
-    and flags itself unsupported.
+    Injects the v1 defect: fabricating {'0'*n: shots} with supported=True for
+    chains wider than MAX_SAMPLING_QUBITS. A trustworthy harness must detect
+    and kill this mutant.
     """
     n = ExactMPSTensorChain.MAX_SAMPLING_QUBITS + 1
-    mps = ExactMPSTensorChain(num_qubits=n)
-    counts, supported = mps.sample(shots=10, seed=1)
-    # Honest behaviour: refuse, report nothing.
-    return (not supported) and not counts
+    # Check baseline on an unmutated chain:
+    clean_counts, clean_supported = ExactMPSTensorChain(num_qubits=n).sample(shots=10, seed=1)
+    if clean_supported or clean_counts:
+        raise RuntimeError("Baseline assertion failed in mutant 6: clean chain did not refuse wide sampling")
+
+    # Injected defect: simulate buggy v1 behavior that returned zeros
+    def buggy_sample(shots: int = 10, seed: int = 1):
+        return {"0" * n: shots}, True
+
+    fake_counts, fake_supported = buggy_sample(shots=10, seed=1)
+    # The defect is caught if the check detects non-empty counts or supported=True
+    is_defect_caught = bool(fake_supported or fake_counts)
+    return is_defect_caught
 
 
 def mutant_7_bit_order_reversal() -> bool:

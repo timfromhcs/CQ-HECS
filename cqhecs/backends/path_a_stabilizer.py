@@ -103,8 +103,12 @@ class StabilizerTableauSimulator:
     Row 2n: scratch row for deterministic measurement evaluation
     """
 
-    def __init__(self, num_qubits: int):
+    #: Cap on per-shot tableau re-measurements for wide circuits (n > 30).
+    MAX_RESAMPLE_SHOTS = 100
+
+    def __init__(self, num_qubits: int, max_resample_shots: Optional[int] = None):
         self.n = num_qubits
+        self.max_resample_shots = max_resample_shots
         self.tableau = np.zeros((2 * self.n + 1, 2 * self.n + 1), dtype=np.uint8)
         self.reset()
 
@@ -120,21 +124,14 @@ class StabilizerTableauSimulator:
 
     def _row_sum(self, h: int, i: int):
         """Accumulates row i into row h using symplectic inner product phases."""
-        def g(x1, z1, x2, z2):
-            if x1 == 0 and z1 == 0: return 0
-            if x1 == 1 and z1 == 1: return int(z2) - int(x2)
-            if x1 == 1 and z1 == 0: return int(z2) * (2 * int(x2) - 1)
-            # x1 == 0, z1 == 1:
-            return int(x2) * (1 - 2 * int(z2))
+        x1 = self.tableau[i, :self.n].astype(np.int32)
+        z1 = self.tableau[i, self.n:2 * self.n].astype(np.int32)
+        x2 = self.tableau[h, :self.n].astype(np.int32)
+        z2 = self.tableau[h, self.n:2 * self.n].astype(np.int32)
 
-        val = 2 * int(self.tableau[h, 2 * self.n]) + 2 * int(self.tableau[i, 2 * self.n])
-        for j in range(self.n):
-            val += g(
-                self.tableau[i, j], self.tableau[i, self.n + j],
-                self.tableau[h, j], self.tableau[h, self.n + j]
-            )
-        val = val % 4
-        self.tableau[h, 2 * self.n] = 1 if (val == 2) else 0
+        terms = x1 * z2 * (2 * x2 - 1) + z1 * x2 * (1 - 2 * z2) + 2 * x1 * z1 * (z2 - x2)
+        val = 2 * int(self.tableau[h, 2 * self.n]) + 2 * int(self.tableau[i, 2 * self.n]) + int(np.sum(terms))
+        self.tableau[h, 2 * self.n] = 1 if ((val % 4) == 2) else 0
 
         # Bitwise addition mod 2
         self.tableau[h, :2 * self.n] ^= self.tableau[i, :2 * self.n]
@@ -284,9 +281,9 @@ class StabilizerTableauSimulator:
 
         # General sampling: re-measure from a copy of the tableau per shot.
         saved_tableau = self.tableau.copy()
-        # Re-measurement is O(n) Python per shot; for wide tableaux cap the
-        # number of shots actually drawn rather than inflating the result.
-        actual_shots = min(shots, self.MAX_RESAMPLE_SHOTS) if self.n > 30 else shots
+        # Re-measurement is O(n^2) per shot in general; cap if specified or default to MAX_RESAMPLE_SHOTS for n > 30.
+        cap = self.max_resample_shots if self.max_resample_shots is not None else self.MAX_RESAMPLE_SHOTS
+        actual_shots = min(shots, cap) if (self.n > 30 and cap is not None) else shots
         for _ in range(actual_shots):
             self.tableau[:] = saved_tableau
             bits = [str(self.measure(q, rng)) for q in targets]
@@ -410,6 +407,9 @@ class PathAStabilizerBackend:
                 continue
             # id / barrier: no-ops
 
+    def __init__(self, max_resample_shots: Optional[int] = None):
+        self.max_resample_shots = max_resample_shots
+
     def execute(self, circuit: Any, shots: int = 1024, seed: int = 42) -> SimulationResult:
         t0 = time.perf_counter()
 
@@ -440,7 +440,7 @@ class PathAStabilizerBackend:
             sampled = shots
             method = "C++20 HybridEngine Stabilizer Tableau (Native SOTA)"
         else:
-            sim = StabilizerTableauSimulator(n_q)
+            sim = StabilizerTableauSimulator(n_q, max_resample_shots=self.max_resample_shots)
             self._apply_instructions(sim, instructions)
             counts, sampled = sim.sample(
                 shots=shots, seed=seed, measured_qubits=measured_qubits
