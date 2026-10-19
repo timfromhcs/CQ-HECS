@@ -14,7 +14,7 @@ CQ-HECS operates as a classical quantum circuit simulation engine and algebraic 
 ### Core Functional Modules
 
 #### 1. VulkanComputeScheduler & Dynamic Pipeline
-Manages queue submissions, memory barriers, and shader dispatch across Vulkan 1.3 physical devices (AMD, Intel, NVIDIA, Apple Silicon via MoltenVK). Embedded SPIR-V shaders execute tensor contractions and ring operations natively.
+Manages queue submissions, memory barriers, and shader dispatch for a Vulkan 1.3 device. Embedded SPIR-V shaders execute tensor contractions and ring operations natively. The device is selected at runtime; no physical GPU execution has been verified in the current release cycle (CI uses software Vulkan).
 
 #### 2. ARX Modular Decomposition (Algebraic SAT Testbench)
 Decomposes 64-bit addition into linear and carry terms for algebraic step verification:
