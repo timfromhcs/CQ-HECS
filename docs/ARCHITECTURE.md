@@ -1,106 +1,48 @@
-# CQ-HECS Architecture Specification
-## Volumetric Reversible Tensor Space (VRTS-300) & Pure Vulkan Compute Core
-**Target Version:** `v2.0.0-VRTS-Vulkan`  
-**License:** Apache 2.0  
-**Author:** Tim (@timfromhcs) <timfromhcs@gmail.com>
+# CQ-HECS Architecture (v2)
 
----
+> This document describes the architecture that v2.0.0 actually ships. It
+> replaces an earlier aspirational "VRTS-300" specification that described a
+> 3D volumetric lattice, a bit-exact Z(2^32) CORDIC phase ring and GPU VRAM
+> accounting — none of which are part of the shipped code. The canonical,
+> regularly maintained architecture overview lives in the repository root at
+> [`ARCHITECTURE.md`](../ARCHITECTURE.md).
 
-## 1. Executive Architectural Overview
+## What the system actually consists of
 
-**CQ-HECS** (`v2.0.0-VRTS-Vulkan`) introduces the **Volumetric Reversible Tensor Space (VRTS-300)** architecture. VRTS-300 represents a major paradigm shift: replacing 1D/2D chain approximations with an exact **3D orthogonal volumetric lattice** initialized to 300 physical qubits ($6 \times 5 \times 10$). Hardware acceleration is delivered via **pure Vulkan 1.2+ Compute** (SPIR-V bytecode, zero CUDA dependencies), governed by a **strict 3.0 GB VRAM hard ceiling**, **dual-layer residual folding** ($T = T_{\text{Active}} + T_{\text{Residual}}$), and a **bit-exact $\mathbb{Z}_{2^{32}}$ integer phase ring** driven by CORDIC micro-rotations.
+| Layer | Component | Where | Notes |
+| :--- | :--- | :--- | :--- |
+| Parser / IR | Shared circuit parser and named-circuit library | `cqhecs/circuit_parsing.py`, `cqhecs/circuit_library.py` | one parser for all four Python paths; no `eval`, no silent fallbacks |
+| Router | Capability-first four-path router | `cqhecs/router.py`, `cqhecs/circuit_analyzer.py` | fail-closed: forced paths never silently reroute; unknown inputs raise |
+| Path A | Stabilizer tableau | `cqhecs/backends/path_a_stabilizer.py` | exact GF(2) symplectic arithmetic; Clifford gates only |
+| Path B | Stabilizer-rank decomposition | `cqhecs/backends/path_b_stabilizer_rank.py` | algebraically exact expansion; float64 evaluation; dense evaluation is bounded by a documented 22-qubit ceiling |
+| Path C | Exact MPS tensor chain | `cqhecs/backends/path_c_mps_exact.py` | untruncated bond dimension; rank selection uses a relative roundoff floor; private scratch dirs; dense sampling capped at 20 qubits |
+| Path D | Sparse-Pauli (Heisenberg) dynamics | `cqhecs/backends/path_d_sparse_pauli.py` | certified bound on requested observables (⟨Z_q⟩, ⟨Z_q Z_r⟩); joint counts opt-in and labelled |
+| Result contract | `SimulationResult` | `cqhecs/result.py` | separates deliberate approximation, float roundoff and finite-shot sampling error; status enum (SUCCESS / UNRESOLVED / FAILED) |
+| Qiskit integration | BackendV2 + provider | `cqhecs/backend.py`, `cqhecs/provider.py` | reports the real package version; classical-bit mapping verified against Aer |
+| CLI | `cq-hecs` | `cqhecs/cli.py` | `version`, `doctor`, `backend list`, `analyze`, `run`, `verify`, `benchmark smoke` with a strict JSON contract |
+| Native core | C++20 engine + shaders | `src/`, `shaders/`, `include/cq_hecs_api.h` | stabilizer tableau engine, exact ring module (`src/algebra/ring.cpp` with `test_exact_ring`), Vulkan 1.3 compute shaders; built via CMake, exercised with CTest |
+| Legacy bridge | `python_bridge/` | historical reference model + ARX/SAT modules | not the supported entry point; `cq-hecs` is |
 
-```mermaid
-graph TD
-    subgraph HostSystem [Host System - Windows / Linux]
-        CLI[Standalone CLI & C-ABI API] --> Engine[VRTS300Engine Coordinator]
-        Engine --> Lattice[3D Lattice Topology 6x5x10]
-        Engine --> Cordic[Bit-Exact Phase Engine Z_2^32]
-        Engine --> Residual[Dual-Layer Residual Engine Host RAM]
-    end
+## Verification levels (what we claim, per level)
 
-    subgraph VulkanCompute [Pure Vulkan 1.2+ Compute Core]
-        Engine --> VMM[VulkanMemoryManager <= 3.0 GB VRAM]
-        VMM --> BufferPool[Active Tensor SSBO Storage Buffers]
-        BufferPool --> Shader1[cordic.comp: Micro-Rotations]
-        BufferPool --> Shader2[tensor_contract.comp: Parallel Contraction]
-        BufferPool --> Shader3[bond_svd.comp: Jacobi / Polar Rotations]
-        BufferPool --> Shader4[state_reset.comp: Ground State Reset]
-    end
+| Level | Meaning | Status in this cycle |
+| :--- | :--- | :--- |
+| CPU Python paths | verified against Qiskit Statevector/Aer/Stim oracles | verified |
+| Native engine (CPU) | exercised through the bridge and native tests | verified in local suite + CI |
+| Shader compilation | SPIR-V validation in CI | verified (compilation ≠ acceleration) |
+| Software Vulkan (Lavapipe) | CI subsystem tier | verified in CI contexts, depends on runner |
+| Vulkan loader | device enumeration | verified on the dev machine |
+| Physical GPU compute dispatch | actual dispatch on disswcrete/integrated GPU | **not verified in this cycle** — no acceleration claim is made |
 
-    subgraph HardwareExecution [Execution Tier]
-        Shader1 & Shader2 & Shader3 & Shader4 --> GPU[Hardware Discrete / Integrated GPU]
-        Shader1 & Shader2 & Shader3 & Shader4 -. Fallback .-> Lavapipe[Mesa Lavapipe CPU ICD]
-    end
-```
+## Cross-cutting guarantees
 
----
-
-## 2. Mathematical Formalism & Modules
-
-### 2.1 3D-Volumetric Lattice Topology (`Lattice3D`)
-The physical qubits are mapped to an orthogonal three-dimensional grid:
-$$\mathcal{L} = \{ (x, y, z) \in \mathbb{N}^3 \mid 0 \le x < 6, \; 0 \le y < 5, \; 0 \le z < 10 \}$$
-$$\text{Total Qubits: } N = 6 \times 5 \times 10 = 300$$
-
-- **Linear Index Bijection:**
-  $$\text{Index}(x, y, z) = x + 6 \cdot y + 30 \cdot z, \quad \text{Index} \in [0, 299]$$
-- **6-Neighbor Spatial Bonds:**
-  Each interior node connects along axes $(\pm x, \pm y, \pm z)$. The total number of unique physical bonds across the lattice is:
-  $$|B| = (6-1)\cdot 5 \cdot 10 + 6 \cdot (5-1) \cdot 10 + 6 \cdot 5 \cdot (10-1) = 250 + 240 + 270 = 760 \text{ bonds}$$
-- **Topological Manhattan Distance:**
-  $$d((x_1, y_1, z_1), (x_2, y_2, z_2)) = |x_1 - x_2| + |y_1 - y_2| + |z_1 - z_2|$$
-  $$\text{Max Contraction Path: } \max d = (6-1) + (5-1) + (10-1) = 5 + 4 + 9 = 18 \text{ hops}$$
-- **Optimal Routing:** Routing between non-adjacent qubits decomposes along coordinate axes $(X \to Y \to Z)$, requiring strictly $\le 18$ SWAP hops.
-
----
-
-### 2.2 Bit-Exact Phase Engine & Integer CORDIC (`CordicEngine`)
-To completely eliminate IEEE-754 floating-point drift over thousands of gates, phase angles are represented on the discrete ring:
-$$\mathbb{Z}_{2^{32}} = \{ 0, 1, \dots, 2^{32}-1 \} \quad \text{where } 2^{32} \equiv 2\pi$$
-
-- **Exact Clifford+T Angles:**
-  $$\text{Identity} = 0x00000000, \quad T = \pi/4 = 0x20000000, \quad S = \pi/2 = 0x40000000, \quad Z = \pi = 0x80000000$$
-- **Reversible Integer Lifting Scheme:**
-  Arbitrary 2D rotation $\begin{pmatrix} \cos\theta & -\sin\theta \\ \sin\theta & \cos\theta \end{pmatrix}$ decomposes into three integer shear steps:
-  $$x_1 = x_0 - \lfloor y_0 \cdot \tan(\theta/2) \rfloor$$
-  $$y_1 = y_0 + \lfloor x_1 \cdot \sin(\theta) \rfloor$$
-  $$x_2 = x_1 - \lfloor y_1 \cdot \tan(\theta/2) \rfloor$$
-  The exact inverse:
-  $$x_1 = x_2 + \lfloor y_1 \cdot \tan(\theta/2) \rfloor$$
-  $$y_0 = y_1 - \lfloor x_1 \cdot \sin(\theta) \rfloor$$
-  $$x_0 = x_1 + \lfloor y_0 \cdot \tan(\theta/2) \rfloor$$
-  Because each shear modifies one coordinate using the unmodified other, the forward and reverse integer roundings cancel identically, ensuring **bit-exact reversibility ($U^\dagger U = I$)**.
-
----
-
-### 2.3 Dual-Layer Residual Folding Architecture (`ResidualEngine`)
-Standard tensor truncation discards small singular values, causing irreversible cumulative error. VRTS-300 replaces destructive truncation with **Dual-Layer Residual Folding**:
-$$T = T_{\text{Active}} + T_{\text{Residual}}$$
-
-1. **$T_{\text{Active}}$ (GPU VRAM Layer):**
-   Stores the dominant components in high-speed Vulkan Storage Buffers (SSBOs). Capped to fit strictly within the **3.0 GB VRAM limit**.
-2. **$T_{\text{Residual}}$ (Host RAM Layer):**
-   Stores sparse bit-packed integer delta vectors streamed directly into Host RAM:
-   $$\text{Residual} = \{ (\text{coord}_k, \Delta\text{real}_k, \Delta\text{imag}_k) \}$$
-3. **On-Demand Bit-Exact Reconstruction:**
-   When a local gate or inverse contraction activates a folded node, $T_{\text{Residual}}$ is fetched from Host RAM and recombined into $T_{\text{Active}}$ without precision loss.
-
----
-
-### 2.4 Pure Vulkan 1.2+ Compute Core (`VulkanContext`)
-- **Zero CUDA:** All GPU computation executes via Khronos Vulkan 1.2+ Compute pipelines.
-- **Embedded SPIR-V Bytecode:** Shaders (`cordic.comp`, `tensor_contract.comp`, `bond_svd.comp`, `state_reset.comp`) are compiled via `glslangValidator` and embedded directly as `uint32_t` arrays in binary headers, eliminating external file path dependencies.
-- **3.0 GB Memory Governor (`VulkanMemoryManager`):** Tracks every active byte allocated across GPU buffers. Hard limits are enforced with `track_allocation` and `track_deallocation`.
-- **Automatic Lavapipe Fallback:** If no discrete or integrated physical GPU is discovered (e.g. headless CI runners), the engine automatically selects Mesa Lavapipe (`VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json`) or software emulation.
-
----
-
-### 2.5 Combinatorial Constraint & MaxCut Solver (`ConstraintSolver`)
-The 3D volumetric lattice maps directly to 300-node graph optimization problems:
-- **300-Node Bipartite Ground Truth:**
-  The $6 \times 5 \times 10$ orthogonal grid forms a natural bipartite graph with 760 edges.
-  Partitioning vertices by spatial parity $(x + y + z) \pmod 2$ cuts all 760 edges.
-  $$\text{Ground Truth Max Cut: } 760 / 760 \quad | \quad \text{Ground Truth Energy: } -760$$
-- **Continuous VRAM Polling:** The solver contracts planar slices along $z \in [0, 9]$, polling allocated VRAM and asserting:
-  $$\text{Peak Allocated VRAM } \le 3072 \text{ MB (3.0 GB)}$$
+1. Every subtle approximation is reported: no silent truncation; a
+   `discarded_spectral_mass_diagnostic` exists where a certified bound is not
+   yet derivable (Path C), and `numerical_error_bound = None` instead of an
+   invented number.
+2. Every error bound names what metric it covers (see
+   `research/v2/FORMALIZATION_STATUS.md` for each proof's status).
+3. Unsupported operations raise typed errors before execution; nothing falls
+   through as identity.
+4. The finite-shot confidence bound is support-size aware (Weissman et al.,
+   2003) and never presented as a bound on other metrics.
