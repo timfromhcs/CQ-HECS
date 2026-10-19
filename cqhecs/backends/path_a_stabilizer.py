@@ -18,21 +18,49 @@ from cqhecs.circuit_parsing import parse_circuit
 class UnsupportedPathAOperation(ValueError):
     """Raised when a circuit uses an operation the stabilizer tableau cannot apply."""
 
-# Attempt importing high-performance native C++20 stabilizer engine
-_native = None
-try:
-    import _cqhecs_core as _native
-except ImportError:
+def _load_native():
+    """
+    Imports the native C++20 stabilizer engine if it has been built.
+
+    Searches the build output rather than assuming one fixed location, because
+    the build writes into ${CMAKE_BINARY_DIR}/bin for both single-config
+    (Ninja) and multi-config (MSVC) generators. Returns None when the
+    extension has not been built; callers then use the Python tableau, which
+    is exact but slower.
+    """
     try:
-        from python import _cqhecs_core as _native
+        import _cqhecs_core as module
+        return module
     except ImportError:
+        pass
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.dirname(os.path.dirname(here))
+    search = []
+    env_dir = os.environ.get("CQ_HECS_BUILD_DIR")
+    if env_dir:
+        search.append(env_dir)
+    search.extend([
+        os.path.join(repo_root, "build", "bin", "Release"),
+        os.path.join(repo_root, "build", "bin"),
+        os.path.join(repo_root, "build", "Release"),
+        os.path.join(repo_root, "bin", "Release"),
+        os.path.join(repo_root, "bin"),
+    ])
+    for directory in search:
+        if not os.path.isdir(directory):
+            continue
+        if directory not in sys.path:
+            sys.path.append(directory)
         try:
-            rel_bin = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "bin", "Release"))
-            if os.path.exists(rel_bin):
-                sys.path.insert(0, rel_bin)
-                import _cqhecs_core as _native
-        except Exception:
-            _native = None
+            import _cqhecs_core as module
+            return module
+        except ImportError:
+            continue
+    return None
+
+
+_native = _load_native()
 
 
 #: Cap on per-shot tableau re-measurements for wide circuits (n > 30).
