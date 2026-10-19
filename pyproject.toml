@@ -47,6 +47,9 @@ benchmark = [
 Homepage = "https://github.com/timfromhcs/CQ-HECS"
 Repository = "https://github.com/timfromhcs/CQ-HECS"
 
+[project.scripts]
+cq-hecs = "cqhecs.cli:main"
+
 [tool.setuptools.packages.find]
 include = ["cqhecs*", "python_bridge*"]
 exclude = ["tests*", "benchmarks*", "audit*"]
