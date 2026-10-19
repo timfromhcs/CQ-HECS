@@ -144,6 +144,10 @@ def hoeffding_total_variation_bound(
         if support_size == 1:
             return 0.0
         log_prefactor = math.log(2.0)
+    elif isinstance(support_size, int) and support_size.bit_length() > 60:
+        # For support_size >= 2^60, bound >= sqrt(2^60 * ln 2 / (2 * shots)) >> 1.0
+        # for any realistic shot count. Returning 1.0 avoids int-to-float OverflowError.
+        return 1.0
     else:
         # ln(2^K - 2), computed stably. For K >= 2 the correction from the
         # subtracted 2 is below double precision, so ln(2^K - 2) = K*ln2 to

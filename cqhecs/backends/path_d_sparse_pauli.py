@@ -30,13 +30,46 @@ If the accumulated bound exceeds the caller's tolerance the result is
 
 from __future__ import annotations
 import math
+import re
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 import numpy as np
 
 from cqhecs.circuit_parsing import parse_circuit
 from cqhecs.result import SimulationResult, hoeffding_total_variation_bound
+
+
+def _parse_observable_request(
+    observables: Union[Dict[str, int], Sequence[str]],
+    num_qubits: int,
+) -> Dict[str, int]:
+    """
+    Parses a user observable request into a mapping of name -> z_mask.
+    Supports dictionary {name: z_mask} or sequences of strings like ["Z[0]", "Z[0]Z[1]"].
+    """
+    if isinstance(observables, dict):
+        for name, mask in observables.items():
+            if not isinstance(mask, int) or mask < 0:
+                raise ValueError(f"Observable mask for {name!r} must be a non-negative integer, got {mask!r}")
+        return dict(observables)
+
+    result: Dict[str, int] = {}
+    for obs_str in observables:
+        if not isinstance(obs_str, str):
+            raise TypeError(f"Observable descriptor must be str or dict, got {type(obs_str).__name__}")
+        matches = re.findall(r"Z\[(\d+)\]", obs_str)
+        if not matches:
+            raise ValueError(f"Unrecognized observable format {obs_str!r}. Expected e.g. 'Z[0]' or 'Z[0]Z[1]'.")
+        mask = 0
+        for m in matches:
+            q = int(m)
+            if not (0 <= q < num_qubits):
+                raise ValueError(f"Qubit index {q} in observable {obs_str!r} out of range for {num_qubits} qubits.")
+            mask |= (1 << q)
+        clean_name = "".join(f"Z[{m}]" for m in sorted(int(x) for x in matches))
+        result[clean_name] = mask
+    return result
 
 # Pauli basis used for single-qubit conjugation, in (x_mask, z_mask) order.
 #   I = (0,0), X = (1,0), Y = (1,1), Z = (0,1)
@@ -380,6 +413,7 @@ class SparsePauliDynamicsSimulator:
         self,
         instructions: List[Tuple[str, List[int], List[float]]],
         include_pairs: bool = True,
+        observables: Optional[Dict[str, int]] = None,
     ) -> Tuple[Dict[str, float], float, bool]:
         """
         Computes certified single-qubit and parity expectation values.
@@ -400,23 +434,31 @@ class SparsePauliDynamicsSimulator:
         <Z_q Z_r> pairs are included by default: they are the observables that
         actually carry the Bell/GHZ correlation structure.
 
+        Args:
+            instructions: Circuit instructions.
+            include_pairs: If True and observables is None, includes all pair parities.
+            observables: Explicit dict of name -> z_mask. If provided, overrides include_pairs.
+
         Returns:
             (expectation_values, accumulated_error_bound, is_unresolved)
 
             The reported bound is the *total* accumulated bound over every
             observable evaluated, so it bounds every returned value.
         """
-        observables: Dict[str, int] = {}
-        for q in range(self.num_qubits):
-            observables[f"Z[{q}]"] = 1 << q
-        if include_pairs:
+        if observables is not None:
+            obs_map = dict(observables)
+        else:
+            obs_map = {}
             for q in range(self.num_qubits):
-                for r in range(q + 1, self.num_qubits):
-                    observables[f"Z[{q}]Z[{r}]"] = (1 << q) | (1 << r)
+                obs_map[f"Z[{q}]"] = 1 << q
+            if include_pairs:
+                for q in range(self.num_qubits):
+                    for r in range(q + 1, self.num_qubits):
+                        obs_map[f"Z[{q}]Z[{r}]"] = (1 << q) | (1 << r)
 
         # One backward walk carrying every observable independently.
         states = {name: {(0, mask): complex(1.0, 0.0)}
-                  for name, mask in observables.items()}
+                  for name, mask in obs_map.items()}
         bounds = dict.fromkeys(states, 0.0)
 
         # The truncation bound only grows. Once the *combined* bound already
@@ -424,9 +466,9 @@ class SparsePauliDynamicsSimulator:
         # (each |<Z...>| <= 1), the result is unresolved by construction, so
         # continuing the walk would burn minutes of CPU to produce a value the
         # caller will discard. Bail out as soon as that is provable.
-        # For n qubits there are at most `len(observables)` terms, each bounded
+        # For n qubits there are at most `len(states)` terms, each bounded
         # by 1 in absolute value.
-        budget_cap = float(len(observables))
+        budget_cap = float(len(states))
         running_bound = 0.0
 
         exhausted = False
@@ -603,6 +645,8 @@ class PathDSparsePauliBackend:
         shots: int = 1024,
         seed: int = 42,
         error_tolerance: Optional[float] = None,
+        observables: Optional[Union[Dict[str, int], Sequence[str]]] = None,
+        include_pairs: Optional[bool] = None,
     ) -> SimulationResult:
         t0 = time.perf_counter()
 
@@ -619,7 +663,18 @@ class PathDSparsePauliBackend:
             error_tolerance=tol,
         )
 
-        values, error_bound, unresolved = sim.evaluate_expectation_values(instructions)
+        obs_map: Optional[Dict[str, int]] = None
+        if observables is not None:
+            obs_map = _parse_observable_request(observables, n_q)
+            inc_pairs = False
+        else:
+            inc_pairs = (n_q <= 30) if include_pairs is None else bool(include_pairs)
+
+        values, error_bound, unresolved = sim.evaluate_expectation_values(
+            instructions,
+            include_pairs=inc_pairs,
+            observables=obs_map,
+        )
 
         counts: Dict[str, int] = {}
         sampling_bound: Optional[float] = None

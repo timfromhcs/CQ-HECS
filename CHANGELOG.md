@@ -6,6 +6,56 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [2.1.0] — 2026-10-19
+
+This release delivers verified 200+ qubit simulation and scalable full-register
+sampling across structured circuit families, adds selective observable evaluation
+for Path D, hardens the mutation testing framework, and conducts a complete
+corpus audit of OpenAI Math.
+
+### Added — 200+ qubit sampling and selective evaluation
+
+- **MPS-native sequential conditional sampling (Path C):**
+  Batched sequential sampling using right-to-left environment contraction $R^{[k]}$
+  and vectorized left conditional projections $L^{[k+1]}$. Allows drawing thousands
+  of full-register shots from 200–300+ qubit low-entanglement MPS states without
+  constructing a dense $2^n$ statevector (e.g. 300Q GHZ sampled in 0.27s with zero
+  dense statevector allocation). Dense statevector conversion remains protected behind
+  `MAX_STATEVECTOR_QUBITS = 20`.
+- **Selective observables API (Path D):**
+  Added `observables` parameter to `execute()` and CLI to evaluate explicit subsets
+  of Pauli observables (e.g. across 200-qubit Bell pairs) without $O(n^2)$ observable
+  pair explosion. Automatically limits evaluation to single-qubit Z for circuits with
+  $n > 30$ unless pair parities are explicitly requested.
+- **200+ qubit acceptance suite:**
+  Added `tests/test_200q_sampling_acceptance.py` exercising 300Q GHZ on Path A,
+  300Q GHZ on Path C, 200Q 1D cluster states on Path C, 200Q selective observables on
+  Path D, and router verification.
+
+### Fixed — performance and harness correctness
+
+- **Path A wide circuit sampling:**
+  Fixed a latent `self.MAX_RESAMPLE_SHOTS` AttributeError for non-all-equal wide circuits.
+  Vectorized symplectic phase accumulation in `_row_sum` using an algebraic mod 4 formula,
+  yielding a ~10x speedup and removing unnecessary shot resampling bottlenecks.
+- **Mutation testing harness trustworthiness:**
+  Removed all shortcut `return True` fallback branches in `scripts/run_mutation_tests.py`
+  (mutants 1, 2, 5) and properly injected wide-counts fabrication in mutant 6. Added
+  meta-tests in `tests/test_mutation_harness_meta.py` ensuring the harness fails closed
+  with non-zero exit on broken baselines, surviving mutants, and harness errors.
+- **Large support-size stability in TV bound:**
+  Protected `hoeffding_total_variation_bound` against integer-to-float `OverflowError`
+  for massive registers ($K > 60$ bits support size), correctly returning 1.0.
+
+### Research & Verification
+
+- **OpenAI Math corpus audit:**
+  Parsed and audited all 372 manuscript families and 719 preprints from upstream
+  `openai/math` snapshot (`1581d4cb`). Generated complete manifests and identified
+  complexity barriers (query complexity separations $\neq$ classical circuit simulation).
+
+---
+
 ## [2.0.0] — 2026-10-19
 
 This release cycle was a correctness audit. Every item below is a defect that

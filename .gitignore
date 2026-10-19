@@ -84,4 +84,5 @@ htmlcov/
 *.bin
 *.swp
 *.bak
+*.db
 cq_test_swap.bin
