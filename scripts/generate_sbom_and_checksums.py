@@ -53,15 +53,18 @@ def build_distribution():
 
 
 def generate_checksums() -> dict:
-    print("[2/4] Generating SHA256 checksums...")
+    print("[3/4] Generating SHA256 checksums...")
     checksums = {}
     lines = []
+    # Every published asset gets a hash, including the SBOM and the release
+    # notes; only the checksum file itself is excluded (it cannot hash itself).
     for f in sorted(DIST_DIR.iterdir()):
-        if f.is_file() and not f.name.endswith(".txt") and not f.name.endswith(".json"):
-            digest = sha256_file(f)
-            checksums[f.name] = digest
-            lines.append(f"{digest}  {f.name}")
-            print(f"  {f.name}: {digest}")
+        if not f.is_file() or f.name == "sha256sums.txt":
+            continue
+        digest = sha256_file(f)
+        checksums[f.name] = digest
+        lines.append(f"{digest}  {f.name}")
+        print(f"  {f.name}: {digest}")
 
     sums_path = DIST_DIR / "sha256sums.txt"
     sums_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -88,7 +91,7 @@ def _dependency_floors() -> list:
 
 
 def generate_spdx_sbom(commit_sha: str) -> dict:
-    print("[3/4] Generating SPDX 2.3 JSON SBOM...")
+    print("[2/4] Generating SPDX 2.3 JSON SBOM...")
     now_iso = datetime.now(timezone.utc).isoformat()
     # The version comes from the single source of truth, never hardcoded here.
     from version import VERSION as RELEASE_VERSION
@@ -176,8 +179,9 @@ def update_audit_tracking(commit_sha: str, checksums: dict):
 def main():
     head_sha = get_git_head_sha()
     build_distribution()
-    checksums = generate_checksums()
+    # The SBOM is a published asset, so it must exist before hashing.
     generate_spdx_sbom(head_sha)
+    checksums = generate_checksums()
     update_audit_tracking(head_sha, checksums)
 
 
