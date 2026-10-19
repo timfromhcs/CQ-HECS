@@ -82,11 +82,89 @@ class CQHecsBackend(BackendV2):
             error_tolerance=0.05
         )
 
+    @staticmethod
+    def _normalize_measurements(qc: Any) -> tuple:
+        """
+        Returns a plain instruction list to simulate plus a layout description.
+
+        The measured qubits are sampled in classical-bit order, so the result
+        can be placed back into the exact classical bits the circuit asked for.
+        ``measure_all()``, for example, maps qubit q to clbit q + n, which puts
+        the outcome in the *high* columns of the bitstring.
+        """
+        instructions = []
+        qubit_to_clbit: dict = {}
+        has_measure = False
+        for inst in qc.data:
+            name = inst.operation.name.lower()
+            if name == "measure":
+                has_measure = True
+                qubits = [qc.find_bit(q).index for q in inst.qubits]
+                clbits = [qc.find_bit(c).index for c in inst.clbits]
+                for q, c in zip(qubits, clbits):
+                    qubit_to_clbit.setdefault(q, c)
+                continue
+            instructions.append((
+                name,
+                [qc.find_bit(q).index for q in inst.qubits],
+                [float(p) for p in getattr(inst.operation, "params", [])],
+            ))
+
+        if not has_measure:
+            return instructions, None
+
+        # Sample in ascending classical-bit order.
+        by_clbit = sorted(qubit_to_clbit.items(), key=lambda kv: kv[1])
+        sampled_qubits = [q for q, _ in by_clbit]
+        # One 'measure' instruction per qubit, so each backend's arity check
+        # sees the 1-qubit form it expects.
+        for q in sampled_qubits:
+            instructions.append(("measure", [q], []))
+        layout = {
+            "qubits": sampled_qubits,
+            "clbits": [c for _, c in by_clbit],
+            "width": qc.num_clbits,
+        }
+        return instructions, layout
+
+    @staticmethod
+    def _pad_counts(counts, layout, width):
+        """
+        Expands backend counts to the circuit's classical register width.
+
+        ``measure_all()`` appends a full-width register, so a bare n-bit result
+        must be right-padded with zeros to match what Qiskit callers expect.
+        """
+        if not counts or layout is None:
+            return counts
+
+        clbits = layout["clbits"]
+        width = layout["width"]
+        # The backend returns one character per measured qubit, in ascending
+        # classical-bit order, with qubit 0 rendered rightmost. Place each
+        # character into the column its classical bit occupies in a
+        # Qiskit-rendered bitstring (highest clbit leftmost).
+        padded = {}
+        for key, value in counts.items():
+            chars = key.replace(" ", "")
+            out = ["0"] * width
+            for position, clbit in enumerate(clbits):
+                # chars is ordered by ascending clbit, so the last character
+                # corresponds to the largest clbit.
+                char = chars[len(chars) - 1 - position]
+                out[width - 1 - clbit] = char
+            bits = "".join(out)
+            padded[bits] = padded.get(bits, 0) + value
+        return padded
+
     def run(self, run_input: Any, **options) -> Any:
         shots = options.get("shots", self.options.shots)
         seed = options.get("seed_simulator", self.options.seed_simulator)
         preferred_path = options.get("preferred_path", self._preferred_path)
         error_tolerance = options.get("error_tolerance", self._error_tolerance)
+
+        if shots <= 0:
+            raise ValueError(f"shots must be a positive integer, got {shots}")
 
         circuits = run_input if isinstance(run_input, list) else [run_input]
         experiment_results = []
@@ -95,15 +173,27 @@ class CQHecsBackend(BackendV2):
         start_time = time.time()
         for idx, qc in enumerate(circuits):
             t_exp_start = time.time()
+
+            # Measurements must be expressed against classical bits, otherwise
+            # the bitstring width would not match the circuit's memory layout.
+            # `measure_all()` appends an extra register, so the counts must
+            # carry that register's zeros too.
+            measured_qc, measure_layout = self._normalize_measurements(qc)
+
             sim_res = self._router.route_and_execute(
-                qc,
+                measured_qc,
                 shots=shots,
                 seed=seed,
                 preferred_path=preferred_path,
                 error_tolerance=error_tolerance
             )
             sim_results.append(sim_res)
-            counts = sim_res.counts
+
+            counts = self._pad_counts(
+                sim_res.counts,
+                measure_layout,
+                getattr(qc, "num_clbits", qc.num_qubits),
+            )
             t_exp_end = time.time()
 
             exp_res = ExperimentResult(
@@ -116,6 +206,9 @@ class CQHecsBackend(BackendV2):
                     "path": sim_res.path,
                     "exact": sim_res.exact,
                     "error_bound": sim_res.error_bound,
+                    "numerical_error_bound": sim_res.numerical_error_bound,
+                    "sampling_error_bound": sim_res.sampling_error_bound,
+                    "total_error_bound": sim_res.total_error_bound,
                     "unresolved": sim_res.unresolved,
                 },
                 status="UNRESOLVED" if sim_res.unresolved else "DONE",

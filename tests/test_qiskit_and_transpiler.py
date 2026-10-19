@@ -14,6 +14,40 @@ except ImportError:
 
 
 class TestQiskitAndTranspiler(unittest.TestCase):
+    """
+    Tests the legacy ``python/cq_hecs`` Qiskit provider.
+
+    That provider wraps the *native* engine (``_cq_hecs_core``), so these tests
+    require the native component to be built. When it is absent they skip with
+    an actionable reason rather than failing, because the provider genuinely
+    cannot simulate anything in that state. The four classical backends, which
+    need no native build, are covered by tests/test_correctness_contracts.py.
+    """
+
+    @staticmethod
+    def _require_native():
+        # Use the same module name cq_hecs.provider imports, so this reflects
+        # whether the provider can actually run.
+        import cq_hecs.provider as provider_module
+        if not provider_module.HAS_CORE:
+            raise ImportError("cq_hecs.provider reports HAS_CORE=False")
+        return True
+
+    @classmethod
+    def setUpClass(cls):
+        try:
+            cls._require_native()
+            cls.has_native = True
+        except ImportError:
+            cls.has_native = False
+
+    def _skip_without_native(self):
+        if not self.has_native:
+            self.skipTest(
+                "native _cq_hecs_core is not built; the legacy VulkanQpuBackend "
+                "provider requires it (build the native component to run this)"
+            )
+
     @unittest.skipUnless(HAS_QISKIT, "Qiskit not installed")
     def test_vulkan_backend_initialization(self):
         """Verify VulkanQpuBackend initializes with Linear and Heavy-Hex topologies."""
@@ -28,6 +62,7 @@ class TestQiskitAndTranspiler(unittest.TestCase):
     @unittest.skipUnless(HAS_QISKIT, "Qiskit not installed")
     def test_qiskit_bell_circuit_execution(self):
         """Execute Bell State on VulkanQpuBackend and verify deterministic counts."""
+        self._skip_without_native()
         qc = QuantumCircuit(2)
         qc.h(0)
         qc.cx(0, 1)
@@ -46,6 +81,7 @@ class TestQiskitAndTranspiler(unittest.TestCase):
     @unittest.skipUnless(HAS_QISKIT, "Qiskit not installed")
     def test_qiskit_ghz300_linear_execution(self):
         """Verify 300-qubit GHZ state execution via Qiskit BackendV2."""
+        self._skip_without_native()
         qc = QuantumCircuit(300)
         qc.h(0)
         for i in range(299):

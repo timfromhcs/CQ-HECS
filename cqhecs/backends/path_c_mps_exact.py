@@ -19,6 +19,16 @@ from cqhecs.circuit_parsing import parse_circuit
 from cqhecs.result import SimulationResult, hoeffding_total_variation_bound
 
 
+def _controlled_phase_matrix(theta: float) -> np.ndarray:
+    """Diagonal controlled-phase matrix diag(1, 1, 1, exp(i*theta))."""
+    return np.array([
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, np.exp(1j * theta)]
+    ], dtype=np.complex128)
+
+
 def _marginalize(
     probs: np.ndarray,
     num_qubits: int,
@@ -400,7 +410,7 @@ class PathCMPSExactBackend:
     SUPPORTED_GATES = frozenset({
         "h", "x", "y", "z", "s", "sdg", "t", "tdg",
         "rz", "p", "u1", "rx", "ry",
-        "cx", "cnot", "cz", "swap",
+        "cx", "cnot", "cz", "swap", "cp", "crx", "cry", "crz", "cu1",
     })
 
     #: Instructions that carry no state change.
@@ -496,6 +506,53 @@ class PathCMPSExactBackend:
                         [0, 0, 0, 1]
                     ], dtype=np.complex128)
                     mps.apply_two_qubit_gate(qubits[0], qubits[1], swap_mat)
+                elif name == "cp":
+                    th = self._require_params(name, params)
+                    mps.apply_two_qubit_gate(
+                        qubits[0], qubits[1], _controlled_phase_matrix(th)
+                    )
+                elif name == "crz":
+                    th = self._require_params(name, params)
+                    e_m = np.exp(-1j * th / 2.0)
+                    e_p = np.exp(1j * th / 2.0)
+                    mps.apply_two_qubit_gate(
+                        qubits[0], qubits[1],
+                        np.array([
+                            [1, 0, 0, 0],
+                            [0, 1, 0, 0],
+                            [0, 0, e_m, 0],
+                            [0, 0, 0, e_p]
+                        ], dtype=np.complex128)
+                    )
+                elif name == "crx":
+                    th = self._require_params(name, params)
+                    c, s = np.cos(th / 2.0), np.sin(th / 2.0)
+                    mps.apply_two_qubit_gate(
+                        qubits[0], qubits[1],
+                        np.array([
+                            [1, 0, 0, 0],
+                            [0, c, -1j * s, 0],
+                            [0, -1j * s, c, 0],
+                            [0, 0, 0, 1]
+                        ], dtype=np.complex128)
+                    )
+                elif name == "cry":
+                    th = self._require_params(name, params)
+                    c, s = np.cos(th / 2.0), np.sin(th / 2.0)
+                    mps.apply_two_qubit_gate(
+                        qubits[0], qubits[1],
+                        np.array([
+                            [1, 0, 0, 0],
+                            [0, c, -s, 0],
+                            [0, s, c, 0],
+                            [0, 0, 0, 1]
+                        ], dtype=np.complex128)
+                    )
+                elif name == "cu1":
+                    th = self._require_params(name, params)
+                    mps.apply_two_qubit_gate(
+                        qubits[0], qubits[1], _controlled_phase_matrix(th)
+                    )
 
                 if mps.memory_limit_exceeded:
                     # The chain was left untouched at the refused allocation:
@@ -617,9 +674,10 @@ class PathCMPSExactBackend:
             "h": 1, "x": 1, "y": 1, "z": 1, "s": 1, "sdg": 1, "t": 1, "tdg": 1,
             "rz": 1, "p": 1, "u1": 1, "rx": 1, "ry": 1,
             "cx": 2, "cnot": 2, "cz": 2, "swap": 2,
+            "cp": 2, "cu1": 2, "crx": 2, "cry": 2, "crz": 2,
             "barrier": 0, "id": 1, "measure": 1,
         }
-        needs_params = {"rz", "p", "u1", "rx", "ry"}
+        needs_params = {"rz", "p", "u1", "rx", "ry", "cp", "cu1", "crx", "cry", "crz"}
 
         # Identify measurement instructions and verify they are all terminal.
         measure_positions = [
