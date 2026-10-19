@@ -13,8 +13,8 @@ method, input, observation and decision. Every entry corresponds to a commit in
   `TV(empirical, uniform)` exceeds the bound over repeated trials.
 - **Observation:** violation rates 0.6% / 73.0% / 100.0% for K = 2 / 16 / 64 —
   the dimension-free claim is false by direct construction.
-- **Decision:** replace with the Weissman-style support-aware bound
-  (commit `a0eb...` branch commit `a0be9b4`); keep the K=2 collapse exact;
+- **Decision:** replace with the Weissman-style support-aware bound (commit
+  `a0be9b4`); keep the K=2 collapse exact;
   compute in log space; clamp to 1.0. Covered by tests validating the theorem
   shape (K-dependence) rather than only the formula.
 
@@ -76,8 +76,10 @@ method, input, observation and decision. Every entry corresponds to a commit in
 
 ## E7 — Small-circuit timing spot checks (informative only)
 
-Single-run wall clock, local CPU, default settings. Recorded in
-`research/v2/METHOD_CATALOG.md`_simps; **not** a performance claim:
+## E7 — Small-circuit timing spot checks (informative only)
+
+Single-run wall clock, local CPU, default settings, recorded in
+`research/v2/METHOD_CATALOG.md` §1; **not** a performance claim:
 
 | Circuit | Path | wall |
 | :--- | --- | ---: |

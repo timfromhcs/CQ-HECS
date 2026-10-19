@@ -8,15 +8,11 @@ nothing is copied from an earlier report.
 
 | Item | Value |
 | :--- | :--- |
-| Mission start SHA (audited reference) | `dd59c0c4e60e0ba7b951947985dccba288786db53`* |
+| Mission start SHA (audited reference) | `dd59c0c4e60e0ba7b95194798dccba288786db53` |
 | Live `main` when the mission branch was created | `dd59c0c` (merge of PR #1) |
 | Mission branch | `agent/v2-correctness` (from `agent/v1-stable-hardening`, pushed) |
 | Prior published release | `v0.2.0`, canonical version `0.2.0` |
 | Working tree at start | clean (before this mission's own commits) |
-
-\* The mission documents spell this SHA slightly differently
-(`947985...` vs `947989...`); the merge commit of PR #1 on live `main` is
-`dd59c0c` and is the reference that matters.
 
 ## Environment
 
