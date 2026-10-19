@@ -11,6 +11,7 @@ Generates:
 import os
 import sys
 import json
+import re
 import hashlib
 import subprocess
 from pathlib import Path
@@ -37,12 +38,18 @@ def sha256_file(path: Path) -> str:
 def build_distribution():
     DIST_DIR.mkdir(parents=True, exist_ok=True)
     print("[1/4] Building wheel and source distribution...")
-    cmd = [sys.executable, "-m", "pip", "wheel", "--no-deps", "-w", str(DIST_DIR), str(ROOT_DIR)]
-    subprocess.run(cmd, check=True)
-
-    # Also build sdist via setup.py
-    cmd_sdist = [sys.executable, "setup.py", "sdist", "--dist-dir", str(DIST_DIR)]
-    subprocess.run(cmd_sdist, check=True, cwd=ROOT_DIR)
+    # One canonical builder: `python -m build` produces both the wheel and the
+    # sdist from pyproject.toml; setup.py no longer exists as a separate path.
+    for entry in ("build", "wheel", "setuptools"):
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--quiet", entry],
+            check=True,
+        )
+    subprocess.run(
+        [sys.executable, "-m", "build", "--outdir", str(DIST_DIR)],
+        check=True,
+        cwd=ROOT_DIR,
+    )
 
 
 def generate_checksums() -> dict:
@@ -60,6 +67,24 @@ def generate_checksums() -> dict:
     sums_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     checksums["sha256sums.txt"] = sha256_file(sums_path)
     return checksums
+
+
+def _dependency_floors() -> list:
+    """Reads the actual dependency floors from pyproject.toml, so the SBOM
+    cannot drift from the real packaging metadata (e.g. an older NumPy
+    minimum)."""
+    raw = (ROOT_DIR / "pyproject.toml").read_text(encoding="utf-8")
+    deps_section = re.search(
+        r"^dependencies\s*=\s*\[(.*?)^\]", raw, re.MULTILINE | re.DOTALL
+    )
+    if not deps_section:
+        return []
+    floors = []
+    for spec in re.findall(r'"([^"]+)"', deps_section.group(1)):
+        name = spec.split(">")[0].split("<")[0].split("=")[0].strip()
+        floor_match = re.search(r">=?\s*([0-9][^\",]+)", spec)
+        floors.append((name, floor_match.group(1).strip() if floor_match else "any"))
+    return floors
 
 
 def generate_spdx_sbom(commit_sha: str) -> dict:
@@ -110,23 +135,20 @@ def generate_spdx_sbom(commit_sha: str) -> dict:
                         "referenceLocator": commit_sha
                     }
                 ]
-            },
-            {
-                "SPDXID": "SPDXRef-Package-NumPy",
-                "name": "numpy",
-                "versionInfo": ">=1.20",
-                "downloadLocation": "https://pypi.org/project/numpy/",
-                "licenseConcluded": "BSD-3-Clause"
-            },
-            {
-                "SPDXID": "SPDXRef-Package-Qiskit",
-                "name": "qiskit",
-                "versionInfo": ">=1.1.0",
-                "downloadLocation": "https://pypi.org/project/qiskit/",
-                "licenseConcluded": "Apache-2.0"
             }
         ]
     }
+    # Runtime dependency entries derive from pyproject.toml rather than
+    # hand-maintained copies that can silently disagree.
+    licenses = {"numpy": "BSD-3-Clause", "qiskit": "Apache-2.0"}
+    for name, floor in _dependency_floors():
+        sbom["packages"].append({
+            "SPDXID": f"SPDXRef-Package-{name.capitalize()}",
+            "name": name,
+            "versionInfo": floor,
+            "downloadLocation": f"https://pypi.org/project/{name}/",
+            "licenseConcluded": licenses.get(name),
+        })
 
     sbom_path = DIST_DIR / "cqhecs-sbom.spdx.json"
     sbom_path.write_text(json.dumps(sbom, indent=2), encoding="utf-8")
