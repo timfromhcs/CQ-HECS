@@ -18,6 +18,55 @@ import numpy as np
 from cqhecs.result import SimulationResult, hoeffding_total_variation_bound
 
 
+def _marginalize(
+    probs: np.ndarray,
+    num_qubits: int,
+    measured_qubits: List[int],
+) -> np.ndarray:
+    """
+    Marginalizes a full 2**n probability vector onto `measured_qubits`.
+
+    Qiskit index convention: qubit 0 is the least significant bit, and the
+    output bitstring lists `measured_qubits[0]` first.
+
+    Args:
+        probs: Flat array of length 2**num_qubits.
+        num_qubits: Width of the input distribution.
+        measured_qubits: Ordered qubit indices to keep.
+
+    Returns:
+        Flat array of length 2**len(measured_qubits).
+
+    Raises:
+        ValueError: If a measured index is out of range.
+    """
+    for q in measured_qubits:
+        if not (0 <= q < num_qubits):
+            raise ValueError(
+                f"Measured qubit index {q} out of range for {num_qubits} qubits."
+            )
+
+    # out_index = sum over j of bit(measured_qubits[j]) << (len-1-j)
+    out_dim = 1 << len(measured_qubits)
+    shift_of = [num_qubits - 1 - q for q in measured_qubits]
+    out = np.zeros(out_dim, dtype=np.float64)
+
+    total = float(np.sum(probs))
+    if total <= 0.0:
+        return out
+
+    for idx, p in enumerate(probs):
+        if p <= 0.0:
+            continue
+        out_idx = 0
+        for j, shift in enumerate(shift_of):
+            bit = (idx >> shift) & 1
+            out_idx |= bit << (len(shift_of) - 1 - j)
+        out[out_idx] += p
+
+    return out
+
+
 class ExactMPSTensorChain:
     """
     1D Matrix Product State (MPS) with unbounded exact bond dimension
@@ -236,13 +285,25 @@ class ExactMPSTensorChain:
                 if self.active_ram_bytes <= self.ram_budget_bytes:
                     break
 
-    def sample(self, shots: int = 1024, seed: int = 42) -> Tuple[Dict[str, int], bool]:
+    def sample(
+        self,
+        shots: int = 1024,
+        seed: int = 42,
+        measured_qubits: Optional[List[int]] = None
+    ) -> Tuple[Dict[str, int], bool]:
         """
         Samples measurement outcomes from the state.
 
         Sampling is performed from the exact statevector. Building that dense
         vector costs O(2^n) memory, so this is only attempted for chains small
         enough to fit comfortably in RAM.
+
+        Args:
+            shots: Number of samples.
+            seed: RNG seed.
+            measured_qubits: Ordered qubit indices to report, in Qiskit
+                bitstring order (most significant first). ``None`` reports all
+                qubits.
 
         Returns:
             (counts, supported). ``supported`` is False when the chain is too
@@ -259,11 +320,16 @@ class ExactMPSTensorChain:
                     "lost its state during a refused memory allocation."
                 )
             probs /= norm
+
+            n_out = self.num_qubits if measured_qubits is None else len(measured_qubits)
+            if measured_qubits is not None:
+                probs = _marginalize(probs, self.num_qubits, measured_qubits)
+
             rng = np.random.default_rng(seed)
-            samples = rng.choice(1 << self.num_qubits, size=shots, p=probs)
+            samples = rng.choice(1 << n_out, size=shots, p=probs)
             counts: Dict[str, int] = {}
             for s in samples:
-                bs = format(s, f"0{self.num_qubits}b")
+                bs = format(s, f"0{n_out}b")
                 counts[bs] = counts.get(bs, 0) + 1
             return counts, True
 
@@ -346,7 +412,7 @@ class PathCMPSExactBackend:
 
         # Fail closed: refuse any gate this backend cannot represent, instead of
         # silently leaving the state untouched and reporting a clean result.
-        self._validate_instructions(instructions)
+        measured_qubits = self._validate_instructions(instructions)
 
         mps = ExactMPSTensorChain(
             num_qubits=n_q,
@@ -476,7 +542,9 @@ class PathCMPSExactBackend:
                     }
                 )
 
-            counts, supported = mps.sample(shots=shots, seed=seed)
+            counts, supported = mps.sample(
+                shots=shots, seed=seed, measured_qubits=measured_qubits
+            )
             t1 = time.perf_counter()
 
             return SimulationResult(
@@ -521,32 +589,71 @@ class PathCMPSExactBackend:
             raise ValueError(f"Gate '{name}' requires a rotation angle parameter.")
         return float(params[0])
 
-    def _validate_instructions(self, instructions: List[Tuple[str, List[int], List[float]]]) -> None:
-        """Fail closed on any instruction this backend cannot faithfully execute."""
+    def _validate_instructions(
+        self, instructions: List[Tuple[str, List[int], List[float]]]
+    ) -> Optional[List[int]]:
+        """
+        Fail closed on any instruction this backend cannot faithfully execute.
+
+        Terminal measurements are accepted: Path C samples from the final state,
+        so the measured qubits are recorded and used to marginalize the
+        distribution. Mid-circuit measurement is refused, because it would make
+        the evolution non-unitary and cannot be reproduced by final sampling.
+
+        Returns:
+            Ordered measured qubit indices, or None if the circuit has no
+            measurement instructions.
+
+        Raises:
+            ValueError: On an unsupported gate, wrong arity, a missing
+                parameter, or a measurement that is not terminal.
+        """
         arity = {
             "h": 1, "x": 1, "y": 1, "z": 1, "s": 1, "sdg": 1, "t": 1, "tdg": 1,
             "rz": 1, "p": 1, "u1": 1, "rx": 1, "ry": 1,
             "cx": 2, "cnot": 2, "cz": 2, "swap": 2,
+            "barrier": 0, "id": 1, "measure": 1,
         }
         needs_params = {"rz", "p", "u1", "rx", "ry"}
 
-        for name, qubits, params in instructions:
+        # Identify measurement instructions and verify they are all terminal.
+        measure_positions = [
+            i for i, (name, _, _) in enumerate(instructions) if name == "measure"
+        ]
+        last_state_op = max(
+            (i for i, (name, _, _) in enumerate(instructions)
+             if name not in self.IGNORED_GATES and name != "measure"),
+            default=-1,
+        )
+        measured_qubits: List[int] = []
+        for i, (name, qubits, params) in enumerate(instructions):
             if name == "measure":
-                raise ValueError(
-                    "Path C does not support measurement instructions. "
-                    "Measurement is handled by sampling from the final state."
-                )
-            if name not in arity:
+                if i < last_state_op:
+                    raise ValueError(
+                        "Path C does not support mid-circuit measurement "
+                        f"(instruction {i} of {len(instructions)}). Path C evolves "
+                        "a unitary statevector and samples only at the end."
+                    )
+                if not qubits:
+                    raise ValueError("Measurement instruction has no qubit operand.")
+                measured_qubits.append(int(qubits[0]))
+                continue
+            if name not in arity and name not in self.IGNORED_GATES:
                 raise ValueError(
                     f"Path C does not support gate '{name}'. "
                     f"Supported gates: {sorted(self.SUPPORTED_GATES)}."
                 )
+            if name == "barrier":
+                # A barrier spans an arbitrary number of qubits and is a no-op.
+                continue
             if len(qubits) != arity[name]:
                 raise ValueError(
                     f"Gate '{name}' expects {arity[name]} qubit(s), got {len(qubits)}: {qubits}"
                 )
             if name in needs_params and not params:
                 raise ValueError(f"Gate '{name}' requires a rotation angle parameter.")
+
+        return measured_qubits or None
 
     def _parse_circuit(self, circuit: Any) -> Tuple[List[Tuple[str, List[int], List[float]]], int]:
         instructions: List[Tuple[str, List[int], List[float]]] = []
