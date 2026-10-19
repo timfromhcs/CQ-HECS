@@ -15,6 +15,7 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
+from cqhecs.circuit_parsing import parse_circuit
 from cqhecs.result import SimulationResult, hoeffding_total_variation_bound
 
 
@@ -329,7 +330,11 @@ class ExactMPSTensorChain:
             samples = rng.choice(1 << n_out, size=shots, p=probs)
             counts: Dict[str, int] = {}
             for s in samples:
-                bs = format(s, f"0{n_out}b")
+                # Statevector index i encodes qubit q as bit q (qubit 0 is the
+                # LSB), whereas Qiskit renders qubit 0 rightmost. format()
+                # prints most-significant bit first, so the index must be
+                # reversed to obtain the conventional bitstring.
+                bs = format(s, f"0{n_out}b")[::-1]
                 counts[bs] = counts.get(bs, 0) + 1
             return counts, True
 
@@ -408,7 +413,7 @@ class PathCMPSExactBackend:
     def execute(self, circuit: Any, shots: int = 1024, seed: int = 42) -> SimulationResult:
         t0 = time.perf_counter()
 
-        instructions, n_q = self._parse_circuit(circuit)
+        instructions, n_q = parse_circuit(circuit)
 
         # Fail closed: refuse any gate this backend cannot represent, instead of
         # silently leaving the state untouched and reporting a clean result.
@@ -654,44 +659,3 @@ class PathCMPSExactBackend:
                 raise ValueError(f"Gate '{name}' requires a rotation angle parameter.")
 
         return measured_qubits or None
-
-    def _parse_circuit(self, circuit: Any) -> Tuple[List[Tuple[str, List[int], List[float]]], int]:
-        instructions: List[Tuple[str, List[int], List[float]]] = []
-        if hasattr(circuit, "data") and hasattr(circuit, "num_qubits"):
-            n_q = circuit.num_qubits
-            for inst in circuit.data:
-                op = inst.operation
-                name = op.name.lower()
-                q_idx = [circuit.find_bit(q).index for q in inst.qubits]
-                params = [float(p) for p in op.params] if hasattr(op, "params") else []
-                instructions.append((name, q_idx, params))
-            return instructions, n_q
-        elif isinstance(circuit, str):
-            from cqhecs.circuit_analyzer import CircuitAnalyzer
-            analyzer = CircuitAnalyzer()
-            props = analyzer.analyze(circuit)
-            n_q = max(props.num_qubits, 1)
-            import re
-            gate_pattern = re.compile(r"([a-zA-Z0-9_]+)(?:\(([^)]*)\))?\s+([^;]+);")
-            for line in circuit.splitlines():
-                line = line.strip()
-                if not line or line.startswith("//") or line.startswith("openqasm") or line.startswith("include") or line.startswith("qreg") or line.startswith("creg"):
-                    continue
-                m = gate_pattern.search(line)
-                if m:
-                    gname = m.group(1).lower()
-                    params_str = m.group(2)
-                    args_str = m.group(3)
-                    q_matches = re.findall(r"\[(\d+)\]", args_str)
-                    q_idx = [int(x) for x in q_matches]
-                    params = []
-                    if params_str:
-                        try:
-                            expr = params_str.replace("pi", "np.pi")
-                            params = [float(eval(expr, {"np": np}, {}))]
-                        except Exception:
-                            params = []
-                    instructions.append((gname, q_idx, params))
-            return instructions, n_q
-        else:
-            raise ValueError("Unsupported circuit input for Path C.")
