@@ -332,7 +332,11 @@ class PathBStabilizerRankBackend:
             error_bound=0.0,
             unresolved=False,
             counts=counts,
-            sampling_error_bound=hoeffding_total_variation_bound(shots),
+            # Support size is the number of distinct measurement outcomes,
+            # i.e. 2**num_qubits for a full-register readout.
+            sampling_error_bound=hoeffding_total_variation_bound(
+                shots, support_size=1 << n_q
+            ),
             execution_time_ms=(t1 - t0) * 1000.0,
             metadata={
                 "backend": "StabilizerRankSimulator",

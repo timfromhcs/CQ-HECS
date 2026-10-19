@@ -455,7 +455,15 @@ class PathAStabilizerBackend:
             error_bound=0.0,
             unresolved=False,
             counts=counts,
-            sampling_error_bound=hoeffding_total_variation_bound(sampled),
+            # The bound depends on the number of distinct measurement outcomes.
+            # Only the measured qubits contribute.
+            sampling_error_bound=hoeffding_total_variation_bound(
+                sampled,
+                support_size=1 << len(
+                    measured_qubits if measured_qubits is not None
+                    else range(n_q)
+                ),
+            ),
             execution_time_ms=(t1 - t0) * 1000.0,
             metadata={
                 "backend": "PathAStabilizerBackend",

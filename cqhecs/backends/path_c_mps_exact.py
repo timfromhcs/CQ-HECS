@@ -607,6 +607,10 @@ class PathCMPSExactBackend:
             counts, supported = mps.sample(
                 shots=shots, seed=seed, measured_qubits=measured_qubits
             )
+            # Support size: only the reported (measured) qubits contribute.
+            n_reported = (
+                n_q if measured_qubits is None else len(measured_qubits)
+            )
             t1 = time.perf_counter()
 
             return SimulationResult(
@@ -617,7 +621,9 @@ class PathCMPSExactBackend:
                 unresolved=False,
                 counts=counts if supported else {},
                 sampling_error_bound=(
-                    hoeffding_total_variation_bound(shots) if supported else None
+                    hoeffding_total_variation_bound(
+                        shots, support_size=1 << n_reported
+                    ) if supported else None
                 ),
                 execution_time_ms=(t1 - t0) * 1000.0,
                 metadata={

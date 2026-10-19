@@ -479,7 +479,10 @@ class PathDSparsePauliBackend:
 
         if self.allow_uncertified_joint_counts and not unresolved:
             counts, _, _ = sim.sample_marginals(instructions, shots=shots, seed=seed)
-            sampling_bound = hoeffding_total_variation_bound(shots)
+            # Support size for the opt-in marginal sampling: one bit per qubit.
+            sampling_bound = hoeffding_total_variation_bound(
+                shots, support_size=1 << n_q
+            )
             counts_supported = True
 
         t1 = time.perf_counter()
