@@ -14,6 +14,12 @@ from qiskit.result.models import ExperimentResult, ExperimentResultData
 
 from cqhecs.router import FourPathRouter
 from cqhecs.result import SimulationResult
+from cqhecs import __version__ as _cqhecs_version
+
+
+def cqhecs_version() -> str:
+    """The Qiskit backend must report the package version, not a stale constant."""
+    return _cqhecs_version
 
 
 class CQHecsBackend(BackendV2):
@@ -34,7 +40,10 @@ class CQHecsBackend(BackendV2):
         error_tolerance: float = 0.05,
         max_storage_mb: float = 5120.0
     ):
-        super().__init__(name=name, backend_version="0.1.0")
+        super().__init__(
+            name=name,
+            backend_version=cqhecs_version(),
+        )
         self._num_qubits = num_qubits
         self._preferred_path = preferred_path
         self._error_tolerance = error_tolerance

@@ -60,6 +60,20 @@ counts are opt-in and labelled `counts_are_joint_distribution=False`.
   all took that path and returned wrong answers.
 * Path A never called its own `apply_cz`, and dropped Clifford-angle rotations.
 
+### Latest hardening round
+
+* **The CZ rule in Path D was algebraically wrong.** `CZ†(X_a X_b)CZ` picks up
+  a relative minus sign that naive single-Pauli composition misses; every
+  CZ-containing circuit was silently corrupted. The rules are now verified
+  against explicit `U† P U` matrices over all two-qubit Paulis.
+* **Path B's two-qubit gates are vectorised.** The per-amplitude loop that
+  forced a 16-qubit ceiling is gone; the ceiling is now 22 qubits (documented
+  implementation limit), and a vectorisation aliasing bug caught by
+  differential testing was fixed.
+* **Path D evaluates observables in one backward pass** with per-observable
+  truncation and terminates early with `unresolved=True` once the bound can
+  no longer be certified; deep hopeless circuits no longer run for minutes.
+
 ### Bitstring ordering corrected
 
 Paths A and C did not use the Qiskit convention (qubit 0 rightmost): `X` on

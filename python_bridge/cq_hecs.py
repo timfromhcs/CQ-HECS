@@ -5,7 +5,7 @@ Complete Python 3.11 / PyTorch / NumPy Reference Model of all 5 J-Spaces & Vulka
 
 from __future__ import annotations
 
-__version__ = "0.2.0"
+__version__ = "2.0.0"
 import math
 import struct
 import time

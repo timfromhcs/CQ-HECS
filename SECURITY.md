@@ -6,8 +6,8 @@ Security fixes are provided for the current release line only.
 
 | Version | Supported |
 | :--- | :---: |
-| 0.2.x | Yes |
-| < 0.2 | No |
+| 2.0.x | Yes |
+| < 2.0 | No |
 
 ## Reporting a Vulnerability
 

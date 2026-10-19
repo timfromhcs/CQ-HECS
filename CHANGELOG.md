@@ -6,7 +6,7 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
-## [Unreleased] — correctness hardening
+## [2.0.0] — 2026-10-19
 
 This release cycle was a correctness audit. Every item below is a defect that
 was reproduced, fixed and covered by a regression test.
@@ -40,6 +40,28 @@ was reproduced, fixed and covered by a regression test.
 - **Path A** never called its own `apply_cz`, dropped Clifford-angle
   `RZ`/`P`/`U1`, and its GHZ shortcut checked only the X block while ignoring Z.
 
+### Fixed — bound math and the newest hardening round
+
+- **The finite-shot confidence bound was not a TV bound.** The dimension-free
+  `sqrt(ln(2/δ)/(2n))` expression violated at 73% (K=16) and 100% (K=64) for
+  the uniform distribution in a direct measurement. It is replaced by the
+  Weissman et al. (2003) support-aware form
+  `TV ≤ sqrt(ln((2^K − 2)/δ)/(2n))`, computed in log space and clamped to 1.0;
+  at K = 2 it reproduces the classic value exactly.
+- **Path D's CZ rule was algebraically wrong.** `CZ†(X_a X_b)CZ` picks up a
+  relative minus sign that the naive single-Pauli composition missed; every
+  CZ-containing circuit was silently corrupted. The rule is now verified
+  against explicit `U† P U` matrices over all two-qubit Paulis
+  (`TestTwoQubitConjugationRules`).
+- **Path B's two-qubit gates are vectorised.** The per-amplitude Python loop
+  that forced a 16-qubit ceiling is gone; the ceiling is now 22 qubits,
+  documented as an implementation limit. A vectorisation aliasing bug was
+  caught by differential testing and fixed.
+- **Path D evaluates all observables in one backward pass** with per-observable
+  truncation kept separate, and terminates early (reporting `unresolved` with
+  no values) once the bound provably exceeds the tolerance; previously deep
+  circuits could run for minutes before returning unresolved.
+
 ### Fixed — bitstring ordering
 
 Paths A and C did not use the Qiskit convention (qubit 0 rightmost): `X` on
@@ -63,9 +85,11 @@ faithfully run the circuit (it has no `apply_cz` and takes two ints for
 
 `error_bound` no longer conflates three different things. Results now carry
 `error_bound` (deliberate approximation), `numerical_error_bound` (measured
-float roundoff) and `sampling_error_bound` (rigorous Hoeffding TV bound for
-finite shots), summed by `total_error_bound`. A result can no longer report
-zero total error while actually being a finite-shot estimate.
+float roundoff, where derivable) and `sampling_error_bound` (finite-shot
+concentration bound, support-size dependent — see below). These are composed
+by `total_error_bound` **only** when they target the same output metric; a
+result can no longer report zero total error while actually being a finite-shot
+estimate.
 
 ### Added
 
