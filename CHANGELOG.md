@@ -6,6 +6,101 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [Unreleased] — correctness hardening
+
+This release cycle was a correctness audit. Every item below is a defect that
+was reproduced, fixed and covered by a regression test.
+
+### Fixed — fabricated or silently wrong results
+
+- **Path B returned a uniform distribution** when its rank decomposition failed
+  to normalize, and returned `{'0'*n: shots}` for every circuit wider than 16
+  qubits. Both were reported as `exact=True, error_bound=0.0`. It now raises.
+- **Path D sampled each qubit independently** from its own `<Z_q>` marginal and
+  returned the result as a joint measurement distribution. A Bell state came
+  out uniform. Path D now reports certified `expectation_values` (single-qubit
+  Z and parity `Z_q Z_r`); joint counts require an explicit opt-in and are
+  labelled `counts_are_joint_distribution=False`.
+- **Path C returned an all-zeros placeholder** for circuits wider than its
+  sampling limit. It now reports no counts rather than inventing them.
+- **Path A inflated 100 real samples** up to the requested shot count for wide
+  circuits. It now reports the number of shots actually drawn.
+
+### Fixed — silently ignored gates
+
+- **Path C** silently skipped any gate outside its dispatch chain and discarded
+  singular values below an absolute `1e-14` cutoff while still claiming
+  `exact=True`. Rank selection is now a relative roundoff floor scaled to the
+  largest singular value, and the discarded mass is measured and reported.
+- **Path B** silently ignored unknown gates, which hid two real bugs: Clifford
+  angle `RZ` and *all* `RX`/`RY` gates were never applied. `RX`/`RY` also used
+  the wrong Clifford generator (a hardcoded `Z`).
+- **Path D** treated any unrecognised gate as the identity. `CZ`, `SWAP`, `RX`
+  and `RY` all took that path and returned wrong answers.
+- **Path A** never called its own `apply_cz`, dropped Clifford-angle
+  `RZ`/`P`/`U1`, and its GHZ shortcut checked only the X block while ignoring Z.
+
+### Fixed — bitstring ordering
+
+Paths A and C did not use the Qiskit convention (qubit 0 rightmost): `X` on
+qubit 0 of a 3-qubit circuit returned `'100'` instead of `'001'`. The native
+C++ engine renders qubit 0 *leftmost*, the opposite of every Python path; its
+output is now normalised, and the native engine is used only when it can
+faithfully run the circuit (it has no `apply_cz` and takes two ints for
+`apply_rz`).
+
+### Fixed — fail-open routing
+
+- The analyzer defaulted any unrecognised circuit input to **Path A**. It now
+  raises `UnsupportedCircuitInput`.
+- A user-forced path could silently reroute. It now raises
+  `UnsupportedCircuitError` naming the offending gate.
+- The router caught bare `Exception` around Path B, so a programming error
+  would be misread as "try the next path". It catches only `StabilizerRankError`.
+- `shots`, `seed`, `error_tolerance` and thresholds are validated before run.
+
+### Changed — result schema
+
+`error_bound` no longer conflates three different things. Results now carry
+`error_bound` (deliberate approximation), `numerical_error_bound` (measured
+float roundoff) and `sampling_error_bound` (rigorous Hoeffding TV bound for
+finite shots), summed by `total_error_bound`. A result can no longer report
+zero total error while actually being a finite-shot estimate.
+
+### Added
+
+- **`cq-hecs` CLI**: one supported entry point (`version`, `doctor`,
+  `backend list`, `analyze`, `run`, `verify`, `benchmark smoke`), registered via
+  `[project.scripts]`. `--format json` emits exactly one JSON document on
+  stdout; diagnostics go to stderr; exit codes are stable.
+- **`cqhecs/circuit_parsing.py`**: one parser shared by all four backends.
+- **`cqhecs/circuit_library.py`**: named circuits shared by the CLI and tests.
+- **`scripts/version.py` / `scripts/check_version.py`**: one canonical version
+  and a validator that fails CI when any public surface disagrees.
+- **73 new tests** (`tests/test_correctness_contracts.py`,
+  `tests/test_cli_contract.py`) validating every fix above against
+  `qiskit.quantum_info.Statevector` references.
+
+### Changed — build and release
+
+- Build artifacts now go to `${CMAKE_BINARY_DIR}/bin` instead of the source tree.
+- The core is compiled once into an object library instead of ~14 times.
+- `CQ_ENABLE_AVX2` is target-scoped, so it can no longer make every binary
+  require AVX2 hardware.
+- `release.yml` resolves assets from the tag, verifies the tag matches the
+  canonical version, smoke tests the built wheel in a clean venv, and verifies
+  every asset exists before publishing.
+
+### Documentation
+
+Removed unsupported claims: "100% Cross-Vendor", "HARDWARE_VERIFIED" on AMD
+hardware, "100% Certified (62/62)", and the estimated-VRAM-vs-measured-VRAM
+comparison. The hardware matrix now distinguishes `CI_VERIFIED`,
+`LOADER_VERIFIED` and `NOT_VERIFIED`. `docs/BENCHMARKS.md` is marked
+STALE/HISTORICAL because those tables predate these fixes.
+
+---
+
 ## [v0.2.0] - 2026-09-01
 
 ### Added

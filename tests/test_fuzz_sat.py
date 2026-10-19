@@ -13,20 +13,9 @@ from pathlib import Path
 class TestFuzzSAT(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        base_dir = Path(__file__).parent.parent
-        if os.name == 'nt':
-            candidates = [
-                base_dir / "bin" / "Release" / "cq_hecs.exe",
-                base_dir / "bin" / "cq_hecs.exe",
-            ]
-        else:
-            candidates = [
-                base_dir / "bin" / "cq_hecs",
-                base_dir / "bin" / "Release" / "cq_hecs",
-                base_dir / "build" / "cq_hecs",
-            ]
-        cls.exe_path = next((p for p in candidates if p.exists()), candidates[0])
-        cls.assertTrue(cls, cls.exe_path.exists(), f"Missing {cls.exe_path}")
+        from tests.native_artifacts import require_executable
+
+        cls.exe_path = require_executable()
         if os.name != 'nt':
             os.chmod(cls.exe_path, 0o755)
 
