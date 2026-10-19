@@ -1,5 +1,6 @@
 """
-Release Artifact, Checksum, and SBOM Generator for CQ-HECS v0.1.0.
+Release Artifact, Checksum, and SBOM Generator for CQ-HECS.
+The version is derived from scripts/version.py, never hardcoded.
 Generates:
 - Python sdist and wheel packages in dist/
 - SHA256 checksum file (dist/sha256sums.txt)
@@ -64,12 +65,17 @@ def generate_checksums() -> dict:
 def generate_spdx_sbom(commit_sha: str) -> dict:
     print("[3/4] Generating SPDX 2.3 JSON SBOM...")
     now_iso = datetime.now(timezone.utc).isoformat()
+    # The version comes from the single source of truth, never hardcoded here.
+    from version import VERSION as RELEASE_VERSION
     sbom = {
         "spdxVersion": "SPDX-2.3",
         "dataLicense": "CC0-1.0",
         "SPDXID": "SPDXRef-DOCUMENT",
-        "name": "CQ-HECS-v0.1.0-SBOM",
-        "documentNamespace": f"https://github.com/timfromhcs/CQ-HECS/spdxdocs/cqhecs-v0.1.0-{commit_sha[:8]}",
+        "name": f"CQ-HECS-v{RELEASE_VERSION}-SBOM",
+        "documentNamespace": (
+            f"https://github.com/timfromhcs/CQ-HECS/spdxdocs/"
+            f"cqhecs-v{RELEASE_VERSION}-{commit_sha[:8]}"
+        ),
         "creationInfo": {
             "created": now_iso,
             "creators": [
@@ -81,8 +87,11 @@ def generate_spdx_sbom(commit_sha: str) -> dict:
             {
                 "SPDXID": "SPDXRef-Package-CQ-HECS",
                 "name": "cqhecs",
-                "versionInfo": "0.1.0",
-                "downloadLocation": "https://github.com/timfromhcs/CQ-HECS/releases/tag/v0.1.0",
+                "versionInfo": RELEASE_VERSION,
+                "downloadLocation": (
+                    "https://github.com/timfromhcs/CQ-HECS/releases/tag/"
+                    f"v{RELEASE_VERSION}"
+                ),
                 "filesAnalyzed": False,
                 "homepage": "https://github.com/timfromhcs/CQ-HECS",
                 "licenseConcluded": "Apache-2.0",
@@ -93,7 +102,7 @@ def generate_spdx_sbom(commit_sha: str) -> dict:
                     {
                         "referenceCategory": "PACKAGE-MANAGER",
                         "referenceType": "purl",
-                        "referenceLocator": "pkg:pypi/cqhecs@0.1.0"
+                        "referenceLocator": f"pkg:pypi/cqhecs@{RELEASE_VERSION}"
                     },
                     {
                         "referenceCategory": "OTHER",

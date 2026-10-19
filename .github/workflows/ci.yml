@@ -39,6 +39,9 @@ jobs:
           python -m compileall cqhecs/ tests/
           flake8 cqhecs/ tests/test_four_path_architecture.py tests/test_path_transitions_and_boundaries.py tests/test_adversarial_aer_and_stim.py --count --select=E9,F63,F7,F82 --show-source --statistics
 
+      - name: Verify Version Consistency
+        run: python scripts/check_version.py
+
       - name: "Audit: Verify Zero Silent Truncation (chi=48 Elimination)"
         run: python scripts/verify_no_silent_truncation.py
 
@@ -60,7 +63,7 @@ jobs:
           PYTHONPATH: .
         run: |
           pip install -e .
-          pytest tests/test_four_path_architecture.py tests/test_path_transitions_and_boundaries.py tests/test_adversarial_aer_and_stim.py -v
+          pytest tests/test_correctness_contracts.py tests/test_cli_contract.py tests/test_four_path_architecture.py tests/test_path_transitions_and_boundaries.py tests/test_adversarial_aer_and_stim.py -v
 
       - name: Run Deterministic Mutation Testing
         env:
@@ -108,6 +111,9 @@ jobs:
           python -m compileall cqhecs/ tests/
           flake8 cqhecs/ tests/test_four_path_architecture.py tests/test_path_transitions_and_boundaries.py tests/test_adversarial_aer_and_stim.py --count --select=E9,F63,F7,F82 --show-source --statistics
 
+      - name: Verify Version Consistency
+        run: python scripts/check_version.py
+
       - name: "Audit: Verify Zero Silent Truncation (chi=48 Elimination)"
         run: python scripts/verify_no_silent_truncation.py
 
@@ -143,7 +149,7 @@ jobs:
           PYTHONPATH: .
         run: |
           pip install -e .
-          python -m pytest tests/test_four_path_architecture.py tests/test_path_transitions_and_boundaries.py tests/test_adversarial_aer_and_stim.py -v
+          python -m pytest tests/test_correctness_contracts.py tests/test_cli_contract.py tests/test_four_path_architecture.py tests/test_path_transitions_and_boundaries.py tests/test_adversarial_aer_and_stim.py -v
 
       - name: Run Deterministic Mutation Testing
         env:
