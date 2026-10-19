@@ -140,5 +140,10 @@ mapping, so `measure_all()` circuits produce the same keys as Aer.
    [tests/python/test_qiskit_backend_contract.py](tests/python/test_qiskit_backend_contract.py).
 5. **Version consistency** across every public surface:
    [scripts/check_version.py](scripts/check_version.py).
-6. **Reproducible releases:** checksums and SBOM tracked in
+6. **Mutation testing:** [scripts/run_mutation_tests.py](scripts/run_mutation_tests.py)
+   injects seven defects drawn from the classes found in this audit and checks
+   that an independent behavioural probe detects each one. Current result:
+   7/7 killed. A mutant counts as killed only when wrong behaviour is
+   observed, not when the mutated code happens to raise.
+7. **Reproducible releases:** checksums and SBOM tracked in
    [audit/release_tracking.json](audit/release_tracking.json).
