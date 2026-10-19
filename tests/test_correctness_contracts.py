@@ -228,10 +228,37 @@ class TestPathCContract(unittest.TestCase):
         # No deliberate approximation was applied.
         self.assertTrue(res.exact)
         self.assertEqual(res.error_bound, 0.0)
-        # But roundoff is still surfaced, and is tiny.
-        self.assertIsNotNone(res.numerical_error_bound)
-        self.assertLess(res.numerical_error_bound, 1e-12)
         self.assertFalse(res.metadata["silent_truncation"])
+
+        # Path C does NOT claim a certified roundoff bound: the per-SVD
+        # discarded mass does not compose into a state-norm error without a
+        # propagation analysis it does not perform. Claiming otherwise would
+        # overstate what is known.
+        self.assertIsNone(res.numerical_error_bound)
+        self.assertIn(
+            "not derived", res.metadata["numerical_error_bound_reason"]
+        )
+        # The measured mass is still reported, labelled as a diagnostic.
+        self.assertLess(
+            res.metadata["discarded_spectral_mass_diagnostic"], 1e-12
+        )
+
+    def test_discarded_mass_is_not_presented_as_a_bound(self):
+        """The diagnostic must never masquerade as a certified bound."""
+        qc = QuantumCircuit(4)
+        qc.h(0)
+        qc.cx(0, 1)
+        qc.cx(1, 2)
+        qc.rz(0.31, 2)
+        qc.cx(2, 3)
+        res = self.backend.execute(qc, shots=100, seed=5)
+        payload = res.to_dict()
+        self.assertIsNone(payload["numerical_error_bound"])
+        # The sampling bound is still valid and is a different metric.
+        self.assertIsNotNone(payload["sampling_error_bound"])
+        self.assertNotIn(
+            "discarded_spectral_norm", res.metadata
+        )
 
     def test_matches_exact_statevector(self):
         n = 3
@@ -381,6 +408,122 @@ class TestPathBContract(unittest.TestCase):
         qc.rx(0.9, 1)
         qc.ry(0.3, 0)
         self._check_matches_statevector(qc)
+
+    def test_wide_circuits_match_exact_statevector(self):
+        """
+        Path B now vectorises its two-qubit gates, so it handles widths that a
+        per-amplitude Python loop could not.
+
+        Shot count is chosen against the *state* support: a dense n-qubit state
+        has 2**n outcomes, and far fewer shots than that leaves a large
+        statistical gap that has nothing to do with correctness.
+        """
+        for n in (14, 18):
+            qc = QuantumCircuit(n)
+            qc.h(0)
+            for i in range(n - 1):
+                qc.cx(i, i + 1)
+            qc.t(1)
+            qc.rz(0.37, n - 1)
+            shots = 400000
+            res = self.backend.execute(qc, shots=shots, seed=3)
+            self.assertEqual(res.path, "B")
+            exact = Statevector(qc).probabilities()
+            got = _counts_to_probs(res.counts, n)
+            self.assertEqual(sum(res.counts.values()), shots)
+            self.assertLess(0.5 * np.abs(got - exact).sum(), 0.05)
+
+    def test_two_qubit_gates_are_vectorised_correctly(self):
+        """CX/CZ/SWAP must be exact for every control/target orientation."""
+        from cqhecs.backends.path_b_stabilizer_rank import (
+            _apply_cx, _apply_cz, _apply_swap,
+        )
+        n = 4
+        dim = 1 << n
+        rng = np.random.default_rng(0)
+        for a in range(n):
+            for b in range(n):
+                if a == b:
+                    continue
+                with self.subTest(pair=(a, b)):
+                    state = rng.normal(size=dim) + 1j * rng.normal(size=dim)
+
+                    # CX: only the ctrl=1 row swaps its target halves.
+                    want = state.copy()
+                    for i in range(dim):
+                        if (i >> a) & 1 and not (i >> b) & 1:
+                            want[i], want[i | (1 << b)] = (
+                                state[i | (1 << b)], state[i],
+                            )
+                    self.assertTrue(
+                        np.allclose(_apply_cx(state.copy(), n, a, b), want,
+                                    atol=1e-12)
+                    )
+
+                    # CZ: negate |1,1>.
+                    want = state.copy()
+                    for i in range(dim):
+                        if (i >> a) & 1 and (i >> b) & 1:
+                            want[i] = -state[i]
+                    self.assertTrue(
+                        np.allclose(_apply_cz(state.copy(), n, a, b), want,
+                                    atol=1e-12)
+                    )
+
+                    # SWAP: exchange the differing-bit amplitudes.
+                    want = state.copy()
+                    for i in range(dim):
+                        ba, bb = (i >> a) & 1, (i >> b) & 1
+                        if ba != bb:
+                            j = (i & ~(1 << a) & ~(1 << b)) | (ba << b) | (bb << a)
+                            want[i], want[j] = state[j], state[i]
+                    self.assertTrue(
+                        np.allclose(_apply_swap(state.copy(), n, a, b), want,
+                                    atol=1e-12)
+                    )
+
+    def test_two_qubit_gates_do_not_mutate_their_input(self):
+        """
+        Regression: reshape() returns a view, so writing through it modified the
+        caller's statevector. A gate applied to an already-permuted vector
+        therefore produced the wrong result.
+        """
+        from cqhecs.backends.path_b_stabilizer_rank import (
+            _apply_cx, _apply_cz, _apply_swap,
+        )
+        n = 3
+        dim = 1 << n
+        rng = np.random.default_rng(2)
+        for fn in (_apply_cx, _apply_cz, _apply_swap):
+            for a, b in ((0, 1), (1, 0), (0, 2), (2, 0)):
+                with self.subTest(gate=fn.__name__, pair=(a, b)):
+                    state = rng.normal(size=dim) + 1j * rng.normal(size=dim)
+                    before = state.copy()
+                    fn(state, n, a, b)      # deliberately NOT .copy()
+                    np.testing.assert_array_equal(state, before)
+
+    def test_cx_and_cz_are_orientation_symmetric(self):
+        """CX(c,t) and CX(t,c) must both be correct unitaries."""
+        from cqhecs.backends.path_b_stabilizer_rank import _apply_cx, _apply_swap
+        n = 3
+        dim = 1 << n
+        rng = np.random.default_rng(1)
+        state = rng.normal(size=dim) + 1j * rng.normal(size=dim)
+        forward = _apply_cx(state.copy(), n, 0, 1)
+        backward = _apply_cx(state.copy(), n, 1, 0)
+        # Both are involutions.
+        self.assertTrue(
+            np.allclose(_apply_cx(forward, n, 0, 1), state, atol=1e-12)
+        )
+        self.assertTrue(
+            np.allclose(_apply_cx(backward, n, 1, 0), state, atol=1e-12)
+        )
+        # Reversing the orientation conjugates by SWAP on that qubit pair:
+        # CX(t,c) == SWAP . CX(c,t) . SWAP
+        conjugated = _apply_swap(
+            _apply_cx(_apply_swap(state.copy(), n, 0, 1), n, 0, 1), n, 0, 1
+        )
+        self.assertTrue(np.allclose(conjugated, backward, atol=1e-12))
 
     def test_no_sampling_error_claim_of_zero_total_error(self):
         qc = QuantumCircuit(2)
