@@ -1,9 +1,27 @@
-# CQ-HECS v4.5: Comprehensive Benchmark Report & Stress Test Telemetry
+# CQ-HECS Benchmark Report & Stress Test Telemetry
 
-**Target Environment**: Windows 11 Pro / Vulkan 1.3 (Embedded SPIR-V) / MSVC 19.44 (C++20)  
-**Artifacts**: `bin/Release/cq_hecs.exe` (Standalone Monolithic Executable), `bin/Release/cq_hecs.dll`  
-**Date**: September 2026  
-**Status**: 100% Certified (62/62 Tests Passed, Zero Defects)
+> **Status: STALE — NOT CURRENT RESULTS.**
+>
+> The tables below were generated in an earlier release cycle, **before** the
+> v1.0.0 correctness fixes. They are retained as historical context only and
+> **must not** be read as measurements of the current code. In particular:
+>
+> * The Python MPS path they describe used a silent singular-value cutoff. It
+>   now reports a measured roundoff bound instead, so "Residual 0.000000"
+>   here does not describe current behaviour.
+> * "100% Certified (62/62 Tests Passed, Zero Defects)" is not reproducible
+>   from this repository and is not a claim this project makes.
+> * The VRAM figures were never confirmed against a physical GPU in this
+>   cycle; see the hardware matrix in `README.md`.
+>
+> Current, reproducible benchmarks are produced by
+> `cq-hecs benchmark smoke`. Any published performance table must record the
+> exact commit SHA, hardware, driver, build type and raw output.
+
+**Target Environment (historical)**: Windows 11 Pro / Vulkan 1.3 / MSVC 19.44 (C++20)
+**Artifacts (historical)**: `bin/Release/cq_hecs.exe`, `bin/Release/cq_hecs.dll`
+**Date**: September 2026
+**Status**: HISTORICAL — superseded, see notice above
 
 ---
 

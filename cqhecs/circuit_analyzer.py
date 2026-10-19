@@ -27,6 +27,16 @@ ROTATION_GATES: Set[str] = {
 }
 
 
+class UnsupportedCircuitInput(TypeError):
+    """
+    Raised when a circuit cannot be recognised as a supported input form.
+
+    This is deliberately a hard failure. Defaulting an unrecognised input to a
+    path recommendation would route a circuit nobody has inspected to a
+    simulator that will silently mis-handle it.
+    """
+
+
 @dataclass
 class CircuitProperties:
     """Static properties extracted from quantum circuit."""
@@ -74,6 +84,11 @@ class CircuitAnalyzer:
     def analyze(self, circuit: Any) -> CircuitProperties:
         """
         Analyzes a Qiskit QuantumCircuit, OpenQASM string, or list of instructions.
+
+        Raises:
+            UnsupportedCircuitInput: If `circuit` is not one of the supported
+                input forms. The analyzer fails closed: an unrecognised input
+                is never defaulted to a path recommendation.
         """
         if isinstance(circuit, str):
             return self._analyze_qasm_str(circuit)
@@ -86,12 +101,11 @@ class CircuitAnalyzer:
         if isinstance(circuit, list):
             return self._analyze_instruction_list(circuit)
 
-        # Generic fallback
-        return CircuitProperties(
-            num_qubits=getattr(circuit, "num_qubits", 1),
-            total_gates=0,
-            recommended_path="A",
-            reason="Unrecognized circuit type, default to Path A"
+        raise UnsupportedCircuitInput(
+            f"Unsupported circuit input type {type(circuit).__name__!r}. "
+            "Expected a Qiskit QuantumCircuit, an OpenQASM 2.0 string, or a "
+            "list of instruction tuples (name, qubits, params). "
+            "Refusing to guess a path for an unrecognised circuit."
         )
 
     def _analyze_qiskit_circuit(self, qc: Any) -> CircuitProperties:
@@ -258,12 +272,89 @@ class CircuitAnalyzer:
         )
 
     def _analyze_instruction_list(self, instrs: List[Any]) -> CircuitProperties:
-        # Fallback for raw instruction list
+        """
+        Analyses a raw list of instruction tuples: (name, qubits, params).
+
+        Raises:
+            UnsupportedCircuitInput: If an entry is not a 3-tuple or 3-list of
+                (str, sequence[int], sequence[float]).
+        """
+        gate_counts: Dict[str, int] = {}
+        t_count = 0
+        non_clifford_rotations = 0
+        is_clifford = True
+        two_qubit_gates: List[Tuple[int, int]] = []
+        num_qubits = 0
+
+        for idx, item in enumerate(instrs):
+            if not isinstance(item, (tuple, list)) or len(item) != 3:
+                raise UnsupportedCircuitInput(
+                    f"Instruction {idx} is not a (name, qubits, params) triple: {item!r}"
+                )
+            name, qubits, params = item
+            if not isinstance(name, str):
+                raise UnsupportedCircuitInput(
+                    f"Instruction {idx} has a non-string gate name: {name!r}"
+                )
+
+            gname = name.lower()
+            gate_counts[gname] = gate_counts.get(gname, 0) + 1
+            try:
+                q_indices = [int(q) for q in qubits]
+            except (TypeError, ValueError) as exc:
+                raise UnsupportedCircuitInput(
+                    f"Instruction {idx} has non-integer qubit indices: {qubits!r}"
+                ) from exc
+
+            if q_indices:
+                num_qubits = max(num_qubits, max(q_indices) + 1)
+            if len(q_indices) == 2:
+                two_qubit_gates.append((q_indices[0], q_indices[1]))
+
+            if gname in ("barrier", "measure", "id"):
+                continue
+            if gname in NON_CLIFFORD_T_GATES:
+                t_count += 7 if gname in ("ccx", "toffoli") else 1
+                is_clifford = False
+            elif gname in ROTATION_GATES:
+                is_angle_clifford = False
+                if params:
+                    try:
+                        angle = float(params[0])
+                        norm = angle % (2.0 * math.pi)
+                        if abs(norm / (math.pi / 2.0) - round(norm / (math.pi / 2.0))) < 1e-7:
+                            is_angle_clifford = True
+                    except (TypeError, ValueError, IndexError):
+                        is_angle_clifford = False
+                if not is_angle_clifford:
+                    is_clifford = False
+                    non_clifford_rotations += 1
+                    t_count += 1
+            elif gname not in CLIFFORD_GATES:
+                is_clifford = False
+                non_clifford_rotations += 1
+                t_count += 1
+
+        entanglement_estimate, max_cut = self._estimate_entanglement(num_qubits, two_qubit_gates)
+        recommended_path, reason = self._determine_path(
+            num_qubits=num_qubits,
+            is_clifford=is_clifford,
+            t_count=t_count,
+            entanglement_estimate=entanglement_estimate,
+            max_cut_width=max_cut
+        )
+
         return CircuitProperties(
-            num_qubits=1,
+            num_qubits=num_qubits,
             total_gates=len(instrs),
-            recommended_path="A",
-            reason="Instruction list fallback"
+            gate_counts=gate_counts,
+            t_count=t_count,
+            non_clifford_rotations=non_clifford_rotations,
+            is_clifford=is_clifford,
+            entanglement_estimate=entanglement_estimate,
+            max_cut_width=max_cut,
+            recommended_path=recommended_path,
+            reason=reason
         )
 
     def _estimate_entanglement(self, num_qubits: int, two_qubit_gates: List[Tuple[int, int]]) -> Tuple[int, int]:

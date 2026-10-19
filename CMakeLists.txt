@@ -5,13 +5,16 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Ensure output goes to bin/ and bin/Release/
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_SOURCE_DIR}/bin/Release)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE ${CMAKE_SOURCE_DIR}/bin/Release)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_SOURCE_DIR}/bin/Release)
+# Build artifacts stay inside the binary directory. Writing them into the
+# source tree made `git status` noisy, broke out-of-source builds and meant a
+# stale binary from a previous checkout could be picked up by tests.
+set(CQ_OUTPUT_ROOT "${CMAKE_BINARY_DIR}/bin")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CQ_OUTPUT_ROOT}")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CQ_OUTPUT_ROOT}/Release")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CQ_OUTPUT_ROOT}")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE "${CQ_OUTPUT_ROOT}/Release")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CQ_OUTPUT_ROOT}")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${CQ_OUTPUT_ROOT}/Release")
 
 if(MSVC)
     add_compile_options(/W4 /permissive- /Zc:preprocessor)
@@ -19,13 +22,18 @@ else()
     add_compile_options(-Wall -Wextra)
 endif()
 
+# Portable baseline by default. AVX2 is opt-in and applied per target so that
+# enabling it cannot silently make unrelated binaries crash on older CPUs.
 option(CQ_ENABLE_AVX2 "Enable AVX2 SIMD optimizations" OFF)
 if(CQ_ENABLE_AVX2)
+    message(STATUS "CQ_ENABLE_AVX2=ON: AVX2 will be enabled on selected targets only")
     if(MSVC)
-        add_compile_options(/arch:AVX2)
+        set(CQ_AVX2_FLAGS /arch:AVX2)
     else()
-        add_compile_options(-mavx2)
+        set(CQ_AVX2_FLAGS -mavx2)
     endif()
+else()
+    set(CQ_AVX2_FLAGS "")
 endif()
 
 if(WIN32)
@@ -73,7 +81,28 @@ if(WIN32)
     endif()
 endif()
 
-find_package(Vulkan REQUIRED)
+# Vulkan is REQUIRED for the native (C++) build.
+#
+# The public headers (tensor_network.hpp, constraint_solver.hpp) include
+# vulkan/vulkan.h unconditionally, so the Vulkan SDK must be present to compile.
+# This is stated plainly rather than implied: the Python package and the four
+# classical backends do NOT require Vulkan and run entirely on the CPU, so
+# CPU-only operation is real for the Python surface. The native binary, its
+# tests and the nanobind extension do require the SDK.
+option(CQ_ENABLE_VULKAN "Build the Vulkan compute integration (requires the Vulkan SDK)" ON)
+
+set(CQ_HAVE_VULKAN OFF)
+if(CQ_ENABLE_VULKAN)
+    find_package(Vulkan REQUIRED)
+    set(CQ_HAVE_VULKAN ON)
+    message(STATUS "Vulkan: ${Vulkan_LIBRARY} (version ${Vulkan_VERSION})")
+else()
+    message(FATAL_ERROR
+        "CQ_ENABLE_VULKAN=OFF is not supported: the native headers include "
+        "vulkan/vulkan.h unconditionally. If you only need the Python package "
+        "and its four classical backends, simply do not build the native "
+        "component - it does not require Vulkan.")
+endif()
 
 # -----------------------------------------------------------------------------
 # Automated Vulkan 1.3 SPIR-V Shader Compilation Target (glslangValidator)
@@ -157,15 +186,30 @@ set(CORE_HEADERS
     ${VRTS_HEADERS}
 )
 
-# 1. Standalone Monolithic Executable (CLI)
-add_executable(cq_hecs src/main.cpp ${CORE_SOURCES} ${CORE_HEADERS})
-target_link_libraries(cq_hecs PRIVATE ${Vulkan_LIBRARIES})
+# The core is compiled exactly once into an object library and reused by every
+# target. Previously each of ~14 targets recompiled the same files, which made
+# builds slow and risked inconsistent binaries between targets.
+add_library(cq_hecs_core_objects OBJECT ${CORE_SOURCES} ${CORE_HEADERS})
+set_target_properties(cq_hecs_core_objects PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(cq_hecs_core_objects PRIVATE ${Vulkan_INCLUDE_DIRS})
+target_link_libraries(cq_hecs_core_objects PRIVATE ${Vulkan_LIBRARIES})
+
+# AVX2 is opt-in and target-scoped: it is applied only to this core object
+# library, and only when explicitly requested. It is never set globally, so
+# enabling it cannot make unrelated binaries require AVX2 hardware.
+if(CQ_AVX2_FLAGS)
+    target_compile_options(cq_hecs_core_objects PRIVATE ${CQ_AVX2_FLAGS})
+endif()
 if(TARGET vulkan_shaders)
-    add_dependencies(cq_hecs vulkan_shaders)
+    add_dependencies(cq_hecs_core_objects vulkan_shaders)
 endif()
 
+# 1. Standalone Monolithic Executable (CLI)
+add_executable(cq_hecs src/main.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
+target_link_libraries(cq_hecs PRIVATE ${Vulkan_LIBRARIES})
+
 # 2. C-ABI Shared Library (cq_hecs.dll / libcq_hecs.so)
-add_library(cq_hecs_shared SHARED src/cq_hecs_api.cpp ${CORE_SOURCES} ${CORE_HEADERS})
+add_library(cq_hecs_shared SHARED src/cq_hecs_api.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
 set_target_properties(cq_hecs_shared PROPERTIES
     OUTPUT_NAME "cq_hecs"
     DEFINE_SYMBOL "CQ_HECS_EXPORTS"
@@ -176,23 +220,23 @@ if(TARGET vulkan_shaders)
 endif()
 
 # 3. Deterministic Test Executables
-add_executable(test_reversibility tests/test_reversibility.cpp ${VRTS_SOURCES} ${VRTS_HEADERS})
+add_executable(test_reversibility tests/test_reversibility.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
 target_link_libraries(test_reversibility PRIVATE ${Vulkan_LIBRARIES})
 
-add_executable(test_ghz300 tests/test_ghz300.cpp ${VRTS_SOURCES} ${VRTS_HEADERS})
+add_executable(test_ghz300 tests/test_ghz300.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
 target_link_libraries(test_ghz300 PRIVATE ${Vulkan_LIBRARIES})
 
-add_executable(test_constraint_solver tests/test_constraint_solver.cpp ${VRTS_SOURCES} ${VRTS_HEADERS})
+add_executable(test_constraint_solver tests/test_constraint_solver.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
 target_link_libraries(test_constraint_solver PRIVATE ${Vulkan_LIBRARIES})
 
-add_executable(test_engine_cpp tests/test_engine_cpp.cpp ${CORE_SOURCES} ${CORE_HEADERS})
+add_executable(test_engine_cpp tests/test_engine_cpp.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
 target_link_libraries(test_engine_cpp PRIVATE ${Vulkan_LIBRARIES})
 
 # 4. Examples
-add_executable(ghz300_example examples/ghz300_example.cpp ${VRTS_SOURCES} ${VRTS_HEADERS})
+add_executable(ghz300_example examples/ghz300_example.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
 target_link_libraries(ghz300_example PRIVATE ${Vulkan_LIBRARIES})
 
-add_executable(maxcut_example examples/maxcut_example.cpp ${VRTS_SOURCES} ${VRTS_HEADERS})
+add_executable(maxcut_example examples/maxcut_example.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
 target_link_libraries(maxcut_example PRIVATE ${Vulkan_LIBRARIES})
 
 option(CQ_BUILD_TESTS "Build test suite" ON)

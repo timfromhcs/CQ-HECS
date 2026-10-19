@@ -125,20 +125,21 @@ class VulkanQpuBackend(BackendV2):
             # Transpile circuit to OpenQASM 3.0
             qasm3_str = qiskit.qasm3.dumps(circ)
 
-            counts: Dict[str, int] = {}
-            if self._engine is not None:
-                self._engine.reset()
-                self._engine.execute_qasm(qasm3_str)
-                counts = self._engine.sample_counts(shots)
-            else:
-                # Deterministic fallback reference
-                if "cx" in qasm3_str or "h" in qasm3_str:
-                    counts = {
-                        "0" * circ.num_qubits: shots // 2,
-                        "1" * circ.num_qubits: shots - (shots // 2)
-                    }
-                else:
-                    counts = {"0" * circ.num_qubits: shots}
+            if self._engine is None:
+                # No simulation engine is available. Fabricating a plausible
+                # counts dict here (as this method previously did) would report
+                # a successful measurement that was never computed, so refuse
+                # instead.
+                raise RuntimeError(
+                    "CQ-HECS native engine (_cq_hecs_core) is not available, so "
+                    "this circuit cannot be simulated. Build the native "
+                    "component, or use cqhecs.FourPathRouter / the `cq-hecs` "
+                    "CLI, which run the four classical backends on the CPU."
+                )
+
+            self._engine.reset()
+            self._engine.execute_qasm(qasm3_str)
+            counts: Dict[str, int] = self._engine.sample_counts(shots)
 
             exp_data = ExperimentResultData(counts=counts)
             results_data.append(

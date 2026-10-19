@@ -11,23 +11,87 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
-from cqhecs.result import SimulationResult
+from cqhecs.result import SimulationResult, hoeffding_total_variation_bound
+from cqhecs.circuit_parsing import parse_circuit
 
-# Attempt importing high-performance native C++20 stabilizer engine
-_native = None
-try:
-    import _cqhecs_core as _native
-except ImportError:
+
+class UnsupportedPathAOperation(ValueError):
+    """Raised when a circuit uses an operation the stabilizer tableau cannot apply."""
+
+def _load_native():
+    """
+    Imports the native C++20 stabilizer engine if it has been built.
+
+    Searches the build output rather than assuming one fixed location, because
+    the build writes into ${CMAKE_BINARY_DIR}/bin for both single-config
+    (Ninja) and multi-config (MSVC) generators. Returns None when the
+    extension has not been built; callers then use the Python tableau, which
+    is exact but slower.
+    """
     try:
-        from python import _cqhecs_core as _native
+        import _cqhecs_core as module
+        return module
     except ImportError:
+        pass
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.dirname(os.path.dirname(here))
+    search = []
+    env_dir = os.environ.get("CQ_HECS_BUILD_DIR")
+    if env_dir:
+        search.append(env_dir)
+    search.extend([
+        os.path.join(repo_root, "build", "bin", "Release"),
+        os.path.join(repo_root, "build", "bin"),
+        os.path.join(repo_root, "build", "Release"),
+        os.path.join(repo_root, "bin", "Release"),
+        os.path.join(repo_root, "bin"),
+    ])
+    for directory in search:
+        if not os.path.isdir(directory):
+            continue
+        if directory not in sys.path:
+            sys.path.append(directory)
         try:
-            rel_bin = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "bin", "Release"))
-            if os.path.exists(rel_bin):
-                sys.path.insert(0, rel_bin)
-                import _cqhecs_core as _native
-        except Exception:
-            _native = None
+            import _cqhecs_core as module
+            return module
+        except ImportError:
+            continue
+    return None
+
+
+_native = _load_native()
+
+
+#: Cap on per-shot tableau re-measurements for wide circuits (n > 30).
+MAX_RESAMPLE_SHOTS = 100
+
+#: Gates the native HybridEngine binding is known to implement.
+#:
+#: The native engine deliberately does *not* implement `cz`, and its
+#: `apply_rz` takes two ints rather than an angle. Using it for a circuit
+#: containing those gates would silently drop or misapply them, so circuits
+#: needing them are routed to the Python tableau instead.
+_NATIVE_SUPPORTED_GATES = frozenset({
+    "h", "x", "y", "z", "s", "sdg", "cx", "cnot", "swap",
+    "id", "barrier",
+})
+
+
+def _native_can_run(instructions: List[Any]) -> bool:
+    """True if every gate in `instructions` is safe for the native engine."""
+    return all(name in _NATIVE_SUPPORTED_GATES for name, _q, _p in instructions)
+
+
+def _reverse_counts(counts: Dict[str, int]) -> Dict[str, int]:
+    """
+    Converts native-engine bitstrings to the Qiskit convention.
+
+    The native HybridEngine renders qubit 0 leftmost; Qiskit (and every Python
+    path in this package) renders qubit 0 rightmost. Reversing each key puts
+    the two implementations into a single documented convention.
+    """
+    return {k[::-1]: v for k, v in counts.items()}
 
 
 class StabilizerTableauSimulator:
@@ -162,106 +226,225 @@ class StabilizerTableauSimulator:
                     self._row_sum(2 * self.n, self.n + i)
             return int(self.tableau[2 * self.n, 2 * self.n])
 
-    def sample(self, shots: int = 1024, seed: int = 42) -> Dict[str, int]:
-        """Samples all qubits shots times."""
+    def sample(
+        self,
+        shots: int = 1024,
+        seed: int = 42,
+        measured_qubits: Optional[List[int]] = None
+    ) -> Tuple[Dict[str, int], int]:
+        """
+        Samples measurement outcomes shots times.
+
+        Args:
+            shots: Number of samples requested.
+            seed: RNG seed.
+            measured_qubits: Ordered qubit indices to report. ``None`` reports
+                all qubits. Measuring only these qubits marginalizes the joint
+                distribution onto them.
+
+        Returns:
+            (counts, sampled_shots). ``counts`` is keyed by bitstring with
+            qubit 0 rightmost (Qiskit convention). ``sampled_shots`` is the
+            number of shots actually drawn, which can be less than requested
+            for wide tableaux; counts are never inflated to match.
+        """
+        if shots <= 0:
+            raise ValueError(f"shots must be a positive integer, got {shots}")
+
         rng = np.random.default_rng(seed)
         counts: Dict[str, int] = {}
+        targets = list(range(self.n)) if measured_qubits is None else list(measured_qubits)
+        for q in targets:
+            if not (0 <= q < self.n):
+                raise ValueError(
+                    f"Measured qubit index {q} out of range for {self.n} qubits."
+                )
+        n_out = len(targets)
 
-        # If n is large (n > 20), check for GHZ-type superposition (X1 X2 ... Xn stabilizer generator)
+        # If X^(x)n is a stabilizer generator (all-X, no Z part) the state lies
+        # in span{|0..0>, |1..1>}, so every qubit is deterministically equal.
+        # The Z block must be zero for this to hold; a row that is all-X with a
+        # non-zero Z part is Y-like and does not imply this structure.
         is_all_equal = False
-        if self.n > 20:
-            all_x = np.all(self.tableau[self.n:, :self.n] == 1, axis=1)
-            if np.any(all_x):
-                is_all_equal = True
+        if self.n > 20 and n_out == self.n:
+            x_block = self.tableau[self.n:, :self.n]
+            z_block = self.tableau[self.n:, self.n:2 * self.n]
+            is_all_equal = bool(
+                np.any(np.all(x_block == 1, axis=1) & np.all(z_block == 0, axis=1))
+            )
 
         if is_all_equal:
             c0 = int(rng.binomial(shots, 0.5))
             c1 = shots - c0
-            k0 = "0" * self.n
-            k1 = "1" * self.n
-            if c0 > 0: counts[k0] = c0
-            if c1 > 0: counts[k1] = c1
-            return counts
+            if c0 > 0:
+                counts["0" * n_out] = c0
+            if c1 > 0:
+                counts["1" * n_out] = c1
+            return counts, shots
 
-        # General sampling
+        # General sampling: re-measure from a copy of the tableau per shot.
         saved_tableau = self.tableau.copy()
-        # Cap pure-python re-measurement loop for large n to keep response instantaneous
-        actual_shots = min(shots, 100) if self.n > 30 else shots
+        # Re-measurement is O(n) Python per shot; for wide tableaux cap the
+        # number of shots actually drawn rather than inflating the result.
+        actual_shots = min(shots, self.MAX_RESAMPLE_SHOTS) if self.n > 30 else shots
         for _ in range(actual_shots):
             self.tableau[:] = saved_tableau
-            bits = []
-            for q in range(self.n):
-                b = self.measure(q, rng)
-                bits.append(str(b))
-            bs = "".join(bits)
+            bits = [str(self.measure(q, rng)) for q in targets]
+            # Qiskit renders qubit 0 rightmost; targets are in qubit order.
+            bs = "".join(bits)[::-1]
             counts[bs] = counts.get(bs, 0) + 1
 
         self.tableau[:] = saved_tableau
 
-        # Scale counts up to requested shots if downsampled
-        if actual_shots < shots:
-            scale = shots / actual_shots
-            scaled_counts = {}
-            total = 0
-            for k, v in counts.items():
-                sv = int(round(v * scale))
-                scaled_counts[k] = sv
-                total += sv
-            if total != shots and scaled_counts:
-                first_k = next(iter(scaled_counts))
-                scaled_counts[first_k] += (shots - total)
-            counts = scaled_counts
-
-        return counts
-
+        return counts, actual_shots
 
 class PathAStabilizerBackend:
     """
     Path A Classical Backend: Exact Stabilizer Tableau Simulation.
+
+    Correctness class
+    -----------------
+    Gottesman-Knill simulation is algebraically exact for Clifford circuits: the
+    tableau is carried in exact symplectic arithmetic over GF(2), so there is
+    no numerical approximation and ``error_bound`` is 0.0. The returned
+    ``counts`` are a finite-shot sample and carry ``sampling_error_bound``.
     """
+
+    #: Gates the stabilizer tableau can apply.
+    SUPPORTED_GATES = frozenset({
+        "h", "x", "y", "z", "s", "sdg",
+        "cx", "cnot", "cz", "swap",
+        "id", "barrier",
+    })
+
+    #: Angle-gated rotations that are Clifford only at multiples of pi/2.
+    _CLIFFORD_ROTATIONS = frozenset({"rz", "p", "u1"})
+
+    #: Table of gate name -> simulator method name. Absent entries are no-ops.
+    _GATE_DISPATCH: Dict[str, str] = {
+        "h": "apply_h", "x": "apply_x", "y": "apply_y", "z": "apply_z",
+        "s": "apply_s", "sdg": "apply_sdg",
+        "cx": "apply_cx", "cnot": "apply_cx",
+        "cz": "apply_cz", "swap": "apply_swap",
+    }
+
+    @staticmethod
+    def _clifford_rotation_kind(theta: float) -> Optional[str]:
+        """
+        Maps a rotation angle to its Clifford generator, or None if non-Clifford.
+
+        RZ(t)/P(t) coincide with a Pauli/Z90 rotation when t is a multiple of
+        pi/2, so those angles are exactly representable in the tableau.
+        """
+        import math as _math
+        norm = theta % (2.0 * _math.pi)
+        quarters = int(round(norm / (_math.pi / 2.0)))
+        if abs(norm / (_math.pi / 2.0) - quarters) > 1e-7:
+            return None
+        return {0: "id", 1: "s", 2: "z", 3: "sdg"}.get(quarters % 4)
+
+    def _validate(self, instructions: List[Any]) -> Optional[List[int]]:
+        """
+        Fail closed: refuse gates the tableau cannot represent.
+
+        Terminal measurements are accepted and the measured qubits returned, so
+        the final state can be marginalized onto them. Mid-circuit measurement
+        is refused, since it is not a unitary evolution.
+
+        Returns:
+            Ordered measured qubit indices, or None when there is no
+            measurement.
+        """
+        measure_positions = [
+            i for i, (name, _, _) in enumerate(instructions) if name == "measure"
+        ]
+        last_state_op = max(
+            (i for i, (name, _, _) in enumerate(instructions)
+             if name not in ("measure", "id", "barrier")),
+            default=-1,
+        )
+
+        measured: List[int] = []
+        for i, (name, qubits, params) in enumerate(instructions):
+            if name == "measure":
+                if i < last_state_op:
+                    raise UnsupportedPathAOperation(
+                        "Path A does not support mid-circuit measurement "
+                        f"(instruction {i} of {len(instructions)})."
+                    )
+                if not qubits:
+                    raise UnsupportedPathAOperation(
+                        "Measurement instruction has no qubit operand."
+                    )
+                measured.append(int(qubits[0]))
+                continue
+            if name in self.SUPPORTED_GATES:
+                continue
+            if name in self._CLIFFORD_ROTATIONS and params:
+                if self._clifford_rotation_kind(float(params[0])) is not None:
+                    continue
+                raise UnsupportedPathAOperation(
+                    f"Rotation angle {params[0]!r} for '{name}' is not a "
+                    "Clifford multiple of pi/2 and cannot be applied to a "
+                    "stabilizer tableau."
+                )
+            raise UnsupportedPathAOperation(
+                f"Path A supports Clifford gates only and cannot apply '{name}'. "
+                "Dropping a non-Clifford gate would silently produce a wrong state."
+            )
+        return measured or None
+
+    def _apply_instructions(self, target: Any, instructions: List[Any]) -> None:
+        """Applies each validated non-measurement instruction to a simulator."""
+        for name, qubits, params in instructions:
+            if name == "measure":
+                continue
+            method_name = self._GATE_DISPATCH.get(name)
+            if method_name is not None:
+                getattr(target, method_name)(*qubits)
+                continue
+            if name in self._CLIFFORD_ROTATIONS and params:
+                kind = self._clifford_rotation_kind(float(params[0]))
+                if kind not in (None, "id"):
+                    getattr(target, self._GATE_DISPATCH[kind])(qubits[0])
+                continue
+            # id / barrier: no-ops
 
     def execute(self, circuit: Any, shots: int = 1024, seed: int = 42) -> SimulationResult:
         t0 = time.perf_counter()
 
-        # Handle Qiskit circuit or QASM string
-        if isinstance(circuit, str):
-            from cqhecs.circuit_analyzer import CircuitAnalyzer
-            analyzer = CircuitAnalyzer()
-            props = analyzer.analyze(circuit)
-            n_q = max(props.num_qubits, 1)
-            instructions = self._parse_qasm_str(circuit)
-        elif hasattr(circuit, "data") and hasattr(circuit, "num_qubits"):
-            n_q = circuit.num_qubits
-            instructions = self._parse_qiskit(circuit)
-        else:
-            raise ValueError("Unsupported circuit format for Path A.")
+        if shots <= 0:
+            raise ValueError(f"shots must be a positive integer, got {shots}")
 
-        # Check if native C++20 engine is available
-        if _native and hasattr(_native, "HybridEngine"):
+        instructions, n_q = parse_circuit(circuit)
+        if n_q <= 0:
+            raise ValueError("Path A requires a circuit with at least one qubit.")
+        measured_qubits = self._validate(instructions)
+
+        # The native engine cannot marginalize onto a subset of qubits, and it lacks
+        # CZ / angle-valued RZ. Use it only when it can faithfully run this
+        # circuit; otherwise fall back to the Python tableau, which is exact.
+        use_native = bool(
+            _native
+            and hasattr(_native, "HybridEngine")
+            and _native_can_run(instructions)
+        )
+
+        if use_native:
             engine = _native.HybridEngine(n_q)
-            for name, qubits in instructions:
-                if name == "h": engine.apply_h(qubits[0])
-                elif name == "x": engine.apply_x(qubits[0])
-                elif name == "y": engine.apply_y(qubits[0])
-                elif name == "z": engine.apply_z(qubits[0])
-                elif name == "s": engine.apply_s(qubits[0])
-                elif name == "sdg": engine.apply_sdg(qubits[0])
-                elif name in ("cx", "cnot"): engine.apply_cx(qubits[0], qubits[1])
-                elif name == "swap": engine.apply_swap(qubits[0], qubits[1])
-            counts = engine.sample_counts(shots, seed)
+            for name, qubits, _params in instructions:
+                method_name = self._GATE_DISPATCH.get(name)
+                if method_name is not None:
+                    getattr(engine, method_name)(*qubits)
+            counts = _reverse_counts(engine.sample_counts(shots, seed))
+            sampled = shots
             method = "C++20 HybridEngine Stabilizer Tableau (Native SOTA)"
         else:
             sim = StabilizerTableauSimulator(n_q)
-            for name, qubits in instructions:
-                if name == "h": sim.apply_h(qubits[0])
-                elif name == "x": sim.apply_x(qubits[0])
-                elif name == "y": sim.apply_y(qubits[0])
-                elif name == "z": sim.apply_z(qubits[0])
-                elif name == "s": sim.apply_s(qubits[0])
-                elif name == "sdg": sim.apply_sdg(qubits[0])
-                elif name in ("cx", "cnot"): sim.apply_cx(qubits[0], qubits[1])
-                elif name == "swap": sim.apply_swap(qubits[0], qubits[1])
-            counts = sim.sample(shots=shots, seed=seed)
+            self._apply_instructions(sim, instructions)
+            counts, sampled = sim.sample(
+                shots=shots, seed=seed, measured_qubits=measured_qubits
+            )
             method = "Aaronson-Gottesman 2004 (Python Symplectic)"
 
         t1 = time.perf_counter()
@@ -272,13 +455,22 @@ class PathAStabilizerBackend:
             error_bound=0.0,
             unresolved=False,
             counts=counts,
+            sampling_error_bound=hoeffding_total_variation_bound(sampled),
             execution_time_ms=(t1 - t0) * 1000.0,
             metadata={
                 "backend": "PathAStabilizerBackend",
                 "qubit_count": n_q,
                 "shots": shots,
+                "sampled_shots": sampled,
                 "seed": seed,
                 "method": method,
+                "native_engine": use_native,
+                "truncation_applied": False,
+                "numerical_mode": "exact-symplectic-gf2",
+                "numerical_note": (
+                    "Tableau uses exact GF(2) symplectic arithmetic; counts are "
+                    "a finite-shot sample."
+                ),
             }
         )
 

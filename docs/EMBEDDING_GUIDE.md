@@ -1,6 +1,6 @@
-# CQ-HECS v4.5: Foreign Function Interface & Programmatic Embedding Guide
+# CQ-HECS: Foreign Function Interface & Programmatic Embedding Guide
 
-CQ-HECS v4.5 provides a pure, zero-dependency C-ABI shared library (`bin/Release/cq_hecs.dll`) with declaration header [`include/cq_hecs_api.h`](file:///C:/Users/hcsme/Desktop/quanten%20emulator/include/cq_hecs_api.h) for embedding into C, C++, Python, C#, Rust, and Node.js.
+CQ-HECS provides a pure, zero-dependency C-ABI shared library (`bin/Release/cq_hecs.dll`) with declaration header [`include/cq_hecs_api.h`](../include/cq_hecs_api.h) for embedding into C, C++, Python, C#, Rust, and Node.js.
 
 ---
 

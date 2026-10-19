@@ -1,6 +1,6 @@
-# CQ-HECS v4.5: Native C-ABI & API Specification
+# CQ-HECS: Native C-ABI & API Specification
 
-The pure C-ABI interface for CQ-HECS is declared in [`include/cq_hecs_api.h`](file:///C:/Users/hcsme/Desktop/quanten%20emulator/include/cq_hecs_api.h) and implemented within [`bin/Release/cq_hecs.dll`](file:///C:/Users/hcsme/Desktop/quanten%20emulator/bin/Release/cq_hecs.dll). It follows strict `cdecl` calling conventions with 64-bit alignment and no external runtime dependencies.
+The pure C-ABI interface for CQ-HECS is declared in [`include/cq_hecs_api.h`](../include/cq_hecs_api.h) and implemented within `bin/Release/cq_hecs.dll`. It follows strict `cdecl` calling conventions with 64-bit alignment and no external runtime dependencies.
 
 ---
 
@@ -129,4 +129,4 @@ CQ_API double cq_get_active_vram_mb(cq_context_t* ctx);
 CQ_API const char* cq_get_version(void);
 ```
 - **Description**: Queries semantic version string.
-- **Return Value**: Constant string `"4.5.0"`.
+- **Return Value**: Constant string `"0.2.0"`.

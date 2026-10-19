@@ -1,6 +1,6 @@
-# CQ-HECS v4.5: User and Operator Guide
+# CQ-HECS: User and Operator Guide
 
-This guide provides step-by-step instructions for configuring, building, executing, and programmatically orchestrating CQ-HECS v4.5 on Windows 11.
+This guide provides step-by-step instructions for configuring, building, executing, and programmatically orchestrating CQ-HECS.
 
 ---
 
@@ -57,7 +57,7 @@ Get-Content benchmarks\qasm\ghz_300.qasm | .\bin\Release\cq_hecs.exe qasm - --js
 #### Output Schema:
 ```json
 {
-  "engine": "CQ-HECS v4.5 QASM Engine",
+  "engine": "CQ-HECS QASM Engine",
   "status": "SUCCESS",
   "circuit": "benchmarks\\qasm\\ghz_300.qasm",
   "qubit_count": 300,
@@ -90,7 +90,7 @@ Get-Content benchmarks\sat\uf50_hard.cnf | .\bin\Release\cq_hecs.exe sat - --jso
 #### Output Schema:
 ```json
 {
-  "engine": "CQ-HECS v4.5 SAT Engine",
+  "engine": "CQ-HECS SAT Engine",
   "status": "UNSAT",
   "source": "benchmarks\\sat\\pigeonhole_6_5.cnf",
   "num_vars": 30,

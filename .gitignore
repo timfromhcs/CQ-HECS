@@ -20,7 +20,16 @@ dist/
 *.o
 
 # SPIR-V Bytecode & Caches
+#
+# Compiled .spv files are build byproducts (generated from the .comp sources
+# by the vulkan_shaders CMake target), so they are ignored.
+#
+# The exception is shaders/compute/*.spv, which are intentionally tracked:
+# they are embedded into src/shaders_embedded.hpp by scripts/embed_shaders.py,
+# and keeping them in version control lets a checkout build without
+# glslangValidator installed.
 *.spv
+!shaders/compute/*.spv
 *.spv.cache
 *.spv.tmp
 
