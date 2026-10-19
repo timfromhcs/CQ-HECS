@@ -803,6 +803,213 @@ class TestFailClosedRouting(unittest.TestCase):
             router.route_and_execute(qc, preferred_path="B", shots=10)
 
 
+class TestTwoQubitConjugationRules(unittest.TestCase):
+    """
+    Path D's two-qubit Clifford rules, checked against explicit matrices.
+
+    Regression: the CZ rule was written from the single-Pauli identities
+    CZ^dag X_a CZ = X_a Z_b without accounting for the relative sign that
+    appears when *both* qubits carry an X. That silently corrupted every
+    circuit containing CZ, and no test covered it.
+    """
+
+    @staticmethod
+    def _build(n, x_mask, z_mask):
+        import numpy as _np
+        ident = _np.eye(2, dtype=complex)
+        xm = _np.array([[0, 1], [1, 0]], dtype=complex)
+        zm = _np.array([[1, 0], [0, -1]], dtype=complex)
+        mat = _np.array([[1]], dtype=complex)
+        for q in range(n):
+            op = zm if (z_mask >> q) & 1 else ident
+            if (x_mask >> q) & 1:
+                op = op @ xm
+            mat = _np.kron(mat, op)
+        return mat
+
+    @classmethod
+    def _gate_matrix(cls, label, n, a, b):
+        """
+        Builds the full n-qubit matrix for a 2-qubit gate on (a, b).
+
+        CX has a as control and b as target; the pair is applied directly to
+        computational-basis states so the little-endian bit ordering is
+        explicit rather than assumed.
+        """
+        import numpy as _np
+        dim = 1 << n
+        full = _np.zeros((dim, dim), dtype=complex)
+        pair = (1 << a) | (1 << b)
+        for col in range(dim):
+            if label == "cx":
+                row = col ^ ((1 << a) if ((col >> b) & 1) else 0)
+                full[row, col] = 1.0
+            elif label == "swap":
+                ba = (col >> a) & 1
+                bb = (col >> b) & 1
+                row = (col & ~pair) | (bb << a) | (ba << b)
+                full[row, col] = 1.0
+            else:  # cz: diagonal, -1 exactly when both qubits are set
+                full[col, col] = (
+                    -1.0 if ((col >> a) & 1 and (col >> b) & 1) else 1.0
+                )
+        return full
+
+    def test_all_two_qubit_paulis_conjugate_correctly(self):
+        from cqhecs.backends.path_d_sparse_pauli import SparsePauliDynamicsSimulator
+        n, a, b = 3, 0, 2
+        sim = SparsePauliDynamicsSimulator(num_qubits=n)
+        for label in ("cx", "cz", "swap"):
+            gate = self._gate_matrix(label, n, a, b)
+            with self.subTest(gate=label):
+                for x in range(1 << n):
+                    for z in range(1 << n):
+                        pauli = self._build(n, x, z)
+                        expected = np.conj(gate.T) @ pauli @ gate
+                        evolved = sim._apply_two_qubit_backward(
+                            {(x, z): complex(1.0)}, label, a, b
+                        )
+                        self.assertEqual(len(evolved), 1)
+                        (gx, gz), coeff = next(iter(evolved.items()))
+                        got = coeff * self._build(n, gx, gz)
+                        np.testing.assert_allclose(
+                            got, expected, atol=1e-12,
+                            err_msg=f"{label}: X{x:03b}Z{z:03b}",
+                        )
+
+    def test_cz_xa_xb_gets_relative_sign(self):
+        """The specific case the old rule missed."""
+        from cqhecs.backends.path_d_sparse_pauli import SparsePauliDynamicsSimulator
+        sim = SparsePauliDynamicsSimulator(num_qubits=2)
+        evolved = sim._apply_two_qubit_backward({(0b11, 0): complex(1.0)}, "cz", 0, 1)
+        (gx, gz), coeff = next(iter(evolved.items()))
+        # CZ^dag X_a X_b CZ = -X_a X_b Z_a Z_b
+        self.assertEqual((gx, gz), (0b11, 0b11))
+        self.assertAlmostEqual(coeff.real, -1.0)
+
+
+class TestPathDPerformanceAndContract(unittest.TestCase):
+    """Path D must stay correct and must not waste time on hopeless circuits."""
+
+    def _random_circuit(self, nq, depth, seed):
+        rng = np.random.default_rng(seed)
+        qc = QuantumCircuit(nq)
+        for _ in range(depth):
+            for q in range(nq):
+                choice = rng.integers(0, 3)
+                if choice == 0:
+                    qc.h(q)
+                elif choice == 1:
+                    qc.t(q)
+                else:
+                    qc.rz(float(rng.uniform(0, 3)), q)
+            for i in range(0, nq - 2, 2):
+                qc.cx(i, i + 1)
+                qc.cx(i + 1, i + 2)
+            for q in range(nq):
+                qc.cx(q, (q + 7) % nq)
+        return qc
+
+    def test_batched_evaluation_matches_single_observable_walk(self):
+        """
+        The batched evaluator must agree with evaluating each observable on its
+        own, otherwise the shared-walk optimisation silently changed results.
+        """
+        import re
+        from cqhecs.circuit_parsing import parse_circuit
+        from cqhecs.backends.path_d_sparse_pauli import SparsePauliDynamicsSimulator
+
+        qc = self._random_circuit(5, 6, seed=11)
+        instructions, n_q = parse_circuit(qc)
+
+        batched_sim = SparsePauliDynamicsSimulator(
+            num_qubits=n_q, max_pauli_terms=32, prune_threshold=1e-7
+        )
+        batched, _, _ = batched_sim.evaluate_expectation_values(instructions)
+
+        single_sim = SparsePauliDynamicsSimulator(
+            num_qubits=n_q, max_pauli_terms=32, prune_threshold=1e-7
+        )
+        for key, value in batched.items():
+            qubits = [int(x) for x in re.findall(r"Z\[(\d+)\]", key)]
+            mask = 0
+            for q in qubits:
+                mask |= 1 << q
+            single, _, _ = single_sim.evaluate_observable(
+                instructions, {(0, mask): complex(1.0)}
+            )
+            self.assertAlmostEqual(value, single, places=12, msg=key)
+
+    def test_expectation_values_match_exact_statevector(self):
+        import re
+        from qiskit.quantum_info import SparsePauliOp
+
+        backend = PathDSparsePauliBackend(max_pauli_terms=4096)
+        for seed in (21, 22, 23):
+            qc = self._random_circuit(4, 5, seed=seed)
+            result = backend.execute(qc, shots=10)
+            self.assertFalse(result.unresolved)
+            state = Statevector(qc)
+            for key, value in result.expectation_values.items():
+                qubits = [int(x) for x in re.findall(r"Z\[(\d+)\]", key)]
+                label = ["I"] * 4
+                for q in qubits:
+                    label[3 - q] = "Z"
+                expected = float(
+                    state.expectation_value(SparsePauliOp("".join(label))).real
+                )
+                self.assertAlmostEqual(value, expected, places=6, msg=key)
+
+    def test_certified_bound_dominates_actual_error(self):
+        """The triangle-inequality bound must never understate the real error."""
+        import re
+        from qiskit.quantum_info import SparsePauliOp
+        from cqhecs.circuit_parsing import parse_circuit
+        from cqhecs.backends.path_d_sparse_pauli import SparsePauliDynamicsSimulator
+
+        qc = self._random_circuit(4, 12, seed=31)
+        instructions, n_q = parse_circuit(qc)
+        sim = SparsePauliDynamicsSimulator(
+            num_qubits=n_q, max_pauli_terms=8, prune_threshold=1e-7
+        )
+        values, bound, _ = sim.evaluate_expectation_values(instructions)
+        # The bound is reported as the total across observables; a single
+        # observable's error cannot exceed the total.
+        state = Statevector(qc)
+        for key, value in values.items():
+            qubits = [int(x) for x in re.findall(r"Z\[(\d+)\]", key)]
+            label = ["I"] * 4
+            for q in qubits:
+                label[3 - q] = "Z"
+            expected = float(
+                state.expectation_value(SparsePauliOp("".join(label))).real
+            )
+            self.assertLessEqual(abs(expected - value), bound + 1e-9, msg=key)
+
+    def test_unresolved_circuit_terminates_promptly(self):
+        """
+        Regression: a deep circuit previously ran for minutes and then
+        returned unresolved anyway. Once the bound exceeds what any observable
+        could contribute, the walk must stop.
+        """
+        import time
+        qc = self._random_circuit(20, 25, seed=5)
+        start = time.perf_counter()
+        result = PathDSparsePauliBackend().execute(qc, shots=10)
+        elapsed = time.perf_counter() - start
+        self.assertTrue(result.unresolved)
+        self.assertEqual(result.expectation_values, None)
+        self.assertLess(elapsed, 60.0, "Path D should give up quickly")
+
+    def test_unresolved_returns_no_values(self):
+        """An unresolved result must not carry misleading expectation values."""
+        qc = self._random_circuit(12, 30, seed=3)
+        result = PathDSparsePauliBackend(max_pauli_terms=64).execute(qc, shots=10)
+        if result.unresolved:
+            self.assertIsNone(result.expectation_values)
+            self.assertEqual(result.counts, {})
+
+
 class TestSeedDeterminism(unittest.TestCase):
     """Seeded runs must be reproducible across all paths that emit counts."""
 
