@@ -114,6 +114,22 @@ Wird $\Delta_{\text{trunc}} > \epsilon_{\text{toleranz}}$, verweigert CQ-HECS da
 - **Vulkan SDK:** Version 1.3+ (inkl. `glslangValidator` und Vulkan Loader)
 - **Python:** Version 3.10 bis 3.14
 
+### 5.0 Nur Python (kein Vulkan erforderlich)
+
+Das Python-Paket, die CLI `cq-hecs` und alle vier klassischen Backends laufen
+**ausschließlich auf der CPU** und benötigen **kein Vulkan-SDK**:
+
+```bash
+pip install cqhecs
+cq-hecs doctor
+cq-hecs run name:bell --shots 1000 --format json
+```
+
+> Der native C++-Core (`cq_hecs`, `cq_hecs.dll` und die Python-Erweiterung
+> `_cqhecs_core`) benötigt das Vulkan-SDK, weil die öffentlichen Header
+> `vulkan/vulkan.h` direkt einbinden. Das ist eine Eigenschaft des nativen
+> Builds, nicht der Python-Oberfläche.
+
 ### 5.1 Linux (Ubuntu 22.04 / 24.04)
 ```bash
 # Systempakete und Vulkan SDK installieren
@@ -167,6 +183,25 @@ pip install -e .
 
 ## 6. Workflow & Ausführung
 
+### 6.0 CLI (`cq-hecs`)
+
+```bash
+cq-hecs doctor                        # Umgebung: OS, Python, Native-Binding, Vulkan
+cq-hecs backend list                  # Fähigkeiten der Pfade A-D
+cq-hecs analyze name:ghz8             # statische Analyse + Pfadempfehlung
+cq-hecs run name:bell --shots 1000    # Simulation
+cq-hecs verify name:bell --reference aer   # Vergleich gegen Qiskit Aer
+cq-hecs benchmark smoke               # reproduzierbarer Smoke-Benchmark
+```
+
+`--format json` schreibt **genau ein** JSON-Dokument auf stdout; Diagnosen gehen
+immer an stderr. Exit-Codes: `0` Erfolg, `1` unerwarteter Fehler, `2`
+Verwendungsfehler, `3` unresolved, `4` Umgebung nicht verfügbar.
+
+Verfügbare Referenzschaltungen: `ghz8`, `ghz16`, `bell`, `clifford6`,
+`low_t_rank4`, `mps6`, `sparse_pauli4`, `ghz8_measured`, `bell_measured`
+(`cq-hecs analyze name:<name>`).
+
 ### 6.1 Vulkan Compute-Shader kompilieren & verifizieren
 Kompiliert alle 12 Vulkan 1.3 SPIR-V Compute-Shader mit `glslangValidator`:
 ```bash
@@ -182,8 +217,17 @@ ctest --test-dir build --output-on-failure
 
 ### 6.3 Python-Testsuite ausführen
 ```bash
-# Alle Four-Path-, Transitions- und Adversarial-Tests starten:
-pytest tests/test_four_path_architecture.py tests/test_path_transitions_and_boundaries.py tests/test_adversarial_aer_and_stim.py -v
+# Vollständige Suite:
+pytest tests/ -ra
+
+# Korrektheitsverträge der vier Pfade (Fabrikations- und Trunkierungsregressionen):
+pytest tests/test_correctness_contracts.py -v
+
+# CLI-Vertrag (JSON-Reinheit, Exit-Codes):
+pytest tests/test_cli_contract.py -v
+
+# Versionskonsistenz über alle öffentlichen Oberflächen:
+python scripts/check_version.py
 
 # Audit gegen verbotene Silent Cutoffs (chi=48):
 python scripts/verify_no_silent_truncation.py
@@ -272,24 +316,34 @@ CQ-HECS unterscheidet strikt zwischen physisch auf Bare-Metal Silizium verifizie
 
 | Plattform / GPU | Vulkan / Compute API | Verifikationsstufe | Status & Verifikationsnachweis |
 | :--- | :--- | :---: | :--- |
-| **Windows 11 x64 + AMD Radeon GPU** | Vulkan 1.3 / 1.4 Native SPIR-V | **`HARDWARE_VERIFIED`** | Physisch auf Bare-Metal Silizium verifiziert. ShaderInt64, Compute-Queue, 0.0 ms Initialisierungsdrift. |
-| **Ubuntu Linux x64 + Mesa Lavapipe** | Vulkan 1.3 SPIR-V (CPU Rasterizer) | **`CI_VERIFIED`** | Automatisiert in GitHub Actions CI (Ubuntu 22.04 / 24.04). 100% Shader- & Pipeline-Konformität. |
-| **Windows Server 2022 Headless VM** | Headless Fallback / Null-Device Guard | **`CI_VERIFIED`** | Automatisiert in GitHub Actions CI (`windows-latest`). Null-Device-Sicherheit und Pipeline-Recovery verifiziert. |
-| **Apple Silicon (M1/M2/M3/M4)** | MoltenVK / Metal Compute | **`THEORETICAL`** | Konform zu Vulkan 1.3 / SPIR-V Spezifikation via MoltenVK. Vollständige Laborverifikation auf Bare-Metal Silizium ausstehend. |
-| **Intel Arc (Alchemist / Battlemage)** | Vulkan 1.3 Intel Open Source Driver | **`THEORETICAL`** | Konform zum SPIR-V Standard. Physische Ausführung auf diskreten Arc-GPUs in Vorbereitung. |
-| **NVIDIA GeForce / RTX / Tesla** | Vulkan 1.3 NVIDIA Driver | **`THEORETICAL`** | Konform zum Standard. Vollständige physische Matrix-Messung auf H100/A100 in Planung. |
+| **Ubuntu Linux x64 + Mesa Lavapipe** | Vulkan 1.3 SPIR-V (CPU-Rasterizer) | **`CI_VERIFIED`** | GitHub Actions (ubuntu-latest). Shader- und Pipeline-Konformität automatisiert geprüft. **Software-Rasterizer, keine physische GPU.** |
+| **Windows Headless CI** | Headless-Fallback / Null-Device-Guard | **`CI_VERIFIED`** | GitHub Actions (`windows-latest`). |
+| **Lokale Windows-Workstation** | Vulkan 1.3/1.4 Loader | **`LOADER_VERIFIED`** | Vulkan-Loader lädt und enumeriert genau ein logisches Gerät. **Kein Compute-Dispatch von CQ-HECS auf diesem Gerät nachgewiesen; keine physische GPU-Verifikation.** |
+| **Apple Silicon (M1/M2/M3/M4)** | MoltenVK / Metal Compute | **`NOT_VERIFIED`** | Kein Test auf dieser Hardware durchgeführt. |
+| **Intel Arc / NVIDIA / AMD diskret** | Vulkan 1.3 Treiber | **`NOT_VERIFIED`** | Kein Test auf dieser Hardware durchgeführt. |
+
+> **Wichtig:** Der Python-Pfad (Paket, CLI, alle vier Backends) rechnet
+> ausschließlich auf der **CPU**. Eine Vulkan-Ausführung wird nur über den
+> nativen Core (`_cqhecs_core`) erreicht. Software-Vulkan in CI belegt
+> Integrationsverhalten, **nicht** physische GPU-Performance und **nicht**
+> Vendor-übergreifende Kompatibilität.
 
 ---
 
 ## 9. Vergleichende Einordnung gegen Qiskit Aer & cuTensorNet
 
-| Metrik / Feature | CQ-HECS (Vulkan 1.3) | Qiskit Aer MPS | NVIDIA cuTensorNet |
+| Metrik / Feature | CQ-HECS | Qiskit Aer MPS | NVIDIA cuTensorNet |
 | :--- | :--- | :--- | :--- |
-| **GPU-Portabilität** | **100% Cross-Vendor** (AMD, Intel, NVIDIA, Apple Silicon) | CPU / Nvidia GPU | NVIDIA GPU exklusiv (CUDA-Lock-in) |
-| **Clifford+T Arithmetik** | **Bit-exakt $\mathbb{Z}[1/\sqrt{2}, i]$** (Giles-Selinger Ring) | Float64 / Float32 Drift | Float64 / Float32 Drift |
-| **Bond-Dimension Cutoff** | **Keine Silent Cutoffs** (explizites Opt-in oder `unresolved=True`) | Standardmäßig stiller Cutoff ($\chi=48$) | SVD-Truncation mit Näherung |
-| **Area-Law GHZ-300 VRAM** | **4.531 MB** residenter Vulkan VRAM | $\sim 120$ MB RAM | $\sim 500$ MB VRAM |
-| **Fehlerüberwachung** | **Zertifizierte Schranke** $\Delta \le \sum \|c_P\|$ | Nicht-zertifizierte Truncation | Approximate Truncation Error |
+| **GPU-Portabilität** | Vulkan-API, vendor-neutral per Spezifikation. Physisch verifiziert bisher auf **keinem** GPU-Vendor (siehe Abschnitt 8) | CPU / Nvidia GPU | NVIDIA GPU exklusiv (CUDA-Lock-in) |
+| **Clifford+T Arithmetik** | **Bit-exakt $\mathbb{Z}[1/\sqrt{2}, i]$** (Giles-Selinger Ring) im nativen Core | Float64 / Float32 Drift | Float64 / Float32 Drift |
+| **Bond-Dimension Cutoff** | **Kein Cutoff im Python-Pfad C**; Rundungsfehler wird gemessen und als `numerical_error_bound` ausgewiesen | Standardmäßig stiller Cutoff ($\chi=48$) | SVD-Truncation mit Näherung |
+| **Fehlerüberwachung** | Drei getrennte Quellen: `error_bound` (bewusste Näherung), `numerical_error_bound` (Rundungsfehler), `sampling_error_bound` (Hoeffding, endliche Shots) | Nicht-zertifizierte Truncation | Approximate Truncation Error |
+
+> **Keine Leistungs- oder Portabilitätsaussage ohne Messung.** Die
+> VRAM-/Zeitwerte aus früheren Benchmark-Tabellen wurden nach den Korrekturen
+> in diesem Releasezyklus **nicht** neu gemessen und sind daher nicht als
+> aktuelle Ergebnisse zu lesen. Siehe `docs/BENCHMARKS.md` für den
+> Reproduktionsstand.
 
 ---
 
