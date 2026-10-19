@@ -270,11 +270,15 @@
   },
   "release_artifacts": {
     "dist_directory": "dist",
-    "commit_sha": "a6fb75bcb348c705359a569024be944dc741d5a9",
+    "commit_sha": "19df10cdc80f26dc9bb81b4438192c084845f477",
+    "published_at": "2026-10-19T13:33:01Z",
+    "provenance": "checksums computed from the released GitHub assets of tag v2.0.0 (tag object 9ed0a3a -> commit 19df10c); the checksum coverage fix post-dated the tag, so sha256sums.txt was recomputed from the published bytes and re-uploaded, then verified by an independent re-download",
     "checksums": {
-      "cqhecs-2.0.0-py3-none-any.whl": "a00f45eecd263b6c2c6bd675ae6d1048a019462a59e79003f3d3f4cf5b07bb8d",
-      "cqhecs-2.0.0.tar.gz": "1f83b868e5a78e024681603e5d65fd3546ebee9ee20156810c6e88d9def795d7",
-      "sha256sums.txt": "ec8a1c3c25c083e3c9887e1b3877fb3063be2cf0269ab0ebc54e7bb627851b43"
+      "cqhecs-2.0.0-py3-none-any.whl": "7b55f73ceb61d865d208fbd8b6a970424797aaa81df1763b6fe34bb323fba5e2",
+      "cqhecs-2.0.0.tar.gz": "730fd84f16280d64925b55be35aa6eb480319edb9363852f000e57d1f30aa5e3",
+      "cqhecs-sbom.spdx.json": "85a1163cc770e2281605d27ec12dcabe446a02408df9bf414c30f26d5c43fb78",
+      "RELEASE_NOTES_v2.0.0.md": "6020c2db7a8e0c2317c0286d8daf2491219f28243c5886be6fc7d8d02cbab6e4",
+      "sha256sums.txt": "8c50c39d100e3c4088da4f4ddb31e258224854396f42e884f5c29739292927be"
     },
     "sbom_file": "dist/cqhecs-sbom.spdx.json"
   }

@@ -72,14 +72,16 @@ jobs:
           print("wheel smoke test OK:", payload["result"]["path"])
           PY
 
-      - name: Generate checksums and SPDX SBOM
-        run: python scripts/generate_sbom_and_checksums.py
-
+      # The notes must exist before the checksum generator runs, otherwise the
+      # published checksum file cannot cover every release asset.
       - name: Assemble release notes for the tagged version
         run: |
           set -euo pipefail
           VERSION="$(python scripts/version.py)"
           cp RELEASE_NOTES.md "dist/RELEASE_NOTES_v${VERSION}.md"
+
+      - name: Generate checksums and SPDX SBOM
+        run: python scripts/generate_sbom_and_checksums.py
 
       - name: Verify every release asset exists
         run: |
