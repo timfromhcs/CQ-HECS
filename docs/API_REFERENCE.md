@@ -1,6 +1,6 @@
 # CQ-HECS: Native C-ABI & API Specification
 
-The pure C-ABI interface for CQ-HECS is declared in [`include/cq_hecs_api.h`](file:///C:/Users/hcsme/Desktop/quanten%20emulator/include/cq_hecs_api.h) and implemented within [`bin/Release/cq_hecs.dll`](file:///C:/Users/hcsme/Desktop/quanten%20emulator/bin/Release/cq_hecs.dll). It follows strict `cdecl` calling conventions with 64-bit alignment and no external runtime dependencies.
+The pure C-ABI interface for CQ-HECS is declared in [`include/cq_hecs_api.h`](../include/cq_hecs_api.h) and implemented within `bin/Release/cq_hecs.dll`. It follows strict `cdecl` calling conventions with 64-bit alignment and no external runtime dependencies.
 
 ---
 

@@ -42,33 +42,40 @@ graph TD
 - **Complexity:** $O(2^{\alpha T} \cdot \text{poly}(N))$ where $\alpha \approx 0.47$.
 - **Error Guarantee:** $\epsilon = 0.0$ (Bit-Exact).
 
-### Path C: Unbounded Matrix Product State + NVMe-Offload
+### Path C: Unbounded Matrix Product State + Storage Paging
 - **Target Circuit Class:** Circuits with low-to-moderate 1D bipartite entanglement cuts.
 - **Mathematical Invariant:**
   Statevector is represented as an open tensor chain:
   $$|\psi\rangle = \sum_{s_1, \dots, s_n} A_1^{[s_1]} A_2^{[s_2]} \cdots A_n^{[s_n]} |s_1 \dots s_n\rangle$$
   Two-site gate updates contract adjacent tensors and perform Singular Value Decomposition (SVD):
   $$M = U S V^\dagger$$
-  All non-zero singular values ($s_i > 10^{-14}$) are preserved. The bond dimension $\chi$ expands dynamically without an artificial $\chi = 48$ ceiling.
+  The bond dimension $\chi$ expands to the full **numerical rank** of the two-site block. There is no artificial ceiling and no truncation budget.
+- **Floating-Point Contract (important):**
+  Rank selection keeps every singular value above a *relative roundoff floor*, $\sigma_i > 10^{-13}\,\sigma_{\max}$. This is a statement about IEEE-754 double precision, not a mathematical approximation: values below the floor are numerically indistinguishable from zero. The discarded mass is **measured** and reported as `numerical_error_bound`; it is never silently dropped.
 - **Memory Ceiling & Escalation:**
-  When RAM allocation exceeds user budgets, site tensors page out to disk/NVMe storage. If total storage limits are reached without explicit approximation opt-in, the system refuses silent truncation and reports `unresolved=True`.
-- **Error Guarantee:** $\epsilon = 0.0$ up to physical memory capacity.
+  When RAM allocation exceeds user budgets, site tensors page out to a private scratch directory. If total storage limits are reached, the allocation is refused **before** any state is mutated, leaving the chain coherent, and the result is `unresolved=True`. The router may then escalate to Path D.
+- **Counts Limitation:**
+  Exact dense sampling costs $O(2^n)$. Circuits wider than `MAX_SAMPLING_QUBITS` (20) are executed and reported, but **no counts are produced** — the backend reports the fact rather than returning a placeholder.
+- **Reported Guarantee:** `error_bound = 0.0` (no *deliberate approximation*), `numerical_error_bound` = measured roundoff, `sampling_error_bound` = Hoeffding bound on the finite-shot counts.
 
 ### Path D: Certified Classical Approximation (Sparse-Pauli-Dynamics)
 - **Target Circuit Class:** Arbitrary quantum circuits exceeding exact memory/rank budgets.
+- **Supported Output:**
+  Path D produces **certified expectation values**, not a bitstring distribution. It reports single-qubit $\langle Z_q\rangle$ and parity $\langle Z_q Z_r\rangle$ observables; the parity terms are what carry multi-qubit correlation structure (a Bell state has all single-qubit marginals zero).
 - **Mathematical Invariant (Heisenberg Operator Dynamics):**
   Observables evolve backwards in time under Heisenberg dynamics:
   $$O(t) = U^\dagger O U = \sum_{P \in \mathcal{P}_n} c_P P$$
-  Clifford gates map single Pauli strings to single Pauli strings.
-  Non-Clifford rotations branch terms:
-  $$R_Z(\theta)^\dagger X R_Z(\theta) = \cos(\theta) X + \sin(\theta) Y$$
+  Single-qubit conjugation is applied via Pauli-basis matrices derived from the gate unitary, which keeps phase bookkeeping exact. CX, CZ and SWAP are conjugated by explicit Clifford rules. Any gate that cannot be conjugated exactly is **refused** rather than treated as the identity.
 - **Provable Error Bound Certificate:**
   When term count exceeds budget $K$, terms with smallest $|c_P|$ are pruned into set $\mathcal{D}$:
   $$\Delta_{\text{trunc}} = \sum_{P \in \mathcal{D}} |c_P|$$
   By the triangle inequality and the operator norm property $\|P\|_\infty = 1$:
   $$|\langle \psi_0 | O_{\text{exact}} | \psi_0 \rangle - \langle \psi_0 | O_{\text{approx}} | \psi_0 \rangle| \le \sum_{P \in \mathcal{D}} |c_P| = \Delta_{\text{trunc}}$$
+  This bound certifies **expectation values only**. It does not certify a sampled bitstring distribution. Result metadata records this explicitly via `error_bound_covers` / `error_bound_excludes`.
+- **Joint Counts Are Opt-In:**
+  Sampling each qubit independently from its own marginal is *not* a joint distribution — a Bell state would emerge uniform. Such counts are therefore disabled by default. A caller may pass `allow_uncertified_joint_counts=True`, which returns them labelled `counts_are_joint_distribution=False` and outside the certified bound.
 - **Unresolved Threshold:**
-  If the accumulated error bound $\Delta_{\text{total}} > \epsilon_{\text{tolerance}}$, the result is flagged with `unresolved=True`. No guessing is permitted.
+  If the accumulated error bound $\Delta_{\text{total}} > \epsilon_{\text{tolerance}}$, the result is flagged with `unresolved=True` and no expectation values are returned. No guessing is permitted.
 
 ---
 
@@ -81,9 +88,57 @@ Path D does **not** claim to bypass this bound or simulate arbitrary quantum cir
 
 ---
 
-## 4. Verification & Audit Trail
+## 4. Routing & Result Contracts
 
-1. **Zero Silent Truncation Audit:** Verified by [scripts/verify_no_silent_truncation.py](file:///C:/Users/hcsme/Desktop/quanten%20emulator/scripts/verify_no_silent_truncation.py).
-2. **Differential Validation:** Verified against exact statevector, Qiskit Aer, and Stim in [tests/test_adversarial_aer_and_stim.py](file:///C:/Users/hcsme/Desktop/quanten%20emulator/tests/test_adversarial_aer_and_stim.py).
-3. **Mutation Testing:** 100% Mutation Kill Score verified by [scripts/run_mutation_tests.py](file:///C:/Users/hcsme/Desktop/quanten%20emulator/scripts/run_mutation_tests.py).
-4. **Reproducible Releases:** Checksums and SBOM tracked in [audit/release_tracking.json](file:///C:/Users/hcsme/Desktop/quanten%20emulator/audit/release_tracking.json).
+### Routing fails closed
+- An unrecognised circuit input raises `UnsupportedCircuitInput`. The analyzer
+  never defaults an unknown input to a path.
+- A user-forced path is never silently rerouted. If the circuit uses a gate the
+  forced path cannot execute, the router raises `UnsupportedCircuitError` naming
+  the offending gate.
+- `auto` mode selects only a path that explicitly supports the circuit, via
+  `PATH_CAPABILITIES`.
+- Only specific capability failures (`StabilizerRankError`) trigger escalation.
+  A programming error propagates instead of being misread as "try the next path".
+
+### Result semantics
+`SimulationResult` separates three independent error sources instead of
+conflating them in a single `error_bound`:
+
+| Field | Meaning |
+| :--- | :--- |
+| `error_bound` | **Deliberate approximation** (truncated Pauli terms, any opt-in truncation). `0.0` means nothing was deliberately approximated. |
+| `numerical_error_bound` | **Floating-point roundoff**, measured where the backend can measure it (e.g. Path C's discarded singular-value mass). |
+| `sampling_error_bound` | **Finite-shot sampling** error, a rigorous Hoeffding TV bound `sqrt(ln(2/delta)/(2*shots))`. |
+
+`total_error_bound` sums them. A result therefore never claims zero error while
+actually being a finite-shot estimate.
+
+`state` is one of `EXACT`, `CERTIFIED`, `UNRESOLVED` or `FAILED`. `EXACT`
+requires `exact=True` **and** `error_bound == 0.0`.
+
+### Bitstring convention
+Qiskit renders qubit 0 **rightmost**. Every path follows this, and the native
+C++ engine's output (which renders qubit 0 leftmost) is normalised before being
+returned. Classical bits are populated from the circuit's actual `measure`
+mapping, so `measure_all()` circuits produce the same keys as Aer.
+
+---
+
+## 5. Verification & Audit Trail
+
+1. **Silent-truncation / fabricated-result audit:**
+   [scripts/verify_no_silent_truncation.py](scripts/verify_no_silent_truncation.py)
+   checks hardcoded cutoffs, fabricated placeholder counts, `exact=True`
+   reported with `unresolved=True`, fail-open routing, and unrestricted `eval`.
+2. **Differential validation** against exact statevector, Qiskit Aer and Stim:
+   [tests/test_adversarial_aer_and_stim.py](tests/test_adversarial_aer_and_stim.py)
+   and [tests/test_correctness_contracts.py](tests/test_correctness_contracts.py).
+3. **CLI contract** (JSON purity, exit codes, determinism):
+   [tests/test_cli_contract.py](tests/test_cli_contract.py).
+4. **Qiskit BackendV2 contract:**
+   [tests/python/test_qiskit_backend_contract.py](tests/python/test_qiskit_backend_contract.py).
+5. **Version consistency** across every public surface:
+   [scripts/check_version.py](scripts/check_version.py).
+6. **Reproducible releases:** checksums and SBOM tracked in
+   [audit/release_tracking.json](audit/release_tracking.json).
