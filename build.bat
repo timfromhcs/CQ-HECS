@@ -32,7 +32,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 :: Step 4: Run Embedded Self-Test & Verification
 echo [4/4] Running Embedded Self-Test Suite...
-.\bin\Release\cq_hecs.exe test
+.\build\bin\Release\cq_hecs.exe test
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Embedded self-test failed.
     exit /b %ERRORLEVEL%
@@ -42,8 +42,8 @@ echo.
 echo =================================================================
 echo  BUILD AND VERIFICATION SUCCESSFUL!
 echo  Artifacts:
-echo    Executable: bin/Release/cq_hecs.exe
-echo    Library:    bin/Release/cq_hecs.dll
+echo    Executable: build/bin/Release/cq_hecs.exe
+echo    Library:    build/bin/Release/cq_hecs.dll
 echo    Header:     include/cq_hecs_api.h
 echo =================================================================
 exit /b 0

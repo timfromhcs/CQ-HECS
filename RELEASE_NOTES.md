@@ -166,13 +166,15 @@ These are deliberate and documented, not defects to be discovered later.
 
 ## 6. Verification
 
-* Python: **202 passed, 0 failed** with the native engine built.
-* Without the native build: **171 passed, 31 skipped**. The skipped tests
-  genuinely did not verify the native component; they are reported as skipped,
-  not counted as passing.
-* Native ctest: **13/13** (MSVC 19.44, Vulkan SDK 1.4.357).
-* Mutation harness: baseline gate passes, **7/7 killed**.
-* CI: green on Ubuntu and Windows.
+* Python: **209 passed, 0 failed** with the native engine built (2 Qiskit
+  deprecation warnings inside a test helper).
+* Native ctest: **13/13** (MSVC 19.44).
+* Mutation harness: baseline gate passes, **7/7 killed**, exit code 0.
+* Clean install: wheel built from a clean `dist/`, installed into an empty
+  venv; `cq-hecs --help`, `version` (2.0.0), `doctor` and a JSON `run`
+  smoke test all pass from the installed package.
+* CI runs Ubuntu and Windows on every push; the release tag runs the release
+  pipeline with the asset existence checks shown in `.github/workflows/release.yml`.
 
 ---
 

@@ -28,7 +28,7 @@ JSON is kept in `benchmarks/smoke_results_current.json`.
 
 | Field | Value |
 | :--- | :--- |
-| Run on | branch `agent/v2-correctness`, commit `623f587` (re-run at every release) |
+| Run on | branch `agent/v2-correctness`; regenerated at every release commit |
 | OS / CPU | Windows 11 (10.0.26200) / AMD Zen 3 (Family 25 Model 68) |
 | Python / NumPy / Qiskit / Aer / Stim | 3.14.6 / 2.4.6 / 2.5.1 / 0.17.2 / 1.16.0 (Stim+Aer used by the oracle tests, not by the paths) |
 | Cases | `ghz8` → Path A, `mixed4` → Path B |
