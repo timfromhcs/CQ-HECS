@@ -1,355 +1,553 @@
 """
-Deterministic mutation testing for the CQ-HECS four-path engine.
+Deterministic **source-level** mutation testing for CQ-HECS.
 
-Each mutation injects a realistic defect and the harness asks: does an
-*independent behavioural check* detect it? A mutant counts as killed only when
-the check observes wrong behaviour, not merely when the mutated code happens to
-raise an unrelated exception.
+Why this harness rewrites real source files
+-------------------------------------------
+An earlier version "simulated" defects inside hand-written helpers (for example
+constructing ``{"0"*n: shots}`` locally) and counted that as a killed mutant.
+That measures nothing about the production code. This harness instead:
 
-The mutations target the defect classes found during the v1.0.0 correctness
-audit, so a regression of any of them is caught here.
+1. applies an exact text patch to a real production source file,
+2. runs an independent behavioural check in a *fresh subprocess* (so the mutated
+   module is imported, not a cached one),
+3. restores the file byte-for-byte in a ``finally`` block,
+4. counts the mutant as killed only when the check observes the injected defect.
 
-Exit codes: 0 if the harness ran (a surviving mutant is reported, not hidden),
-1 on a harness error.
+A clean baseline is a prerequisite: every check must report "not detected" on
+unmutated code. Surviving mutants, harness errors, timeouts and missing anchors
+all fail the gate with a non-zero exit code.
+
+Mutation score is scoped: 11 source mutants covering the historically observed
+defect classes. It is not a proof of correctness and must not be reported as
+one.
 """
 
 from __future__ import annotations
+
+import argparse
+import os
+import subprocess
 import sys
-from typing import Callable, List, Tuple
+import tempfile
+import traceback
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Callable, Dict, List, Tuple
 
-import numpy as np
-from qiskit import QuantumCircuit
-from qiskit.quantum_info import Statevector
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
-from cqhecs.backends.path_a_stabilizer import StabilizerTableauSimulator
-from cqhecs.backends.path_b_stabilizer_rank import StabilizerRankSimulator
-from cqhecs.backends.path_c_mps_exact import ExactMPSTensorChain
-from cqhecs.backends.path_d_sparse_pauli import SparsePauliDynamicsSimulator
-
-
-def _counts_to_probs(counts, num_qubits):
-    total = sum(counts.values())
-    vec = np.zeros(1 << num_qubits)
-    for bits, n in counts.items():
-        vec[int(bits, 2)] = n / total
-    return vec
+EXIT_OK = 0
+EXIT_GATE_FAILED = 1
+EXIT_NOT_DETECTED = 3
+DEFAULT_CHECK_TIMEOUT = 240
 
 
-# ---------------------------------------------------------------- mutants
-def mutant_1_tableau_phase_corruption() -> bool:
-    """Flip a tableau phase bit: a Bell state must no longer be parity-even."""
+# --------------------------------------------------------------------------- checks
+# A check returns True when it *observes the injected defect*, False when the
+# production code behaves correctly. Checks must exercise shipped code paths.
+
+
+def check_qubit_bit_order() -> bool:
+    """X on qubit 0 of 3 must render as '001' (qubit 0 rightmost)."""
+    from cqhecs.backends.path_a_stabilizer import StabilizerTableauSimulator
+
+    sim = StabilizerTableauSimulator(3)
+    sim.apply_x(0)
+    counts, sampled = sim.sample(shots=50, seed=1)
+    if sampled != 50:
+        return False  # unrelated sampling failure is not evidence of this defect
+    return "100" in counts and "001" not in counts
+
+
+def check_cz_conjugation() -> bool:
+    """H,H,CZ,H on two qubits must produce Bell parity; a CZ-as-CX shortcut breaks it."""
+    from cqhecs.backends.path_a_stabilizer import StabilizerTableauSimulator
+
     sim = StabilizerTableauSimulator(2)
     sim.apply_h(0)
-    sim.apply_cx(0, 1)
-
-    counts, _ = sim.sample(shots=200, seed=42)
-    if any(k not in ("00", "11") for k in counts):
-        raise RuntimeError("Baseline assertion failed in mutant 1: Bell state produced odd parity before mutation")
-
-    # +Z0Z1 -> -Z0Z1 forces odd parity outcomes.
-    sim.tableau[3, 4] ^= 1
-    corrupted, _ = sim.sample(shots=200, seed=42)
-    return any(k in ("01", "10") for k in corrupted)
+    sim.apply_h(1)
+    sim.apply_cz(0, 1)
+    sim.apply_h(1)
+    counts, _ = sim.sample(shots=400, seed=13)
+    return not set(counts).issubset({"00", "11"})
 
 
-def mutant_2_rank_branch_coefficient_dropped() -> bool:
-    """Drop one T-gate branch: the resulting distribution must be wrong."""
-    instrs = [("h", [0], []), ("t", [0], []), ("cx", [0, 1], [])]
-    exact = Statevector(_circuit(instrs)).probabilities()
+def check_rank_budget_fail_closed() -> bool:
+    """A T-count exceeding the rank budget must raise, not return a result."""
+    from cqhecs.backends.path_b_stabilizer_rank import StabilizerRankSimulator
 
-    clean = StabilizerRankSimulator(2).execute_circuit(instrs, shots=40000, seed=1)
-    tv_clean = 0.5 * np.abs(_counts_to_probs(clean, 2) - exact).sum()
-    if tv_clean > 0.02:
-        raise RuntimeError(f"Baseline assertion failed in mutant 2: tv_clean {tv_clean:.4f} > 0.02")
-
-    # Mutant: pretend the rank budget is exhausted so the branch is refused.
-    sim = StabilizerRankSimulator(2)
-    sim.max_rank_branches = 1
+    instrs = [("h", [0], []), ("t", [0], []), ("t", [0], []), ("cx", [0, 1], [])]
     try:
-        sim.execute_circuit(instrs, shots=1000, seed=1)
+        StabilizerRankSimulator(2, max_rank_branches=1).execute_circuit(
+            instrs, shots=10, seed=1
+        )
     except ValueError:
-        return True  # budget guard fires: detectable
-    # If it silently succeeded, its output must differ from the exact law.
-    mutated = sim.execute_circuit(instrs, shots=40000, seed=1)
-    tv = 0.5 * np.abs(_counts_to_probs(mutated, 2) - exact).sum()
-    return tv > 0.02
+        return False  # correct: refused fail-closed
+    except Exception:
+        return False  # unrelated failure is not evidence of this defect
+    return True  # silently produced a result -> defect present
 
 
-def mutant_3_mps_non_unitary_tensor() -> bool:
-    """Scale an MPS site tensor: the state norm must stop being one."""
+def check_mps_state_norm() -> bool:
+    """The MPS statevector must be normalized after a Hadamard."""
+    import numpy as np
+
+    from cqhecs.backends.path_c_mps_exact import ExactMPSTensorChain
+
     mps = ExactMPSTensorChain(3)
     h = np.array([[1, 1], [1, -1]], dtype=np.complex128) / np.sqrt(2.0)
     mps.apply_single_qubit_gate(0, h)
-
-    mps.sites[0] = mps.sites[0] * 2.0
-    norm = float(np.linalg.norm(mps.to_statevector()))
-    return abs(norm - 1.0) > 0.1
+    return abs(float(np.linalg.norm(mps.to_statevector())) - 1.0) > 1e-6
 
 
-def mutant_4_sparse_pauli_error_bound_suppressed() -> bool:
-    """
-    Detects "drop Pauli terms but report a zero error bound".
+def check_wide_sampling_fabrication() -> bool:
+    """Beyond MAX_SAMPLING_QUBITS the chain must refuse instead of fabricating counts."""
+    from cqhecs.backends.path_c_mps_exact import ExactMPSTensorChain
 
-    The mutation this guards against reported `error_bound == 0.0` while
-    truncating. Detected when a tight term budget forces truncation and a
-    correct implementation reports a strictly positive bound.
-    """
+    width = ExactMPSTensorChain.MAX_SAMPLING_QUBITS + 1
+    counts, supported = ExactMPSTensorChain(num_qubits=width).sample(shots=10, seed=1)
+    return bool(supported or counts)
+
+
+def check_sparse_pauli_bound() -> bool:
+    """Truncating Pauli terms must leave a strictly positive error bound."""
+    from cqhecs.backends.path_d_sparse_pauli import SparsePauliDynamicsSimulator
+
     sim = SparsePauliDynamicsSimulator(num_qubits=2, max_pauli_terms=1)
-    instrs = [("rz", [0], [0.8]), ("rz", [1], [0.6]), ("cx", [0, 1], [])]
-    obs = {(1, 0): complex(1.0, 0.0)}  # X_0
-
-    _, bound, _ = sim.evaluate_observable(instrs, obs)
-    # Truncation is unavoidable with a one-term budget, so the bound must be > 0.
-    return bound > 0.0
-
-
-def mutant_5_unresolved_flag_suppressed() -> bool:
-    """Ignore the tolerance: an over-budget result must be flagged unresolved."""
-    qc = QuantumCircuit(4)
-    for _ in range(4):
-        for q in range(4):
-            qc.h(q)
-            qc.rz(0.5, q)
-        for q in range(3):
-            qc.cx(q, q + 1)
-
-    from cqhecs.backends.path_d_sparse_pauli import PathDSparsePauliBackend
-
-    backend = PathDSparsePauliBackend(max_pauli_terms=4, error_tolerance=1e-4)
-    result = backend.execute(qc, shots=100)
-    if not result.unresolved:
-        raise RuntimeError("Baseline assertion failed in mutant 5: result was not marked unresolved")
-    if result.expectation_values is not None:
-        raise RuntimeError("Baseline assertion failed in mutant 5: leaked expectation values while unresolved")
-
-    # Mutant: suppress the flag, pretending the result resolved.
-    result.unresolved = False
-    return not result.unresolved and result.error_bound > 1e-4
-
-
-def mutant_6_path_c_fabricated_wide_counts() -> bool:
-    """
-    Detects the old "all-zeros placeholder" for wide circuits.
-
-    Injects the v1 defect: fabricating {'0'*n: shots} with supported=True for
-    chains wider than MAX_SAMPLING_QUBITS. A trustworthy harness must detect
-    and kill this mutant.
-    """
-    n = ExactMPSTensorChain.MAX_SAMPLING_QUBITS + 1
-    # Check baseline on an unmutated chain:
-    clean_counts, clean_supported = ExactMPSTensorChain(num_qubits=n).sample(shots=10, seed=1)
-    if clean_supported or clean_counts:
-        raise RuntimeError("Baseline assertion failed in mutant 6: clean chain did not refuse wide sampling")
-
-    # Injected defect: simulate buggy v1 behavior that returned zeros
-    def buggy_sample(shots: int = 10, seed: int = 1):
-        return {"0" * n: shots}, True
-
-    fake_counts, fake_supported = buggy_sample(shots=10, seed=1)
-    # The defect is caught if the check detects non-empty counts or supported=True
-    is_defect_caught = bool(fake_supported or fake_counts)
-    return is_defect_caught
-
-
-def mutant_7_bit_order_reversal() -> bool:
-    """
-    Detects rendering qubit 0 leftmost instead of rightmost.
-
-    The mutation broke Qiskit's convention, so X on qubit 0 of 3 qubits
-    produced '100'. Detected by requiring the correct rendering.
-    """
-    counts = StabilizerRankSimulator(3).execute_circuit(
-        [("x", [0], [])], shots=100, seed=1
+    _, bound, _ = sim.evaluate_observable(
+        [("rz", [0], [0.8]), ("rz", [1], [0.6]), ("cx", [0, 1], [])],
+        {(1, 0): complex(1.0, 0.0)},
     )
-    return "001" in counts
+    return not (bound > 0.0)
 
 
-def _circuit(instrs):
-    qc = QuantumCircuit(len({q for _, qs, _ in instrs for q in qs}) or 2)
-    for name, qubits, params in instrs:
-        getattr(qc, name)(*params, *qubits)
-    return qc
+def check_unresolved_suppression() -> bool:
+    """An over-budget evaluation must report ``unresolved=True``."""
+    from cqhecs.backends.path_d_sparse_pauli import SparsePauliDynamicsSimulator
+
+    sim = SparsePauliDynamicsSimulator(
+        num_qubits=2, max_pauli_terms=1, error_tolerance=1e-9
+    )
+    _, bound, unresolved = sim.evaluate_observable(
+        [("rz", [0], [0.8]), ("rz", [1], [0.6]), ("cx", [0, 1], [])],
+        {(1, 0): complex(1.0, 0.0)},
+    )
+    if not (bound > sim.error_tolerance):
+        return False  # scenario did not exercise the unresolved branch
+    return not unresolved
 
 
-# Baseline invariants: statements that must hold against the *unmutated* code.
-# If any fails, the harness itself is broken and the mutation score is void.
-BASELINE_CHECKS: List[Tuple[str, Callable[[], bool], str]] = [
-    (
-        "Bell state is parity-even",
-        lambda: set(
-            StabilizerTableauSimulator(2).sample(shots=200, seed=42)[0]
-        ) <= {"00", "11"},
-        "Path A must produce only |00> and |11> for a Bell circuit",
+def check_governor_allocation_failure() -> bool:
+    """An oversized page must raise MemoryError, never silently exceed the budget."""
+    from python_bridge.cq_hecs import TieredMemoryGovernor
+
+    governor = TieredMemoryGovernor(max_vram_mb=1.0)
+    try:
+        governor.allocate(1, b"x" * (2 * 1024 * 1024))
+    except MemoryError:
+        return False  # correct
+    return True  # oversize accepted -> defect present
+
+
+def check_cli_usage_exit_status() -> bool:
+    """A successful command must report the documented success exit code."""
+    import contextlib
+    import io
+
+    from cqhecs.cli import main
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        code = main(["--format", "json", "version"])
+    return code != 0
+
+
+def check_cli_json_schema_field() -> bool:
+    """JSON mode must include schema_version on the version payload."""
+    import contextlib
+    import io
+    import json
+
+    from cqhecs.cli import main
+
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        code = main(["--format", "json", "version"])
+    if code != 0:
+        return False
+    payload = json.loads(out.getvalue())
+    return "schema_version" not in payload
+
+
+def check_t_count_classification() -> bool:
+    """A QASM circuit containing T must report t_count >= 1 and is_clifford False."""
+    from cqhecs.circuit_analyzer import CircuitAnalyzer
+
+    qasm = (
+        'OPENQASM 2.0;\n'
+        'include "qelib1.inc";\n'
+        "qreg q[1];\n"
+        "h q[0];\n"
+        "t q[0];\n"
+    )
+    props = CircuitAnalyzer().analyze(qasm)
+    return props.t_count < 1 or props.is_clifford
+
+
+CHECKS: Dict[str, Callable[[], bool]] = {
+    "qubit_bit_order": check_qubit_bit_order,
+    "cz_conjugation": check_cz_conjugation,
+    "rank_budget_fail_closed": check_rank_budget_fail_closed,
+    "mps_state_norm": check_mps_state_norm,
+    "wide_sampling_fabrication": check_wide_sampling_fabrication,
+    "sparse_pauli_bound": check_sparse_pauli_bound,
+    "unresolved_suppression": check_unresolved_suppression,
+    "governor_allocation_failure": check_governor_allocation_failure,
+    "cli_usage_exit_status": check_cli_usage_exit_status,
+    "cli_json_schema_field": check_cli_json_schema_field,
+    "t_count_classification": check_t_count_classification,
+}
+
+
+# --------------------------------------------------------------------------- mutants
+@dataclass(frozen=True)
+class SourceMutant:
+    name: str
+    target: str          # path relative to REPO_ROOT
+    original: str        # exact text, must occur exactly once
+    replacement: str
+    check: str
+    mechanism: str       # what the injected source change actually does
+
+
+MUTANTS: List[SourceMutant] = [
+    SourceMutant(
+        name="Qubit bit-order reversal",
+        target="cqhecs/backends/path_a_stabilizer.py",
+        original='bs = "".join(bits)[::-1]',
+        replacement='bs = "".join(bits)',
+        check="qubit_bit_order",
+        mechanism="drops the Qiskit rightmost-qubit reversal in sampled bitstrings",
     ),
-    (
-        "Path B matches the exact Born rule",
-        lambda: 0.5 * np.abs(
-            _counts_to_probs(
-                StabilizerRankSimulator(2).execute_circuit(
-                    [("h", [0], []), ("t", [0], []), ("cx", [0, 1], [])],
-                    shots=40000, seed=1,
-                ),
-                2,
-            )
-            - Statevector(
-                _circuit([("h", [0], []), ("t", [0], []), ("cx", [0, 1], [])])
-            ).probabilities()
-        ).sum() < 0.02,
-        "Path B must agree with the exact statevector",
-    ),
-    (
-        "MPS preserves the state norm",
-        lambda: abs(
-            float(np.linalg.norm(
-                _mps_with_h().to_statevector()
-            )) - 1.0
-        ) < 1e-9,
-        "Path C must keep the state normalized after a Hadamard",
-    ),
-    (
-        "Sparse-Pauli reports a positive bound under truncation",
-        lambda: SparsePauliDynamicsSimulator(
-            num_qubits=2, max_pauli_terms=1
-        ).evaluate_observable(
-            [("rz", [0], [0.8]), ("rz", [1], [0.6]), ("cx", [0, 1], [])],
-            {(1, 0): complex(1.0, 0.0)},
-        )[1] > 0.0,
-        "Path D must report truncation when the term budget forces it",
-    ),
-    (
-        "Unresolved results carry no expectation values",
-        lambda: (
-            lambda r: r.unresolved and r.expectation_values is None
-        )(_unresolved_result()),
-        "Path D must not return values while marked unresolved",
-    ),
-    (
-        "Wide chains refuse to fabricate counts",
-        lambda: (
-            lambda c: (not c[1]) and not c[0]
-        )(ExactMPSTensorChain(
-            num_qubits=ExactMPSTensorChain.MAX_SAMPLING_QUBITS + 1
-        ).sample(shots=10, seed=1)),
-        "Path C must return no counts beyond its sampling limit",
-    ),
-    (
-        "Bit order is Qiskit-convention",
-        lambda: "001" in StabilizerRankSimulator(3).execute_circuit(
-            [("x", [0], [])], shots=100, seed=1
+    SourceMutant(
+        name="CZ conjugation shortcut",
+        target="cqhecs/backends/path_a_stabilizer.py",
+        original=(
+            "    def apply_cz(self, ctrl: int, tgt: int):\n"
+            "        self.apply_h(tgt)\n"
+            "        self.apply_cx(ctrl, tgt)\n"
+            "        self.apply_h(tgt)\n"
         ),
-        "X on qubit 0 of 3 qubits must render as '001'",
+        replacement=(
+            "    def apply_cz(self, ctrl: int, tgt: int):\n"
+            "        self.apply_cx(ctrl, tgt)\n"
+        ),
+        check="cz_conjugation",
+        mechanism="implements CZ as bare CX (missing H-conjugation)",
+    ),
+    SourceMutant(
+        name="Stabilizer-rank budget silently ignored",
+        target="cqhecs/backends/path_b_stabilizer_rank.py",
+        original=(
+            "        if num_branches > self.max_rank_branches:\n"
+            "            raise ValueError(\n"
+        ),
+        replacement=(
+            "        if False:\n"
+            "            raise ValueError(\n"
+        ),
+        check="rank_budget_fail_closed",
+        mechanism="removes the rank-budget refusal, allowing over-budget execution",
+    ),
+    SourceMutant(
+        name="MPS statevector unscaled",
+        target="cqhecs/backends/path_c_mps_exact.py",
+        original="        return curr.flatten()",
+        replacement="        return curr.flatten() * 2.0",
+        check="mps_state_norm",
+        mechanism="returns a non-normalized statevector from the MPS contraction",
+    ),
+    SourceMutant(
+        name="Fabricated wide-register counts",
+        target="cqhecs/backends/path_c_mps_exact.py",
+        original=(
+            "        if self.num_qubits > self.MAX_SAMPLING_QUBITS:\n"
+            "            return {}, False\n"
+        ),
+        replacement=(
+            "        if self.num_qubits > self.MAX_SAMPLING_QUBITS:\n"
+            '            return {"0" * self.num_qubits: int(shots)}, True\n'
+        ),
+        check="wide_sampling_fabrication",
+        mechanism="returns an all-zeros count dictionary with supported=True",
+    ),
+    SourceMutant(
+        name="Sparse-Pauli error-bound suppression",
+        target="cqhecs/backends/path_d_sparse_pauli.py",
+        original="self.accumulated_error_bound += discarded_weight",
+        replacement="self.accumulated_error_bound += 0.0",
+        check="sparse_pauli_bound",
+        mechanism="discards Pauli terms while reporting a zero error contribution",
+    ),
+    SourceMutant(
+        name="Unresolved flag suppression",
+        target="cqhecs/backends/path_d_sparse_pauli.py",
+        original="unresolved = (self.accumulated_error_bound > self.error_tolerance)",
+        replacement="unresolved = False",
+        check="unresolved_suppression",
+        mechanism="forces resolved status even when the error bound exceeds tolerance",
+    ),
+    SourceMutant(
+        name="Swallowed resource failure",
+        target="python_bridge/cq_hecs.py",
+        original=(
+            "            if self.active_vram_bytes - old_size + size > self.max_vram_bytes:\n"
+            "                # Fail closed: an oversized page must not be accepted silently.\n"
+            "                raise MemoryError("
+        ),
+        replacement=(
+            "            if False:\n"
+            "                # Fail closed: an oversized page must not be accepted silently.\n"
+            "                raise MemoryError("
+        ),
+        check="governor_allocation_failure",
+        mechanism="accepts an oversized page instead of raising MemoryError",
+    ),
+    SourceMutant(
+        name="Incorrect CLI exit status",
+        target="cqhecs/cli.py",
+        original="EXIT_OK = 0",
+        replacement="EXIT_OK = 5",
+        check="cli_usage_exit_status",
+        mechanism="reports a non-zero exit status for a successful command",
+    ),
+    SourceMutant(
+        name="Missing JSON schema field",
+        target="cqhecs/cli.py",
+        original=(
+            '        "schema_version": JSON_SCHEMA_VERSION,\n'
+            '        "name": "cq-hecs",\n'
+        ),
+        replacement='        "name": "cq-hecs",\n',
+        check="cli_json_schema_field",
+        mechanism="drops schema_version from the version JSON payload",
+    ),
+    SourceMutant(
+        name="Wrong T-count classification",
+        target="cqhecs/circuit_analyzer.py",
+        original=(
+            '                if gname in ("barrier", "measure", "id", "openqasm", "include"):\n'
+            "                    continue\n"
+            "\n"
+            "                if gname in NON_CLIFFORD_T_GATES:\n"
+            '                    t_count += 7 if gname in ("ccx", "toffoli") else 1'
+        ),
+        replacement=(
+            '                if gname in ("barrier", "measure", "id", "openqasm", "include"):\n'
+            "                    continue\n"
+            "\n"
+            "                if gname in NON_CLIFFORD_T_GATES:\n"
+            '                    t_count += 7 if gname in ("ccx", "toffoli") else 0'
+        ),
+        check="t_count_classification",
+        mechanism="drops the T contribution in the OpenQASM analysis path",
     ),
 ]
 
 
-def _mps_with_h() -> ExactMPSTensorChain:
-    mps = ExactMPSTensorChain(3)
-    mps.apply_single_qubit_gate(
-        0, np.array([[1, 1], [1, -1]], dtype=np.complex128) / np.sqrt(2.0)
+# --------------------------------------------------------------------------- runner
+class HarnessError(RuntimeError):
+    pass
+
+
+def _check_env() -> dict:
+    env = os.environ.copy()
+    existing = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = str(REPO_ROOT) + (os.pathsep + existing if existing else "")
+    return env
+
+
+def run_check_in_subprocess(name: str, timeout: int = DEFAULT_CHECK_TIMEOUT) -> bool:
+    """Runs one check in a fresh interpreter; returns True when the defect is seen."""
+    command = [sys.executable, str(Path(__file__).resolve()), "--check", name]
+    try:
+        proc = subprocess.run(
+            command,
+            cwd=REPO_ROOT,
+            env=_check_env(),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise HarnessError(f"check {name!r} timed out after {timeout}s") from exc
+
+    if proc.returncode == EXIT_OK:
+        return True
+    if proc.returncode == EXIT_NOT_DETECTED:
+        return False
+    raise HarnessError(
+        f"check {name!r} failed with exit code {proc.returncode}\n"
+        f"stdout: {proc.stdout.strip()}\nstderr: {proc.stderr.strip()}"
     )
-    return mps
 
 
-def _unresolved_result():
-    qc = QuantumCircuit(4)
-    for _ in range(4):
-        for q in range(4):
-            qc.h(q)
-            qc.rz(0.5, q)
-        for q in range(3):
-            qc.cx(q, q + 1)
-    from cqhecs.backends.path_d_sparse_pauli import PathDSparsePauliBackend
-    return PathDSparsePauliBackend(
-        max_pauli_terms=4, error_tolerance=1e-4
-    ).execute(qc, shots=100)
+def _atomic_write(path: Path, text: str) -> None:
+    """Writes text so an interrupted run cannot leave a half-written file."""
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", newline="", delete=False, dir=str(path.parent)
+    ) as handle:
+        handle.write(text)
+        temp_name = handle.name
+    os.replace(temp_name, path)
 
 
-def baseline_self_check() -> List[Tuple[int, str, str]]:
-    """
-    Verifies every baseline invariant against the unmutated code.
+def apply_mutant(mutant: SourceMutant) -> Tuple[Path, str]:
+    """Validates the anchor, writes the mutated source and returns (path, original)."""
+    path = REPO_ROOT / mutant.target
+    if not path.is_file():
+        raise HarnessError(f"mutant target missing: {mutant.target}")
 
-    Returns a list of failures; empty means the harness is trustworthy.
-    """
+    original_text = path.read_text(encoding="utf-8")
+    occurrences = original_text.count(mutant.original)
+    if occurrences != 1:
+        raise HarnessError(
+            f"anchor for {mutant.name!r} occurs {occurrences} time(s) in "
+            f"{mutant.target} (expected exactly 1). Update the mutation anchor."
+        )
+
+    mutated = original_text.replace(mutant.original, mutant.replacement, 1)
+    _atomic_write(path, mutated)
+    if path.read_text(encoding="utf-8") != mutated:
+        raise HarnessError(f"failed to write mutated source for {mutant.name!r}")
+    return path, original_text
+
+
+def restore_source(path: Path, original_text: str) -> None:
+    _atomic_write(path, original_text)
+    if path.read_text(encoding="utf-8") != original_text:
+        raise HarnessError(f"FAILED TO RESTORE {path}; manual repair required")
+
+
+def baseline_self_check(mutants: List[SourceMutant]) -> List[str]:
+    """Every check must report 'not detected' on unmutated source."""
     failures = []
-    for index, (name, check, detail) in enumerate(BASELINE_CHECKS, start=1):
-        try:
-            ok = bool(check())
-        except Exception as exc:
-            failures.append((index, name, f"{type(exc).__name__}: {exc}"))
+    checks = sorted({mutant.check for mutant in mutants})
+    for name in checks:
+        if name not in CHECKS:
+            failures.append(f"{name}: no such check")
             continue
-        if not ok:
-            failures.append((index, name, detail))
+        try:
+            detected = run_check_in_subprocess(name)
+        except HarnessError as exc:
+            failures.append(f"{name}: harness error: {exc}")
+            continue
+        if detected:
+            failures.append(
+                f"{name}: reported a defect on unmutated source (baseline is broken)"
+            )
     return failures
 
 
-MUTANTS: List[Tuple[str, Callable[[], bool]]] = [
-    ("Tableau phase corruption", mutant_1_tableau_phase_corruption),
-    ("Stabilizer-rank branch coefficient", mutant_2_rank_branch_coefficient_dropped),
-    ("MPS non-unitary site tensor", mutant_3_mps_non_unitary_tensor),
-    ("Sparse-Pauli error-bound suppression", mutant_4_sparse_pauli_error_bound_suppressed),
-    ("Unresolved-flag suppression", mutant_5_unresolved_flag_suppressed),
-    ("Path C fabricated wide counts", mutant_6_path_c_fabricated_wide_counts),
-    ("Bit-order reversal", mutant_7_bit_order_reversal),
-]
+def run(mutants: List[SourceMutant], verbose: bool = True) -> int:
+    print("=" * 70)
+    print(" CQ-HECS Source-Level Mutation Harness")
+    print(f" mutants: {len(mutants)} | checks: {len({m.check for m in mutants})}")
+    print("=" * 70)
 
-
-def main() -> int:
-    print("=" * 66)
-    print(" CQ-HECS Deterministic Mutation Testing Harness")
-    print("=" * 66)
-
-    # Baseline gate: every check must hold against the *unmutated* code. A
-    # check that is already failing would otherwise "kill" its mutant for the
-    # wrong reason, inflating the score while proving nothing.
-    baseline_failures = baseline_self_check()
-    if baseline_failures:
-        print("\n[FAIL] Baseline is broken; the mutation score would be")
-        print("       meaningless. Fix these before trusting any score:\n")
-        for index, name, detail in baseline_failures:
-            print(f"   - Baseline {index} ({name}): {detail}")
-        print("=" * 66)
-        return 1
-    print(f"  Baseline OK: all {len(BASELINE_CHECKS)} checks hold on unmutated code.")
+    failures = baseline_self_check(mutants)
+    if failures:
+        print("\n[FAIL] Baseline is broken; the mutation score would be meaningless:\n")
+        for failure in failures:
+            print(f"   - {failure}")
+        print("=" * 70)
+        return EXIT_GATE_FAILED
+    print(f"  Baseline OK: {len({m.check for m in mutants})} checks pass on unmutated source.")
 
     killed = 0
-    survivors = []
-    errors = []
-    for index, (name, fn) in enumerate(MUTANTS, start=1):
+    survivors: List[str] = []
+    errors: List[str] = []
+
+    for index, mutant in enumerate(mutants, start=1):
+        original_text = None
+        path = None
         try:
-            detected = bool(fn())
-        except Exception as exc:  # a harness error is not a kill
-            print(f"  [HARNESS ERROR] Mutant {index}: {name}: "
-                  f"{type(exc).__name__}: {exc}")
-            errors.append((index, name))
+            path, original_text = apply_mutant(mutant)
+            detected = run_check_in_subprocess(mutant.check)
+        except HarnessError as exc:
+            print(f"  [HARNESS ERROR] Mutant {index}: {mutant.name}: {exc}")
+            errors.append(mutant.name)
+            detected = False
+        except Exception as exc:  # noqa: BLE001 - harness must fail closed
+            print(f"  [HARNESS ERROR] Mutant {index}: {mutant.name}: {exc}")
+            errors.append(mutant.name)
+            detected = False
+        finally:
+            if path is not None and original_text is not None:
+                try:
+                    restore_source(path, original_text)
+                except HarnessError as exc:
+                    print(f"  [RESTORE ERROR] {exc}")
+                    errors.append(mutant.name)
+
+        if mutant.name in errors:
             continue
         if detected:
             killed += 1
-            print(f"  [KILLED] Mutant {index}: {name}")
+            if verbose:
+                print(f"  [KILLED] Mutant {index}: {mutant.name} ({mutant.mechanism})")
         else:
-            print(f"  [SURVIVED] Mutant {index}: {name}")
-            survivors.append((index, name))
+            survivors.append(mutant.name)
+            print(f"  [SURVIVED] Mutant {index}: {mutant.name} ({mutant.mechanism})")
 
-    total = len(MUTANTS)
-    print("=" * 66)
-    print(f" Mutation score: {killed}/{total} killed ({100.0 * killed / total:.1f}%)")
+    total = len(mutants)
+    print("=" * 70)
+    print(f" Mutation score: {killed}/{total} killed ({100.0 * killed / max(total, 1):.1f}%)")
     if survivors:
         print(" Surviving mutants:")
-        for index, name in survivors:
-            print(f"   - Mutant {index}: {name}")
-    else:
-        print(" Every injected defect was detected by an independent check.")
+        for name in survivors:
+            print(f"   - {name}")
     if errors:
         print(" Harness errors (not counted as kills):")
-        for index, name in errors:
-            print(f"   - Mutant {index}: {name}")
+        for name in errors:
+            print(f"   - {name}")
+    print(
+        " Scope: source patches listed in MUTANTS; not a proof of correctness."
+    )
 
-    # Fail closed: a surviving mutant or a harness error is a failed gate.
     if survivors or errors:
         print("\n[FAIL] Mutation gate not met.")
-        print("=" * 66)
-        return 1
-    print("=" * 66)
-    return 0
+        print("=" * 70)
+        return EXIT_GATE_FAILED
+    print("=" * 70)
+    return EXIT_OK
+
+
+def main(argv: List[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", help="run a single check (internal subprocess mode)")
+    parser.add_argument("--list", action="store_true", help="list mutants and exit")
+    args = parser.parse_args(argv)
+
+    if args.check:
+        check = CHECKS.get(args.check)
+        if check is None:
+            print(f"unknown check: {args.check}", file=sys.stderr)
+            return EXIT_GATE_FAILED
+        try:
+            detected = bool(check())
+        except Exception:  # noqa: BLE001 - surfaced as a harness error by the parent
+            traceback.print_exc()
+            return EXIT_GATE_FAILED
+        return EXIT_OK if detected else EXIT_NOT_DETECTED
+
+    if args.list:
+        for mutant in MUTANTS:
+            print(f"{mutant.name}\t{mutant.target}\t{mutant.check}")
+        return EXIT_OK
+
+    return run(MUTANTS)
 
 
 if __name__ == "__main__":
