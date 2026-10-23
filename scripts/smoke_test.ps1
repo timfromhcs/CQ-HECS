@@ -3,11 +3,16 @@
 
 $ErrorActionPreference = "Stop"
 
+$version = (python scripts/version.py).Trim()
+if ($LASTEXITCODE -ne 0 -or -not $version) {
+    throw "Could not read the canonical version from scripts/version.py"
+}
+
 $sandbox = Join-Path $env:TEMP "cq_hecs_smoke_test"
-$zip = (Resolve-Path "dist\CQ-HECS-v4.5.0-Windows-x64.zip").Path
+$zip = (Resolve-Path "dist\CQ-HECS-v$version-Windows-x64.zip").Path
 
 Write-Host "=================================================================" -ForegroundColor Cyan
-Write-Host " CQ-HECS v4.5.0: Isolated Sandbox Smoke Test" -ForegroundColor Cyan
+Write-Host " CQ-HECS v$version: Isolated Sandbox Smoke Test" -ForegroundColor Cyan
 Write-Host " Sandbox Location: $sandbox" -ForegroundColor Cyan
 Write-Host "=================================================================" -ForegroundColor Cyan
 
@@ -29,7 +34,7 @@ try {
     # Command 1: --version
     Write-Host "[2/5] Testing --version flag..." -NoNewline
     $verOut = & $exe --version
-    if ($LASTEXITCODE -eq 0 -and $verOut -match "v4.5.0") {
+    if ($LASTEXITCODE -eq 0 -and $verOut -match [regex]::Escape($version)) {
         Write-Host " [PASS: $verOut]" -ForegroundColor Green
     } else {
         throw "Failed --version: $verOut"

@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/timfromhcs/CQ-HECS/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/timfromhcs/CQ-HECS/ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=CI%2FCD" alt="CI/CD Status"/></a>
   <a href="https://isocpp.org/"><img src="https://img.shields.io/badge/C%2B%2B-20%20STANDARD-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white" alt="C++20"/></a>
-  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/PYTHON-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.10+"/></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/PYTHON-3.11%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.11+"/></a>
   <a href="scripts/verify_no_silent_truncation.py"><img src="https://img.shields.io/badge/TRUNCATION-ZERO%20SILENT%20CUTOFFS-brightgreen?style=for-the-badge" alt="Zero Silent Truncation"/></a>
   <a href="https://qiskit.org/"><img src="https://img.shields.io/badge/INTERFACE-QISKIT%20BACKENDV2-6929C4?style=for-the-badge&logo=qiskit&logoColor=white" alt="Qiskit BackendV2"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-APACHE%202.0-blue?style=for-the-badge" alt="License"/></a>
@@ -15,7 +15,7 @@
 
 ## 1. Überblick
 
-**CQ-HECS** (Classical Quantum High-Efficiency Compute Simulator) ist ein klassischer Quantenschaltungsemulator mit einer geprüften **Four-Path-Architektur**, einer `cq-hecs`-CLI mit festem JSON-Vertrag, Qiskit-BackendV2-Integration und einem eigenständigen C++20/Vulkan-Nativkern. Alle vier Simulationspfade rechnen **ausschließlich auf der CPU**; der Nativkern ist ein separat gebautes, separat getestetes Artefakt.
+**CQ-HECS** (Classical Quantum High-Efficiency Compute Simulator) ist ein klassischer Quantenschaltungsemulator mit einer geprüften **Four-Path-Architektur**, einer `cq-hecs`-CLI mit festem JSON-Vertrag, Qiskit-BackendV2-Integration und einem separat gebauten C++20-Nativkern. Alle vier Python-Simulationspfade rechnen **ausschließlich auf der CPU**. Der Nativkern ist ein separates Artefakt und wird nur dort eingesetzt, wo sein dokumentierter Vertrag eingehalten wird.
 
 Das Versprechen dieses Projekts ist **nicht** universelle effiziente Simulation, sondern:
 
@@ -24,15 +24,19 @@ Das Versprechen dieses Projekts ist **nicht** universelle effiziente Simulation,
 - **Fehlerschranken mit Namen.** `error_bound` (bewusste Näherung), `numerical_error_bound` (numerische Diagnostik) und `sampling_error_bound` (endliche Stichprobe) sind getrennt. Wo keine gültige Schranke ableitbar ist, steht `None` — keine Zahl zum Schein.
 - **Ehrliche Grenzen.** Keine Aussage über Bereiche, die nicht tatsächlich gemessen oder bewiesen wurden; die Hardware-Verifikationsstufen sind je Plattform ausgewiesen ([§8](#8-hardware-support-matrix--verifikationsstufen)).
 
+### Status dieses Stands
+
+`v2.2.0` ist ein **Hardening-Release**. Es fügt strukturierte Parser-Diagnostik und eine explizite Engine-Klassifikation hinzu und ersetzt mehrere fail-open-Pfade sowie Tests, die ohne echte Messung grün werden konnten, durch fail-closed-Verträge. Es fügt **keinen neuen Simulator, keine GPU-Beschleunigung und keine neue Exaktheitsbehauptung** hinzu. Details stehen in [`CHANGELOG.md`](CHANGELOG.md) und [`RELEASE_NOTES.md`](RELEASE_NOTES.md); die lokale Evidenz in [`research/v2_2/TEST_MATRIX.md`](research/v2_2/TEST_MATRIX.md).
+
 ---
 
 ## 2. Fähigkeiten und Grenzen
 
 | Domäne / Schaltungsklasse | Was CQ-HECS kann (verifiziert) | Was CQ-HECS nicht kann (Grenzen) |
 | :--- | :--- | :--- |
-| **Reine Clifford-Schaltungen ($T = 0$)** | Exakte Simulation über das Gottesman-Knill-Tableau (GF(2)-symplektische Arithmetik); polynomielle Zeit- und Speicherskalierung; 300+ Qubits GHZ- und Stabilizer-Schaltungen mit 1.000+ echten Stichproben über Pfad A. | Kein universeller Simulator: das erste nicht-Clifford-Gatter verlangt einen anderen Pfad. |
+| **Reine Clifford-Schaltungen ($T = 0$)** | Exakte Simulation über das Gottesman-Knill-Tableau (GF(2)-symplektische Arithmetik); polynomielle Zeit- und Speicherskalierung; 300-Qubit-GHZ- und Stabilizer-Schaltungen mit echten Stichproben über Pfad A. | Kein universeller Simulator: das erste nicht-Clifford-Gatter verlangt einen anderen Pfad. |
 | **Niedriger $T$-Count** | Pfad B: exakte Stabilizer-Rank-Zerlegung der nicht-Clifford-Gatter (kein Term wird gestrichen), Auswertung in IEEE-754 float64. Implementierter Deckel: **22 Qubits** (Implementation-Deckel, kein Theorem). | Skaliert exponentiell mit dem T-Count ($O(2^{\alpha T})$); tiefe zufällige Clifford+T-Schaltungen übersteigen jedes Rangbudget. |
-| **1D Area-Law Verschränkung** | Pfad C: untruncated MPS — die Bindungsdimension wächst zur vollen numerischen Rangstufe; SVD verwirft nur Werte unterhalb der Relativschwelle (1e-13 × σ_max); natives sequentielles Sampling skaliert ohne dichten $2^n$ Zustandsvektor auf 200–300+ Qubits (z. B. 300Q GHZ in < 0,3s). Dichte Zustandskonversion bleibt auf ≤ 20 Qubits gedeckelt. | Keine effiziente Repräsentation für dichte 2D-/3D-Verschränkung; χ kann exponentiell wachsen. |
+| **1D Area-Law Verschränkung** | Pfad C: untruncated MPS — die Bindungsdimension wächst zur vollen numerischen Rangstufe; die Rangwahl verwirft nur Werte unterhalb der Relativschwelle (1e-13 × σ_max); natives sequentielles Sampling skaliert ohne dichten $2^n$ Zustandsvektor (lokal bis 300 Qubits getestet). Dichte Zustandskonversion bleibt auf ≤ 20 Qubits gedeckelt. | Keine effiziente Repräsentation für dichte 2D-/3D-Verschränkung; χ kann exponentiell wachsen. |
 | **Volume-Law / tiefe Zufallsschaltungen** | Pfad C eskaliert bei Speichergrenze transparent auf Pfad D oder markiert `unresolved=True`. | Kein Brechen von BQP ≠ BPP: Random Circuit Sampling bleibt klassisch nicht verlustfrei in Polynomialzeit simulierbar. |
 | **Zertifizierte Observable-Näherung (Pfad D)** | Heisenberg Sparse-Pauli-Dynamics mit bewiesener Schranke $\Delta \le \sum_{P \in \mathcal{D}} |c_P|$ für angefragte Observablen ($\langle Z_q \rangle$, $\langle Z_q Z_r \rangle$); selektive Observablen-API zur gezielten Auswertung auf 200+ Qubits ohne Paar-Explosion; `unresolved=True` ohne Werte bei Schrankenüberschreitung. | Keine zertifizierte Schranke auf einer gemeinsamen Messverteilung; gemeinsame Counts nur opt-in und als keine gemeinsame Verteilung markiert. |
 | **ARX & Krypto-Testbench** | Algebraische SAT-Analyse für reduzierte Runden von ChaCha20 (20-Runden-Spezifikation), SHA-256 (64 Schritte) und BLAKE2b (12 Runden). | **Kein Brechen voller kryptografischer Primitives** — keine Preimage-Inversion für 256-Bit-Vollverschlüsselungen. |
@@ -61,9 +65,9 @@ flowchart TD
 
 | Pfad | Methode | Zielklasse | Algebra | Fehlerschranke | Ressourcengrenze | Verhalten an der Grenze |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **A** | Stabilizer-Tableau | Reines Clifford ($T = 0$) | GF(2)-symplektisch, exakt | $0{,}0$ (keine Approximation) | polynomiell $O(N^2)$; 300+ Qubits GHZ mit 1.000+ Shots | Nicht-Clifford-Gatter → typisierte Ablehnung (kein stilles Ignorieren) |
+| **A** | Stabilizer-Tableau | Reines Clifford ($T = 0$) | GF(2)-symplektisch, exakt | $0{,}0$ (keine Approximation) | polynomiell $O(N^2)$; 300-Qubit-GHZ-Test mit echten Shots | Nicht-Clifford-Gatter → typisierte Ablehnung (kein stilles Ignorieren) |
 | **B** | Stabilizer-Rank | Niedriger $T$-Count | exakte Zerlegung, Auswertung float64 | exakte Algebra; numerische Diagnostik separat | $O(2^{\alpha T})$ Zweige; **22-Qubit-Deckel** | Deckel-/Gate-Überschreitung → typisierter Fehler (keine Fake-Counts) |
-| **C** | MPS | 1D Area-Law | float64; SVD nur unterhalb der Relativschwelle | `numerical_error_bound=None`; `discarded_spectral_mass_diagnostic` | Speicherbudget; natives Sampling bis 500 Qubits (dense to_statevector ≤ 20 Qubits) | Budget → kohärenter Abbruch, dann D/unresolved; Sampling-Grenze → keine Counts statt Platzhalter |
+| **C** | MPS | 1D Area-Law | float64; Rangwahl unterhalb der Relativschwelle | `numerical_error_bound=None`; `discarded_spectral_mass_diagnostic` | Speicherbudget; natives Sampling ohne dichten Zustandsvektor (Tests bis 300 Qubits); dense to_statevector ≤ 20 Qubits | Budget → kohärenter Abbruch, dann D/unresolved; Sampling-Grenze → keine Counts statt Platzhalter |
 | **D** | Sparse-Pauli | Observable-Queries | Konjugation in der $X^x Z^z$-Basis (Tabelle gegen explizite Matrizen geprüft) | $\Delta \le \sum_{P \in \mathcal{D}} \|c_P\|$ | Pauli-Termbudget K; 200+ Qubits via selektiver Observablen-API | $\Delta > \epsilon$ → sofort `unresolved=True`, ohne Werte |
 
 ### Explizite Simulationszustände (`SimulationState`)
@@ -126,23 +130,38 @@ Bei $K = 2$ reduziert sich die Schranke exakt auf den klassischen Hoeffding-Wert
 
 ---
 
-## 5. Installation & Setup
+## 5. OpenQASM-Vertrag des Nativkerns
 
-### 5.0 Nur Python (kein Vulkan erforderlich)
+Der native QASM-Pfad ist **fail-closed** und kein Reparaturparser. Die vollständige Spezifikation steht in [`docs/QASM_CONTRACT.md`](docs/QASM_CONTRACT.md).
+
+- Unterstützt wird eine dokumentierte OpenQASM-2.0-Teilmenge: `OPENQASM 2.0;`, optional `include "qelib1.inc";`, `qreg`/`creg`, bekannte Ein- und Zwei-Qubit-Gatter, `measure`, `barrier` und Kommentare.
+- Jede Anweisung benötigt ein Semikolon. Unbekannte Gatter, nicht-endliche oder ungültige Winkelausdrücke, nicht deklarierte Register und falsche Aritäten werden mit einem strukturierten Fehler `{line, category, message}` abgelehnt.
+- `cq_hecs qasm` (Nativ-Executable) beendet sich bei ungültiger Eingabe mit **Exit-Code 2**; mit `--json` erscheint genau ein JSON-Fehlerdokument auf stdout, Diagnostik auf stderr.
+- `cq_execute_qasm` in der C-ABI liefert bei Parse-Fehlern **`-3`** und setzt das Ergebnis auf einen sicheren Nullzustand.
+- Der native Ausführungspfad ist als `engine_class = legacy_z8_phase_ledger` und `statevector_simulation = false` klassifiziert. Er ist **kein** allgemeiner Zustandsvektor-Simulator; für die vier Python-Pfade gilt der jeweilige Vertrag.
+
+---
+
+## 6. Installation & Setup
+
+### 6.0 Nur Python (kein Vulkan erforderlich)
 Das Python-Paket, die `cq-hecs`-CLI und alle vier Pfade laufen **ausschließlich
 auf der CPU** und benötigen **kein Vulkan-SDK**:
 
 ```bash
 pip install .             # aus dem Projektverzeichnis (Checkout)
 cq-hecs doctor
-cq-hecs run name:bell --shots 1000 --format json
+cq-hecs --format json run name:bell --shots 1000
 ```
 
 > Der Nativkern (`cq_hecs.exe` / `cq_hecs.dll` / `_cqhecs_core`) benötigt das
 > Vulkan-SDK (die öffentlichen Header inkludieren `vulkan/vulkan.h`). Das
 > betrifft nur den nativen Build — nicht die Python-Oberfläche.
 
-### 5.1 Linux (Ubuntu 22.04 / 24.04)
+Unterstützt wird **Python 3.11–3.14**. Python 3.9/3.10 sind nicht mehr Teil der
+getesteten Support-Matrix.
+
+### 6.1 Linux (Ubuntu 22.04 / 24.04)
 ```bash
 # CMake/Ninja, C++-Compiler, Vulkan SDK (nur für den Nativkern)
 sudo apt-get update
@@ -157,7 +176,7 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-### 5.2 Windows 10 / 11 (PowerShell)
+### 6.2 Windows 10 / 11 (PowerShell)
 ```powershell
 # Vulkan SDK via Chocolatey oder offiziellen Installer (nur für den Nativkern)
 choco install vulkan-sdk cmake ninja -y --no-progress
@@ -172,17 +191,17 @@ pip install -e .
 .\build.bat        # Nativkern (optional)
 ```
 
-### 5.3 Wheel / sdist bauen
+### 6.3 Wheel / sdist bauen
 ```bash
 python -m build
-# => dist/cqhecs-2.0.0-py3-none-any.whl und dist/cqhecs-2.0.0.tar.gz
+# => dist/cqhecs-2.2.0-py3-none-any.whl und dist/cqhecs-2.2.0.tar.gz
 ```
 
 ---
 
-## 6. Workflow & Ausführung
+## 7. Workflow & Ausführung
 
-### 6.1 CLI (`cq-hecs`)
+### 7.1 Python-CLI (`cq-hecs`)
 ```bash
 cq-hecs version                        # Versionsinformation
 cq-hecs doctor                         # Umgebung: OS, Python, Nativ-Binding, Vulkan-Stufen
@@ -194,29 +213,43 @@ cq-hecs benchmark smoke                # reproduzierbarer Smoke-Benchmark
 ```
 
 `--format json` schreibt **genau ein** JSON-Dokument auf stdout; Diagnosen gehen
-immer an stderr. Exit-Codes: `0` Erfolg, `1` unerwarteter Fehler, `2`
-Verwendungsfehler, `3` unresolved, `4` Umgebung nicht verfügbar.
+immer an stderr. Exit-Codes der Python-CLI: `0` Erfolg, `1` unerwarteter Fehler,
+`2` Verwendungsfehler, `3` unresolved, `4` Umgebung nicht verfügbar. Der native
+`qasm`-Befehl verwendet zusätzlich `2` für ungültige Schaltungseingaben (siehe §5).
 
 Verfügbare Referenzschaltungen (`cq-hecs analyze name:<name>`): `bell`,
 `bell_measured`, `clifford6`, `ghz8`, `ghz8_measured`, `ghz16`, `low_t_rank4`,
 `mps6`, `sparse_pauli4`.
 
-### 6.2 Vulkan Compute-Shader kompilieren & verifizieren
+### 7.2 Nativkern
+```bash
+build/bin/Release/cq_hecs version
+build/bin/Release/cq_hecs qasm circuit.qasm --json
+build/bin/Release/cq_hecs qasm - --qubits 64 --json < circuit.qasm
+build/bin/Release/cq_hecs test --json
+```
+
+Der Nativkern ist ein **Legacy-Engine-Pfad** mit eigenem, eingeschränktem
+QASM-Vertrag. Er ersetzt nicht die vier Python-Pfade und ist nicht als
+allgemeiner Zustandsvektor-Simulator klassifiziert.
+
+### 7.3 Vulkan Compute-Shader kompilieren & verifizieren
 Kompiliert alle Vulkan-Compute-Shader mit `glslangValidator`:
 ```bash
 python scripts/verify_vulkan_shaders.py
 ```
 
-### 6.3 C++20 Core & Test-Suite bauen
+### 7.4 C++20 Core & Test-Suite bauen
 ```bash
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCQ_BUILD_TESTS=ON
 cmake --build build --config Release
 ctest --test-dir build --output-on-failure
 ```
 
-### 6.4 Python-Testsuite ausführen
+### 7.5 Python-Testsuite ausführen
 ```bash
 pytest tests/ -ra                                        # vollständige Suite
+$env:CQ_HECS_REQUIRE_NATIVE="1"; pytest tests/ -ra       # native Tests dürfen nicht skippen
 pytest tests/test_correctness_contracts.py -v            # 4-Pfad-Korrekturregressionen
 pytest tests/test_cli_contract.py -v                     # JSON-Reinheit, Exit-Codes
 python scripts/check_version.py                          # Versionskonsistenz aller Flächen
@@ -224,7 +257,7 @@ python scripts/verify_no_silent_truncation.py            # Audit gegen Silent Cu
 python scripts/run_mutation_tests.py                     # Mutation harness (fail-closed)
 ```
 
-### 6.5 Benchmarks ausführen
+### 7.6 Benchmarks ausführen
 Reproduzierbarer Smoke-Benchmark — der Datensatz, an dem die aktuellen Claims
 hinterlegt sind:
 ```bash
@@ -236,9 +269,9 @@ Die historischen Mess-Tabellen bleiben in [`docs/BENCHMARKS.md`](docs/BENCHMARKS
 
 ---
 
-## 7. Nutzung & Code-Beispiele
+## 8. Nutzung & Code-Beispiele
 
-### 7.1 Qiskit BackendV2 Drop-In
+### 8.1 Qiskit BackendV2 Drop-In
 ```python
 from qiskit import QuantumCircuit
 from cqhecs.backend import CQHecsBackend
@@ -260,7 +293,7 @@ Klassische Bit-Abbildung: Bei `measure_all()` erscheint Qubit `q` rechtsbündig
 innerhalb des hinten angehängten klassischen Registers (Qiskit-Konvention,
 Qubit 0 am weitesten rechts) — das Verhalten ist gegen Aer getestet.
 
-### 7.2 Router
+### 8.2 Router
 ```python
 from qiskit import QuantumCircuit
 from cqhecs.router import EntanglementAdaptiveRouter
@@ -278,7 +311,7 @@ Der Router ist fail-closed: erzwungene Pfade werden nicht still umgeleitet;
 nur typisierte Capability-/Ressourcenfehler lösen eine Eskalation aus —
 keine willkürlichen `Exception`s.
 
-### 7.3 Pfad D explizit
+### 8.3 Pfad D explizit
 ```python
 from qiskit import QuantumCircuit
 from cqhecs.backends import PathDSparsePauliBackend
@@ -298,7 +331,7 @@ und werden dann als keine gemeinsame Verteilung (`counts_are_joint_distribution=
 
 ---
 
-## 8. Hardware Support Matrix & Verifikationsstufen
+## 9. Hardware Support Matrix & Verifikationsstufen
 
 CQ-HECS unterscheidet strikt zwischen physisch verifizierter Ausführung, CI-Verifizierung und reiner Lade-/Prüfbarkeit:
 
@@ -318,7 +351,27 @@ CQ-HECS unterscheidet strikt zwischen physisch verifizierter Ausführung, CI-Ver
 
 ---
 
-## 9. Einordnung gegenüber Qiskit Aer & cuTensorNet
+## 10. Verifikationsstand v2.2.0
+
+Die folgenden Zahlen sind lokale Messungen und CI-Ergebnisse für diesen Stand,
+keine Leistungsbenchmarks:
+
+| Gate | Ergebnis |
+| :--- | :--- |
+| CTest (MSVC Release, lokal) | **14/14 bestanden** |
+| Python-Suite (CPython 3.14 + Nativkern) | **254 bestanden** |
+| Python-Suite (CPython 3.11, gepinnte Abhängigkeiten, ohne Nativkern) | **251 bestanden, 3 explizite Skips** |
+| Mutation-Harness | **11/11 Mutanten erkannt**, Baseline-Gate sauber |
+| Branch-Coverage (lokal) | **76 %**, CI-Schwelle 70 % |
+| GitHub Actions | Linux/Windows nativ, ASan/UBSan, Python 3.12–3.14 und Package-Smoke |
+| Physische GPU | **nicht verifiziert** |
+| Google Cloud Build | **blockiert** (`gcloud` in der Audit-Umgebung nicht installiert) |
+
+Details und Rohkommandos: [`research/v2_2/TEST_MATRIX.md`](research/v2_2/TEST_MATRIX.md). Ein grüner Lauf auf einem älteren Commit ist kein Beweis für einen späteren Commit.
+
+---
+
+## 11. Einordnung gegenüber Qiskit Aer & cuTensorNet
 
 | Merkmal | CQ-HECS | Qiskit Aer MPS | NVIDIA cuTensorNet |
 | :--- | :--- | :--- | :--- |
@@ -335,22 +388,35 @@ CQ-HECS unterscheidet strikt zwischen physisch verifizierter Ausführung, CI-Ver
 
 ---
 
-## 10. Dokumentenverweise
+## 12. Dokumentenverweise
 
 | Dokument | Inhalt |
 | :--- | :--- |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Verbindliche Architekturübersicht |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Komponentenmatrix und Verifizierungsstufen |
+| [`docs/QASM_CONTRACT.md`](docs/QASM_CONTRACT.md) | Parser-Grammatik, Fehlerkategorien und Exit-Codes |
 | [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md) | CLI-, Python- und C-ABI-Verträge |
 | [`docs/USAGE_GUIDE.md`](docs/USAGE_GUIDE.md) | Geprüfte Kommandos und Nutzung |
 | [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) | Aktuelle und historische Benchmarks (sauber getrennt) |
 | [`docs/V2_IMPLEMENTATION_MATRIX.md`](docs/V2_IMPLEMENTATION_MATRIX.md) | Was v2 implementiert, mit Test-Ankern |
+| [`research/v2_2/BASELINE.md`](research/v2_2/BASELINE.md) | Audit-Ausgangslage und behobene Befunde |
+| [`research/v2_2/TEST_MATRIX.md`](research/v2_2/TEST_MATRIX.md) | Lokale Gates, CI-Matrix und offene Punkte |
 | [`research/v2/METHOD_CATALOG.md`](research/v2/METHOD_CATALOG.md) | Methodenentscheidungen inkl. Verwerfungen |
 | [`research/v2/FORMALIZATION_STATUS.md`](research/v2/FORMALIZATION_STATUS.md) | Beweisstatus jeder verwendeten Aussage |
 | [`CHANGELOG.md`](CHANGELOG.md) · [`RELEASE_NOTES.md`](RELEASE_NOTES.md) | Versionsgeschichte und Freigabedaten |
 
+### Legacy-Komponenten
+
+- `python_bridge/` ist eine historische Referenz-/Diagnostikschicht, nicht der
+  unterstützte Einstiegspunkt. Unterstützt wird `cq-hecs`.
+- `python/cqhecs` und `python/cq_hecs` sind Legacy-Kompatibilitäts-Shims und
+  nicht Teil des gebauten `cqhecs`-Pakets.
+- `scripts/package_release.ps1` und `scripts/smoke_test.ps1` sind optionale
+  Windows-Paketierungswerkzeuge; die kanonische Release-Pipeline läuft über
+  `.github/workflows/release.yml`.
+
 ---
 
-## 11. Lizenz
+## 13. Lizenz
 
 CQ-HECS ist lizenziert unter der **Apache License 2.0**. Siehe [LICENSE](LICENSE) für den vollständigen Lizenztext.

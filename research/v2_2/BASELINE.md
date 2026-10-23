@@ -95,8 +95,11 @@ release tag has been created or published by this work.
 
 ## Remaining unverified surfaces
 
-- **GitHub Actions on the pushed SHA:** pending at the time this baseline file
-  was written; the final audit records the run link after the push.
+- **GitHub Actions on the pushed SHA:** the hardening commit
+  `62559d2` passed all seven jobs (Linux/Windows native, ASan/UBSan, Python
+  3.12–3.14, static/package) in run
+  <https://github.com/timfromhcs/CQ-HECS/actions/runs/39952077909>. The final
+  documentation commit is re-verified separately; see `TEST_MATRIX.md`.
 - **Google Cloud Build:** `gcloud` is not installed in this environment, so the
   configured `cloudbuild.yaml` could not be invoked or observed locally. Status:
   **BLOCKED**, not passed.
@@ -104,5 +107,5 @@ release tag has been created or published by this work.
   code path where available, but no physical-device performance or correctness
   run was performed. Status: **NOT VERIFIED**. Do not describe CQ-HECS as
   GPU-accelerated on the basis of these tests.
-- **Linux sanitizer execution:** the job is defined in CI; local Windows/MSVC
-  cannot run ASan/UBSan. Status: **NOT RUN LOCALLY**, pending the CI job.
+- **Linux sanitizer execution:** the ASan/UBSan job passed in the GitHub Actions
+  run above. Local Windows/MSVC cannot run it, so it is CI-only evidence.

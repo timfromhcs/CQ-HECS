@@ -601,7 +601,8 @@ int main(int argc, char* argv[]) {
     }
 
     if (command == "--version" || command == "-v" || command == "version") {
-        std::cout << "CQ-HECS v4.5.0\n"
+        std::cout << "CQ-HECS " CQ_HECS_VERSION "\n"
+                  << "Engine class: legacy_z8_phase_ledger (statevector_simulation=false)\n"
                   << "Powered by CQ-HECS (https://github.com/timfromhcs)\n"
                   << "Author: Tim (@timfromhcs) <timfromhcs@gmail.com>\n";
         return 0;

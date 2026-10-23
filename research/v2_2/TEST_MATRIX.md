@@ -17,12 +17,13 @@ status is recorded separately and must not be inferred from this file.
 | Python fatal-error lint | PASS | `flake8 cqhecs tests scripts --select=E9,F63,F7,F82` |
 | Native build (MSVC Release) | PASS | `cmake --build build --config Release` |
 | CTest | PASS | 14/14 tests, `ctest --test-dir build -C Release` |
-| Python suite (3.14 + native) | PASS | 253 passed, `CQ_HECS_REQUIRE_NATIVE=1` |
-| Python suite (3.11 pinned deps, no native) | PASS with explicit skips | 250 passed, 3 skipped |
+| Python suite (3.14 + native) | PASS | 254 passed, `CQ_HECS_REQUIRE_NATIVE=1` |
+| Python suite (3.11 pinned deps, no native) | PASS with explicit skips | 251 passed, 3 skipped |
 | Branch coverage | PASS (local baseline) | 76% total, `coverage run --branch --source=cqhecs` |
 | Mutation gate | PASS | 11/11 killed, baseline clean |
-| ASan/UBSan | NOT RUN locally | defined in CI; Windows/MSVC cannot run it |
-| GitHub Actions on pushed SHA | PENDING | run link added after push |
+| ASan/UBSan | PASS in CI | GitHub Actions job; Windows/MSVC cannot run it locally |
+| GitHub Actions on hardening SHA | PASS | `62559d2`, run <https://github.com/timfromhcs/CQ-HECS/actions/runs/39952077909> (7/7 jobs) |
+| GitHub Actions on final docs SHA | RE-VERIFIED AFTER PUSH | final docs commit; result recorded in the release report, not in this file |
 | Cloud Build | BLOCKED | `gcloud` not installed; not observed |
 | Physical GPU verification | NOT VERIFIED | no physical-device run performed |
 
@@ -34,7 +35,7 @@ Command:
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-Result: **14/14 passed** in ~9.4 s.
+Result: **14/14 passed** in ~8.0 s.
 
 | # | Test | Result |
 | :--- | :--- | :--- |
@@ -67,7 +68,7 @@ $env:CQ_HECS_REQUIRE_NATIVE="1"
 python -m pytest tests/ -q
 ```
 
-Result on CPython 3.14.6: **253 passed** in ~74 s.
+Result on CPython 3.14.6: **254 passed** in ~66 s.
 
 Branch coverage command:
 
@@ -88,7 +89,7 @@ CPython 3.11 pinned-lane rehearsal:
 python -m pytest tests/ -q
 ```
 
-Result: **250 passed, 3 skipped**. The skips are native-artifact tests and
+Result: **251 passed, 3 skipped**. The skips are native-artifact tests and
 Qiskit transpiler smoke checks that require the built shared library; the CI
 native jobs set `CQ_HECS_REQUIRE_NATIVE=1` so they cannot silently skip there.
 

@@ -333,7 +333,7 @@ add_test(NAME test_300q_stress COMMAND test_300q_stress)
 add_test(NAME test_qasm_contract COMMAND test_qasm_contract)
 
 # 8. Nanobind Python C++20 Modules
-find_package(Python 3.10 COMPONENTS Interpreter Development.Module QUIET)
+find_package(Python 3.11 COMPONENTS Interpreter Development.Module QUIET)
 if(Python_FOUND)
     execute_process(
         COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir

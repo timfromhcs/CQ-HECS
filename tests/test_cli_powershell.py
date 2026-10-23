@@ -36,6 +36,14 @@ class TestCLIPowerShell(unittest.TestCase):
         self.assertIn("CQ-HECS", res.stdout)
         self.assertIn("Commands:", res.stdout)
 
+    def test_cli_version_is_canonical(self):
+        from cqhecs import __version__
+
+        res = self.run_cmd(["version"])
+        self.assertEqual(res.returncode, 0)
+        self.assertIn(f"CQ-HECS {__version__}", res.stdout)
+        self.assertNotRegex(res.stdout, r"v4\.\d+\.\d+")
+
     def test_cli_self_test(self):
         res = self.run_cmd(["test"])
         self.assertEqual(res.returncode, 0)

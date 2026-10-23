@@ -127,6 +127,16 @@ def check() -> list:
             "python_bridge version",
         ),
         (
+            "python/cqhecs/__init__.py",
+            r'^__version__\s*=\s*"([^"]+)"',
+            "legacy cqhecs shim version",
+        ),
+        (
+            "python/cq_hecs/__init__.py",
+            r'^__version__\s*=\s*"([^"]+)"',
+            "legacy cq_hecs shim version",
+        ),
+        (
             "tests/test_c_api.py",
             r'assertEqual\(ver,\s*"([^"]+)"\)',
             "C API version test",
@@ -140,6 +150,37 @@ def check() -> list:
                 f"{name} in {relative} is {match.group(1)!r}, "
                 f"expected {VERSION!r}"
             )
+
+    # The native CLI must derive its version from CQ_HECS_VERSION rather than
+    # hardcoding a release string.
+    main_cpp = _read("src/main.cpp")
+    hardcoded_cli = re.search(r'"CQ-HECS v\d+\.\d+\.\d+', main_cpp)
+    if hardcoded_cli:
+        problems.append(
+            "src/main.cpp hardcodes a CLI version string; use CQ_HECS_VERSION"
+        )
+
+    # Packaging scripts must derive the version; a literal vX.Y.Z would drift.
+    for relative in ("scripts/package_release.ps1", "scripts/smoke_test.ps1"):
+        literal = sorted(set(re.findall(
+            r"\bv\d+\.\d+\.\d+\b", _read(relative)
+        )))
+        if literal:
+            problems.append(
+                f"{relative} hardcodes version(s) {literal}; "
+                "derive them from scripts/version.py"
+            )
+
+    # The README wheel example and API reference must show the current version.
+    readme = _read("README.md")
+    if f"cqhecs-{VERSION}-py3-none-any.whl" not in readme:
+        problems.append(
+            f"README.md does not show the current wheel name cqhecs-{VERSION}"
+        )
+    if f'"{VERSION}"' not in _read("docs/API_REFERENCE.md"):
+        problems.append(
+            f"docs/API_REFERENCE.md does not document version {VERSION!r}"
+        )
 
     return problems
 
