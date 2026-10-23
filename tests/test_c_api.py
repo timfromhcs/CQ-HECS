@@ -67,7 +67,7 @@ class TestCAPI(unittest.TestCase):
 
     def test_version_query(self):
         ver = self.lib.cq_get_version().decode("utf-8")
-        self.assertEqual(ver, "2.1.0")
+        self.assertEqual(ver, "2.2.0")
 
     def test_context_lifecycle_and_vram(self):
         ctx = self.lib.cq_create_context(300, 64)
@@ -103,6 +103,18 @@ class TestCAPI(unittest.TestCase):
         self.assertEqual(res.gate_count, 4)
         self.assertLess(res.active_vram_mb, 120.0)
 
+        self.lib.cq_destroy_context(ctx)
+
+    def test_execute_qasm_rejects_invalid_circuit(self):
+        ctx = self.lib.cq_create_context(8, 64)
+        self.assertIsNotNone(ctx)
+
+        invalid_qasm = b"OPENQASM 2.0;\nqreg q[2];\nnot_a_gate q[0];\n"
+        res = CQResult()
+        status = self.lib.cq_execute_qasm(ctx, invalid_qasm, ctypes.byref(res))
+
+        self.assertEqual(status, -3)
+        self.assertEqual(res.success, 0)
         self.lib.cq_destroy_context(ctx)
 
     def test_solve_sat_via_c_api(self):

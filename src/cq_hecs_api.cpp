@@ -30,10 +30,13 @@ CQ_API cq_context_t* cq_create_context(uint32_t num_qubits, uint32_t bond_dim) {
 CQ_API int cq_execute_qasm(cq_context_t* ctx, const char* qasm_str, cq_result_t* out_result) {
     if (!ctx || !qasm_str || !out_result) return 1;
 
+    *out_result = cq_result_t{};
     cq_hecs::QASMParserCPP parser;
     cq_hecs::QASMCircuitData circuit;
-    if (!parser.parse_string(qasm_str, circuit)) {
-        return 1;
+    if (!parser.parse_string(qasm_str, circuit) || !circuit.ok()) {
+        // -3 is the documented "invalid circuit input" status. The result is
+        // zeroed and success remains 0; no partial circuit is executed.
+        return -3;
     }
 
     cq_hecs::QASMExecutionResult res = parser.execute_on_vulkan(circuit, *ctx->engine);

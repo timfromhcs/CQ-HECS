@@ -102,6 +102,10 @@ CQ_API int cq_execute_qasm(CQSimulatorHandle handle, const char* qasm_str, uint3
     engine->reset();
 
     auto circuit = cq::Qasm3Parser::parse_string(qasm_str);
+    if (!circuit.ok()) {
+        // Fail closed: never execute a circuit that failed validation.
+        return -3;
+    }
     for (const auto& inst : circuit.instructions) {
         switch (inst.type) {
             case cq::GateType::H:

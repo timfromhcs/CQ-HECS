@@ -36,6 +36,14 @@ class TestCLIPowerShell(unittest.TestCase):
         self.assertIn("CQ-HECS", res.stdout)
         self.assertIn("Commands:", res.stdout)
 
+    def test_cli_version_is_canonical(self):
+        from cqhecs import __version__
+
+        res = self.run_cmd(["version"])
+        self.assertEqual(res.returncode, 0)
+        self.assertIn(f"CQ-HECS {__version__}", res.stdout)
+        self.assertNotRegex(res.stdout, r"v4\.\d+\.\d+")
+
     def test_cli_self_test(self):
         res = self.run_cmd(["test"])
         self.assertEqual(res.returncode, 0)
@@ -66,15 +74,31 @@ class TestCLIPowerShell(unittest.TestCase):
         OPENQASM 2.0;
         include "qelib1.inc";
         qreg q[300];
+        creg c[1];
         h q[0];
         cx q[0], q[1];
-        measure q[0];
+        measure q[0] -> c[0];
         """
         res = self.run_cmd(["qasm", "-", "--json"], input_data=qasm_content)
         self.assertEqual(res.returncode, 0)
         data = json.loads(res.stdout)
         self.assertEqual(data["status"], "SUCCESS")
+        self.assertEqual(data["qubit_count"], 300)
         self.assertEqual(data["gate_count"], 3)
+        self.assertFalse(data["statevector_simulation"])
+
+    def test_cli_qasm_rejects_unknown_gate(self):
+        qasm_content = """
+        OPENQASM 2.0;
+        qreg q[2];
+        teleport q[0];
+        """
+        res = self.run_cmd(["qasm", "-", "--json"], input_data=qasm_content)
+        self.assertEqual(res.returncode, 2)
+        data = json.loads(res.stdout)
+        self.assertEqual(data["status"], "ERROR")
+        self.assertEqual(data["errors"][0]["category"], "unsupported_gate")
+        self.assertNotIn("gate_count", data)
 
     def test_cli_sat_unsat_exit_code_10(self):
         pigeon_path = self.bench_dir / "sat" / "pigeonhole_6_5.cnf"

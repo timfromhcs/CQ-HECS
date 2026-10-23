@@ -1,5 +1,10 @@
 # CQ-HECS von aktuellem Stand zu v2.0.0 — Audit und Roadmap
 
+> **Historical document.** This roadmap targeted `v2.0.0` and describes the
+> state at commit `dd59c0c`. It is retained as an audit record and is not a
+> description of the current release. See `README.md`, `CHANGELOG.md` and
+> `research/v2_2/` for the current state.
+
 **Repository:** https://github.com/timfromhcs/CQ-HECS  
 **Audierter Main-Commit:** `dd59c0c4e60e0ba7b95194798dccba288786db53` (19. Oktober 2026)  
 **Bestehender Release:** `v0.2.0`  

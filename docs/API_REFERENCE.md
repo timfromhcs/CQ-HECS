@@ -73,14 +73,17 @@ CQ_API void cq_destroy_context(cq_context_t* ctx);
 ```c
 CQ_API int cq_execute_qasm(cq_context_t* ctx, const char* qasm_str, cq_result_t* out_result);
 ```
-- **Description**: Parses and executes an OpenQASM 2.0/3.0 circuit string on the MPS tensor chain.
+- **Description**: Parses and executes the documented OpenQASM 2.0 subset on the
+  native legacy engine (`legacy_z8_phase_ledger`). This is not a general
+  statevector simulator.
 - **Parameters**:
   - `ctx`: Active solver context.
   - `qasm_str`: Null-terminated OpenQASM source string.
   - `out_result`: Pointer to caller-allocated `cq_result_t` structure.
 - **Return Value**:
   - `0`: Success.
-  - `1`: Syntax error or execution failure.
+  - `-3`: Parse/validation error. `out_result` is zeroed; no circuit is executed.
+  - `1`: Execution failure after successful parsing.
 
 ---
 
@@ -119,8 +122,10 @@ CQ_API int cq_invert_arx(const char* primitive, uint32_t rounds, const uint64_t*
 ```c
 CQ_API double cq_get_active_vram_mb(cq_context_t* ctx);
 ```
-- **Description**: Queries current active VRAM footprint allocated on the GPU device.
-- **Return Value**: Resident memory in megabytes (guaranteed $< 120.0$ MB).
+- **Description**: Queries the allocation accounted against the 120 MiB governor
+  ceiling. This is an internal budget figure; it is not a physical GPU
+  measurement.
+- **Return Value**: Accounted resident memory in megabytes (enforced $< 120.0$ MB).
 
 ---
 
@@ -129,5 +134,5 @@ CQ_API double cq_get_active_vram_mb(cq_context_t* ctx);
 CQ_API const char* cq_get_version(void);
 ```
 - **Description**: Queries semantic version string.
-- **Return Value**: Constant string `"2.0.0"`, derived from the package
+- **Return Value**: Constant string `"2.2.0"`, derived from the package
   version (`scripts/version.py`); it must not drift.

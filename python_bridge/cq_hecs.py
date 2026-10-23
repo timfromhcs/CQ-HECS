@@ -5,7 +5,7 @@ Complete Python 3.11 / PyTorch / NumPy Reference Model of all 5 J-Spaces & Vulka
 
 from __future__ import annotations
 
-__version__ = "2.1.0"
+__version__ = "2.2.0"
 import math
 import struct
 import time
@@ -287,8 +287,16 @@ class JSpaceGamma:
 # =====================================================================
 class JSpaceDelta:
     r"""
-    Lossless Frobenius energy tracking (\Lambda_res) of truncated singular values
-    and exact re-inflation for Matrix Product States (MPS).
+    Frobenius-energy tracking for truncated SVDs plus exact re-inflation.
+
+    ``lambda_res`` is the *diagnostic* Frobenius norm of the discarded singular
+    components. It is measurable here because the residual is cached, but it is
+    not a certified end-to-end error bound for a full MPS simulation.
+
+    The residual cache is keyed by ``bond_tag``. A tag must not be reused for a
+    different tensor before its re-inflation, otherwise the cached residual no
+    longer belongs to the supplied factors; mismatched shapes raise
+    ``ValueError``.
     """
     def __init__(self, max_chi: int = 64):
         self.max_chi = max_chi
@@ -334,13 +342,25 @@ class JSpaceDelta:
         self, u_kept: np.ndarray, s_kept: np.ndarray, vt_kept: np.ndarray, bond_tag: str = "default"
     ) -> np.ndarray:
         """
-        Lossless re-inflation: reconstructs original matrix with 100% of Frobenius energy.
+        Reconstructs the matrix including the cached residual, so the result is
+        exact up to floating-point roundoff **for the same tensor** the residual
+        was produced from. This is not a compression claim: the discarded part
+        is retained in memory.
         """
+        if u_kept.shape[1] != len(s_kept) or vt_kept.shape[0] != len(s_kept):
+            raise ValueError("SVD factors are inconsistent: shape mismatch")
+
         reconstructed = (u_kept * s_kept) @ vt_kept
         if bond_tag in self.residual_cache:
             u_res, s_res, vt_res = self.residual_cache[bond_tag]
             if len(s_res) > 0:
-                reconstructed += (u_res * s_res) @ vt_res
+                if (u_res.shape[0] != u_kept.shape[0]
+                        or vt_res.shape[1] != vt_kept.shape[1]):
+                    raise ValueError(
+                        f"residual cache for bond_tag={bond_tag!r} does not match "
+                        "the supplied factorisation"
+                    )
+                reconstructed = reconstructed + (u_res * s_res) @ vt_res
 
         return reconstructed
 
@@ -436,8 +456,12 @@ class JSpaceEpsilon:
 # =====================================================================
 class TieredMemoryGovernor:
     """
-    Enforces active memory strictly under 120 MB.
-    Pages inactive MPS nodes or deep branches to disk / MMF cold storage swap pool.
+    Accounts simulator-internal page memory against a configured budget and
+    evicts inactive pages to a temporary cold-storage file.
+
+    ``active_vram_bytes`` is an *internal accounting* value, not a measurement
+    of GPU VRAM. Real device-local memory must be measured by the backend that
+    owns the device.
     """
     def __init__(self, max_vram_mb: float = 120.0):
         self.max_vram_bytes = int(max_vram_mb * 1024 * 1024)
@@ -457,21 +481,33 @@ class TieredMemoryGovernor:
             _ = cleanup_err
 
     def allocate(self, page_id: int, data: bytes) -> None:
-        size = len(data)
-        if page_id in self.active_pages:
-            self.active_vram_bytes -= len(self.active_pages[page_id])
+        """
+        Makes ``data`` resident, evicting older pages when necessary.
 
-        if self.active_vram_bytes + size > self.max_vram_bytes:
-            # Evict oldest pages to cold storage
+        Raises ``MemoryError`` if the page cannot fit inside the configured
+        budget even after every other page has been evicted. Silently exceeding
+        the budget is not allowed: callers must handle the failure.
+        """
+        size = len(data)
+        old_size = len(self.active_pages.get(page_id, b""))
+
+        if self.active_vram_bytes - old_size + size > self.max_vram_bytes:
+            # Evict oldest pages to cold storage.
             for pid in list(self.active_pages.keys()):
                 if pid == page_id:
                     continue
-                if self.active_vram_bytes + size <= self.max_vram_bytes:
+                if self.active_vram_bytes - old_size + size <= self.max_vram_bytes:
                     break
                 self.evict_to_cold(pid)
 
+            if self.active_vram_bytes - old_size + size > self.max_vram_bytes:
+                # Fail closed: an oversized page must not be accepted silently.
+                raise MemoryError(
+                    "page does not fit in the configured memory budget after eviction"
+                )
+
         self.active_pages[page_id] = data
-        self.active_vram_bytes += size
+        self.active_vram_bytes += size - old_size
 
     def evict_to_cold(self, page_id: int) -> None:
         if page_id not in self.active_pages:
@@ -508,7 +544,7 @@ class TieredMemoryGovernor:
 class MPS300QubitSimulator:
     """
     300 MPS Tensor Nodes (Bond-Dimension chi=64, 2 Bytes per Amplitude in Z_8 ring).
-    Demonstrates active VRAM usage is strictly under 120 MB.
+    ``governor.active_vram_bytes`` is internal page accounting, not a VRAM measurement.
     """
     def __init__(self, num_qubits: int = 300, max_chi: int = 64, governor: Optional[TieredMemoryGovernor] = None):
         self.num_qubits = num_qubits
@@ -561,7 +597,7 @@ class VulkanComputeScheduler:
     Vulkan Workload & Compute Scheduler:
       - Workload metric aggregator across all 5 algebraic spaces.
       - Dynamic rule synthesis for compute shader constants and heuristic switching.
-      - Stochastic escape controller driven by high-resolution timer entropy.
+      - Stochastic escape controller driven by non-cryptographic timing jitter.
       - Isolated Non-Master Forward Validator.
     """
     def __init__(self, entropy_seed: Optional[int] = None):
@@ -573,12 +609,22 @@ class VulkanComputeScheduler:
         self.governor = TieredMemoryGovernor(120.0)
         self.entropy_seed = entropy_seed or int(time.perf_counter_ns()) & 0xFFFFFFFFFFFFFFFF
 
-    def harvest_hardware_entropy(self) -> int:
-        """Harvests physical counter jitter from OS monotonic timer."""
+    def harvest_timing_jitter(self) -> int:
+        """
+        Mixes monotonic-clock and wall-clock readings into a 64-bit value.
+
+        This is non-cryptographic scheduling jitter, not verified hardware
+        entropy. Do not use it for key material, security decisions or as a
+        claim of unbiased randomness.
+        """
         ns = time.perf_counter_ns()
         drift = (ns ^ (ns >> 13) ^ (int(time.time() * 1e6))) & 0xFFFFFFFFFFFFFFFF
         self.entropy_seed = (self.entropy_seed * 6364136223846793005 + drift + 1) & 0xFFFFFFFFFFFFFFFF
         return self.entropy_seed
+
+    def harvest_hardware_entropy(self) -> int:
+        """Deprecated alias for :meth:`harvest_timing_jitter` (name overstated the guarantee)."""
+        return self.harvest_timing_jitter()
 
     def cross_attention_aggregation(
         self,
@@ -624,7 +670,7 @@ class VulkanComputeScheduler:
         """
         if not trapped_in_local_minimum:
             return None
-        ent = self.harvest_hardware_entropy()
+        ent = self.harvest_timing_jitter()
         # Random phase rotation nudge in Z_8: -1 (+7) or +1
         nudge = 1 if (ent & 1) else 7
         return nudge

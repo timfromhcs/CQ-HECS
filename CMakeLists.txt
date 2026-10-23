@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(CQ_HECS VERSION 2.1.0 LANGUAGES CXX)
+project(CQ_HECS VERSION 2.2.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -90,6 +90,18 @@ endif()
 # CPU-only operation is real for the Python surface. The native binary, its
 # tests and the nanobind extension do require the SDK.
 option(CQ_ENABLE_VULKAN "Build the Vulkan compute integration (requires the Vulkan SDK)" ON)
+option(CQ_ENABLE_SANITIZERS "Enable Address and UB sanitizers (GNU/Clang)" OFF)
+
+if(CQ_ENABLE_SANITIZERS)
+    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        message(FATAL_ERROR
+            "CQ_ENABLE_SANITIZERS requires GCC or Clang; "
+            "${CMAKE_CXX_COMPILER_ID} does not support these flags.")
+    endif()
+    message(STATUS "CQ_ENABLE_SANITIZERS=ON: address,undefined for all native targets")
+    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address,undefined)
+endif()
 
 set(CQ_HAVE_VULKAN OFF)
 if(CQ_ENABLE_VULKAN)
@@ -193,6 +205,7 @@ add_library(cq_hecs_core_objects OBJECT ${CORE_SOURCES} ${CORE_HEADERS})
 set_target_properties(cq_hecs_core_objects PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(cq_hecs_core_objects PRIVATE ${Vulkan_INCLUDE_DIRS})
 target_link_libraries(cq_hecs_core_objects PRIVATE ${Vulkan_LIBRARIES})
+target_compile_definitions(cq_hecs_core_objects PUBLIC CQ_HECS_VERSION="${PROJECT_VERSION}")
 
 # AVX2 is opt-in and target-scoped: it is applied only to this core object
 # library, and only when explicitly requested. It is never set globally, so
@@ -207,6 +220,7 @@ endif()
 # 1. Standalone Monolithic Executable (CLI)
 add_executable(cq_hecs src/main.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
 target_link_libraries(cq_hecs PRIVATE ${Vulkan_LIBRARIES})
+target_compile_definitions(cq_hecs PRIVATE CQ_HECS_VERSION="${PROJECT_VERSION}")
 
 # 2. C-ABI Shared Library (cq_hecs.dll / libcq_hecs.so)
 add_library(cq_hecs_shared SHARED src/cq_hecs_api.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
@@ -242,15 +256,9 @@ target_link_libraries(maxcut_example PRIVATE ${Vulkan_LIBRARIES})
 option(CQ_BUILD_TESTS "Build test suite" ON)
 option(CQHECS_BUILD_TESTS "Build test suite" ON)
 option(CQHECS_HEADLESS "Enable Headless SwiftShader / Software Vulkan ICD" OFF)
-option(CQ_ENABLE_SANITIZERS "Enable Address and UB sanitizers" OFF)
 
 if(CQHECS_HEADLESS)
     add_compile_definitions(CQHECS_HEADLESS=1)
-endif()
-
-if(CQ_ENABLE_SANITIZERS AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
-    add_link_options(-fsanitize=address,undefined)
 endif()
 
 # 5. Shared Library: cq_hecs_core (C-API & Core Engine)
@@ -304,6 +312,9 @@ add_executable(test_300q_stress tests/cpp/test_300q_stress.cpp src/vulkan/vulkan
 target_include_directories(test_300q_stress PRIVATE include src)
 target_link_libraries(test_300q_stress PRIVATE ${Vulkan_LIBRARIES})
 
+add_executable(test_qasm_contract tests/test_qasm_contract.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
+target_link_libraries(test_qasm_contract PRIVATE ${Vulkan_LIBRARIES})
+
 # 7. CTest Verification Suite
 enable_testing()
 add_test(NAME test_reversibility COMMAND test_reversibility)
@@ -319,9 +330,10 @@ add_test(NAME test_stress_limits COMMAND test_stress_limits)
 add_test(NAME test_exact_ring COMMAND test_exact_ring)
 add_test(NAME test_stabilizer_extreme COMMAND test_stabilizer_extreme)
 add_test(NAME test_300q_stress COMMAND test_300q_stress)
+add_test(NAME test_qasm_contract COMMAND test_qasm_contract)
 
 # 8. Nanobind Python C++20 Modules
-find_package(Python 3.10 COMPONENTS Interpreter Development.Module QUIET)
+find_package(Python 3.11 COMPONENTS Interpreter Development.Module QUIET)
 if(Python_FOUND)
     execute_process(
         COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir

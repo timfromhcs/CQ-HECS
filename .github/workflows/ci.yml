@@ -2,122 +2,193 @@ name: CQ-HECS Deterministic CI & Four-Path Architecture Validation
 
 on:
   push:
-    branches: [ main, master ]
   pull_request:
-    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
 
 jobs:
-  build-and-verify:
-    name: Ubuntu C++20, Vulkan & Classical Four-Path CI
+  static-and-package:
+    name: Static checks & package smoke
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Setup Python 3.11
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
 
-      - name: Setup Toolchain
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build g++-12 libvulkan-dev glslang-tools \
-            mesa-vulkan-drivers vulkan-tools libx11-xcb-dev libxkbcommon-dev libwayland-dev
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 100
-
-      - name: Install Python Dependencies
+      - name: Install static-analysis dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install numpy qiskit qiskit-aer stim pytest nanobind setuptools wheel flake8 coverage
+          pip install -c constraints/ci-py311.txt flake8 build
 
-      - name: Code Quality & Syntax Linting
+      - name: Compile all Python sources
+        run: python -m compileall -q cqhecs tests scripts python_bridge
+
+      - name: Lint for fatal Python errors
         run: |
-          python -m compileall cqhecs/ tests/
-          flake8 cqhecs/ tests/test_four_path_architecture.py tests/test_path_transitions_and_boundaries.py tests/test_adversarial_aer_and_stim.py --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 cqhecs tests scripts --count --select=E9,F63,F7,F82 \
+            --show-source --statistics
 
-      - name: Verify Version Consistency
+      - name: Verify version surfaces agree
         run: python scripts/check_version.py
 
-      - name: "Audit: Verify Zero Silent Truncation (chi=48 Elimination)"
+      - name: Audit for silent truncation
         run: python scripts/verify_no_silent_truncation.py
 
-      - name: "Vulkan Hardening: Compile & Verify All SPIR-V Shaders"
+      - name: Build wheel and sdist
+        run: |
+          python -m build
+          python -m pip install --upgrade twine
+          python -m twine check dist/*
+
+      - name: Clean-environment wheel smoke test
+        run: |
+          python -m venv /tmp/package-venv
+          /tmp/package-venv/bin/python -m pip install --upgrade pip
+          /tmp/package-venv/bin/pip install dist/*.whl
+          /tmp/package-venv/bin/cq-hecs --help >/dev/null
+          /tmp/package-venv/bin/cq-hecs version
+          /tmp/package-venv/bin/cq-hecs doctor
+          /tmp/package-venv/bin/cq-hecs --format json run name:bell --shots 64 \
+            > /tmp/package-run.json
+          /tmp/package-venv/bin/python - <<'PY'
+          import json
+          with open("/tmp/package-run.json", encoding="utf-8") as handle:
+              payload = json.load(handle)
+          assert payload["schema_version"], "missing schema_version"
+          assert payload["result"]["counts"], "no counts returned"
+          print("wheel smoke test OK:", payload["result"]["path"])
+          PY
+
+      - name: Upload package artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+          if-no-files-found: warn
+
+  linux-native:
+    name: Linux C++20, Vulkan & full Python suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install toolchain and Vulkan runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++-12 libvulkan-dev \
+            glslang-tools mesa-vulkan-drivers vulkan-tools libx11-xcb-dev \
+            libxkbcommon-dev libwayland-dev
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 100
+
+      - name: Install pinned Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -c constraints/ci-py311.txt \
+            numpy qiskit qiskit-aer stim pytest psutil coverage flake8 \
+            nanobind setuptools wheel
+          pip install -e . --no-deps
+
+      - name: Verify shader sources
         run: python scripts/verify_vulkan_shaders.py
 
       - name: Configure CMake
-        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCQ_BUILD_TESTS=ON -DCQ_ENABLE_AVX2=ON
-
-      - name: Build C++20 Core & Shaders
-        run: cmake --build build --config Release --parallel $(nproc)
-
-      - name: Execute CTest Zero-Mock Suite
-        run: ctest --test-dir build --output-on-failure --schedule-random -j$(nproc)
-
-      - name: Execute Four-Path Architecture & Differential Tests
-        env:
-          PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
-          PYTHONPATH: .
         run: |
-          pip install -e .
-          pytest tests/test_correctness_contracts.py tests/test_cli_contract.py tests/test_four_path_architecture.py tests/test_path_transitions_and_boundaries.py tests/test_adversarial_aer_and_stim.py -v
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCQ_BUILD_TESTS=ON -DCQ_ENABLE_AVX2=ON \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-      - name: Run Deterministic Mutation Testing
+      - name: Build native core and tests
+        run: cmake --build build --config Release --parallel "$(nproc)"
+
+      - name: Execute CTest suite
+        run: |
+          mkdir -p test-results
+          ctest --test-dir build --output-on-failure --schedule-random \
+            -j"$(nproc)" --output-junit test-results/ctest.xml
+
+      - name: Full Python suite with branch coverage
+        env:
+          PYTHONPATH: .
+          CQ_HECS_REQUIRE_NATIVE: "1"
+        run: |
+          mkdir -p test-results
+          python -m coverage run --branch --source=cqhecs \
+            -m pytest tests/ -q --junitxml=test-results/pytest.xml
+          python -m coverage report -m --fail-under=70
+          python -m coverage xml -o test-results/coverage.xml
+
+      - name: Source-level mutation gate
         env:
           PYTHONPATH: .
         run: python scripts/run_mutation_tests.py
 
-      - name: Full Classical Test Suite with Coverage
-        env:
-          PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
-          PYTHONPATH: .
-        run: |
-          python -m coverage run --source=cqhecs -m pytest tests/ -v --durations=15
-          python -m coverage report -m
+      - name: Upload Linux test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-test-evidence
+          path: |
+            test-results/
+            .coverage
+          if-no-files-found: warn
 
-      - name: Build Release Distribution & Verify Checksums
-        run: python scripts/generate_sbom_and_checksums.py
-
-  windows-build-and-verify:
-    name: Windows C++20, Vulkan & Classical Four-Path CI
+  windows-native:
+    name: Windows C++20, Vulkan & full Python suite
     runs-on: windows-latest
+    timeout-minutes: 60
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Setup Python 3.11
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
 
       - name: Install Vulkan SDK
         uses: jakoch/install-vulkan-sdk-action@v1
         with:
           cache: true
 
-      - name: Install Python Dependencies
+      - name: Install pinned Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install numpy qiskit qiskit-aer stim pytest nanobind setuptools wheel flake8 coverage
+          pip install -c constraints/ci-py311.txt numpy qiskit qiskit-aer stim pytest psutil coverage flake8 nanobind setuptools wheel
+          pip install -e . --no-deps
 
-      - name: Code Quality & Syntax Linting
-        run: |
-          python -m compileall cqhecs/ tests/
-          flake8 cqhecs/ tests/test_four_path_architecture.py tests/test_path_transitions_and_boundaries.py tests/test_adversarial_aer_and_stim.py --count --select=E9,F63,F7,F82 --show-source --statistics
-
-      - name: Verify Version Consistency
-        run: python scripts/check_version.py
-
-      - name: "Audit: Verify Zero Silent Truncation (chi=48 Elimination)"
-        run: python scripts/verify_no_silent_truncation.py
-
-      - name: "Vulkan Hardening: Compile & Verify All SPIR-V Shaders"
+      - name: Verify shader sources
         run: python scripts/verify_vulkan_shaders.py
 
       - name: Configure CMake
@@ -129,41 +200,152 @@ jobs:
             if ($latest) { $v_sdk = $latest.FullName }
           }
           if ($v_sdk) {
-            $v_inc = "$v_sdk/Include"
-            $v_lib = "$v_sdk/Lib/vulkan-1.lib"
-            Write-Host "Configuring CMake with Vulkan SDK: $v_sdk (Include: $v_inc, Lib: $v_lib)"
-            cmake -B build -DCMAKE_BUILD_TYPE=Release -DCQ_BUILD_TESTS=ON -DVulkan_INCLUDE_DIR="$v_inc" -DVulkan_LIBRARY="$v_lib"
+            Write-Host "Configuring CMake with Vulkan SDK: $v_sdk"
+            cmake -B build -DCMAKE_BUILD_TYPE=Release -DCQ_BUILD_TESTS=ON `
+              -DVulkan_INCLUDE_DIR="$v_sdk/Include" `
+              -DVulkan_LIBRARY="$v_sdk/Lib/vulkan-1.lib"
           } else {
             cmake -B build -DCMAKE_BUILD_TYPE=Release -DCQ_BUILD_TESTS=ON
           }
 
-      - name: Build C++20 Core & Shaders
+      - name: Build native core and tests
         run: cmake --build build --config Release --parallel
 
-      - name: Execute CTest Zero-Mock Suite
-        run: ctest --test-dir build -C Release --output-on-failure
-
-      - name: Execute Four-Path Architecture & Differential Tests
-        env:
-          PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
-          PYTHONPATH: .
+      - name: Execute CTest suite
         run: |
-          pip install -e .
-          python -m pytest tests/test_correctness_contracts.py tests/test_cli_contract.py tests/test_four_path_architecture.py tests/test_path_transitions_and_boundaries.py tests/test_adversarial_aer_and_stim.py -v
+          New-Item -ItemType Directory -Force -Path test-results | Out-Null
+          ctest --test-dir build -C Release --output-on-failure `
+            --output-junit test-results/ctest.xml
 
-      - name: Run Deterministic Mutation Testing
+      - name: Full Python suite
+        env:
+          PYTHONPATH: .
+          CQ_HECS_REQUIRE_NATIVE: "1"
+        run: |
+          New-Item -ItemType Directory -Force -Path test-results | Out-Null
+          python -m pytest tests/ -q --junitxml=test-results/pytest.xml
+
+      - name: Source-level mutation gate
         env:
           PYTHONPATH: .
         run: python scripts/run_mutation_tests.py
 
-      - name: Full Classical Test Suite with Coverage
-        env:
-          PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
-          PYTHONPATH: .
+      - name: Upload Windows test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-test-evidence
+          path: test-results/
+          if-no-files-found: warn
+
+  python-compatibility:
+    name: Python ${{ matrix.python-version }} compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install newest supported dependencies
         run: |
-          python -m coverage run --source=cqhecs -m pytest tests/ -v --durations=15
-          python -m coverage report -m
+          python -m pip install --upgrade pip
+          pip install numpy qiskit qiskit-aer stim pytest psutil
 
-      - name: Build Release Distribution & Verify Checksums
-        run: python scripts/generate_sbom_and_checksums.py
+      - name: Install package without native extension
+        run: pip install -e . --no-deps
 
+      - name: Run the Python suite (native-only tests skip visibly)
+        env:
+          PYTHONPATH: .
+        run: python -m pytest tests/ -q
+
+  sanitizers:
+    name: Linux ASan + UBSan native tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install toolchain and Vulkan runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++-12 libvulkan-dev \
+            glslang-tools mesa-vulkan-drivers vulkan-tools libx11-xcb-dev \
+            libxkbcommon-dev libwayland-dev
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 100
+
+      - name: Install Python build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -c constraints/ci-py311.txt numpy nanobind setuptools wheel
+
+      - name: Configure sanitizer build
+        run: |
+          cmake -B build-asan -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+            -DCQ_BUILD_TESTS=ON -DCQ_ENABLE_SANITIZERS=ON \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Build sanitizer targets
+        run: cmake --build build-asan --parallel "$(nproc)"
+
+      - name: Prove sanitizer flags reached core and test objects
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          entries = json.loads(
+              Path("build-asan/compile_commands.json").read_text(encoding="utf-8")
+          )
+          required = ("src/qasm_parser.cpp", "tests/test_qasm_contract.cpp")
+          for suffix in required:
+              matching = [
+                  entry for entry in entries
+                  if entry["file"].replace("\\", "/").endswith(suffix)
+              ]
+              assert matching, f"no compile entry for {suffix}"
+              assert all(
+                  "-fsanitize=address,undefined" in entry["command"]
+                  for entry in matching
+              ), f"sanitizer flags missing for {suffix}: {matching[0]['command']}"
+          print(f"sanitizer flags verified for {len(required)} objects")
+          PY
+
+      - name: Run parser, solver and hardening tests under sanitizers
+        env:
+          ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+        run: |
+          ctest --test-dir build-asan --output-on-failure \
+            -R "^(test_qasm_contract|cq_hecs_cpp_hardening|test_constraint_solver|test_exact_algebra)$"
+
+      - name: Upload sanitizer build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sanitizer-logs
+          path: |
+            build-asan/Testing/
+            build-asan/compile_commands.json
+          if-no-files-found: warn

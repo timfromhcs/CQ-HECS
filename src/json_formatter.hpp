@@ -15,6 +15,10 @@ public:
                                           double active_vram_mb,
                                           double lambda_res);
 
+    static std::string format_qasm_parse_error(
+        const std::string& circuit_name,
+        const std::vector<QASMParseError>& errors);
+
     static std::string format_sat_result(const CNFFormulaCPP& formula,
                                          const SATSolverResultCPP& res);
 

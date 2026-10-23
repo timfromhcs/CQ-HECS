@@ -1,8 +1,14 @@
-# Packaging Script for CQ-HECS v4.5.0 Release
+# Packaging Script for CQ-HECS (version derived from scripts/version.py)
 $ErrorActionPreference = "Stop"
 
-$dist = "dist\CQ-HECS-v4.5.0-Windows-x64"
-$zip = "dist\CQ-HECS-v4.5.0-Windows-x64.zip"
+$version = (python scripts/version.py).Trim()
+if ($LASTEXITCODE -ne 0 -or -not $version) {
+    throw "Could not read the canonical version from scripts/version.py"
+}
+
+$dist = "dist\CQ-HECS-v$version-Windows-x64"
+$zip = "dist\CQ-HECS-v$version-Windows-x64.zip"
+$native = "build\bin\Release"
 
 Write-Host "Creating clean distribution directories..." -ForegroundColor Cyan
 if (Test-Path "dist") {
@@ -16,9 +22,9 @@ New-Item -ItemType Directory -Force -Path "$dist\benchmarks\sat" | Out-Null
 New-Item -ItemType Directory -Force -Path "$dist\docs" | Out-Null
 
 Write-Host "Copying binaries and shared library..." -ForegroundColor Cyan
-Copy-Item "bin\Release\cq_hecs.exe" "$dist\bin\"
-Copy-Item "bin\Release\cq_hecs.dll" "$dist\bin\"
-Copy-Item "bin\Release\cq_hecs.lib" "$dist\bin\"
+Copy-Item "$native\cq_hecs.exe" "$dist\bin\"
+Copy-Item "$native\cq_hecs.dll" "$dist\bin\"
+Copy-Item "$native\cq_hecs.lib" "$dist\bin\"
 Copy-Item "include\cq_hecs_api.h" "$dist\include\"
 
 Write-Host "Copying canonical benchmarks..." -ForegroundColor Cyan
@@ -42,8 +48,8 @@ Compress-Archive -Path "$dist\*" -DestinationPath $zip -Force
 
 Write-Host "Generating SHA-256 checksums..." -ForegroundColor Cyan
 $sha256 = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
-"$sha256  CQ-HECS-v4.5.0-Windows-x64.zip" | Out-File -Encoding ascii "dist\checksums.txt"
+"$sha256  CQ-HECS-v$version-Windows-x64.zip" | Out-File -Encoding ascii "dist\checksums.txt"
 
-Write-Host "Release packaging complete:" -ForegroundColor Green
+Write-Host "Release packaging complete for v$version:" -ForegroundColor Green
 Get-ChildItem -Recurse "dist"
 Get-Content "dist\checksums.txt"

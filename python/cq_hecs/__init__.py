@@ -1,10 +1,12 @@
 """
-CQ-HECS Quantum Engine: Zero-Float Bit-Exactness, OpenQASM 3.0, Vulkan Compute
+Legacy CQ-HECS Vulkan provider shim (not part of the v2 package).
+
+Canonical version: ``scripts/version.py``.
 """
 
 from __future__ import annotations
 
-__version__ = "4.6.0"
+__version__ = "2.2.0"
 
 from .provider import VulkanQpuBackend
 

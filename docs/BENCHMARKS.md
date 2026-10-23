@@ -21,18 +21,18 @@
 
 ---
 
-## Current record (2026-10-19)
+## Current record (2026-10-23)
 
 Produced by `cq-hecs --format json benchmark smoke` on this branch; the raw
 JSON is kept in `benchmarks/smoke_results_current.json`.
 
 | Field | Value |
 | :--- | :--- |
-| Run on | branch `agent/v2-correctness`; regenerated at every release commit |
+| Run on | branch `agent/v2.2.0-stable-hardening`; regenerated at every release commit |
 | OS / CPU | Windows 11 (10.0.26200) / AMD Zen 3 (Family 25 Model 68) |
 | Python / NumPy / Qiskit / Aer / Stim | 3.14.6 / 2.4.6 / 2.5.1 / 0.17.2 / 1.16.0 (Stim+Aer used by the oracle tests, not by the paths) |
 | Cases | `ghz8` → Path A, `mixed4` → Path B |
-| Result | Path A `EXACT` ≈ 1.0 ms; Path B `EXACT` ≈ 1.1 ms (single-run wall clock) |
+| Result | Path A `EXACT` ≈ 1.17 ms; Path B `EXACT` ≈ 1.18 ms (single-run wall clock) |
 
 **Interpretation rules:** this is a smoke timing only. It is not a performance
 claim, not a distribution-over-circuits statement, and does not generalise to
