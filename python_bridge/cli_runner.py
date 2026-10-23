@@ -125,7 +125,7 @@ def cmd_run_stress(iterations: int = 100000):
 
         # 3. Dynamic entropy nudge & workload scheduling
         if i % 100 == 0:
-            _ = scheduler.harvest_hardware_entropy()
+            _ = scheduler.harvest_timing_jitter()
             _ = scheduler.dynamic_nudge_controller(trapped_in_local_minimum=(i % 500 == 0))
 
         # Check memory bounds

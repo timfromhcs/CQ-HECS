@@ -2,7 +2,15 @@
 #include <sstream>
 #include <iomanip>
 
+// The canonical version is injected by CMake from ``project(... VERSION ...)``.
+// A stale fallback is used only for ad-hoc builds that bypass CMake.
+#ifndef CQ_HECS_VERSION
+#define CQ_HECS_VERSION "0.0.0-dev"
+#endif
+
 namespace cq_hecs {
+
+static const char* kEnginePrefix = "CQ-HECS " CQ_HECS_VERSION;
 
 static std::string escape_json(const std::string& s) {
     std::ostringstream o;
@@ -30,7 +38,9 @@ std::string JSONFormatter::format_qasm_result(const std::string& circuit_name,
 {
     std::ostringstream ss;
     ss << "{\n"
-       << "  \"engine\": \"CQ-HECS v4.0 QASM Engine\",\n"
+       << "  \"engine\": \"" << kEnginePrefix << " QASM Phase-Ledger\",\n"
+       << "  \"engine_class\": \"legacy_z8_phase_ledger\",\n"
+       << "  \"statevector_simulation\": false,\n"
        << "  \"status\": \"" << (res.success ? "SUCCESS" : "FAILED") << "\",\n"
        << "  \"circuit\": \"" << escape_json(circuit_name) << "\",\n"
        << "  \"qubit_count\": " << res.qubit_count << ",\n"
@@ -44,12 +54,37 @@ std::string JSONFormatter::format_qasm_result(const std::string& circuit_name,
     return ss.str();
 }
 
+std::string JSONFormatter::format_qasm_parse_error(
+    const std::string& circuit_name,
+    const std::vector<QASMParseError>& errors)
+{
+    std::ostringstream ss;
+    ss << "{\n"
+       << "  \"engine\": \"" << kEnginePrefix << " QASM Phase-Ledger\",\n"
+       << "  \"engine_class\": \"legacy_z8_phase_ledger\",\n"
+       << "  \"statevector_simulation\": false,\n"
+       << "  \"status\": \"ERROR\",\n"
+       << "  \"error_category\": \"qasm_parse_error\",\n"
+       << "  \"circuit\": \"" << escape_json(circuit_name) << "\",\n"
+       << "  \"error_count\": " << errors.size() << ",\n"
+       << "  \"errors\": [\n";
+    for (size_t i = 0; i < errors.size(); ++i) {
+        ss << "    {\"line\": " << errors[i].line
+           << ", \"category\": \"" << escape_json(errors[i].category)
+           << "\", \"message\": \"" << escape_json(errors[i].message) << "\"}";
+        if (i + 1 < errors.size()) ss << ",";
+        ss << "\n";
+    }
+    ss << "  ]\n}\n";
+    return ss.str();
+}
+
 std::string JSONFormatter::format_sat_result(const CNFFormulaCPP& formula,
                                              const SATSolverResultCPP& res)
 {
     std::ostringstream ss;
     ss << "{\n"
-       << "  \"engine\": \"CQ-HECS v4.0 SAT Engine\",\n"
+       << "  \"engine\": \"CQ-HECS " CQ_HECS_VERSION " SAT Engine\",\n"
        << "  \"status\": \"" << (res.satisfiable ? "SAT" : "UNSAT") << "\",\n"
        << "  \"source\": \"" << escape_json(formula.source_name) << "\",\n"
        << "  \"num_vars\": " << formula.num_vars << ",\n"
@@ -80,7 +115,7 @@ std::string JSONFormatter::format_sat_result(const CNFFormulaCPP& formula,
 std::string JSONFormatter::format_arx_result(const ARXBenchmarkResultCPP& res) {
     std::ostringstream ss;
     ss << "{\n"
-       << "  \"engine\": \"CQ-HECS v4.0 ARX Engine\",\n"
+       << "  \"engine\": \"CQ-HECS " CQ_HECS_VERSION " ARX Engine\",\n"
        << "  \"status\": \"" << (res.inverse_verified && res.carry_shadow_exact ? "SUCCESS" : "FAILED") << "\",\n"
        << "  \"primitive\": \"" << escape_json(res.primitive_name) << "\",\n"
        << "  \"rounds\": " << res.num_rounds << ",\n"
@@ -103,7 +138,7 @@ std::string JSONFormatter::format_stress_result(uint64_t cycles,
     std::ostringstream ss;
     double throughput = (elapsed_sec > 0.0) ? (cycles / elapsed_sec) : 0.0;
     ss << "{\n"
-       << "  \"engine\": \"CQ-HECS v4.0 Stress Harness\",\n"
+       << "  \"engine\": \"CQ-HECS " CQ_HECS_VERSION " Stress Harness\",\n"
        << "  \"status\": \"" << (!leak_detected && active_vram_mb < 120.0 ? "SUCCESS" : "FAILED") << "\",\n"
        << "  \"cycles\": " << cycles << ",\n"
        << "  \"qubits\": " << qubits << ",\n"
@@ -125,7 +160,7 @@ std::string JSONFormatter::format_test_matrix(const std::vector<std::pair<std::s
     }
 
     ss << "{\n"
-       << "  \"engine\": \"CQ-HECS v4.0 Embedded Self-Test Matrix\",\n"
+       << "  \"engine\": \"CQ-HECS " CQ_HECS_VERSION " Embedded Self-Test Matrix\",\n"
        << "  \"status\": \"" << (passed == tests.size() ? "SUCCESS" : "FAILED") << "\",\n"
        << "  \"total_tests\": " << tests.size() << ",\n"
        << "  \"passed\": " << passed << ",\n"

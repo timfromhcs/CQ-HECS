@@ -41,6 +41,13 @@ struct ParsedCircuit {
     std::vector<QasmInstruction> instructions;
     std::unordered_map<std::string, uint32_t> qreg_offsets;
     std::unordered_map<std::string, uint32_t> creg_offsets;
+    std::unordered_map<std::string, uint32_t> qreg_sizes;
+    std::unordered_map<std::string, uint32_t> creg_sizes;
+    // Empty when the input satisfied the documented subset. A non-empty list
+    // means the circuit must not be executed (fail closed).
+    std::vector<std::string> errors;
+
+    bool ok() const noexcept { return errors.empty(); }
 
     bool is_pure_clifford() const noexcept {
         for (const auto& inst : instructions) {

@@ -202,7 +202,7 @@ def run_dashboard_loop(max_cycles: Optional[int] = None, refresh_rate: float = 0
                 state.cycle_count = cycle
 
                 # Update live metrics with realistic variations
-                ent = scheduler.harvest_hardware_entropy()
+                ent = scheduler.harvest_timing_jitter()
                 jitter = (ent % 100) * 0.8 + 15.0
                 state.entropy_jitter_ns = jitter
                 state.jitter_history.append(jitter)

@@ -1,63 +1,127 @@
 """
-Meta-tests for scripts/run_mutation_tests.py.
+Meta-tests for ``scripts/run_mutation_tests.py``.
 
-Verifies the mutation testing harness itself:
-- A broken baseline causes main() to exit with code 1 and logs failures.
-- A surviving mutant causes main() to exit with code 1.
-- A harness error causes main() to exit with code 1.
-- The clean baseline and all mutants killed exits with code 0.
+The harness itself must fail closed. These tests verify:
+
+* every mutation anchor still exists exactly once (drift detection),
+* source restoration is byte-exact,
+* a broken baseline fails the gate,
+* a surviving mutant fails the gate,
+* a missing anchor is a harness error, not a silent skip.
 """
 
 from __future__ import annotations
+
+import io
 import unittest
 from unittest.mock import patch
-import io
-import sys
 
-from scripts import run_mutation_tests
+from scripts import run_mutation_tests as harness
+from scripts.run_mutation_tests import SourceMutant
 
 
-class TestMutationHarnessMeta(unittest.TestCase):
-    def test_clean_baseline_and_all_killed_exits_zero(self):
-        """Clean baseline where all 7 mutants are killed returns 0."""
-        with patch("sys.stdout", new=io.StringIO()):
-            exit_code = run_mutation_tests.main()
-        self.assertEqual(exit_code, 0)
+class TestMutationAnchors(unittest.TestCase):
+    def test_every_anchor_exists_exactly_once(self):
+        for mutant in harness.MUTANTS:
+            with self.subTest(mutant=mutant.name):
+                path = harness.REPO_ROOT / mutant.target
+                self.assertTrue(path.is_file(), msg=f"missing target {mutant.target}")
+                text = path.read_text(encoding="utf-8")
+                self.assertEqual(
+                    text.count(mutant.original),
+                    1,
+                    msg=f"anchor for {mutant.name!r} is stale or ambiguous",
+                )
 
-    def test_broken_baseline_fails_closed_with_exit_one(self):
-        """If any baseline invariant check fails, main() must return exit code 1."""
-        broken_check = ("Broken invariant test", lambda: False, "Deliberate baseline failure")
-        with patch.object(run_mutation_tests, "BASELINE_CHECKS", [broken_check]):
-            out = io.StringIO()
-            with patch("sys.stdout", out):
-                exit_code = run_mutation_tests.main()
-            self.assertEqual(exit_code, 1)
-            self.assertIn("[FAIL] Baseline is broken", out.getvalue())
+    def test_every_check_is_registered(self):
+        for mutant in harness.MUTANTS:
+            with self.subTest(mutant=mutant.name):
+                self.assertIn(mutant.check, harness.CHECKS)
 
-    def test_surviving_mutant_fails_closed_with_exit_one(self):
-        """If a mutant survives (undetected defect), main() must return exit code 1."""
-        surviving_mutant = ("Undetected defect mutant", lambda: False)
-        with patch.object(run_mutation_tests, "MUTANTS", [surviving_mutant]):
-            out = io.StringIO()
-            with patch("sys.stdout", out):
-                exit_code = run_mutation_tests.main()
-            self.assertEqual(exit_code, 1)
-            self.assertIn("[SURVIVED] Mutant 1: Undetected defect mutant", out.getvalue())
-            self.assertIn("[FAIL] Mutation gate not met", out.getvalue())
+    def test_mutant_mechanism_is_described(self):
+        for mutant in harness.MUTANTS:
+            with self.subTest(mutant=mutant.name):
+                self.assertTrue(mutant.mechanism.strip())
 
-    def test_harness_error_fails_closed_with_exit_one(self):
-        """If a mutant function raises an unexpected error, it is a harness error and returns 1."""
-        def buggy_mutant():
-            raise ZeroDivisionError("Crash inside mutant test")
 
-        error_mutant = ("Crashing mutant", buggy_mutant)
-        with patch.object(run_mutation_tests, "MUTANTS", [error_mutant]):
-            out = io.StringIO()
-            with patch("sys.stdout", out):
-                exit_code = run_mutation_tests.main()
-            self.assertEqual(exit_code, 1)
-            self.assertIn("[HARNESS ERROR] Mutant 1: Crashing mutant", out.getvalue())
-            self.assertIn("[FAIL] Mutation gate not met", out.getvalue())
+class TestApplyRestore(unittest.TestCase):
+    def test_apply_and_restore_are_byte_exact(self):
+        mutant = harness.MUTANTS[0]
+        path, original = harness.apply_mutant(mutant)
+        try:
+            self.assertNotEqual(path.read_text(encoding="utf-8"), original)
+        finally:
+            harness.restore_source(path, original)
+        self.assertEqual(path.read_text(encoding="utf-8"), original)
+
+    def test_missing_anchor_raises(self):
+        broken = SourceMutant(
+            name="broken anchor",
+            target="cqhecs/cli.py",
+            original="THIS ANCHOR DOES NOT EXIST",
+            replacement="still not here",
+            check="cli_usage_exit_status",
+            mechanism="test fixture",
+        )
+        with self.assertRaises(harness.HarnessError):
+            harness.apply_mutant(broken)
+
+
+class TestFailClosedBehaviour(unittest.TestCase):
+    def test_broken_baseline_is_detected(self):
+        """A source defect present before mutation must invalidate the baseline."""
+        mutant = harness.MUTANTS[0]
+        path, original = harness.apply_mutant(mutant)
+        try:
+            failures = harness.baseline_self_check([mutant])
+        finally:
+            harness.restore_source(path, original)
+        self.assertTrue(failures, msg="broken baseline was not reported")
+
+    def test_surviving_mutant_exits_one(self):
+        noop = SourceMutant(
+            name="no-op mutant",
+            target="cqhecs/cli.py",
+            original="EXIT_OK = 0",
+            replacement="EXIT_OK = 0  # no behavioural change",
+            check="cli_usage_exit_status",
+            mechanism="changes nothing; the check must not report a defect",
+        )
+        out = io.StringIO()
+        with patch("sys.stdout", out):
+            exit_code = harness.run([noop], verbose=False)
+        self.assertEqual(exit_code, harness.EXIT_GATE_FAILED)
+        self.assertIn("[SURVIVED]", out.getvalue())
+
+    def test_missing_anchor_is_harness_error(self):
+        broken = SourceMutant(
+            name="broken anchor",
+            target="cqhecs/cli.py",
+            original="THIS ANCHOR DOES NOT EXIST",
+            replacement="still not here",
+            check="cli_usage_exit_status",
+            mechanism="test fixture",
+        )
+        out = io.StringIO()
+        with patch("sys.stdout", out):
+            exit_code = harness.run([broken], verbose=False)
+        self.assertEqual(exit_code, harness.EXIT_GATE_FAILED)
+        self.assertIn("[HARNESS ERROR]", out.getvalue())
+
+
+class TestFullHarness(unittest.TestCase):
+    def test_full_harness_kills_every_mutant(self):
+        out = io.StringIO()
+        with patch("sys.stdout", out):
+            exit_code = harness.run(harness.MUTANTS, verbose=False)
+        output = out.getvalue()
+        self.assertEqual(
+            exit_code,
+            harness.EXIT_OK,
+            msg=f"mutation gate failed:\n{output}",
+        )
+        self.assertNotIn("[SURVIVED]", output)
+        self.assertNotIn("[HARNESS ERROR]", output)
 
 
 if __name__ == "__main__":

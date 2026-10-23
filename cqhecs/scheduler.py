@@ -1,7 +1,14 @@
 """
-Vulkan Compute Scheduler for CQ-HECS.
-Manages Vulkan queue submissions, pipeline memory barriers, workgroup dispatch calculations,
-tiered storage offload decisions, and hardware entropy harvesting.
+Vulkan compute *planner* for CQ-HECS.
+
+This module computes workgroup dispatch dimensions, records the barriers a real
+submission would need, and produces offload/weighting decisions. It does **not**
+own a VkDevice, queue or command buffer, so it cannot submit GPU work.
+
+Historically ``submit_workload()`` returned ``completed=True`` for metadata that
+was never dispatched. That was a false completion signal; submissions are now
+explicitly marked as planner-only and stay incomplete until a real backend
+records completion. Nothing in this module should be read as GPU telemetry.
 """
 
 from __future__ import annotations
@@ -31,16 +38,23 @@ class QueueSubmission:
     memory_barriers_count: int
     timestamp_ns: int
     completed: bool = False
+    # True means "planned by this module, not dispatched by a Vulkan queue".
+    planner_only: bool = True
+    execution_backend: str = "planner_only"
 
 
 class VulkanComputeScheduler:
     """
-    High-performance scheduler for Vulkan 1.3 compute pipelines:
-    - Orchestrates queue submissions and command buffer recording
-    - Inserts pipeline execution and memory barriers
-    - Optimizes workgroup dispatch configurations
-    - Coordinates host RAM / GPU VRAM / tiered storage offload
-    - Harvests high-resolution system entropy for scheduling jitter
+    Deterministic planner for Vulkan 1.3 compute workloads:
+
+    - Computes workgroup dispatch configurations
+    - Records the pipeline/memory barriers a submission requires
+    - Decides host RAM / VRAM / tiered-storage offload policy
+    - Provides non-cryptographic timing jitter for search perturbation
+
+    It is not a Vulkan driver: no queue submission, synchronization or device
+    readback happens here. Components that need real GPU execution must use the
+    native engine and report their own verification level.
     """
 
     def __init__(
@@ -56,16 +70,27 @@ class VulkanComputeScheduler:
         self.active_submissions: List[QueueSubmission] = []
         self.pipeline_barriers: List[Dict[str, Any]] = []
 
-    def harvest_hardware_entropy(self) -> int:
+    def harvest_timing_jitter(self) -> int:
         """
-        Harvests physical timing jitter from high-resolution OS monotonic counters.
-        Provides unbiased entropy for stochastic search perturbation without PRNG state coupling.
+        Mixes monotonic-clock and wall-clock readings into a 64-bit value.
+
+        This is scheduling jitter, **not** cryptographic or statistically
+        proven hardware entropy, and it must not be used for key generation,
+        security decisions or unbiased sampling. The value is reproducible only
+        if ``entropy_seed`` is fixed and the timing inputs are stubbed.
         """
         ns = time.perf_counter_ns()
         drift = (ns ^ (ns >> 13) ^ (int(time.time() * 1e6))) & 0xFFFFFFFFFFFFFFFF
-        # LCG 64-bit step with timing drift injection
         self.entropy_seed = (self.entropy_seed * 6364136223846793005 + drift + 1) & 0xFFFFFFFFFFFFFFFF
         return self.entropy_seed
+
+    def harvest_hardware_entropy(self) -> int:
+        """Deprecated alias for :meth:`harvest_timing_jitter`.
+
+        The old name overstated the guarantee. Kept temporarily so existing
+        callers keep working; new code must use ``harvest_timing_jitter``.
+        """
+        return self.harvest_timing_jitter()
 
     def calculate_optimal_dispatch(
         self,
@@ -74,9 +99,14 @@ class VulkanComputeScheduler:
         elements_z: int = 1
     ) -> DispatchDimensions:
         """
-        Calculates optimal Vulkan compute workgroup dispatch dimensions based on
+        Calculates Vulkan compute workgroup dispatch dimensions based on
         local workgroup layout ceil(elements / local_size).
+
+        Negative or non-finite element counts raise ``ValueError`` instead of
+        being clamped to a plausible-looking dispatch.
         """
+        if elements_x < 0 or elements_y < 0 or elements_z < 0:
+            raise ValueError("dispatch element counts must be non-negative")
         lx, ly, lz = self.local_workgroup_size
         gx = max(1, math.ceil(elements_x / lx))
         gy = max(1, math.ceil(elements_y / ly))
@@ -91,8 +121,9 @@ class VulkanComputeScheduler:
         dst_access_mask: str
     ) -> Dict[str, Any]:
         """
-        Records a Vulkan pipeline execution and memory access barrier
-        (VkMemoryBarrier / VkBufferMemoryBarrier abstraction).
+        Records the barrier that a real submission would need
+        (VkMemoryBarrier / VkBufferMemoryBarrier abstraction). No barrier is
+        executed here.
         """
         barrier = {
             "src_stage": src_stage_mask,
@@ -111,7 +142,11 @@ class VulkanComputeScheduler:
         barriers_before: int = 0
     ) -> QueueSubmission:
         """
-        Submits a compute pipeline workload to the primary Vulkan compute queue.
+        Registers a *planned* workload.
+
+        The returned submission is ``completed=False`` and
+        ``planner_only=True``. Marking it complete requires evidence from a real
+        execution backend via :meth:`record_completion`.
         """
         self.submission_counter += 1
         sub = QueueSubmission(
@@ -120,10 +155,28 @@ class VulkanComputeScheduler:
             dispatch=dispatch,
             memory_barriers_count=barriers_before,
             timestamp_ns=time.perf_counter_ns(),
-            completed=True
+            completed=False,
+            planner_only=True,
+            execution_backend="planner_only",
         )
         self.active_submissions.append(sub)
         return sub
+
+    def record_completion(self, submission: QueueSubmission, backend: str) -> None:
+        """
+        Marks a submission complete **only** when a real backend reports it.
+
+        Callers must pass the execution backend that actually ran the work plus
+        its own success evidence. This module cannot verify GPU execution, so it
+        simply refuses empty backend names.
+        """
+        if not backend or backend == "planner_only":
+            raise ValueError(
+                "completion requires a real execution backend identifier"
+            )
+        submission.completed = True
+        submission.planner_only = False
+        submission.execution_backend = backend
 
     def schedule_offload(
         self,
@@ -188,12 +241,15 @@ class VulkanComputeScheduler:
 
     def dynamic_nudge_controller(self, trapped_in_local_minimum: bool) -> Optional[int]:
         """
-        Injects a stochastic phase perturbation derived from hardware entropy
-        when optimization is trapped in an algebraic local minimum.
+        Returns a Z_8 phase nudge when the search reports a local minimum.
+
+        The value comes from non-cryptographic timing jitter (see
+        ``harvest_timing_jitter``); it is a search heuristic, not a verified
+        random source.
         """
         if not trapped_in_local_minimum:
             return None
-        ent = self.harvest_hardware_entropy()
+        ent = self.harvest_timing_jitter()
         # Random phase rotation nudge in Z_8: -1 (+7) or +1
         return 1 if (ent & 1) else 7
 

@@ -1,61 +1,129 @@
 """
-Test Suite: Multi-Threading Contention & Concurrency Stress Test
-Tests concurrent execution across 16+ CPU threads to verify zero data races.
+Concurrency contract tests for the legacy bridge objects.
+
+Supported contract
+------------------
+* Independent simulator/solver instances may run in parallel threads. Each
+  worker owns its objects; no instance is shared between threads.
+* ``CQSATSolver`` and ``MPS300QubitSimulator`` instances are **not** documented
+  as thread-safe for concurrent use of the *same* instance. This module tests
+  the independent-instance contract only and says so, instead of inferring
+  race-freedom from a thread-pool run.
+
+The tests synchronize starts, impose timeouts, collect every result (including
+exceptions) and verify actual outputs rather than a boolean "it worked" flag.
 """
 
-import unittest
 import threading
+import unittest
 from concurrent.futures import ThreadPoolExecutor
-from python_bridge.cq_hecs import VulkanComputeScheduler, JSpaceAlpha, JSpaceBeta, JSpaceGamma, MPS300QubitSimulator
+from concurrent.futures import TimeoutError as FutureTimeout
+
+from python_bridge.cq_hecs import MPS300QubitSimulator
 from python_bridge.sat_engine import CQSATSolver, DIMACSParser
 
+CNF_SOURCE = "p cnf 5 4\n1 2 -3 0\n-1 3 4 0\n-2 -4 5 0\n-5 1 2 0\n"
+CNF_CLAUSES = [
+    [1, 2, -3],
+    [-1, 3, 4],
+    [-2, -4, 5],
+    [-5, 1, 2],
+]
+FUTURE_TIMEOUT_SECONDS = 60
 
-class TestConcurrencyStress(unittest.TestCase):
-    def test_16_threads_concurrent_sat_and_mps(self):
-        """Run parallel SAT solving and MPS state operations across 16 threads without races."""
+
+def assignment_satisfies(clauses, assignment):
+    """Independent oracle: evaluates the CNF under a concrete assignment."""
+    for clause in clauses:
+        if not any(
+            assignment.get(abs(literal), False) == (literal > 0)
+            for literal in clause
+        ):
+            return False
+    return True
+
+
+class TestIndependentInstanceConcurrency(unittest.TestCase):
+    def test_16_workers_produce_verified_results(self):
+        start_gate = threading.Barrier(16)
         results = []
         errors = []
 
-        cnf_src = "p cnf 5 4\n1 2 -3 0\n-1 3 4 0\n-2 -4 5 0\n-5 1 2 0\n"
+        def sat_worker(worker_id: int):
+            start_gate.wait(timeout=FUTURE_TIMEOUT_SECONDS)
+            solver = CQSATSolver(table_capacity=2048)
+            formula = DIMACSParser.parse_string(CNF_SOURCE)
+            result = solver.solve(formula, timeout_seconds=10.0)
+            return ("sat", worker_id, result)
 
-        def sat_worker(thread_id: int):
-            try:
-                solver = CQSATSolver(table_capacity=2048)
-                formula = DIMACSParser.parse_string(cnf_src)
-                res = solver.solve(formula, timeout_seconds=5.0)
-                return ("sat", thread_id, res.satisfiable, res.verified)
-            except Exception as e:
-                errors.append(f"SAT thread {thread_id} error: {e}")
-                return ("sat", thread_id, False, False)
-
-        def mps_worker(thread_id: int):
-            try:
-                scheduler = VulkanComputeScheduler()
-                mps = MPS300QubitSimulator(num_qubits=300, max_chi=32)
-                for step in range(20):
-                    mps.apply_single_qubit_z8_gate(step % 300, phase_shift=(step % 7) + 1)
-                attn = scheduler.cross_attention_aggregation(0.5, 0.5, 0.2, 0.01, 0.8)
-                ent = scheduler.harvest_hardware_entropy()
-                return ("mps", thread_id, True, ent > 0)
-            except Exception as e:
-                errors.append(f"MPS thread {thread_id} error: {e}")
-                return ("mps", thread_id, False, False)
+        def mps_worker(worker_id: int):
+            start_gate.wait(timeout=FUTURE_TIMEOUT_SECONDS)
+            mps = MPS300QubitSimulator(num_qubits=300, max_chi=32)
+            for step in range(20):
+                mps.apply_single_qubit_z8_gate(step % 300, phase_shift=(step % 7) + 1)
+            site = mps.governor.fetch(299)
+            return ("mps", worker_id, site)
 
         with ThreadPoolExecutor(max_workers=16) as executor:
-            futures = []
-            for t in range(8):
-                futures.append(executor.submit(sat_worker, t))
-            for t in range(8, 16):
-                futures.append(executor.submit(mps_worker, t))
+            futures = [executor.submit(sat_worker, t) for t in range(8)]
+            futures += [executor.submit(mps_worker, t) for t in range(8, 16)]
 
-            for f in futures:
-                results.append(f.result())
+            for future in futures:
+                try:
+                    results.append(future.result(timeout=FUTURE_TIMEOUT_SECONDS))
+                except FutureTimeout as exc:  # pragma: no cover - failure path
+                    errors.append(f"worker timed out: {exc}")
+                except Exception as exc:  # pragma: no cover - failure path
+                    errors.append(f"{type(exc).__name__}: {exc}")
 
-        self.assertEqual(len(errors), 0, f"Encountered thread errors: {errors}")
+        self.assertEqual(errors, [], msg=f"worker failures: {errors}")
         self.assertEqual(len(results), 16)
-        for r_type, t_id, success, verified in results:
-            self.assertTrue(success, f"Thread {t_id} failed")
-            self.assertTrue(verified, f"Thread {t_id} verification failed")
+
+        for kind, worker_id, payload in results:
+            with self.subTest(kind=kind, worker=worker_id):
+                if kind == "sat":
+                    self.assertTrue(payload.satisfiable)
+                    self.assertTrue(payload.verified)
+                    self.assertTrue(
+                        assignment_satisfies(CNF_CLAUSES, payload.assignment),
+                        msg=f"worker {worker_id} returned a non-satisfying assignment",
+                    )
+                else:
+                    self.assertIsInstance(payload, (bytes, bytearray))
+                    self.assertGreater(len(payload), 0)
+
+    def test_parallel_mps_matches_sequential_reference(self):
+        def run_sequence():
+            mps = MPS300QubitSimulator(num_qubits=64, max_chi=16)
+            for step in range(50):
+                mps.apply_single_qubit_z8_gate(step % 64, phase_shift=(step % 5) + 1)
+            return b"".join(mps.governor.fetch(site) for site in range(64))
+
+        reference = run_sequence()
+
+        def worker(_):
+            return run_sequence()
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = [executor.submit(worker, i) for i in range(8)]
+            parallel = [f.result(timeout=FUTURE_TIMEOUT_SECONDS) for f in futures]
+
+        for index, value in enumerate(parallel):
+            self.assertEqual(
+                value,
+                reference,
+                msg=f"parallel run {index} diverged from the sequential reference",
+            )
+
+    def test_worker_exception_is_not_swallowed(self):
+        """A failing job must surface, not turn into a silent 'success'."""
+        def boom():
+            raise RuntimeError("injected worker failure")
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(boom)
+            with self.assertRaises(RuntimeError):
+                future.result(timeout=FUTURE_TIMEOUT_SECONDS)
 
 
 if __name__ == "__main__":

@@ -23,6 +23,11 @@
 #include "cq_hecs/constraint_solver.hpp"
 #include "cq_hecs/vulkan/vulkan_context.hpp"
 
+// Canonical version, injected by CMake from ``project(... VERSION ...)``.
+#ifndef CQ_HECS_VERSION
+#define CQ_HECS_VERSION "0.0.0-dev"
+#endif
+
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -33,10 +38,10 @@ using namespace cq_hecs;
 
 static void print_banner(std::ostream& os = std::cout) {
     os << "=================================================================\n";
-    os << " CQ-HECS v2.0.0-VRTS-Vulkan: Volumetric Reversible Tensor Space\n";
+    os << " CQ-HECS " CQ_HECS_VERSION ": Volumetric Reversible Tensor Space\n";
     os << " Architecture: VRTS-300 (6 x 5 x 10 3D Lattice, 300 Qubits)\n";
-    os << " Compute: Pure Vulkan 1.2+ Compute / Modern C++20 (Zero CUDA)\n";
-    os << " Memory: Strict 3.0 GB VRAM Ceiling with Dual-Layer Residual Folding\n";
+    os << " Compute: Vulkan 1.3 compute (1.2 fallback) / Modern C++20 (Zero CUDA)\n";
+    os << " Memory: Explicit allocation ceilings; 300q MPS ledger is capped at 120 MiB\n";
     os << " Powered by CQ-HECS (https://github.com/timfromhcs) | @timfromhcs\n";
     os << "=================================================================\n\n";
 }
@@ -63,7 +68,8 @@ static void print_usage(const char* prog) {
               << "Exit Codes:\n"
               << "  0  - Success / SAT / Target Verified\n"
               << "  10 - Unsatisfiable (UNSAT) / Refuted\n"
-              << "  1  - Generic Error / Syntax Error / Out of Bounds\n";
+              << "  1  - Generic Error / Runtime Error\n"
+              << "  2  - Invalid input (QASM parse error, unsupported gate, budget exceeded)\n";
 }
 
 // ---------------------------------------------------------------------
@@ -71,30 +77,65 @@ static void print_usage(const char* prog) {
 // ---------------------------------------------------------------------
 static int cmd_qasm(const std::vector<std::string>& args) {
     std::string filepath;
-    uint32_t qubits = 300;
-    uint32_t chi = 64;
+    uint32_t qubit_cap = 0;  // 0 = no explicit cap
     bool json_mode = false;
 
     for (size_t i = 0; i < args.size(); ++i) {
         if (args[i] == "--json") json_mode = true;
-        else if (args[i] == "--qubits" && i + 1 < args.size()) qubits = std::stoul(args[++i]);
-        else if (args[i] == "--chi" && i + 1 < args.size()) chi = std::stoul(args[++i]);
+        else if (args[i] == "--qubits" && i + 1 < args.size()) {
+            try { qubit_cap = static_cast<uint32_t>(std::stoul(args[++i])); }
+            catch (...) {
+                std::cerr << "Error: --qubits expects a non-negative integer.\n";
+                return 1;
+            }
+        }
+        else if (args[i] == "--chi" && i + 1 < args.size()) {
+            try { (void)std::stoul(args[++i]); }
+            catch (...) {
+                std::cerr << "Error: --chi expects a non-negative integer.\n";
+                return 1;
+            }
+        }
         else if (filepath.empty() && (args[i] == "-" || args[i][0] != '-')) filepath = args[i];
     }
 
     if (filepath.empty()) {
+        if (json_mode) {
+            std::cout << JSONFormatter::format_error(
+                "Missing QASM file argument (use '-' for stdin).");
+        }
         std::cerr << "Error: Missing QASM file argument (use '-' for stdin).\n";
         return 1;
     }
 
     QASMParserCPP parser;
     QASMCircuitData circuit;
-    circuit.num_qubits = qubits;
 
-    if (!parser.parse_file(filepath, circuit)) {
-        if (json_mode) std::cout << JSONFormatter::format_error("Failed to parse QASM input: " + filepath);
-        else std::cerr << "[QASM] Failed to parse input file: " << filepath << "\n";
-        return 1;
+    if (!parser.parse_file(filepath, circuit) || !circuit.ok()) {
+        if (json_mode) {
+            std::cout << JSONFormatter::format_qasm_parse_error(filepath, circuit.errors);
+        }
+        for (const auto& error : circuit.errors) {
+            std::cerr << "[QASM] line " << error.line << ": " << error.category
+                      << ": " << error.message << "\n";
+        }
+        if (circuit.errors.empty()) {
+            std::cerr << "[QASM] Failed to parse input file: " << filepath << "\n";
+        }
+        // Documented exit code 2: valid invocation, invalid circuit input.
+        return 2;
+    }
+
+    if (qubit_cap != 0 && circuit.num_qubits > qubit_cap) {
+        const std::string message =
+            "circuit declares " + std::to_string(circuit.num_qubits) +
+            " qubits, exceeding the --qubits cap of " + std::to_string(qubit_cap);
+        if (json_mode) {
+            std::cout << JSONFormatter::format_qasm_parse_error(
+                filepath, {{0, "qubit_budget_exceeded", message}});
+        }
+        std::cerr << "[QASM] " << message << "\n";
+        return 2;
     }
 
     VulkanEngine engine;
@@ -104,14 +145,14 @@ static int cmd_qasm(const std::vector<std::string>& args) {
         return 1;
     }
 
-    engine.allocate_300q_mps(chi);
+    engine.allocate_300q_mps(64);
     QASMExecutionResult res = parser.execute_on_vulkan(circuit, engine);
     double vram_mb = static_cast<double>(engine.get_active_vram_bytes()) / (1024.0 * 1024.0);
 
     if (json_mode) {
         std::cout << JSONFormatter::format_qasm_result(filepath, res, vram_mb, 0.0);
     } else {
-        std::cout << "[CQ-HECS QASM Engine] Circuit Execution Complete:\n"
+        std::cout << "[CQ-HECS QASM Phase-Ledger] Circuit recorded (not a statevector simulation):\n"
                   << "  > Source:        " << filepath << "\n"
                   << "  > Qubit Count:   " << res.qubit_count << "\n"
                   << "  > Gates Applied: " << res.gate_count << "\n"
@@ -386,13 +427,16 @@ static int cmd_test(bool json_mode) {
 
     // 7. OpenQASM 2.0 / 3.0 Simulation
     QASMParserCPP qasm_parser;
-    std::string test_qasm = "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[300];\nh q[0];\ncx q[0], q[1];\nmeasure q[0];\n";
+    std::string test_qasm =
+        "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[300];\ncreg c[1];\n"
+        "h q[0];\ncx q[0], q[1];\nmeasure q[0] -> c[0];\n";
     QASMCircuitData qasm_data;
-    qasm_parser.parse_string(test_qasm, qasm_data);
+    const bool qasm_parsed = qasm_parser.parse_string(test_qasm, qasm_data);
     auto qasm_res = qasm_parser.execute_on_vulkan(qasm_data, engine);
-    bool qasm_ok = qasm_res.success && (qasm_res.gate_count == 3);
-    test_matrix.push_back({"OpenQASM 300-Qubit Circuit Simulator", qasm_ok});
-    if (!json_mode) std::cout << "  [" << (qasm_ok ? "PASS" : "FAIL") << "] OpenQASM 2.0/3.0 Circuit Simulation Engine\n";
+    bool qasm_ok = qasm_parsed && qasm_data.ok() && qasm_res.success &&
+                   (qasm_res.gate_count == 3) && (qasm_res.qubit_count == 300);
+    test_matrix.push_back({"OpenQASM Phase-Ledger Circuit Validation", qasm_ok});
+    if (!json_mode) std::cout << "  [" << (qasm_ok ? "PASS" : "FAIL") << "] OpenQASM Phase-Ledger Circuit Validation\n";
 
     bool all_passed = true;
     for (const auto& t : test_matrix) {
@@ -426,10 +470,10 @@ static int cmd_vrts(const std::vector<std::string>& args) {
     if (!json_mode) {
         std::cout << "[VRTS-300 Engine] Initialized 3D Lattice 6 x 5 x 10 (300 Qubits)\n";
         std::cout << "  Device:       " << vulkan->get_device_name() << "\n";
-        std::cout << "  VRAM Ceiling: " << (VulkanMemoryManager::VRAM_HARD_CEILING_BYTES / (1024 * 1024)) << " MB (Strict 3.0 GB Limit)\n";
+        std::cout << "  Allocation Ceiling: " << (VulkanMemoryManager::VRAM_HARD_CEILING_BYTES / (1024 * 1024)) << " MB (configured limit, not a device measurement)\n";
         std::cout << "  Ground State: " << (engine.is_bit_exact_ground_state() ? "VERIFIED (|0>^300)" : "DIRTY") << "\n";
     } else {
-        std::cout << "{\"status\":\"ok\",\"qubits\":300,\"lattice\":\"6x5x10\",\"backend\":\"Vulkan 1.2+\",\"vram_ceiling_mb\":3072}\n";
+        std::cout << "{\"status\":\"ok\",\"qubits\":300,\"lattice\":\"6x5x10\",\"backend\":\"Vulkan 1.3 (1.2 fallback)\",\"allocation_ceiling_mb\":3072}\n";
     }
     return 0;
 }

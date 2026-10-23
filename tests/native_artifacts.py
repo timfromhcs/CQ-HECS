@@ -63,33 +63,39 @@ def find_executable() -> Optional[Path]:
 
 def require_library() -> Path:
     """
-    Returns the C-ABI library path, or skips the test if it is not built.
+    Returns the C-ABI library path.
 
-    Skipping is honest: the artifact is a build product, and a test run that
-    did not build the native component has not verified it. CI builds the
-    native component before running these tests, so they run there.
+    Skipping is honest *only* when the artifact is genuinely optional. CI sets
+    ``CQ_HECS_REQUIRE_NATIVE=1`` so a missing build artifact fails the job
+    instead of silently reducing coverage.
     """
     import unittest
 
     path = find_library()
     if path is None:
-        raise unittest.SkipTest(
+        message = (
             "Native C-ABI library not found. Build the native component first: "
             "cmake -B build -DCMAKE_BUILD_TESTS=ON && cmake --build build "
             "--config Release"
         )
+        if os.environ.get("CQ_HECS_REQUIRE_NATIVE") == "1":
+            raise AssertionError(message + " (CQ_HECS_REQUIRE_NATIVE=1)")
+        raise unittest.SkipTest(message)
     return path
 
 
 def require_executable() -> Path:
-    """Returns the native executable path, or skips the test if not built."""
+    """Returns the native executable path, failing when CI requires it."""
     import unittest
 
     path = find_executable()
     if path is None:
-        raise unittest.SkipTest(
+        message = (
             "Native executable not found. Build the native component first: "
             "cmake -B build -DCMAKE_BUILD_TESTS=ON && cmake --build build "
             "--config Release"
         )
+        if os.environ.get("CQ_HECS_REQUIRE_NATIVE") == "1":
+            raise AssertionError(message + " (CQ_HECS_REQUIRE_NATIVE=1)")
+        raise unittest.SkipTest(message)
     return path

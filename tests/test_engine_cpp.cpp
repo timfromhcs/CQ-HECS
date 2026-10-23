@@ -51,7 +51,7 @@ int main() {
         if (res_unsat.satisfiable) return 1;
     }
 
-    std::cout << "[CPP Self-Test] Testing QASM Parser Graceful Degradation...\n";
+    std::cout << "[CPP Self-Test] Testing QASM Parser Fail-Closed Behaviour...\n";
     {
         QASMParserCPP parser;
         QASMCircuitData circuit;
@@ -61,9 +61,33 @@ int main() {
             return 1;
         }
 
-        bool ok_malformed = parser.parse_string("OPENQASM 2.0;\nqreg q[10];\ncp(invalid) q[0], q[1];\n", circuit);
-        if (!ok_malformed || circuit.commands.size() != 1) {
-            std::cerr << "Failed malformed test: ok=" << ok_malformed << ", size=" << circuit.commands.size() << "\n";
+        // Invalid angle expressions must be rejected, not silently repaired.
+        circuit = QASMCircuitData{};
+        bool ok_malformed = parser.parse_string(
+            "OPENQASM 2.0;\nqreg q[10];\ncp(invalid) q[0], q[1];\n", circuit);
+        if (ok_malformed || !circuit.commands.empty() || circuit.errors.empty()) {
+            std::cerr << "Failed malformed test: ok=" << ok_malformed
+                      << ", size=" << circuit.commands.size()
+                      << ", errors=" << circuit.errors.size() << "\n";
+            return 1;
+        }
+        if (circuit.errors.front().category != "invalid_parameter") {
+            std::cerr << "Wrong parse-error category: " << circuit.errors.front().category << "\n";
+            return 1;
+        }
+
+        // Unknown gates must be rejected as well.
+        circuit = QASMCircuitData{};
+        bool ok_unknown = parser.parse_string(
+            "OPENQASM 2.0;\nqreg q[1];\nnot_a_gate q[0];\n", circuit);
+        if (ok_unknown || !circuit.commands.empty() || circuit.errors.empty()) {
+            std::cerr << "Failed unknown-gate test: ok=" << ok_unknown
+                      << ", size=" << circuit.commands.size()
+                      << ", errors=" << circuit.errors.size() << "\n";
+            return 1;
+        }
+        if (circuit.errors.front().category != "unsupported_gate") {
+            std::cerr << "Wrong unknown-gate category: " << circuit.errors.front().category << "\n";
             return 1;
         }
     }
