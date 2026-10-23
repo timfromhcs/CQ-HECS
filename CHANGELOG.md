@@ -6,6 +6,71 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [2.2.0] — 2026-10-23
+
+This is a hardening release. It adds structured diagnostics and explicit engine
+classification, and it replaces several false-green tests and fail-open code
+paths with fail-closed contracts. It does not add a new simulator, GPU
+acceleration, or a new exactness claim.
+
+### Fixed — native QASM parsing and execution
+
+- **The native QASM parser no longer repairs invalid input.** Missing
+  semicolons, unknown gates, malformed or non-finite angle expressions,
+  out-of-range register references and block comments are rejected with a
+  structured `{line, category, message}` error. The previous parser accepted
+  several of these and executed a partially interpreted circuit.
+- **`cq_hecs qasm` now returns exit code 2 for invalid circuit input** and emits
+  a JSON error document on stdout when `--json` is used. Diagnostics remain on
+  stderr.
+- **The native QASM result is labelled honestly.** The `engine_class` is
+  `legacy_z8_phase_ledger`, `statevector_simulation` is `false`, and the banner
+  uses the canonical `CQ_HECS_VERSION` instead of a stale hardcoded string.
+- **The C-ABI parser shares the same fail-closed semantics.** `cq_execute_qasm`
+  refuses invalid circuits and returns `-3` for parse errors.
+- Added `test_qasm_contract` to CTest, covering strict parsing and bounded
+  randomized robustness.
+
+### Fixed — false telemetry and resource accounting
+
+- `VulkanComputeScheduler.submit_workload()` no longer reports
+  `completed=True` for metadata-only submissions. It reports
+  `planner_only=True`; completion requires `record_completion(backend)`.
+- Timing-jitter harvesting is documented as a deterministic diagnostic, not as
+  proof of hardware entropy.
+- `TieredMemoryGovernor.allocate()` fails closed with `MemoryError` when a page
+  cannot fit, instead of silently exceeding the budget.
+- `JSpaceDelta.reinflate_matrix()` validates matrix shapes and labels its
+  residual as a diagnostic rather than a certified bound.
+
+### Fixed — tests that could pass without performing their measurement
+
+- QASM fuzz tests now assert the strict parser contract and fail (rather than
+  skip) when CI sets `CQ_HECS_REQUIRE_NATIVE=1`.
+- Stress, concurrency and SVD tests now separate internal accounting from RSS,
+  use explicit availability skips, verify independent-instance behaviour, and
+  require real truncation measurements.
+- The source-level mutation harness applies exact patches to production files,
+  runs independent subprocess checks, restores source byte-for-byte, and fails
+  on survivors or a broken baseline. The maintained set is 11 mutants; this is
+  a scoped regression gate, not a proof of correctness.
+
+### Changed — CI and test support
+
+- CI now has a pinned Python 3.11 dependency lane, a separate newest-dependency
+  compatibility matrix, branch coverage with an enforced 70% threshold, an
+  ASan/UBSan native job, minimum token permissions, and uploaded test evidence.
+- Supported Python is now declared as 3.11–3.14. Python 3.9/3.10 are no longer
+  claimed after reaching end of life.
+
+### Research & verification
+
+- See `research/v2_2/BASELINE.md` and `research/v2_2/TEST_MATRIX.md` for the
+  recorded local gates and the remaining unverified surfaces (physical GPU and
+  Cloud Build).
+
+---
+
 ## [2.1.0] — 2026-10-19
 
 This release delivers verified 200+ qubit simulation and scalable full-register
