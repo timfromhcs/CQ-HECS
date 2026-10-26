@@ -126,12 +126,15 @@ void run_test_mps_bond_dimension_saturation() {
             mps.apply_1q_gate(q, 9, 0x12345678u); // RZ
         }
     }
-
     // Verify bond dimension saturation: each site's bond dimension must never exceed MAX_BOND_D
+    uint32_t max_chi = 1;
     for (uint32_t i = 0; i < N_QUBITS; ++i) {
         assert(mps.sites[i].chi_left <= MAX_BOND_D);
         assert(mps.sites[i].chi_right <= MAX_BOND_D);
+        max_chi = std::max(max_chi, mps.sites[i].chi_left);
+        max_chi = std::max(max_chi, mps.sites[i].chi_right);
     }
+    assert(max_chi >= 4 && "entangling circuit must grow the MPS bond dimension");
 
     double final_mem = mps.get_memory_mb();
     std::cout << "  Saturated 64-Qubit MPS Memory: " << final_mem << " MB with D=" << MAX_BOND_D << "\n";

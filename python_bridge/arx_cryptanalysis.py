@@ -1,5 +1,5 @@
 """
-CQ-HECS 2.2.1 Algebraic ARX Verification Testbench & SAT Constraint Suite
+CQ-HECS 2.2.2 Algebraic ARX Verification Testbench & SAT Constraint Suite
 Implements step-inversion, carry-shadow separation, and algebraic constraint verification for:
   1. BLAKE2b round compression (G function step invertibility & carry shadow, standard: 12 rounds)
   2. ChaCha20 quarter-round carry separation (standard: 20 rounds / 80 quarter-rounds)

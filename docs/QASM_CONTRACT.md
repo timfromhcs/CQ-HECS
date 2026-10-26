@@ -1,4 +1,4 @@
-# QASM parser contract (v2.2.1)
+# QASM parser contract (v2.2.2)
 
 CQ-HECS has two parsers that share one **fail-closed** contract:
 

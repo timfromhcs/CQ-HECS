@@ -6,9 +6,48 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
-## [Unreleased]
+## [2.2.2] — 2026-10-26
 
-### Fixed
+### Fixed — native simulation paths no longer report success without evolving a state
+
+- `cqhecs::vulkan::VulkanEngine` is now explicitly **planner-only**. Its gate
+  methods previously validated an index and returned a success-shaped result
+  without storing amplitudes; they now throw `std::logic_error`, and
+  `sample_fast_shots()` throws instead of emitting uniform random bits. Bond
+  changes are documented as metadata-only planning.
+- `VRTS300Engine::measure_parity_shots(num_shots, seed)` validates that the
+  compact representation really is a fully correlated GHZ-like state, then
+  draws seeded independent shots from the stored amplitudes. It throws for
+  arbitrary 300-qubit states instead of forcing an exact half-and-half split.
+  The GHZ test now checks the structural invariant and a derived 5σ binomial
+  band.
+- `StateVectorSimulator` now performs seeded Born-rule sampling, collapsing
+  `measure(target, rng)`, validates qubit indices on every gate, rejects widths
+  above 28 before shifting, and implements `apply_y`.
+- `MPSSimulator` now contracts and factorises two-site tensors with a complex
+  SVD, supports both CNOT directions and non-adjacent CNOT routing through
+  exact swaps, samples arbitrary states through right environments, and uses
+  its GHZ fast path only after an exact tensor check. Truncation keeps the
+  largest singular values, records discarded weight as a diagnostic, and
+  rescales retained local tensors so the fixed-point rank does not collapse.
+- `VulkanQpuEngine` is documented and implemented as a CPU reference facade:
+  it no longer fabricates indirect-dispatch metadata, dispatches every supported
+  opcode to real state evolution, throws on unsupported opcodes, treats
+  `MEASURE` as terminal and rejects gates after a measurement. Its
+  `sample_counts(shots, seed)` delegates to the backend sampler.
+- `Qasm3Parser` rejects qubit indices above 255 instead of truncating them to
+  the 8-bit `J_QuantumOpcode` fields. The legacy Qiskit provider now tests a
+  256-qubit GHZ circuit and requires a 300-qubit circuit to fail closed.
+
+### Tests
+
+- Added `test_statevector_contract`, `test_mps_contract` and
+  `test_qpu_facade_contract`; strengthened the 300-qubit GHZ diagnostic and the
+  MPS saturation checks. The MPS suite includes an optimal rank-one truncation
+  regression against closed-form singular values, so a factorisation that
+  reconstructs the tensor with non-orthonormal factors cannot pass as an SVD.
+
+### Fixed — mutation harness bytecode cache
 
 - The mutation harness no longer reuses cached bytecode from a same-size
   mutant after restoring the source. Checks run with

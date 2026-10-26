@@ -1,10 +1,14 @@
 #include "cq_hecs/tensor_network.hpp"
 #include <cmath>
-#include <stdexcept>
-#include <iostream>
 #include <random>
+#include <stdexcept>
 
 namespace cq_hecs {
+
+// The VRTS-300 representation stores two local amplitudes per lattice node plus
+// a correlation flag; it is a compact GHZ/parity diagnostic, not a general
+// 300-qubit amplitude tensor. measure_parity_shots() therefore refuses states
+// that are not fully correlated instead of inventing a split.
 
 VRTS300Engine::VRTS300Engine(std::shared_ptr<VulkanContext> vulkan)
     : m_vulkan(vulkan) {
@@ -280,26 +284,50 @@ void VRTS300Engine::construct_ghz300() {
     }
 }
 
-std::pair<uint64_t, uint64_t> VRTS300Engine::measure_parity_shots(uint32_t num_shots) {
-    // GHZ-300 state is (|0...0> + |1...1>) / sqrt(2)
-    // Over num_shots:
-    // Non-parity count is strictly 0.
-    // Count of |0...0> vs |1...1> is exactly split (e.g. 25,000 / 25,000).
-    uint64_t non_parity_count = 0;
-    uint64_t zero_shots = 0;
-
-    // Verify all qubits are mutually entangled with identical state
+std::pair<uint64_t, uint64_t> VRTS300Engine::measure_parity_shots(
+    uint32_t num_shots, uint64_t seed) {
+    // Validate that the compact representation really describes one fully
+    // correlated GHZ-like state. Every node must carry the same local
+    // amplitude pair and be flagged as entangled.
+    const auto& ref0 = m_nodes[0].state[0];
+    const auto& ref1 = m_nodes[0].state[1];
+    bool correlated = m_nodes[0].is_entangled;
     for (uint32_t i = 1; i < Lattice3D::TOTAL_QUBITS; ++i) {
-        if (!m_nodes[i].is_entangled) {
-            non_parity_count++;
+        if (!m_nodes[i].is_entangled ||
+            m_nodes[i].state[0] != ref0 ||
+            m_nodes[i].state[1] != ref1) {
+            correlated = false;
+            break;
         }
     }
-
-    if (non_parity_count == 0) {
-        zero_shots = num_shots / 2;
+    if (!correlated) {
+        throw std::logic_error(
+            "VRTS300Engine::measure_parity_shots requires a fully correlated "
+            "GHZ-like state; this compact representation cannot sample an "
+            "arbitrary 300-qubit state");
     }
 
-    return {non_parity_count, zero_shots};
+    double p0 = ref0.to_double_real() * ref0.to_double_real() +
+                ref0.to_double_imag() * ref0.to_double_imag();
+    double p1 = ref1.to_double_real() * ref1.to_double_real() +
+                ref1.to_double_imag() * ref1.to_double_imag();
+    double total = p0 + p1;
+    if (!(total > 0.0)) {
+        throw std::logic_error("VRTS300Engine::measure_parity_shots: zero-norm state");
+    }
+    double prob_one = p1 / total;
+
+    std::mt19937_64 rng(seed);
+    std::uniform_real_distribution<double> draw(0.0, 1.0);
+    uint64_t zero_shots = 0;
+    for (uint32_t s = 0; s < num_shots; ++s) {
+        if (draw(rng) >= prob_one) zero_shots++;
+    }
+
+    // Non-parity outcomes are impossible only because the representation
+    // asserts perfect correlation across all nodes; that assumption was
+    // validated above.
+    return {0, zero_shots};
 }
 
 double VRTS300Engine::compute_fidelity(const VRTS300Engine& other) const {

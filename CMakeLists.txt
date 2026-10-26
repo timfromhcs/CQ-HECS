@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(CQ_HECS VERSION 2.2.1 LANGUAGES CXX)
+project(CQ_HECS VERSION 2.2.2 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -315,6 +315,18 @@ target_link_libraries(test_300q_stress PRIVATE ${Vulkan_LIBRARIES})
 add_executable(test_qasm_contract tests/test_qasm_contract.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
 target_link_libraries(test_qasm_contract PRIVATE ${Vulkan_LIBRARIES})
 
+add_executable(test_statevector_contract tests/cpp/test_statevector_contract.cpp)
+target_include_directories(test_statevector_contract PRIVATE include src)
+target_link_libraries(test_statevector_contract PRIVATE ${Vulkan_LIBRARIES})
+
+add_executable(test_mps_contract tests/cpp/test_mps_contract.cpp)
+target_include_directories(test_mps_contract PRIVATE include src)
+target_link_libraries(test_mps_contract PRIVATE ${Vulkan_LIBRARIES})
+
+add_executable(test_qpu_facade_contract tests/cpp/test_qpu_facade_contract.cpp)
+target_include_directories(test_qpu_facade_contract PRIVATE include src)
+target_link_libraries(test_qpu_facade_contract PRIVATE ${Vulkan_LIBRARIES})
+
 # 7. CTest Verification Suite
 enable_testing()
 add_test(NAME test_reversibility COMMAND test_reversibility)
@@ -331,6 +343,9 @@ add_test(NAME test_exact_ring COMMAND test_exact_ring)
 add_test(NAME test_stabilizer_extreme COMMAND test_stabilizer_extreme)
 add_test(NAME test_300q_stress COMMAND test_300q_stress)
 add_test(NAME test_qasm_contract COMMAND test_qasm_contract)
+add_test(NAME test_statevector_contract COMMAND test_statevector_contract)
+add_test(NAME test_mps_contract COMMAND test_mps_contract)
+add_test(NAME test_qpu_facade_contract COMMAND test_qpu_facade_contract)
 
 # 8. Nanobind Python C++20 Modules
 find_package(Python 3.11 COMPONENTS Interpreter Development.Module QUIET)

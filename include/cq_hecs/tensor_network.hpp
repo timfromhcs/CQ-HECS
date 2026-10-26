@@ -77,10 +77,26 @@ public:
     /// @brief Construct canonical 300-qubit GHZ state across the 6x5x10 lattice
     void construct_ghz300();
 
-    /// @brief Execute full tensor contraction and measure state parity over N shots
-    /// Returns pair: <non_parity_count, count_zeros>
-    /// For GHZ state: non_parity_count == 0, count_zeros == num_shots / 2
-    std::pair<uint64_t, uint64_t> measure_parity_shots(uint32_t num_shots);
+    /// @brief Sample shot outcomes from a fully correlated GHZ-like state.
+    ///
+    /// The compact 300-qubit representation stores one amplitude pair per site.
+    /// This routine validates that every site carries the same amplitude pair
+    /// and is flagged entangled, then draws @p num_shots independent samples
+    /// from the resulting two-outcome distribution using a seeded PRNG.
+    ///
+    /// @param num_shots Number of independent measurement shots to draw.
+    /// @param seed PRNG seed; the same seed yields the same histogram.
+    /// @return Pair <non_parity_count, count_zeros>. Non-parity outcomes are
+    ///         structurally impossible under the validated correlation
+    ///         assumption and are always reported as 0; the |0...0> and
+    ///         |1...1> split follows the stored amplitude ratio (equal
+    ///         amplitudes therefore give a binomial split around num_shots/2,
+    ///         not an exact half-and-half assignment).
+    /// @throws std::logic_error if the state is not fully correlated or has
+    ///         zero norm. Arbitrary 300-qubit states cannot be sampled by this
+    ///         compact representation.
+    std::pair<uint64_t, uint64_t> measure_parity_shots(
+        uint32_t num_shots, uint64_t seed = 42);
 
     /// @brief Compute bit-exact state overlap / fidelity with another state (e.g. ground state)
     /// Returns 1.0 if bit-exact match across all 300 state tensors

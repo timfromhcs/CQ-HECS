@@ -18,6 +18,24 @@ mathematical claims are itemised in `research/v2/FORMALIZATION_STATUS.md`.
 | Shared gate manifest + capability-first routing | `cqhecs/gate_manifest.py`, `cqhecs/router.py` | **implemented (v2.2.1)** | one table supplies arity/parameters/support to analyzer, router, Qiskit `Target` and backends | `test_hardening_v221.py`, `TestFailClosedRouting`, mutation mutant 11 |
 | Strict Python QASM reader | `cqhecs/circuit_parsing.py` | **implemented (v2.2.1)** | fail-closed line grammar, global register offsets, bounded angle grammar (no `eval`), source-order measurements | `TestPythonNativeQASMDifferential`, `TestStrictQASMParser` |
 
+## Native C++ surfaces (reference and legacy)
+
+These are separate from the supported Python `cqhecs` package. They are built
+and tested by CTest, and their contracts are deliberately narrow.
+
+| Surface | Status | Contract | Evidence |
+| :--- | :--- | :--- | :--- |
+| `cq_hecs::core::StateVectorSimulator` | **reference implementation** | Dense Q1.31 state, at most 28 qubits; gates validate indices; `sample_counts(shots, seed)` is seeded Born-rule sampling; `measure(target, rng)` projects and renormalises; probabilities are evaluated in double precision | `tests/cpp/test_statevector_contract.cpp` |
+| `cq_hecs::core::MPSSimulator` | **experimental CPU reference** | Two-site CNOT/1q updates via complex SVD; non-adjacent CNOT through exact SWAP routing; generic right-environment sampling; GHZ fast path only after an exact tensor check; truncation weight is diagnostic, not a certified bound | `tests/cpp/test_mps_contract.cpp` |
+| `cq_hecs::core::VulkanQpuEngine` | **CPU reference facade** | Evolves CPU MPS/statevector; no Vulkan dispatch; `MEASURE` is terminal and gates after it are rejected; unsupported opcodes throw; QASM operands limited to qubits 0–255 because `J_QuantumOpcode` stores 8-bit indices | `tests/cpp/test_qpu_facade_contract.cpp`, legacy Qiskit provider tests |
+| `cqhecs::vulkan::VulkanEngine` | **planner-only** | Stores site/bond size metadata and a memory budget only; gate and sampling methods throw; `truncate_bond()` adjusts metadata, not amplitudes | `tests/cpp/test_300q_stress.cpp` |
+| `VRTS300Engine` | **legacy diagnostic** | Compact fully-correlated GHZ-like representation; `measure_parity_shots(shots, seed)` validates correlation and draws seeded shots; arbitrary 300-qubit states are refused | `tests/test_ghz300.cpp`, `test_300q_stress` |
+| Legacy native QASM executor (`QASMParserCPP::execute_on_vulkan`) | **legacy diagnostic** | `engine_class = legacy_z8_phase_ledger`, `statevector_simulation = false`; parse errors block execution | `tests/test_qasm_contract.cpp` |
+
+Physical Vulkan compute dispatch is **not verified** and is not claimed. Shader
+compilation is checked separately by `scripts/verify_vulkan_shaders.py`.
+
+
 ## Deferral / rejection summary
 
 | Method | Decision | Reason (see METHOD_CATALOG §3 for detail) |

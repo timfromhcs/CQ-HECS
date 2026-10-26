@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 echo =================================================================
-echo  CQ-HECS 2.2.1: Monolithic Unified Binary and Shared Library Build
+echo  CQ-HECS 2.2.2: Monolithic Unified Binary and Shared Library Build
 echo =================================================================
 
 :: Step 1: Compile GLSL Shaders and Embed into Static C++ Headers

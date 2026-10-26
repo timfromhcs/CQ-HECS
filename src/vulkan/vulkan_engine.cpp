@@ -49,35 +49,58 @@ void VulkanEngine::allocate_mps_sites(uint32_t n_qubits, uint32_t chi) {
 }
 
 void VulkanEngine::apply_h(uint32_t q) {
-    if (q >= num_qubits) return;
-    // Single site operation preserves bond dimension
+    if (q >= num_qubits) throw std::out_of_range("VulkanEngine: qubit index out of range");
+    throw std::logic_error(
+        "cqhecs::vulkan::VulkanEngine is a memory-planning allocator and does not "
+        "evolve a quantum state; use cq_hecs::core::MPSSimulator or "
+        "cq_hecs::core::StateVectorSimulator for gate execution");
 }
 
 void VulkanEngine::apply_x(uint32_t q) {
-    if (q >= num_qubits) return;
+    if (q >= num_qubits) throw std::out_of_range("VulkanEngine: qubit index out of range");
+    throw std::logic_error(
+        "cqhecs::vulkan::VulkanEngine is a memory-planning allocator and does not "
+        "evolve a quantum state; use cq_hecs::core::MPSSimulator or "
+        "cq_hecs::core::StateVectorSimulator for gate execution");
 }
 
 void VulkanEngine::apply_z(uint32_t q) {
-    if (q >= num_qubits) return;
+    if (q >= num_qubits) throw std::out_of_range("VulkanEngine: qubit index out of range");
+    throw std::logic_error(
+        "cqhecs::vulkan::VulkanEngine is a memory-planning allocator and does not "
+        "evolve a quantum state; use cq_hecs::core::MPSSimulator or "
+        "cq_hecs::core::StateVectorSimulator for gate execution");
 }
 
 void VulkanEngine::apply_s(uint32_t q) {
-    if (q >= num_qubits) return;
+    if (q >= num_qubits) throw std::out_of_range("VulkanEngine: qubit index out of range");
+    throw std::logic_error(
+        "cqhecs::vulkan::VulkanEngine is a memory-planning allocator and does not "
+        "evolve a quantum state; use cq_hecs::core::MPSSimulator or "
+        "cq_hecs::core::StateVectorSimulator for gate execution");
 }
 
 void VulkanEngine::apply_t(uint32_t q) {
-    if (q >= num_qubits) return;
+    if (q >= num_qubits) throw std::out_of_range("VulkanEngine: qubit index out of range");
+    throw std::logic_error(
+        "cqhecs::vulkan::VulkanEngine is a memory-planning allocator and does not "
+        "evolve a quantum state; use cq_hecs::core::MPSSimulator or "
+        "cq_hecs::core::StateVectorSimulator for gate execution");
 }
 
 void VulkanEngine::apply_cx(uint32_t ctrl, uint32_t tgt) {
-    if (ctrl >= num_qubits || tgt >= num_qubits) return;
-    uint32_t q_left = std::min(ctrl, tgt);
-    truncate_bond(q_left);
+    if (ctrl >= num_qubits || tgt >= num_qubits) {
+        throw std::out_of_range("VulkanEngine: qubit index out of range");
+    }
+    throw std::logic_error(
+        "cqhecs::vulkan::VulkanEngine is a memory-planning allocator and does not "
+        "evolve a quantum state; use cq_hecs::core::MPSSimulator or "
+        "cq_hecs::core::StateVectorSimulator for gate execution");
 }
 
 void VulkanEngine::truncate_bond(uint32_t site_idx) {
     if (site_idx + 1 >= num_qubits || max_bond_dim == 0) return;
-    // Dynamic truncation only if explicit bond dimension limit is set (> 0)
+    // Metadata-only planning adjustment; no amplitudes are stored here.
     if (sites_[site_idx].chi_right > max_bond_dim) {
         size_t old_bytes_l = sites_[site_idx].byte_size;
         size_t old_bytes_r = sites_[site_idx + 1].byte_size;
@@ -97,14 +120,12 @@ void VulkanEngine::truncate_bond(uint32_t site_idx) {
 }
 
 std::vector<uint8_t> VulkanEngine::sample_fast_shots(uint32_t shots, uint64_t seed) {
-    std::vector<uint8_t> samples(shots);
-    std::mt19937_64 rng(seed);
-    std::uniform_int_distribution<int> dist(0, 1);
-
-    for (uint32_t i = 0; i < shots; ++i) {
-        samples[i] = static_cast<uint8_t>(dist(rng));
-    }
-    return samples;
+    (void)shots;
+    (void)seed;
+    throw std::logic_error(
+        "cqhecs::vulkan::VulkanEngine stores no amplitudes and cannot sample; "
+        "use cq_hecs::core::MPSSimulator::sample_counts or "
+        "cq_hecs::core::StateVectorSimulator::sample_counts");
 }
 
 } // namespace vulkan

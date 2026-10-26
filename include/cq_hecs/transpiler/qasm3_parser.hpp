@@ -15,6 +15,10 @@
 namespace cq_hecs {
 namespace transpiler {
 
+/// J_QuantumOpcode stores target/control qubit indices in a uint8_t, so
+/// circuits executed through this bytecode can only address qubits 0..255.
+constexpr uint32_t MAX_OPCODE_QUBIT_INDEX = 255;
+
 /**
  * @brief Parsed Quantum Circuit representation.
  */
@@ -155,11 +159,20 @@ private:
             std::string num_str = name.substr(b_open + 1, b_close - b_open - 1);
             try {
                 uint32_t idx = static_cast<uint32_t>(std::stoul(num_str));
+                if (idx > MAX_OPCODE_QUBIT_INDEX) {
+                    throw std::out_of_range(
+                        "Qasm3Parser: qubit index " + std::to_string(idx) +
+                        " exceeds the 8-bit J_QuantumOpcode address limit of " +
+                        std::to_string(MAX_OPCODE_QUBIT_INDEX) +
+                        "; refusing to truncate the index silently");
+                }
                 circuit.qubit_map[name] = idx;
                 if (idx + 1 > circuit.num_qubits) {
                     circuit.num_qubits = idx + 1;
                 }
                 return idx;
+            } catch (const std::out_of_range&) {
+                throw;
             } catch (...) {}
         }
 
