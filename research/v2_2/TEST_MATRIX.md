@@ -43,6 +43,38 @@ Local results for the release candidate:
 - The Python wheel is pure Python and does not claim to contain native/GPU
   artifacts.
 
+### Post-release verification (recorded after publication)
+
+- Pull request: [#6](https://github.com/timfromhcs/CQ-HECS/pull/6), merged
+  `2026-10-26T08:13:15Z`.
+- Release commit / `main`: `7330222ed68fbc577e950f3b99d7c4d3b15fcde6`.
+- Required CI for that commit: run
+  [40290751381](https://github.com/timfromhcs/CQ-HECS/actions/runs/40290751381),
+  7/7 jobs `success`.
+- Release workflow: run
+  [40291343734](https://github.com/timfromhcs/CQ-HECS/actions/runs/40291343734),
+  both jobs `success`.
+- Tag `v2.2.1` is annotated and resolves to
+  `7330222ed68fbc577e950f3b99d7c4d3b15fcde6`; it was created only after the CI
+  above was green. Tag object: `67e47ef23aa6ae5d8b23f718d7acd00585d16685`.
+- GitHub Release
+  [v2.2.1](https://github.com/timfromhcs/CQ-HECS/releases/tag/v2.2.1) is
+  published (not draft, not prerelease) with five assets. Downloaded assets were
+  re-hashed locally and match `sha256sums.txt`:
+  - `cqhecs-2.2.1-py3-none-any.whl`:
+    `08c4e22da4af13e4956e0053c2db1ed4262023f1c70d95b8d775ce6b2be87303`
+  - `cqhecs-2.2.1.tar.gz`:
+    `1b3d3d2bd220bb827beb0b1f90d707afea2828df50b2bb5a115f51c65ffa1e92`
+  - `cqhecs-sbom.spdx.json`:
+    `ba9c8e531732689fe5b54db105b3564d2320ab0f680c057f2925f0222c90056f`
+  - `RELEASE_NOTES_v2.2.1.md`:
+    `0d78324232c7edff443986cc16ef1ebcb3b6ecacd5fcc4d884011e140e5abd7f`
+- The published SBOM names version `2.2.1` and records git commit
+  `7330222ed68fbc577e950f3b99d7c4d3b15fcde6`.
+
+This section records remote facts. Cloud Build and physical-GPU execution remain
+**NOT_VERIFIED** and are not implied by a green CI run.
+
 ---
 
 ## v2.2.0 test matrix
