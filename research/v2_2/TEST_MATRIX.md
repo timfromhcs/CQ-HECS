@@ -75,6 +75,27 @@ Local results for the release candidate:
 This section records remote facts. Cloud Build and physical-GPU execution remain
 **NOT_VERIFIED** and are not implied by a green CI run.
 
+#### Post-release follow-up: mutation-harness bytecode race
+
+The scheduled nightly run
+[40292570665](https://github.com/timfromhcs/CQ-HECS/actions/runs/40292570665)
+on `b0f1553` failed its mutation baseline (`t_count_classification`). The cause
+was not the simulator: a same-size mutant written and restored within one
+second left a `.pyc` that CPython still considered valid for the restored
+source, so the baseline executed mutated code. Fixed on `main` in
+`ff33969d0fea70f320c55fd15945c18bf144b0e4` (checks run with
+`PYTHONDONTWRITEBYTECODE=1` and the target bytecode cache is invalidated on
+apply and restore). Regression test:
+`tests/test_mutation_harness_meta.py::TestStaleBytecode`.
+
+Re-verification on the fixed commit: CI run
+[40294997957](https://github.com/timfromhcs/CQ-HECS/actions/runs/40294997957)
+and nightly run
+[40295008822](https://github.com/timfromhcs/CQ-HECS/actions/runs/40295008822),
+both green; the nightly log shows 14/14 CTest, 310 Python tests passed, mutation
+baseline OK and 11/11 killed. The published `v2.2.1` tag was not moved; its
+artifacts are unchanged.
+
 ---
 
 ## v2.2.0 test matrix
