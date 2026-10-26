@@ -66,7 +66,18 @@ private:
 };
 
 /**
- * @brief Vulkan Compute Engine with active 5.0 GB Memory Governor.
+ * @brief Memory-planning allocator for the legacy 300-qubit MPS layout.
+ *
+ * IMPORTANT: this class stores only site/bond sizes and a memory budget. It
+ * does not allocate amplitude tensors and does not evolve quantum states.
+ * The gate methods therefore fail closed instead of returning silently while
+ * leaving the state unchanged, and sample_fast_shots() refuses to emit random
+ * bits that were never drawn from a simulated state.
+ *
+ * Supported simulator paths with real state evolution are:
+ *   - cq_hecs::core::StateVectorSimulator (dense small-width reference)
+ *   - cq_hecs::core::MPSSimulator (generic MPS with SVD updates and sampling)
+ *   - cqhecs.FourPathRouter (supported Python package)
  */
 class VulkanEngine {
 public:
@@ -82,7 +93,7 @@ public:
     // 300-Qubit Linear MPS allocation with governor verification
     void allocate_mps_sites(uint32_t n_qubits, uint32_t chi);
 
-    // Gate operations
+    // Gate operations: unsupported by this planner-only class; they throw.
     void apply_h(uint32_t q);
     void apply_x(uint32_t q);
     void apply_z(uint32_t q);
@@ -90,10 +101,10 @@ public:
     void apply_t(uint32_t q);
     void apply_cx(uint32_t ctrl, uint32_t tgt);
 
-    // Fast 1M shots sampling
+    // Legacy interface: no state is stored, so this always throws.
     std::vector<uint8_t> sample_fast_shots(uint32_t shots, uint64_t seed = 42);
 
-    // Dynamic SVD/QR truncation to keep bond dimension <= max_bond_dim
+    // Adjusts the planned bond size metadata; performs no numerical truncation.
     void truncate_bond(uint32_t site_idx);
 
     double get_active_vram_mb() const noexcept {

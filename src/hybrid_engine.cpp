@@ -152,6 +152,7 @@ uint8_t HybridEngine::measure_qubit(uint32_t q, std::mt19937_64* rng) {
         return tableau.measure(q, rng);
     }
     // Statevector measurement
+    if (rng) return statevector.measure(q, *rng);
     return statevector.measure(q);
 }
 
@@ -174,7 +175,7 @@ std::map<std::string, uint32_t> HybridEngine::sample_counts(uint32_t shots, uint
     }
 
     // Statevector sampling
-    return statevector.sample_counts(shots);
+    return statevector.sample_counts(shots, seed);
 }
 
 double HybridEngine::get_probability(uint32_t basis_state) const {

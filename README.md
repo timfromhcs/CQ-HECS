@@ -41,11 +41,13 @@ Schaltungsklasse den passenden Pfad wählt — und an der Grenze lieber
 | **Fail-closed statt fail-open** | Ungültiges OpenQASM, unbekannte Gates und Ressourcenüberschreitungen führen zu strukturierten Fehlern — nie zu einer Teilausführung. |
 | **Ehrliche Hardware-Aussagen** | Alle vier Python-Pfade rechnen auf der CPU. Physische GPU-Beschleunigung ist **nicht verifiziert** und wird nicht behauptet. |
 
-> **Status:** `v2.2.1` ist ein Patch-Release auf `v2.2.0`. Es vereinheitlicht
-> den strikten QASM-Vertrag für Python und Native, führt ein gemeinsames
-> Gate-Manifest mit capability-first Routing ein und korrigiert die
-> Messsemantik, Path-D-Observablen und die MPS-Ressourcenbilanz. Es fügt
-> **keinen neuen Simulator und keine GPU-Beschleunigung** hinzu.
+> **Status:** `v2.2.2` ist ein Patch-Release auf `v2.2.1`. Es beseitigt
+> Erfolgsmeldungen ohne echte Zustandsevolution in den nativen Referenz- und
+> Legacy-Flächen: Der Vulkan-Engine-Planer lehnt Gates/Sampling ab, VRTS-300
+> prüft die GHZ-Korrelation und sampelt geseedet, Statevector und MPS sampeln
+> nach der Born-Regel, und der QASM-Bytecode lehnt Qubit-Indizes > 255 ab,
+> statt sie still abzuschneiden. Es fügt **keinen neuen Simulator und keine
+> GPU-Beschleunigung** hinzu.
 > Details: [Release Notes](RELEASE_NOTES.md) · [Changelog](CHANGELOG.md).
 
 ---
@@ -330,12 +332,12 @@ pip install -e .
 
 ```bash
 python -m build
-# dist/cqhecs-2.2.1-py3-none-any.whl
-# dist/cqhecs-2.2.1.tar.gz
+# dist/cqhecs-2.2.2-py3-none-any.whl
+# dist/cqhecs-2.2.2.tar.gz
 ```
 
 Die veröffentlichten Artefakte, Checksums und die SPDX-SBOM stehen im
-[Release v2.2.1](https://github.com/timfromhcs/CQ-HECS/releases/tag/v2.2.1).
+[Release v2.2.2](https://github.com/timfromhcs/CQ-HECS/releases/tag/v2.2.2).
 
 ---
 
@@ -455,19 +457,21 @@ erfundenen 50/50-Counts.
 
 ## ✅ Verifikation
 
-Die folgenden Zahlen sind lokale Messungen für den `v2.2.1`-Kandidaten, keine
+Die folgenden Zahlen sind lokale Messungen für den `v2.2.2`-Kandidaten, keine
 Leistungsbenchmarks. CI-Ergebnisse werden für den exakt gepushten SHA separat
-in [`research/v2_2/TEST_MATRIX.md`](research/v2_2/TEST_MATRIX.md) festgehalten.
+in [`research/next_stable/TEST_MATRIX.md`](research/next_stable/TEST_MATRIX.md)
+festgehalten; [`research/v2_2/TEST_MATRIX.md`](research/v2_2/TEST_MATRIX.md)
+bleibt der historische Nachweis für `v2.2.1`.
 
 | Gate | Ergebnis |
 | :--- | :--- |
-| CTest (MSVC Release) | **14/14 bestanden** |
-| Python-Suite (CPython 3.14 + Nativkern) | **309 bestanden** |
+| CTest (MSVC Release) | **17/17 bestanden** |
+| Python-Suite (CPython 3.14 + Nativkern) | **311 bestanden** |
 | Python-Suite (CPython 3.11, gepinnte Abhängigkeiten, ohne Nativkern) | im CI-Matrixjob; native Tests skippen dort sichtbar |
 | Mutation-Harness | **11/11 Mutanten erkannt**, Baseline sauber |
 | Branch-Coverage | **81 %** lokal; CI-Schwelle **70 %** |
 | Shader-Verifikation | **12/12** SPIR-V-Shader |
-| Version-Konsistenz | alle Flächen melden `2.2.1` |
+| Version-Konsistenz | alle Flächen melden `2.2.2` |
 | Silent-Truncation-Audit | keine Muster gefunden |
 | GitHub Actions | Linux/Windows nativ, ASan/UBSan, Python 3.12–3.14, Package-Smoke |
 | Physische GPU | **nicht verifiziert** |
@@ -613,7 +617,7 @@ Repository. GitHub bietet über [`CITATION.cff`](CITATION.cff) einen
 @software{cqhecs2026,
   author  = {Stark, Tim Johann},
   title   = {CQ-HECS: Classical Quantum High-Efficiency Compute Simulator},
-  version = {2.2.1},
+  version = {2.2.2},
   year    = {2026},
   url     = {https://github.com/timfromhcs/CQ-HECS},
   license = {Apache-2.0}

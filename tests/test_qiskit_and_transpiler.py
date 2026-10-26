@@ -79,8 +79,36 @@ class TestQiskitAndTranspiler(unittest.TestCase):
         self.assertNotIn("10", counts)
 
     @unittest.skipUnless(HAS_QISKIT, "Qiskit not installed")
-    def test_qiskit_ghz300_linear_execution(self):
-        """Verify 300-qubit GHZ state execution via Qiskit BackendV2."""
+    def test_qiskit_ghz256_linear_execution(self):
+        """Verify the largest QASM-addressable register: a 256-qubit GHZ state.
+
+        ``J_QuantumOpcode`` stores qubit indices in a ``uint8_t``, so 256
+        qubits (indices 0..255) is the widest circuit this bridge can express.
+        """
+        self._skip_without_native()
+        qc = QuantumCircuit(256)
+        qc.h(0)
+        for i in range(255):
+            qc.cx(i, i + 1)
+        qc.measure_all()
+
+        backend = VulkanQpuBackend(num_qubits=256, topology="linear")
+        job = backend.run(qc, shots=1000)
+        counts = job.get_counts()
+
+        all_zeros = "0" * 256
+        all_ones = "1" * 256
+        self.assertIn(all_zeros, counts)
+        self.assertIn(all_ones, counts)
+        self.assertEqual(counts[all_zeros] + counts[all_ones], 1000)
+
+    @unittest.skipUnless(HAS_QISKIT, "Qiskit not installed")
+    def test_qiskit_ghz300_is_rejected_not_truncated(self):
+        """A 300-qubit circuit cannot be addressed by the 8-bit opcode fields.
+
+        Refusing is required: truncating q[299] to q[43] would silently corrupt
+        the circuit while still reporting plausible counts.
+        """
         self._skip_without_native()
         qc = QuantumCircuit(300)
         qc.h(0)
@@ -89,14 +117,8 @@ class TestQiskitAndTranspiler(unittest.TestCase):
         qc.measure_all()
 
         backend = VulkanQpuBackend(num_qubits=300, topology="linear")
-        job = backend.run(qc, shots=1000)
-        counts = job.get_counts()
-
-        all_zeros = "0" * 300
-        all_ones = "1" * 300
-        self.assertIn(all_zeros, counts)
-        self.assertIn(all_ones, counts)
-        self.assertEqual(counts[all_zeros] + counts[all_ones], 1000)
+        with self.assertRaises((IndexError, ValueError)):
+            backend.run(qc, shots=100)
 
 
 if __name__ == "__main__":

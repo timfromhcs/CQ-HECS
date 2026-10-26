@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cqhecs"
-version = "2.2.1"
+version = "2.2.2"
 description = "CQ-HECS: Deterministic Classical Four-Path Quantum Circuit Simulation Engine"
 readme = "README.md"
 authors = [{ name = "timfromhcs" }]

@@ -13,6 +13,7 @@
 #include <string>
 #include <map>
 #include <chrono>
+#include <stdexcept>
 
 namespace cq_hecs {
 namespace core {
@@ -28,10 +29,12 @@ struct alignas(16) IndirectDispatchCommand {
 };
 
 /**
- * @brief Unified QPU Execution Engine.
- * 
- * Supports both large-scale 1D MPS circuits (up to 300 qubits, memory strictly < 50 MB)
- * and bit-exact statevector circuits with batched Indirect Dispatch execution.
+ * @brief CPU reference facade for the native four-path/native test surface.
+ *
+ * Despite the historical name this class does not submit Vulkan work. It
+ * evolves a CPU MPS or dense statevector and is kept as a reference/planner
+ * path. No indirect-dispatch metadata is fabricated: a call either evolves
+ * the CPU state or throws for an unsupported opcode.
  */
 class VulkanQpuEngine {
 public:
@@ -58,30 +61,34 @@ public:
     }
 
     /**
-     * @brief Execute a sequence of 128-bit J_QuantumOpcode instructions via batched indirect dispatch.
+     * @brief Execute a sequence of J_QuantumOpcode instructions on the CPU state.
+     *
+     * Measurement opcodes are terminal: they do not mutate the state, because
+     * sampling is performed by sample_counts() over the full register. A gate
+     * after a measurement would require mid-circuit measurement and classical
+     * feed-forward, which this reference facade does not model, so that case is
+     * rejected instead of silently reordered.
      */
     void execute_bytecode(const std::vector<transpiler::J_QuantumOpcode>& opcodes) {
-        // Build indirect dispatch commands
-        std::vector<IndirectDispatchCommand> indirect_cmds;
-        size_t batch_size = 1024;
-        size_t num_batches = (opcodes.size() + batch_size - 1) / batch_size;
-        indirect_cmds.resize(num_batches);
-        for (size_t b = 0; b < num_batches; ++b) {
-            indirect_cmds[b].x = static_cast<uint32_t>(std::min(batch_size, opcodes.size() - b * batch_size));
-            indirect_cmds[b].y = 1;
-            indirect_cmds[b].z = 1;
-        }
-
-        // Execute instructions
+        bool measured = false;
         for (const auto& op : opcodes) {
             transpiler::OpCode code = op.get_opcode();
             if (code == transpiler::OpCode::NOP || code == transpiler::OpCode::BARRIER) {
                 continue;
             }
+            if (code == transpiler::OpCode::MEASURE) {
+                measured = true;
+                continue;
+            }
+            if (measured) {
+                throw std::invalid_argument(
+                    "VulkanQpuEngine: mid-circuit measurement with subsequent "
+                    "gates is not supported by the CPU reference facade");
+            }
 
             if (mps) {
                 if (code == transpiler::OpCode::CX) {
-                    mps->apply_cnot_adjacent(op.control_q, op.target_q);
+                    mps->apply_cx(op.control_q, op.target_q);
                 } else if (code == transpiler::OpCode::H) {
                     mps->apply_1q_gate(op.target_q, 1);
                 } else if (code == transpiler::OpCode::X) {
@@ -100,21 +107,39 @@ public:
                     mps->apply_1q_gate(op.target_q, 8);
                 } else if (code == transpiler::OpCode::RZ) {
                     mps->apply_1q_gate(op.target_q, 9, op.phase1);
+                } else {
+                    throw std::invalid_argument(
+                        "VulkanQpuEngine: unsupported opcode on the MPS reference path");
                 }
             } else if (sv) {
                 if (code == transpiler::OpCode::H) {
                     sv->apply_h(op.target_q);
                 } else if (code == transpiler::OpCode::X) {
                     sv->apply_x(op.target_q);
+                } else if (code == transpiler::OpCode::Y) {
+                    sv->apply_y(op.target_q);
                 } else if (code == transpiler::OpCode::Z) {
                     sv->apply_z(op.target_q);
+                } else if (code == transpiler::OpCode::S) {
+                    sv->apply_s(op.target_q);
+                } else if (code == transpiler::OpCode::SDG) {
+                    sv->apply_sdg(op.target_q);
+                } else if (code == transpiler::OpCode::T) {
+                    sv->apply_t(op.target_q);
+                } else if (code == transpiler::OpCode::TDG) {
+                    sv->apply_tdg(op.target_q);
                 } else if (code == transpiler::OpCode::RZ) {
                     sv->apply_rz(op.target_q, op.phase1);
                 } else if (code == transpiler::OpCode::CX) {
                     sv->apply_cnot(op.control_q, op.target_q);
                 } else if (code == transpiler::OpCode::SWAP) {
                     sv->apply_swap(op.control_q, op.target_q);
+                } else {
+                    throw std::invalid_argument(
+                        "VulkanQpuEngine: unsupported opcode on the statevector reference path");
                 }
+            } else {
+                throw std::logic_error("VulkanQpuEngine: no backend was initialised");
             }
         }
     }
@@ -129,35 +154,13 @@ public:
     }
 
     /**
-     * @brief Sample measurement bitstrings into counts dictionary.
+     * @brief Sample measurement bitstrings from the CPU reference state.
      */
-    std::map<std::string, uint32_t> sample_counts(uint32_t shots = 1024) {
-        std::map<std::string, uint32_t> counts;
-        if (mps) {
-            auto [z_shots, o_shots, non_parity] = mps->measure_ghz_parity(shots);
-            std::string all_zeros(num_qubits, '0');
-            std::string all_ones(num_qubits, '1');
-            if (z_shots > 0) counts[all_zeros] = z_shots;
-            if (o_shots > 0) counts[all_ones] = o_shots;
-        } else if (sv) {
-            // Sample from statevector
-            std::mt19937 rng(1337);
-            std::vector<double> probs(sv->dim);
-            for (size_t i = 0; i < sv->dim; ++i) {
-                int32_t norm = complex_norm_sq(sv->state[i]);
-                probs[i] = double(norm) / double(ComplexQ31::ONE_VAL);
-            }
-            std::discrete_distribution<size_t> dist(probs.begin(), probs.end());
-            for (uint32_t s = 0; s < shots; ++s) {
-                size_t outcome = dist(rng);
-                std::string bitstr;
-                for (int b = int(num_qubits) - 1; b >= 0; --b) {
-                    bitstr += ((outcome >> b) & 1) ? '1' : '0';
-                }
-                counts[bitstr]++;
-            }
-        }
-        return counts;
+    std::map<std::string, uint32_t> sample_counts(
+        uint32_t shots = 1024, uint64_t seed = 1337) {
+        if (mps) return mps->sample_counts(shots, seed);
+        if (sv) return sv->sample_counts(shots, seed);
+        throw std::logic_error("VulkanQpuEngine: no backend was initialised");
     }
 
     double get_memory_mb() const noexcept {

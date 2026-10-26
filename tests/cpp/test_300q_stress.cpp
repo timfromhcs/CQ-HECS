@@ -1,50 +1,47 @@
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include "cqhecs/vulkan/vulkan_engine.hpp"
 #include <iostream>
 #include <cassert>
 #include <chrono>
+#include <stdexcept>
 #include <vector>
 #include <cmath>
 
 using namespace cqhecs::vulkan;
 
-void test_300q_deep_entanglement_walk() {
-    std::cout << "[STRESS] Running 300-Qubit Deep Entanglement Walk (10,000 Gate Layers)...\n";
+// This suite verifies the legacy VulkanEngine memory-planning contract only.
+// The class stores no amplitudes, so gate execution and sampling must fail
+// closed instead of returning success-shaped output.
+void test_300q_allocation_governor() {
+    std::cout << "[PLANNER] Verifying 300-qubit MPS layout against the 5.0 GB governor...\n";
     const uint32_t N = 300;
-    const uint32_t LAYERS = 10000;
 
     VulkanEngine engine(N, 64);
-
-    auto t0 = std::chrono::high_resolution_clock::now();
-
-    // 10,000 layers of alternating H and CX gates across 300 qubits
-    for (uint32_t l = 0; l < LAYERS; ++l) {
-        uint32_t q = l % (N - 1);
-        engine.apply_h(q);
-        engine.apply_cx(q, q + 1);
-
-        // Periodically verify memory ceiling
-        if (l % 1000 == 0) {
-            double active_mb = engine.get_active_vram_mb();
-            assert(active_mb <= 5120.0 && "VRAM ceiling violated: > 5.0 GB");
-        }
-    }
-
-    auto t1 = std::chrono::high_resolution_clock::now();
-    double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
-
     double active_mb = engine.get_active_vram_mb();
-    std::cout << "  Executed " << (2 * LAYERS) << " gates across 300 qubits in: " << ms << " ms.\n";
-    std::cout << "  Active VRAM: " << active_mb << " MB (Ceiling: <= 5120.0 MB / 5.0 GB).\n";
-    assert(active_mb <= 5120.0);
-    std::cout << "  >>> PASS: 300-Qubit deep walk strictly satisfied 5.0 GB VRAM governor.\n\n";
+    std::cout << "  Planned site metadata: " << active_mb << " MB (Ceiling: <= 5120.0 MB)\n";
+    assert(active_mb > 0.0 && active_mb <= 5120.0);
+
+    bool threw_h = false;
+    bool threw_cx = false;
+    try { engine.apply_h(0); } catch (const std::logic_error&) { threw_h = true; }
+    try { engine.apply_cx(0, 1); } catch (const std::logic_error&) { threw_cx = true; }
+    assert(threw_h && "H must fail closed without a state representation");
+    assert(threw_cx && "CX must fail closed without a state representation");
+
+    bool threw_sample = false;
+    try { engine.sample_fast_shots(1000); } catch (const std::logic_error&) { threw_sample = true; }
+    assert(threw_sample && "sampling must fail closed without a state representation");
+
+    std::cout << "  >>> PASS: planner allocates metadata and gate/sample calls fail closed.\n\n";
 }
 
 void test_vram_hard_exception() {
-    std::cout << "[STRESS] Testing VRAM Governor Hard Exception on > 5120 MB...\n";
+    std::cout << "[PLANNER] Testing VRAM Governor hard exception on > 5120 MB...\n";
     MemoryGovernor gov;
     bool caught = false;
     try {
-        // Attempt to allocate 5.1 GB
         size_t excessive = 5ULL * 1024ULL * 1024ULL * 1024ULL + 100ULL * 1024ULL * 1024ULL;
         gov.allocate(excessive);
     } catch (const std::runtime_error& e) {
@@ -52,54 +49,29 @@ void test_vram_hard_exception() {
         std::cout << "  Caught expected governor exception: " << e.what() << "\n";
     }
     assert(caught && "Memory governor MUST throw on > 5120 MB");
-    std::cout << "  >>> PASS: Hard VRAM governor exception verified.\n\n";
+    std::cout << "  >>> PASS: hard VRAM governor exception verified.\n\n";
 }
 
-void test_1m_shots_born_rule_sampling() {
-    std::cout << "[STRESS] Running 1,000,000 Shots Born-Rule Sampling (< 10 ms)...\n";
-    const uint32_t SHOTS = 1000000;
-    VulkanEngine engine(300, 64);
-
-    auto t0 = std::chrono::high_resolution_clock::now();
-    auto samples = engine.sample_fast_shots(SHOTS, 42);
-    auto t1 = std::chrono::high_resolution_clock::now();
-
-    double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
-    std::cout << "  1,000,000 Shots Generated in: " << ms << " ms (Target: < 10 ms).\n";
-    assert(ms < 10.0 || ms < 200.0); // Strict target with safety margin for CI
-
-    // Chi-Square test on uniform distribution
-    uint32_t count_0 = 0;
-    uint32_t count_1 = 0;
-    for (uint8_t b : samples) {
-        if (b == 0) count_0++;
-        else count_1++;
-    }
-
-    double expected = SHOTS / 2.0;
-    double diff0 = count_0 - expected;
-    double diff1 = count_1 - expected;
-    double chi_sq = (diff0 * diff0) / expected + (diff1 * diff1) / expected;
-
-    std::cout << "  Counts: 0 -> " << count_0 << ", 1 -> " << count_1 << "\n";
-    std::cout << "  Chi-Square Statistic: " << chi_sq << " (Threshold for df=1, p=0.05 is 3.841)\n";
-
-    // Chi-Square statistic should be well within standard random bounds
-    assert(chi_sq < 10.828); // p > 0.001
-    std::cout << "  >>> PASS: Born-Rule sampling density verified statistically.\n\n";
+void test_out_of_range_is_reported() {
+    std::cout << "[PLANNER] Verifying invalid qubit indices are reported...\n";
+    VulkanEngine engine(8, 4);
+    bool caught = false;
+    try { engine.apply_z(8); } catch (const std::out_of_range&) { caught = true; }
+    assert(caught && "out-of-range qubit must throw out_of_range");
+    std::cout << "  >>> PASS: invalid qubit index rejected.\n\n";
 }
 
 int main() {
     std::cout << "=================================================================\n";
-    std::cout << " CQ-HECS 300-Qubit Stress Limits & VRAM Governor Suite\n";
+    std::cout << " CQ-HECS 300-Qubit Planner & VRAM Governor Suite\n";
     std::cout << "=================================================================\n\n";
 
-    test_300q_deep_entanglement_walk();
+    test_300q_allocation_governor();
     test_vram_hard_exception();
-    test_1m_shots_born_rule_sampling();
+    test_out_of_range_is_reported();
 
     std::cout << "=================================================================\n";
-    std::cout << " ALL 300-QUBIT STRESS TESTS PASSED (0 ERRORS, 0 MOCKS)\n";
+    std::cout << " PLANNER-ONLY CONTRACT VERIFIED (no quantum state claimed)\n";
     std::cout << "=================================================================\n";
     return 0;
 }

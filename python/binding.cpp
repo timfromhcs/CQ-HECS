@@ -70,7 +70,7 @@ NB_MODULE(_cq_hecs_core, m) {
     nb::class_<VulkanQpuEngine>(m, "VulkanQpuEngine")
         .def(nb::init<uint32_t, uint32_t>(), nb::arg("n_qubits") = 300, nb::arg("max_d") = 64)
         .def("execute_qasm", &VulkanQpuEngine::execute_qasm)
-        .def("sample_counts", &VulkanQpuEngine::sample_counts, nb::arg("shots") = 1024)
+        .def("sample_counts", &VulkanQpuEngine::sample_counts, nb::arg("shots") = 1024, nb::arg("seed") = 1337)
         .def("get_memory_mb", &VulkanQpuEngine::get_memory_mb)
         .def("reset", &VulkanQpuEngine::reset);
 }

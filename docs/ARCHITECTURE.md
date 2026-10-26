@@ -1,6 +1,6 @@
 # CQ-HECS Architecture (v2)
 
-> This document describes the architecture that v2.2.1 actually ships. It
+> This document describes the architecture that v2.2.2 actually ships. It
 > replaces an earlier aspirational "VRTS-300" specification whose bit-exact
 > Z(2^32) CORDIC phase ring and GPU VRAM accounting are not part of the
 > supported Python contract; the shipped native core does expose a 6x5x10
