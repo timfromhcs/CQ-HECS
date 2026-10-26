@@ -14,6 +14,7 @@ import numpy as np
 
 from cqhecs.circuit_parsing import parse_circuit
 from cqhecs.result import SimulationResult, hoeffding_total_variation_bound
+from cqhecs.gate_manifest import get_gate, path_gate_names
 
 
 class StabilizerRankError(RuntimeError):
@@ -365,14 +366,21 @@ class PathBStabilizerRankBackend:
     no approximation was applied, not that the arithmetic is symbolic.
     """
 
-    #: Gates the Clifford branch simulator can apply directly.
-    SUPPORTED_CLIFFORD_GATES = frozenset({
-        "h", "s", "sdg", "x", "y", "z", "cx", "cnot", "cz", "swap", "barrier", "id",
-        "rz", "p", "u1", "rx", "ry",
-    })
+    #: Gates the Clifford branch simulator can apply directly, derived from the
+    #: shared manifest (parameterised Clifford gates are handled as branches
+    #: when the angle is not a multiple of pi/2).
+    SUPPORTED_CLIFFORD_GATES = frozenset(
+        name
+        for name in path_gate_names("B")
+        if get_gate(name).clifford and not get_gate(name).parameterised
+    )
 
     #: Non-Clifford gates decomposed into rank branches.
-    SUPPORTED_NON_CLIFFORD_GATES = frozenset({"t", "tdg", "rz", "p", "u1", "rx", "ry"})
+    SUPPORTED_NON_CLIFFORD_GATES = frozenset(
+        name
+        for name in path_gate_names("B")
+        if not (get_gate(name).clifford and not get_gate(name).parameterised)
+    )
 
     #: Instructions with no effect on the state.
     IGNORED_GATES = frozenset({"barrier", "id"})
@@ -425,11 +433,6 @@ class PathBStabilizerRankBackend:
     ) -> None:
         """Fail closed on gates this backend cannot faithfully execute."""
         supported = self.SUPPORTED_CLIFFORD_GATES | self.SUPPORTED_NON_CLIFFORD_GATES
-        two_qubit = {"cx", "cnot", "cz", "swap"}
-        one_qubit = {
-            "h", "s", "sdg", "x", "y", "z", "t", "tdg", "rz", "p", "u1", "barrier", "id"
-        }
-        needs_params = {"rz", "p", "u1"}
 
         for name, qubits, params in instructions:
             if name == "measure":
@@ -443,15 +446,18 @@ class PathBStabilizerRankBackend:
                     f"Path B does not support gate '{name}'. "
                     f"Supported gates: {sorted(supported)}."
                 )
-            if name in two_qubit and len(qubits) != 2:
+            spec = get_gate(name)
+            if spec is None:
                 raise StabilizerRankError(
-                    f"Gate '{name}' expects 2 qubits, got {len(qubits)}: {qubits}"
+                    f"Path B does not support gate '{name}'."
                 )
-            if name in one_qubit and len(qubits) != 1:
+            if len(qubits) != spec.arity:
                 raise StabilizerRankError(
-                    f"Gate '{name}' expects 1 qubit, got {len(qubits)}: {qubits}"
+                    f"Gate '{name}' expects {spec.arity} qubit(s), got "
+                    f"{len(qubits)}: {qubits}"
                 )
-            if name in needs_params and not params:
+            if not (spec.min_params <= len(params) <= spec.max_params):
                 raise StabilizerRankError(
-                    f"Gate '{name}' requires a rotation angle parameter."
+                    f"Gate '{name}' expects {spec.min_params}.."
+                    f"{spec.max_params} parameter(s), got {len(params)}."
                 )

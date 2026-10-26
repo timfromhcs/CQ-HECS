@@ -41,9 +41,10 @@ Schaltungsklasse den passenden Pfad wählt — und an der Grenze lieber
 | **Fail-closed statt fail-open** | Ungültiges OpenQASM, unbekannte Gates und Ressourcenüberschreitungen führen zu strukturierten Fehlern — nie zu einer Teilausführung. |
 | **Ehrliche Hardware-Aussagen** | Alle vier Python-Pfade rechnen auf der CPU. Physische GPU-Beschleunigung ist **nicht verifiziert** und wird nicht behauptet. |
 
-> **Status:** `v2.2.0` ist ein Hardening-Release. Es ergänzt strukturierte
-> Diagnostik und eine explizite Engine-Klassifikation und entfernt fail-open-
-> Pfade sowie Tests, die ohne echte Messung grün werden konnten. Es fügt
+> **Status:** `v2.2.1` ist ein Patch-Release auf `v2.2.0`. Es vereinheitlicht
+> den strikten QASM-Vertrag für Python und Native, führt ein gemeinsames
+> Gate-Manifest mit capability-first Routing ein und korrigiert die
+> Messsemantik, Path-D-Observablen und die MPS-Ressourcenbilanz. Es fügt
 > **keinen neuen Simulator und keine GPU-Beschleunigung** hinzu.
 > Details: [Release Notes](RELEASE_NOTES.md) · [Changelog](CHANGELOG.md).
 
@@ -172,7 +173,7 @@ flowchart LR
 | :--- | :--- | :--- | :--- | :--- |
 | **A** | Gottesman-Knill-Tableau | reine Clifford-Schaltungen ($T=0$) | exakt, GF(2)-symplektisch, `error_bound = 0.0` | das erste nicht-Clifford-Gatter eskaliert |
 | **B** | Stabilizer-Rank-Zerlegung | niedriger $T$-Count | exakte Algebra, float64-Auswertung | 22 Qubits (Implementation-Deckel) |
-| **C** | Untruncated MPS | 1D Area-Law | keine bewusste Truncation; `numerical_error_bound=None` | Speicher; dichte Zustandskonversion ≤ 20 Qubits |
+| **C** | Untruncated MPS | 1D Area-Law | keine bewusste Truncation; `numerical_error_bound=None` | Speicherbudget (`ram_budget_mb`, fail-closed); dichte Zustandskonversion ≤ 20 Qubits; Sampling-Routingdeckel 500 Qubits |
 | **D** | Sparse-Pauli-Heisenberg | Observable-Queries auf 200+ Qubits | zertifizierte Schranke $\Delta \le \sum_{P \in \mathcal{D}} \lvert c_P \rvert$ | keine zertifizierte gemeinsame Messverteilung |
 
 ### Ergebniszustände
@@ -249,8 +250,12 @@ flowchart TB
 
 ## 📜 OpenQASM-Vertrag
 
-Der native QASM-Pfad ist **fail-closed** und kein Reparaturparser. Die
-vollständige Spezifikation steht in [`docs/QASM_CONTRACT.md`](docs/QASM_CONTRACT.md).
+Der Python-Parser und der native QASM-Pfad sind **fail-closed** und teilen
+denselben dokumentierten Vertrag: strukturierte `{line, category, message}`-
+Fehler, globale Qubit-Offsets für mehrere Register, Ganzregister-Expansion und
+eine begrenzte Winkelgrammatik ohne `eval()`. Die vollständige Spezifikation
+inklusive der bewusst unterschiedlichen Gate-Obergrenzen steht in
+[`docs/QASM_CONTRACT.md`](docs/QASM_CONTRACT.md).
 
 ```text
 OPENQASM 2.0;
@@ -269,6 +274,8 @@ measure q[0] -> c[0];
 | Unbekanntes Gatter | `unsupported_gate`, keine Ausführung |
 | Nicht-endlicher/ungültiger Winkel | `invalid_parameter` |
 | Nicht deklariertes Register | strukturierter Parse-Fehler |
+| `qreg a[2]; qreg b[3];` | globale Offsets: `a[0..1]=0..1`, `b[0..2]=2..4` |
+| Mid-Circuit-Messung / `reset` / `if` | vor Ausführung abgelehnt |
 | Überschrittenes `--qubits`-Limit | Ablehnung, Exit-Code `2` |
 
 - `cq_hecs qasm` (Nativ-Executable): **Exit-Code 2** bei ungültiger Eingabe.
@@ -276,6 +283,9 @@ measure q[0] -> c[0];
 - C-ABI `cq_execute_qasm`: **`-3`** bei Parse-Fehlern, Ergebnis wird genullt.
 - Native Klassifikation: `engine_class = legacy_z8_phase_ledger`,
   `statevector_simulation = false`.
+- Der native Executor kennt nur seinen in §5 des QASM-Vertrags dokumentierten
+  Gate-Satz; `p/u1/cu1/crx/cry/crz` sind Python/Path-C-only. Keine Eingabe wird
+  von einem Parser akzeptiert und vom anderen mit anderer Semantik ausgeführt.
 
 ---
 
@@ -320,12 +330,12 @@ pip install -e .
 
 ```bash
 python -m build
-# dist/cqhecs-2.2.0-py3-none-any.whl
-# dist/cqhecs-2.2.0.tar.gz
+# dist/cqhecs-2.2.1-py3-none-any.whl
+# dist/cqhecs-2.2.1.tar.gz
 ```
 
 Die veröffentlichten Artefakte, Checksums und die SPDX-SBOM stehen im
-[Release v2.2.0](https://github.com/timfromhcs/CQ-HECS/releases/tag/v2.2.0).
+[Release v2.2.1](https://github.com/timfromhcs/CQ-HECS/releases/tag/v2.2.1).
 
 ---
 
@@ -445,22 +455,23 @@ erfundenen 50/50-Counts.
 
 ## ✅ Verifikation
 
-Die folgenden Zahlen sind lokale Messungen und CI-Ergebnisse für `v2.2.0`,
-keine Leistungsbenchmarks.
+Die folgenden Zahlen sind lokale Messungen für den `v2.2.1`-Kandidaten, keine
+Leistungsbenchmarks. CI-Ergebnisse werden für den exakt gepushten SHA separat
+in [`research/v2_2/TEST_MATRIX.md`](research/v2_2/TEST_MATRIX.md) festgehalten.
 
 | Gate | Ergebnis |
 | :--- | :--- |
 | CTest (MSVC Release) | **14/14 bestanden** |
-| Python-Suite (CPython 3.14 + Nativkern) | **254 bestanden** |
-| Python-Suite (CPython 3.11, gepinnte Abhängigkeiten, ohne Nativkern) | **251 bestanden, 3 explizite Skips** |
+| Python-Suite (CPython 3.14 + Nativkern) | **309 bestanden** |
+| Python-Suite (CPython 3.11, gepinnte Abhängigkeiten, ohne Nativkern) | im CI-Matrixjob; native Tests skippen dort sichtbar |
 | Mutation-Harness | **11/11 Mutanten erkannt**, Baseline sauber |
-| Branch-Coverage | **76 %** lokal; CI-Schwelle **70 %** |
+| Branch-Coverage | **81 %** lokal; CI-Schwelle **70 %** |
 | Shader-Verifikation | **12/12** SPIR-V-Shader |
-| Version-Konsistenz | alle Flächen melden `2.2.0` |
+| Version-Konsistenz | alle Flächen melden `2.2.1` |
 | Silent-Truncation-Audit | keine Muster gefunden |
 | GitHub Actions | Linux/Windows nativ, ASan/UBSan, Python 3.12–3.14, Package-Smoke |
 | Physische GPU | **nicht verifiziert** |
-| Google Cloud Build | **nicht verifiziert** (`gcloud` in der Audit-Umgebung nicht installiert) |
+| Google Cloud Build | **nicht verifiziert** (keine Projekt-/Credential-Verifikation in der Audit-Umgebung) |
 
 ### Selbst prüfen
 
@@ -515,8 +526,23 @@ python scripts/run_mutation_tests.py
   gilt für die angefragten Observablen.
 - **Keine symbolische Exaktheit in Pfad B/C.** Die Zerlegung ist algebraisch
   exakt, die Auswertung erfolgt in float64.
+- **Keine dynamischen Schaltungen.** Mid-Circuit-Messung, `reset` und
+  klassisch bedingte Gates werden vor der Ausführung abgelehnt; sie werden
+  weder simuliert noch stillschweigend ans Ende verschoben.
+- **Path-D-Samples sind Randverteilungen.** Sie sind keine zertifizierte
+  gemeinsame Bitstring-Verteilung; die Schranke gilt nur für die angefragten
+  Observablen.
+- **`exact=True` ist keine symbolische Exaktheit.** Numerische
+  Rangreduktion (relative Schwelle `1e-13`) und float64-Rundung bleiben
+  bestehen; ein zertifizierter MPS-Fehlerbund wird nicht behauptet.
+- **500 MPS-Qubits sind ein Routingdeckel, keine Exaktheitsgarantie.**
+  Entscheidend sind Verschränkung, tatsächliche Bond-Dimension und Speicher.
+- **Python- und Native-Parser haben unterschiedliche Gate-Obergrenzen.**
+  Beide lehnen nicht implementierte Gates ab; die Python-Seite kennt zusätzlich
+  die Path-C-Gates. Details: [`docs/QASM_CONTRACT.md`](docs/QASM_CONTRACT.md) §6.
 - **Kein Cloud-Build-Nachweis in diesem Audit.** `cloudbuild.yaml` ist
-  vorhanden, wurde aber ohne `gcloud` nicht beobachtet.
+  vorhanden, wurde aber ohne verifizierten Projekt-/Credential-Zugang nicht
+  beobachtet.
 
 ---
 
@@ -587,7 +613,7 @@ Repository. GitHub bietet über [`CITATION.cff`](CITATION.cff) einen
 @software{cqhecs2026,
   author  = {Stark, Tim Johann},
   title   = {CQ-HECS: Classical Quantum High-Efficiency Compute Simulator},
-  version = {2.2.0},
+  version = {2.2.1},
   year    = {2026},
   url     = {https://github.com/timfromhcs/CQ-HECS},
   license = {Apache-2.0}

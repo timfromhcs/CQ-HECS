@@ -15,6 +15,8 @@ mathematical claims are itemised in `research/v2/FORMALIZATION_STATUS.md`.
 | Dense statevector | inside B's statevector evaluation | **implemented** (as Path B's ≤ 22 qubit evaluation) | exact algebra, float64 | same as B |
 | Finite-shot confidence bound | `cqhecs/result.py` | **implemented** | support-aware TV concentration (Weissman) | K-dependence tests, violation-rate study E1 |
 | Mutation harness ( behavioural) | `scripts/run_mutation_tests.py` | **implemented** | harness fails closed on broken baselines & surviving mutants | harness self-tests; exit code enforced in CI |
+| Shared gate manifest + capability-first routing | `cqhecs/gate_manifest.py`, `cqhecs/router.py` | **implemented (v2.2.1)** | one table supplies arity/parameters/support to analyzer, router, Qiskit `Target` and backends | `test_hardening_v221.py`, `TestFailClosedRouting`, mutation mutant 11 |
+| Strict Python QASM reader | `cqhecs/circuit_parsing.py` | **implemented (v2.2.1)** | fail-closed line grammar, global register offsets, bounded angle grammar (no `eval`), source-order measurements | `TestPythonNativeQASMDifferential`, `TestStrictQASMParser` |
 
 ## Deferral / rejection summary
 
@@ -35,16 +37,29 @@ mathematical claims are itemised in `research/v2/FORMALIZATION_STATUS.md`.
 
 ## Gate set and routing
 
+The authoritative table is `cqhecs/gate_manifest.py`; the entries below are a
+summary. Arity, parameter count and per-path support are read from that table by
+the analyzer, the router, the Qiskit `Target` and every backend, so the lists
+cannot drift independently.
+
 | Backend | Gate set | Refusal behaviour |
 | :--- | :--- | :--- |
-| A | H, X, Y, Z, S, S^†, CX, CZ, SWAP, Clifford-angle RZ/P/U1 | raises typed support error on non-Clifford |
-| B | T, T^†, RZ/P/U1, RX, RY over Clifford skeleton | raises on unsupported rotations or above the documented 22q ceiling |
-| C | general 1q rotations incl. CX/CZ via two-site contraction; no silent gate drop | raises on unknown ops; reports no counts beyond sampling limit |
-| D | 1q rotations expressed in Pauli propagation + CX/CZ/SWAP conjugation | raises `UnsupportedPathDOperation` on missing rules |
+| A | H, X, Y, Z, S, S^†, ID, CX, CNOT, CZ, SWAP, RZ/P/U1 **only at exact multiples of π/2** | typed support error on non-Clifford angles (checked per angle, not just the first parameter) |
+| B | Clifford skeleton + T, T^†, RZ/P/U1, RX, RY | raises on unsupported rotations or above the documented 22q ceiling |
+| C | every implemented manifest gate: 1q rotations, CX/CNOT/CZ/SWAP and CP/CU1/CRX/CRY/CRZ; no silent gate drop | raises on unknown ops and on the 500-qubit routing/sampling ceiling |
+| D | 1q rotations expressed in Pauli propagation, CX/CZ/SWAP conjugation, terminal measurement | raises `UnsupportedPathDOperation` on missing rules; joint counts opt-in and labelled uncertified |
+
+`u`, `u2`, `u3`, `ccx`, `toffoli`, `ch`, `cs`, `csdg` and `reset` are known to
+the manifest but supported by **no** path. They produce a precise capability
+refusal instead of an "unknown gate" parse error or an identity fallback.
+`cp`, `cu1`, `crx`, `cry` and `crz` are Path C only. `measure` is supported by
+A and C. Mid-circuit measurement, reset and classical conditions are refused
+before execution.
 
 Routing is capability-first and fail-closed: forced backends never silently
 reroute; automatic escalation happens only on typed capability/resource
-exceptions. Evidence: `TestFailClosedRouting` and the router contract tests.
+exceptions. Evidence: `TestFailClosedRouting`, `tests/test_hardening_v221.py`
+and the router contract tests.
 
 ## What v2 explicitly does not include
 

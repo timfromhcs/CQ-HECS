@@ -10,7 +10,7 @@ if (-not (Test-Path $exe)) {
 }
 
 Write-Host "=================================================================" -ForegroundColor Cyan
-Write-Host " CQ-HECS 2.2.0: PowerShell IPC & JSON Streaming Test Suite" -ForegroundColor Cyan
+Write-Host " CQ-HECS 2.2.1: PowerShell IPC & JSON Streaming Test Suite" -ForegroundColor Cyan
 Write-Host "=================================================================" -ForegroundColor Cyan
 
 $allPassed = $true

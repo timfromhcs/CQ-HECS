@@ -76,6 +76,13 @@ vice versa.
 - **Status: open conjecture (OC1 in `HYPOTHESES.md`).** The code reports the
   accumulated mass under a diagnostic name and sets
   `numerical_error_bound = None`. No doc claims a certified roundoff bound.
+- **Resource accounting (v2.2.1):** `ram_budget_mb` is a fail-closed internal
+  tensor-byte budget, enforced before a state update. `active_ram_mb`,
+  `active_tensor_mb` and `total_storage_mb` count NumPy tensor bytes; they are
+  not process RSS. `process_rss_mb` and `process_peak_rss_mb` are measured
+  separately when `psutil`/`resource` is available, and
+  `rss_measurement_available=false` otherwise. Numerical rank reduction at the
+  `1e-13` relative threshold is not a deliberate bond-dimension cut-off.
 
 ## FS6. Path D two-qubit Clifford conjugation rules
 

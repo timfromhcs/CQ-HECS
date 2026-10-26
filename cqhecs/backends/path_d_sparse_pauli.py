@@ -40,34 +40,103 @@ from cqhecs.circuit_parsing import parse_circuit
 from cqhecs.result import SimulationResult, hoeffding_total_variation_bound
 
 
+_OBSERVABLE_TOKEN = re.compile(r"\s*Z\s*\[\s*([0-9]+)\s*\]\s*")
+
+
 def _parse_observable_request(
     observables: Union[Dict[str, int], Sequence[str]],
     num_qubits: int,
 ) -> Dict[str, int]:
     """
     Parses a user observable request into a mapping of name -> z_mask.
-    Supports dictionary {name: z_mask} or sequences of strings like ["Z[0]", "Z[0]Z[1]"].
+
+    Accepted forms
+    --------------
+    * ``{"<Z[0]>": mask}`` with a non-negative integer mask that fits in
+      ``num_qubits`` bits,
+    * ``["Z[0]", "Z[0]Z[1]"]``: one or more ``Z[i]`` factors, optionally
+      separated by whitespace, and nothing else.
+
+    Grammar is strict. A string such as ``"Z[0]garbage"`` is rejected instead
+    of having its valid-looking prefix silently extracted. Repeated factors
+    cancel because ``Z[i] Z[i] = I``; an observable that cancels completely is
+    reported as the identity ``I`` with mask 0 (expectation value 1).
     """
     if isinstance(observables, dict):
+        parsed: Dict[str, int] = {}
         for name, mask in observables.items():
-            if not isinstance(mask, int) or mask < 0:
-                raise ValueError(f"Observable mask for {name!r} must be a non-negative integer, got {mask!r}")
-        return dict(observables)
+            if not isinstance(name, str):
+                raise TypeError(
+                    f"Observable name must be a string, got "
+                    f"{type(name).__name__}"
+                )
+            if isinstance(mask, bool) or not isinstance(mask, int):
+                raise ValueError(
+                    f"Observable mask for {name!r} must be an integer, got "
+                    f"{mask!r}"
+                )
+            if mask < 0:
+                raise ValueError(
+                    f"Observable mask for {name!r} must be non-negative, got "
+                    f"{mask}"
+                )
+            if mask.bit_length() > num_qubits:
+                raise ValueError(
+                    f"Observable mask for {name!r} uses bit {mask.bit_length() - 1}, "
+                    f"beyond the {num_qubits}-qubit system"
+                )
+            parsed[name] = mask
+        return parsed
 
     result: Dict[str, int] = {}
     for obs_str in observables:
         if not isinstance(obs_str, str):
-            raise TypeError(f"Observable descriptor must be str or dict, got {type(obs_str).__name__}")
-        matches = re.findall(r"Z\[(\d+)\]", obs_str)
-        if not matches:
-            raise ValueError(f"Unrecognized observable format {obs_str!r}. Expected e.g. 'Z[0]' or 'Z[0]Z[1]'.")
+            raise TypeError(
+                f"Observable descriptor must be str, got "
+                f"{type(obs_str).__name__}"
+            )
+        position = 0
+        parity: Dict[int, int] = {}
+        factors: List[int] = []
+        text = obs_str.strip()
+        if not text:
+            raise ValueError(
+                "Empty observable descriptor; expected e.g. 'Z[0]' or "
+                "'Z[0]Z[1]'."
+            )
+        while position < len(text):
+            match = _OBSERVABLE_TOKEN.match(text, position)
+            if match is None:
+                raise ValueError(
+                    f"Invalid observable {obs_str!r} at position {position}: "
+                    "expected only 'Z[<integer>]' factors (e.g. 'Z[0]Z[1]')."
+                )
+            qubit = int(match.group(1))
+            if not (0 <= qubit < num_qubits):
+                raise ValueError(
+                    f"Qubit index {qubit} in observable {obs_str!r} is out of "
+                    f"range for {num_qubits} qubits."
+                )
+            parity[qubit] = parity.get(qubit, 0) ^ 1
+            if parity[qubit]:
+                factors.append(qubit)
+            else:
+                factors.remove(qubit)
+            position = match.end()
+            # Skip optional whitespace between factors (already consumed by
+            # the token pattern, but a trailing space must not fail the loop).
+            while position < len(text) and text[position].isspace():
+                position += 1
+            if position < len(text) and not text.startswith("Z", position):
+                raise ValueError(
+                    f"Invalid observable {obs_str!r} at position {position}: "
+                    "trailing characters are not allowed."
+                )
+
         mask = 0
-        for m in matches:
-            q = int(m)
-            if not (0 <= q < num_qubits):
-                raise ValueError(f"Qubit index {q} in observable {obs_str!r} out of range for {num_qubits} qubits.")
-            mask |= (1 << q)
-        clean_name = "".join(f"Z[{m}]" for m in sorted(int(x) for x in matches))
+        for qubit in sorted(factors):
+            mask |= 1 << qubit
+        clean_name = "".join(f"Z[{q}]" for q in sorted(factors)) or "I"
         result[clean_name] = mask
     return result
 

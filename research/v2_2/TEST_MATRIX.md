@@ -1,4 +1,51 @@
-# CQ-HECS v2.2.0 test matrix
+# CQ-HECS v2.2 test matrix
+
+## v2.2.1 release candidate (2026-10-26)
+
+**Branch:** `agent/cq-hecs-v2.2.1-hardening`
+**Base:** `v2.2.0` / `ce1c66e8ba79f5f3fe1ac68ced151365e2be3010`
+
+Local results for the release candidate:
+
+| Gate | Result | Evidence |
+| :--- | :--- | :--- |
+| Python suite (3.14 + native) | PASS | **309 passed**, `CQ_HECS_REQUIRE_NATIVE=1` |
+| Native CTest (MSVC Release) | PASS | **14/14 passed** |
+| Branch coverage | PASS | **81 %** total (2666 statements, 1068 branches); CI gate 70 % |
+| Mutation gate | PASS | **11/11 killed**, baseline clean |
+| Fatal-error lint | PASS | `flake8 ... --select=E9,F63,F7,F82` |
+| Version consistency | PASS | all surfaces report `2.2.1` |
+| Silent-truncation audit | PASS | no patterns found |
+| SPIR-V shaders | PASS | 12/12 |
+| Wheel/sdist + `twine check` | PASS | `cqhecs-2.2.1-*` |
+| Clean-install smoke | PASS | fresh venv: `version`, `doctor`, `run name:bell` JSON |
+| GitHub Actions on release SHA | required by release workflow | the release job waits for a green `ci.yml` run on the exact tag SHA and puts its URL in the release body |
+| Cloud Build | **NOT_VERIFIED** | no Google Cloud project/credentials available |
+| Physical GPU | **NOT_VERIFIED** | no physical-device compute run |
+
+### New regression evidence
+
+- `tests/test_hardening_v221.py`: 55 tests covering strict QASM parsing,
+  Python/native differential categories, register offsets, whole-register
+  expansion, measurement placement/remapping, `cp`/`crz` routing, `reset` and
+  mid-circuit refusal, Qiskit `Target`/transpile, Path D grammar/algebra and
+  Path C RAM/RSS accounting.
+- Qiskit `transpile(qc, backend=backend)` is exercised for Path C gates
+  (`cp`, `crz`, ...) on the linear coupling map.
+- Differential references: Stim, Qiskit Aer statevector and Aer MPS where
+  installed; the native executable for parser categories.
+
+### Release-integrity checks
+
+- The target tag `v2.2.1` did not exist when the candidate was prepared.
+- The release workflow refuses to publish unless `ci.yml` succeeded for the
+  tagged commit; it also appends final SHA256 values to the release body.
+- The Python wheel is pure Python and does not claim to contain native/GPU
+  artifacts.
+
+---
+
+## v2.2.0 test matrix
 
 **Date:** 2026-10-23
 **Code branch:** `agent/v2.2.0-stable-hardening`

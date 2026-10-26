@@ -91,13 +91,21 @@ Path D does **not** claim to bypass this bound or simulate arbitrary quantum cir
 ## 4. Routing & Result Contracts
 
 ### Routing fails closed
-- An unrecognised circuit input raises `UnsupportedCircuitInput`. The analyzer
-  never defaults an unknown input to a path.
+- An unrecognised circuit input raises `UnsupportedCircuitInput` (an alias of
+  `UnsupportedCircuitInputError`). The analyzer never defaults an unknown input
+  to a path.
 - A user-forced path is never silently rerouted. If the circuit uses a gate the
   forced path cannot execute, the router raises `UnsupportedCircuitError` naming
   the offending gate.
-- `auto` mode selects only a path that explicitly supports the circuit, via
-  `PATH_CAPABILITIES`.
+- Gate names, arity, parameter counts and per-path support come from
+  `cqhecs/gate_manifest.py`; `PATH_CAPABILITIES` is derived from it. The
+  analyzer's "supported" answer therefore implies execution by the selected
+  path, or a refusal before execution.
+- Parameterised gates are classified per angle: `cp`, `crz`, `rz`, `p` and `u1`
+  are only Clifford at exact multiples of π/2, and `cp`/`cu1`/`crx`/`cry`/`crz`
+  are Path C only. `reset`, mid-circuit measurement and classical conditions are
+  refused before execution rather than routed as unitary gates.
+- `auto` mode selects only a path that explicitly supports the circuit.
 - Only specific capability failures (`StabilizerRankError`) trigger escalation.
   A programming error propagates instead of being misread as "try the next path".
 

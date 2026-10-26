@@ -6,7 +6,7 @@ C) MPS without Cutoff + NVMe-Offload (exact up to memory limit)
 D) Certified Classical Approximation (Sparse-Pauli-Dynamics) with proven error bound
 """
 
-__version__ = "2.2.0"
+__version__ = "2.2.1"
 
 from cqhecs.backend import CQHecsBackend
 from cqhecs.provider import CQHecsProvider

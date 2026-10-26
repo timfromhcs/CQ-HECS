@@ -1,5 +1,5 @@
 """
-CQ-HECS 2.2.0 Interactive Terminal UI (Rich TUI Dashboard)
+CQ-HECS 2.2.1 Interactive Terminal UI (Rich TUI Dashboard)
 Real-time monitoring for:
   - Active VRAM Gauge (0 to 120 MB limit monitor)
   - 5 J-Spaces Workload Heatmap (Alpha, Beta, Gamma, Delta, Epsilon)
@@ -87,7 +87,7 @@ class TUIRenderer:
         return layout
 
     def render_header(self, state: TUIRuntimeState) -> Panel:
-        title = Text(" CQ-HECS 2.2.0 :: CLASSICAL QUANTUM VULKAN COMPUTE SIMULATOR & FOUR-PATH ROUTER ", style="bold white on blue")
+        title = Text(" CQ-HECS 2.2.1 :: CLASSICAL QUANTUM VULKAN COMPUTE SIMULATOR & FOUR-PATH ROUTER ", style="bold white on blue")
         sub = Text(f" [Cycle #{state.cycle_count:06d}]  Target: Win11/MSVC/Vulkan1.3  |  Engine: ACTIVE (100% Deterministic) ", style="dim cyan")
         grid = Table.grid(expand=True)
         grid.add_column(justify="center")

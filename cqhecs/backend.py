@@ -6,8 +6,9 @@ import numpy as np
 from qiskit.providers import BackendV2, Options
 from qiskit.transpiler import Target
 from qiskit.circuit.library import (
-    CXGate, HGate, SGate, SdgGate, TGate, TdgGate,
-    XGate, YGate, ZGate, RZGate, Measure
+    CPhaseGate, CRXGate, CRYGate, CRZGate, CU1Gate, CXGate, CZGate,
+    HGate, IGate, Measure, PhaseGate, RXGate, RYGate, RZGate,
+    SGate, SdgGate, SwapGate, TGate, TdgGate, XGate, YGate, ZGate,
 )
 from qiskit.result import Result
 from qiskit.result.models import ExperimentResult, ExperimentResultData
@@ -55,24 +56,43 @@ class CQHecsBackend(BackendV2):
         self._init_target()
 
     def _init_target(self):
+        """
+        Declare the instructions Qiskit's transpiler may emit.
+
+        This is the *transpilation* view of the same manifest the router uses:
+        every instruction here is executable by at least one path. Aliases that
+        Qiskit canonicalises (``cnot`` -> ``cx``, ``u1`` -> ``p``) are omitted;
+        pseudo-instructions such as ``barrier`` need no target entry. Gates
+        without any path (``u2``/``u3``/``ccx``/``toffoli``/``reset``) are
+        deliberately absent so the transpiler cannot emit them.
+
+        Connectivity is the linear chain. The backends themselves accept
+        non-adjacent two-qubit gates (Path C swaps internally), but a linear
+        target keeps transpilation deterministic and conservative.
+        """
         # 1-Qubit Gates
-        self._target.add_instruction(HGate())
-        self._target.add_instruction(SGate())
-        self._target.add_instruction(SdgGate())
-        self._target.add_instruction(TGate())
-        self._target.add_instruction(TdgGate())
-        self._target.add_instruction(XGate())
-        self._target.add_instruction(YGate())
-        self._target.add_instruction(ZGate())
-        self._target.add_instruction(RZGate(0.0))
+        for gate in (
+            HGate(), IGate(), SGate(), SdgGate(), TGate(), TdgGate(),
+            XGate(), YGate(), ZGate(),
+        ):
+            self._target.add_instruction(gate)
+        for gate in (
+            RZGate(0.0), PhaseGate(0.0), RXGate(0.0), RYGate(0.0),
+        ):
+            self._target.add_instruction(gate)
         self._target.add_instruction(Measure())
 
-        # 2-Qubit CX across all adjacent linear pairs
-        cx_props = {}
+        # 2-Qubit gates across the adjacent linear pairs.
+        pair_props = {}
         for q in range(self._num_qubits - 1):
-            cx_props[(q, q + 1)] = None
-            cx_props[(q + 1, q)] = None
-        self._target.add_instruction(CXGate(), cx_props)
+            pair_props[(q, q + 1)] = None
+            pair_props[(q + 1, q)] = None
+        for gate in (
+            CXGate(), CZGate(), SwapGate(),
+            CPhaseGate(0.0), CU1Gate(0.0),
+            CRXGate(0.0), CRYGate(0.0), CRZGate(0.0),
+        ):
+            self._target.add_instruction(gate, pair_props)
 
     @property
     def target(self) -> Target:
@@ -96,42 +116,77 @@ class CQHecsBackend(BackendV2):
         """
         Returns a plain instruction list to simulate plus a layout description.
 
-        The measured qubits are sampled in classical-bit order, so the result
-        can be placed back into the exact classical bits the circuit asked for.
-        ``measure_all()``, for example, maps qubit q to clbit q + n, which puts
-        the outcome in the *high* columns of the bitstring.
+        Only *terminal* measurements are accepted. Moving a mid-circuit
+        measurement to the end would silently change the state seen by later
+        gates, so such circuits are rejected here - before any simulation.
+
+        Repeated measurements of one qubit into several classical bits are
+        preserved: the layout keeps every (qubit, clbit) pair instead of
+        collapsing them with ``setdefault``. The measured qubits are sampled
+        once each, in ascending qubit order (Qiskit renders qubit 0 rightmost).
         """
+        from cqhecs.router import UnsupportedCircuitError
+
+        control_flow = {
+            "if_else", "while_loop", "for_loop", "switch_case",
+            "break_loop", "continue_loop",
+        }
         instructions = []
-        qubit_to_clbit: dict = {}
-        has_measure = False
-        for inst in qc.data:
+        pairs = []
+        saw_measure = False
+        for idx, inst in enumerate(qc.data):
             name = inst.operation.name.lower()
+            if name in control_flow or getattr(inst.operation, "condition", None) is not None:
+                raise UnsupportedCircuitError(
+                    f"Instruction {idx} is the classically controlled operation "
+                    f"{name!r}. Dynamic circuits (measurement -> classical "
+                    "condition) are not implemented and are refused before "
+                    "execution."
+                )
+            if name == "reset":
+                raise UnsupportedCircuitError(
+                    f"Instruction {idx} is 'reset'. Reset is non-unitary and is "
+                    "not implemented by any path; refusing to ignore it."
+                )
             if name == "measure":
-                has_measure = True
+                saw_measure = True
                 qubits = [qc.find_bit(q).index for q in inst.qubits]
                 clbits = [qc.find_bit(c).index for c in inst.clbits]
-                for q, c in zip(qubits, clbits):
-                    qubit_to_clbit.setdefault(q, c)
+                if len(qubits) != 1 or len(clbits) != 1:
+                    raise UnsupportedCircuitError(
+                        f"Measurement {idx} must target exactly one qubit and "
+                        f"one classical bit, got {len(qubits)} qubit(s) and "
+                        f"{len(clbits)} classical bit(s)."
+                    )
+                pairs.append((qubits[0], clbits[0]))
                 continue
+            if saw_measure and name in ("barrier", "id"):
+                # No state effect: a barrier or identity after the last
+                # measurement does not turn it into a mid-circuit measurement.
+                continue
+            if saw_measure:
+                raise UnsupportedCircuitError(
+                    f"Instruction {idx} ({name!r}) follows a measurement. "
+                    "Mid-circuit measurement is not implemented; moving the "
+                    "measurement to the end would produce a different state."
+                )
             instructions.append((
                 name,
                 [qc.find_bit(q).index for q in inst.qubits],
                 [float(p) for p in getattr(inst.operation, "params", [])],
             ))
 
-        if not has_measure:
+        if not pairs:
             return instructions, None
 
-        # Sample in ascending classical-bit order.
-        by_clbit = sorted(qubit_to_clbit.items(), key=lambda kv: kv[1])
-        sampled_qubits = [q for q, _ in by_clbit]
+        sampled_qubits = sorted({q for q, _ in pairs})
         # One 'measure' instruction per qubit, so each backend's arity check
         # sees the 1-qubit form it expects.
         for q in sampled_qubits:
             instructions.append(("measure", [q], []))
         layout = {
-            "qubits": sampled_qubits,
-            "clbits": [c for _, c in by_clbit],
+            "sampled_qubits": sampled_qubits,
+            "pairs": pairs,
             "width": qc.num_clbits,
         }
         return instructions, layout
@@ -139,29 +194,36 @@ class CQHecsBackend(BackendV2):
     @staticmethod
     def _pad_counts(counts, layout, width):
         """
-        Expands backend counts to the circuit's classical register width.
+        Expands backend counts to the circuit's classical-register width.
 
-        ``measure_all()`` appends a full-width register, so a bare n-bit result
-        must be right-padded with zeros to match what Qiskit callers expect.
+        Backend keys are ordered by ascending measured qubit, with qubit 0
+        rightmost. Each classical bit then receives the outcome of the qubit
+        that was measured into it; unmeasured classical bits stay ``0``.
         """
         if not counts or layout is None:
             return counts
 
-        clbits = layout["clbits"]
+        from cqhecs.router import UnsupportedCircuitError
+
+        sampled = layout["sampled_qubits"]
+        pairs = layout["pairs"]
         width = layout["width"]
-        # The backend returns one character per measured qubit, in ascending
-        # classical-bit order, with qubit 0 rendered rightmost. Place each
-        # character into the column its classical bit occupies in a
-        # Qiskit-rendered bitstring (highest clbit leftmost).
         padded = {}
         for key, value in counts.items():
             chars = key.replace(" ", "")
+            if len(chars) != len(sampled):
+                raise UnsupportedCircuitError(
+                    f"Backend returned a {len(chars)}-bit result for "
+                    f"{len(sampled)} sampled qubit(s); refusing to guess the "
+                    "classical-bit layout."
+                )
+            qubit_bit = {
+                q: chars[len(chars) - 1 - position]
+                for position, q in enumerate(sampled)
+            }
             out = ["0"] * width
-            for position, clbit in enumerate(clbits):
-                # chars is ordered by ascending clbit, so the last character
-                # corresponds to the largest clbit.
-                char = chars[len(chars) - 1 - position]
-                out[width - 1 - clbit] = char
+            for qubit, clbit in pairs:
+                out[width - 1 - clbit] = qubit_bit[qubit]
             bits = "".join(out)
             padded[bits] = padded.get(bits, 0) + value
         return padded
@@ -172,10 +234,18 @@ class CQHecsBackend(BackendV2):
         preferred_path = options.get("preferred_path", self._preferred_path)
         error_tolerance = options.get("error_tolerance", self._error_tolerance)
 
+        if not isinstance(shots, int) or isinstance(shots, bool):
+            raise ValueError(f"shots must be an int, got {type(shots).__name__}")
         if shots <= 0:
             raise ValueError(f"shots must be a positive integer, got {shots}")
 
         circuits = run_input if isinstance(run_input, list) else [run_input]
+        for index, candidate in enumerate(circuits):
+            if not (hasattr(candidate, "data") and hasattr(candidate, "num_qubits")):
+                raise TypeError(
+                    f"run_input[{index}] is {type(candidate).__name__!r}; "
+                    "expected a Qiskit QuantumCircuit."
+                )
         experiment_results = []
         sim_results: List[SimulationResult] = []
 
@@ -194,7 +264,8 @@ class CQHecsBackend(BackendV2):
                 shots=shots,
                 seed=seed,
                 preferred_path=preferred_path,
-                error_tolerance=error_tolerance
+                error_tolerance=error_tolerance,
+                require_counts=True,
             )
             sim_results.append(sim_res)
 

@@ -17,6 +17,56 @@ import numpy as np
 
 from cqhecs.circuit_parsing import parse_circuit
 from cqhecs.result import SimulationResult, hoeffding_total_variation_bound
+from cqhecs.gate_manifest import NON_UNITARY, get_gate, path_gate_names
+
+
+def _process_memory_mb() -> Tuple[Optional[float], Optional[float]]:
+    """
+    Best-effort ``(RSS, peak RSS)`` of the current process in MiB.
+
+    Internal tensor-byte accounting is not process memory: NumPy temporaries,
+    the interpreter and the MPS bookkeeping all consume RAM too. When ``psutil``
+    (an optional benchmark dependency) is unavailable the honest answer is
+    ``(None, None)``; callers must not substitute tensor bytes for RSS.
+    """
+    try:
+        import psutil  # optional, declared in the benchmark extra
+
+        info = psutil.Process().memory_info()
+        rss = getattr(info, "rss", None)
+        peak = getattr(info, "peak_wset", None)
+    except Exception:
+        return None, None
+
+    if peak is None:
+        try:
+            import resource
+
+            peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            # Linux reports KiB; macOS reports bytes.
+            if peak < 10**9:
+                peak *= 1024
+        except Exception:
+            peak = None
+    return (
+        rss / (1024.0 * 1024.0) if rss is not None else None,
+        peak / (1024.0 * 1024.0) if peak is not None else None,
+    )
+
+
+def _memory_metadata() -> Dict[str, Any]:
+    """RSS keys shared by every Path C result, including refusals."""
+    rss, peak = _process_memory_mb()
+    return {
+        "process_rss_mb": rss,
+        "process_peak_rss_mb": peak,
+        "rss_measurement_available": rss is not None,
+        "resource_accounting_note": (
+            "active_ram_mb/total_storage_mb count internal NumPy tensor bytes "
+            "only; they are not process RSS. process_rss_mb is measured when "
+            "psutil (or resource) is available."
+        ),
+    }
 
 
 def _controlled_phase_matrix(theta: float) -> np.ndarray:
@@ -138,6 +188,8 @@ class ExactMPSTensorChain:
         self.total_allocated_bytes = 0
         self.max_observed_chi = 1
         self.memory_limit_exceeded = False
+        #: Which ceiling refused the operation: "storage" or "ram".
+        self.resource_limit_kind: Optional[str] = None
 
         # Roundoff accounting (see floating-point contract above).
         self.discarded_spectral_norm = 0.0
@@ -164,6 +216,7 @@ class ExactMPSTensorChain:
         # t'_l, s', r = sum_s U_s',s * t_l, s, r
         new_t = np.einsum("ab,lbr->lar", gate_matrix, t)
         self.sites[q] = np.ascontiguousarray(new_t)
+        self._enforce_ram_budget(q, q)
 
     def apply_two_qubit_gate(self, q1: int, q2: int, gate_4x4: np.ndarray):
         """
@@ -236,10 +289,6 @@ class ExactMPSTensorChain:
             # tensor shapes stay valid; the state magnitude is preserved as 0.
             exact_rank = 1
 
-        self.discarded_spectral_norm += discarded
-        self.num_two_qubit_rewrites += 1
-        self.max_observed_chi = max(self.max_observed_chi, exact_rank)
-
         # Slice to exact rank (NO truncation of physical information)
         U_kept = U[:, :exact_rank]
         S_kept = S[:exact_rank]
@@ -257,7 +306,9 @@ class ExactMPSTensorChain:
 
         if projected_total > self.max_storage_bytes:
             # Do NOT silently truncate and do NOT leave a half-applied rewrite.
+            # Diagnostics are only advanced after the check for the same reason.
             self.memory_limit_exceeded = True
+            self.resource_limit_kind = "storage"
             return
 
         self.active_ram_bytes += (new_bytes - old_bytes)
@@ -266,9 +317,23 @@ class ExactMPSTensorChain:
         self.sites[left] = np.ascontiguousarray(new_left)
         self.sites[right] = np.ascontiguousarray(new_right)
 
-        # Trigger NVMe offload if RAM budget exceeded
+        self.discarded_spectral_norm += discarded
+        self.num_two_qubit_rewrites += 1
+        self.max_observed_chi = max(self.max_observed_chi, exact_rank)
+
+        # Trigger NVMe offload if the active working set exceeds the RAM budget.
+        # If the two active sites alone still exceed it, fail closed instead of
+        # pretending the offload satisfied a budget it did not.
+        self._enforce_ram_budget(left, right)
+
+    def _enforce_ram_budget(self, keep_q1: int, keep_q2: int) -> None:
+        """Pages inactive sites out, then refuses if the live set is still over."""
+        if self.active_ram_bytes <= self.ram_budget_bytes:
+            return
+        self._offload_distant_sites_to_nvme(keep_q1, keep_q2)
         if self.active_ram_bytes > self.ram_budget_bytes:
-            self._offload_distant_sites_to_nvme(left, right)
+            self.memory_limit_exceeded = True
+            self.resource_limit_kind = "ram"
 
     def _apply_non_adjacent_two_qubit_gate(self, q1: int, q2: int, gate_4x4: np.ndarray):
         """SWAP network for non-adjacent gates."""
@@ -280,17 +345,26 @@ class ExactMPSTensorChain:
             [0, 0, 0, 1]
         ], dtype=np.complex128)
 
-        # Swap up to adjacent
+        # Swap up to adjacent. Stop immediately on a refused allocation; the
+        # state at that point is still coherent and the result is UNRESOLVED,
+        # so continuing with the remaining swaps would waste work and obscure
+        # which operation was refused.
         for i in range(lo, hi - 1):
             self.apply_two_qubit_gate(i, i + 1, swap_mat)
+            if self.memory_limit_exceeded:
+                return
         # Apply gate
         if q1 < q2:
             self.apply_two_qubit_gate(hi - 1, hi, gate_4x4)
         else:
             self.apply_two_qubit_gate(hi, hi - 1, gate_4x4)
+        if self.memory_limit_exceeded:
+            return
         # Swap back
         for i in range(hi - 2, lo - 1, -1):
             self.apply_two_qubit_gate(i, i + 1, swap_mat)
+            if self.memory_limit_exceeded:
+                return
 
     def _ensure_site_in_ram(self, q: int):
         if self.sites[q] is None:
@@ -471,12 +545,13 @@ class PathCMPSExactBackend:
     ``sampling_error_bound``.
     """
 
-    #: Gates this backend actually implements as matrices.
-    SUPPORTED_GATES = frozenset({
-        "h", "x", "y", "z", "s", "sdg", "t", "tdg",
-        "rz", "p", "u1", "rx", "ry",
-        "cx", "cnot", "cz", "swap", "cp", "crx", "cry", "crz", "cu1",
-    })
+    #: Gates this backend actually implements as matrices, derived from the
+    #: shared manifest so the advertised capability cannot drift.
+    SUPPORTED_GATES = frozenset(
+        name
+        for name in path_gate_names("C")
+        if name not in NON_UNITARY
+    )
 
     #: Instructions that carry no state change.
     IGNORED_GATES = frozenset({"barrier", "id"})
@@ -633,12 +708,17 @@ class PathCMPSExactBackend:
                         metadata={
                             "reason": (
                                 "Memory ceiling exceeded during MPS expansion. "
-                                "No truncation is permitted, so the circuit is unresolved."
+                                "No truncation is permitted, so the circuit is "
+                                "unresolved and the last coherent state is kept."
                             ),
+                            "resource_limit": mps.resource_limit_kind,
                             "max_observed_chi": mps.max_observed_chi,
                             "allocated_bytes": mps.total_allocated_bytes,
                             "max_storage_bytes": mps.max_storage_bytes,
+                            "ram_budget_bytes": mps.ram_budget_bytes,
+                            "active_tensor_bytes": mps.active_ram_bytes,
                             "truncation_applied": False,
+                            **_memory_metadata(),
                         }
                     )
 
@@ -672,6 +752,7 @@ class PathCMPSExactBackend:
                         ),
                         "truncation_applied": False,
                         "numerical_mode": "float64-untruncated-mps",
+                        **_memory_metadata(),
                     }
                 )
 
@@ -702,8 +783,13 @@ class PathCMPSExactBackend:
                     "sampling_method": "mps-native-sequential",
                     "qubit_count": n_q,
                     "max_observed_chi": mps.max_observed_chi,
+                    # Internal tensor-byte accounting, not process RSS. These
+                    # keys keep their historical names for compatibility.
                     "active_ram_mb": mps.active_ram_bytes / (1024 * 1024),
                     "total_storage_mb": mps.total_allocated_bytes / (1024 * 1024),
+                    "active_tensor_mb": mps.active_ram_bytes / (1024 * 1024),
+                    "internal_allocation_mb":
+                        mps.total_allocated_bytes / (1024 * 1024),
                     "nvme_swap_pages": len(mps.swap_files),
                     "shots": shots,
                     "seed": seed,
@@ -724,6 +810,7 @@ class PathCMPSExactBackend:
                     "silent_truncation": False,
                     "truncation_applied": False,
                     "numerical_mode": "float64-untruncated-mps",
+                    **_memory_metadata(),
                 }
             )
         finally:
@@ -755,13 +842,10 @@ class PathCMPSExactBackend:
                 parameter, or a measurement that is not terminal.
         """
         arity = {
-            "h": 1, "x": 1, "y": 1, "z": 1, "s": 1, "sdg": 1, "t": 1, "tdg": 1,
-            "rz": 1, "p": 1, "u1": 1, "rx": 1, "ry": 1,
-            "cx": 2, "cnot": 2, "cz": 2, "swap": 2,
-            "cp": 2, "cu1": 2, "crx": 2, "cry": 2, "crz": 2,
-            "barrier": 0, "id": 1, "measure": 1,
+            name: get_gate(name).arity
+            for name in self.SUPPORTED_GATES
+            if not get_gate(name).barrier
         }
-        needs_params = {"rz", "p", "u1", "rx", "ry", "cp", "cu1", "crx", "cry", "crz"}
 
         # Identify measurement instructions and verify they are all terminal.
         measure_positions = [
@@ -797,7 +881,13 @@ class PathCMPSExactBackend:
                 raise ValueError(
                     f"Gate '{name}' expects {arity[name]} qubit(s), got {len(qubits)}: {qubits}"
                 )
-            if name in needs_params and not params:
-                raise ValueError(f"Gate '{name}' requires a rotation angle parameter.")
+            spec = get_gate(name)
+            if spec is not None and not (
+                spec.min_params <= len(params) <= spec.max_params
+            ):
+                raise ValueError(
+                    f"Gate '{name}' expects {spec.min_params}.."
+                    f"{spec.max_params} parameter(s), got {len(params)}."
+                )
 
         return measured_qubits or None

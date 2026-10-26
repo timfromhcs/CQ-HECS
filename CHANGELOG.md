@@ -6,6 +6,97 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [2.2.1] — 2026-10-26
+
+Patch release. It fixes correctness and refusal defects in the Python QASM
+reader, the capability routing layer, Qiskit measurement handling, Path D
+observables and Path C resource accounting. It adds no simulator and no GPU
+acceleration.
+
+### Fixed — one strict QASM contract for Python and native
+
+- The Python reader is no longer a permissive Qiskit-based loader. It is a
+  strict, line-oriented OpenQASM subset parser that fails closed on unknown
+  gates, missing semicolons, undeclared registers, out-of-range indices and
+  malformed operands, with the same `{line, category, message}` categories as
+  the native parser.
+- Multiple quantum/classical registers now receive global offsets in
+  declaration order (`qreg a[2]; qreg b[3]` maps `b[0]` to qubit 2), so the
+  width is the sum of register sizes rather than `max(register_size)`.
+- Whole-register operands expand in arity-sized chunks, matching native
+  semantics; a non-multiple width is `operand_count_mismatch`.
+- Angle expressions use a bounded recursive-descent grammar
+  (`_MAX_ANGLE_LENGTH`, `_MAX_ANGLE_DEPTH`) instead of Python `eval()`;
+  `nan`, `inf`, division by zero, `**`, unbalanced parentheses and trailing
+  tokens are `invalid_parameter`.
+- The parser no longer treats a bare `OPENQASM` keyword as a gate or silently
+  drops statements it does not understand.
+- Classical-bit remapping is refused explicitly instead of dropping the target;
+  terminal measurement suffixes are sorted by qubit, mid-circuit measurements
+  are preserved at their source position.
+
+### Fixed — capability routing and Qiskit measurement semantics
+
+- Added `cqhecs/gate_manifest.py` as the single source of truth for gate arity,
+  parameter counts, per-path support and Clifford status. The analyzer, router,
+  Qiskit `Target` and every backend derive their capabilities from it.
+- `cp`, `crz`, `rx`, `ry`, `u1` and `p` are classified per parameter angle
+  instead of by the first angle or by name alone. `cp(π/2)` is no longer offered
+  to Path A; it is routed to Path C and executed or refused before execution.
+- Removed the false Path A `reset` capability. `reset`, mid-circuit measurement
+  and classically controlled operations are refused before execution.
+- `normalize_measurements` rejects mid-circuit measurement instead of moving it
+  to the end, preserves repeated measurements into distinct classical bits, and
+  keeps non-contiguous classical indices.
+- The Qiskit `Target` now covers every implemented path gate (`cp`, `cu1`,
+  `crx`, `cry`, `crz`, `cz`, `swap`, ...) on a conservative linear coupling map;
+  unimplemented gates stay absent so `transpile(qc, backend=backend)` cannot
+  emit them.
+- `CQHecsBackend.run()` requires counts, so a counts request cannot silently
+  fall through to Path D expectation values.
+
+### Fixed — Path D observables and certification
+
+- Observable strings are parsed as a strict grammar. Trailing characters after
+  valid tokens, malformed indices and out-of-range qubits are rejected instead
+  of being partially accepted.
+- `bool` masks, negative masks and masks wider than the system are rejected.
+- Duplicate Pauli factors are simplified algebraically (`Z[i] Z[i] = I`).
+- Per-observable bounds are reported; aggregate bounds are not invented.
+- Marginal samples remain explicitly labelled as **not** a joint distribution.
+
+### Fixed — Path C resource accounting
+
+- `ram_budget_mb` is enforced fail-closed before a state update; a refusal keeps
+  the last valid state and reports an atomic diagnostic.
+- Process RSS and peak RSS are reported separately from internal NumPy tensor
+  bytes (`process_rss_mb`, `process_peak_rss_mb`,
+  `rss_measurement_available`), and are `None`/`false` when the platform cannot
+  measure them. Tensor bytes are never presented as RSS.
+- `numerical_error_bound` remains `None`; numerical rank reduction at the
+  `1e-13` relative threshold is documented separately from a deliberate bond
+  cut-off, and `exact=True` means "no deliberate truncation", not symbolic
+  exactness.
+
+### Changed — documentation and gates
+
+- `docs/QASM_CONTRACT.md` now describes both parsers, register offsets,
+  measurement placement and the deliberately different native/Python gate
+  ceilings.
+- The mutation anchor for T-count classification follows the new shared
+  `_t_resource` classifier.
+- Added `tests/test_hardening_v221.py`: 55 focused regression tests, including
+  Python/native differential categories and Qiskit transpilation of Path C gates.
+
+### Verification
+
+- Local Python suite: **309 passed** with `CQ_HECS_REQUIRE_NATIVE=1`.
+- Native CTest: **14/14 passed**.
+- Branch coverage: **81 %** (CI threshold 70 %).
+- Mutation harness: **11/11 killed**, baseline clean.
+- Cloud Build: **not verified** (no project/credential verification available).
+- Physical GPU compute: **not verified**.
+
 ## [2.2.0] — 2026-10-23
 
 This is a hardening release. It adds structured diagnostics and explicit engine

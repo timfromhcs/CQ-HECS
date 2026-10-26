@@ -1,4 +1,55 @@
-# CQ-HECS v2.2.0 baseline and audit
+# CQ-HECS v2.2 baseline and audits
+
+## v2.2.1 hardening cycle (2026-10-26)
+
+**Starting release:** `v2.2.0` (published 2026-10-23)
+**Starting `main`:** `ce1c66e8ba79f5f3fe1ac68ced151365e2be3010`
+**Working branch:** `agent/cq-hecs-v2.2.1-hardening`
+**Target:** patch release `v2.2.1` (no `v2.3.0` research scope)
+
+### Confirmed defects on the starting SHA
+
+All findings below were reproduced with a failing regression test before the
+fix. The tests live in `tests/test_hardening_v221.py`.
+
+| ID | Finding | Reproduction | Fixed by |
+| :--- | :--- | :--- | :--- |
+| A1 | Python QASM reader was a permissive Qiskit loader: it skipped unknown gates and missing semicolons, treated a bare `OPENQASM` as a gate, and used `max(register_size)` for the width | `qreg a[2]; qreg b[3]; h b[0];` lost the offset; `nope q[0];` was accepted | strict line-oriented reader with shared categories, global offsets, arity-chunk expansion, bounded angle grammar |
+| A2 | Router classified parameterised gates by name/first angle; `cp(π/2)` was offered to Path A; `reset` was advertised for Path A | `QuantumCircuit(2); qc.cp(pi/2, 0, 1)` routed to A | `cqhecs/gate_manifest.py` + capability-first routing; per-angle Clifford test |
+| A3 | Qiskit `normalize_measurements` moved mid-circuit measurements to the end and collapsed repeated measurements with `setdefault` | measure → X → measure produced a terminal-measurement result | source-order preservation, mid-circuit refusal, full `(qubit, clbit)` layout |
+| A4 | Path D parsed observables by extracting valid `Z[n]` tokens; `Z[0]junk` was accepted; duplicate factors were not simplified; bool/negative/wide masks were accepted | `Z[0]junk`, `Z[0]Z[0]`, `True` masks | strict grammar, mask validation, `Z[i]Z[i]=I`, per-observable bounds |
+| A5 | Path C reported internal tensor bytes ambiguously and had no enforced RAM budget | large rewrite exceeded `ram_budget_mb` without a structured refusal | fail-closed budget, atomic refusal, separate RSS/peak-RSS metadata, honest `numerical_error_bound=None` |
+| A6 | `if_else` raised a confusing `TypeError`; reset was not refused consistently | Qiskit control-flow circuit | typed `UnsupportedCircuitError` before execution |
+| A7 | Analyzer limit 300 vs sampler limit 500; Qiskit `Target` omitted implemented Path C gates | `transpile` could not emit `cp`/`crz` | analyzer ceiling aligned to 500 (documented as routing ceiling); target expanded on a linear coupling map |
+
+### Verification (local, release candidate)
+
+| Gate | Result |
+| :--- | :--- |
+| Python suite (`CQ_HECS_REQUIRE_NATIVE=1`) | **309 passed** |
+| CTest (MSVC Release) | **14/14 passed** |
+| Branch coverage | **81 %** (gate 70 %) |
+| Mutation harness | **11/11 killed**, baseline clean |
+| Fatal lint / version / truncation / shaders | pass / pass / pass / 12 of 12 |
+| Clean-install wheel smoke | pass |
+
+### SemVer decision
+
+`2.2.1` (patch). The change set corrects wrong behaviour and adds refusal
+paths; it does not add a new simulator or a new capability class. The new
+`gate_manifest` module and the `UnsupportedCircuitInput` alias are additive.
+
+### Remaining unverified surfaces (unchanged)
+
+- **Google Cloud Build:** no project/credentials available; `NOT_VERIFIED`.
+- **Physical GPU compute:** loader/shader evidence only; no dispatch on a
+  physical device.
+- **CI on the exact release SHA:** recorded in the published release body,
+  which is generated only after the required `ci.yml` run for that SHA passes.
+
+---
+
+## v2.2.0 baseline and audit
 
 **Audit date:** 2026-10-23
 **Repository:** `https://github.com/timfromhcs/CQ-HECS`

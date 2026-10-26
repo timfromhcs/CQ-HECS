@@ -120,7 +120,16 @@ def main() -> int:
     analyzer = ROOT / "cqhecs" / "circuit_analyzer.py"
     if analyzer.exists():
         text = analyzer.read_text(encoding="utf-8")
-        if not re.search(r"class\s+UnsupportedCircuitInput\b", text):
+        # The analyzer may define the error itself or alias the single shared
+        # parser error type; both are hard rejections, neither defaults.
+        if not (
+            re.search(r"class\s+UnsupportedCircuitInput\b", text)
+            or re.search(
+                r"^UnsupportedCircuitInput\s*=\s*UnsupportedCircuitInputError\b",
+                text,
+                re.MULTILINE,
+            )
+        ):
             violations.append((
                 analyzer.relative_to(ROOT), 0,
                 "UnsupportedCircuitInput",
