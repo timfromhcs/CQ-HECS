@@ -6,6 +6,18 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- The mutation harness no longer reuses cached bytecode from a same-size
+  mutant after restoring the source. Checks run with
+  `PYTHONDONTWRITEBYTECODE=1`, and the target module's `__pycache__` entry is
+  invalidated on both apply and restore. This removes a spurious baseline
+  failure observed in the scheduled nightly run after `v2.2.1`. The guard is
+  covered by a regression test that pins the source mtime to reproduce the
+  original race.
+
 ## [2.2.1] — 2026-10-26
 
 Patch release. It fixes correctness and refusal defects in the Python QASM

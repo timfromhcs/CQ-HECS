@@ -357,6 +357,9 @@ def _check_env() -> dict:
     env = os.environ.copy()
     existing = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = str(REPO_ROOT) + (os.pathsep + existing if existing else "")
+    # Checks must never create bytecode for mutated source; otherwise a later
+    # check can import a cache that belongs to a mutant.
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
     return env
 
 
@@ -387,6 +390,25 @@ def run_check_in_subprocess(name: str, timeout: int = DEFAULT_CHECK_TIMEOUT) -> 
     )
 
 
+def _invalidate_bytecode(path: Path) -> None:
+    """Deletes cached bytecode for ``path``.
+
+    CPython validates a ``.pyc`` against the source mtime truncated to whole
+    seconds plus the source size. A same-size mutant written and restored
+    within one second can therefore leave a cache that is still considered
+    valid for the restored source, so a later check would execute mutated
+    code. Removing the cache forces compilation from the file on disk.
+    """
+    cache_dir = path.parent / "__pycache__"
+    if not cache_dir.is_dir():
+        return
+    for cached in cache_dir.glob(f"{path.stem}.*.pyc"):
+        try:
+            cached.unlink()
+        except FileNotFoundError:
+            pass
+
+
 def _atomic_write(path: Path, text: str) -> None:
     """Writes text so an interrupted run cannot leave a half-written file."""
     with tempfile.NamedTemporaryFile(
@@ -413,6 +435,7 @@ def apply_mutant(mutant: SourceMutant) -> Tuple[Path, str]:
 
     mutated = original_text.replace(mutant.original, mutant.replacement, 1)
     _atomic_write(path, mutated)
+    _invalidate_bytecode(path)
     if path.read_text(encoding="utf-8") != mutated:
         raise HarnessError(f"failed to write mutated source for {mutant.name!r}")
     return path, original_text
@@ -420,6 +443,7 @@ def apply_mutant(mutant: SourceMutant) -> Tuple[Path, str]:
 
 def restore_source(path: Path, original_text: str) -> None:
     _atomic_write(path, original_text)
+    _invalidate_bytecode(path)
     if path.read_text(encoding="utf-8") != original_text:
         raise HarnessError(f"FAILED TO RESTORE {path}; manual repair required")
 

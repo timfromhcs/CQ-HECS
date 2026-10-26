@@ -13,6 +13,8 @@ The harness itself must fail closed. These tests verify:
 from __future__ import annotations
 
 import io
+import os
+import time
 import unittest
 from unittest.mock import patch
 
@@ -107,6 +109,45 @@ class TestFailClosedBehaviour(unittest.TestCase):
             exit_code = harness.run([broken], verbose=False)
         self.assertEqual(exit_code, harness.EXIT_GATE_FAILED)
         self.assertIn("[HARNESS ERROR]", out.getvalue())
+
+
+class TestStaleBytecode(unittest.TestCase):
+    def test_same_size_mutant_does_not_leak_via_bytecode_cache(self):
+        """A restored source must not be checked through a mutant .pyc.
+
+        CPython validates bytecode with the source mtime truncated to seconds
+        and the source size. A same-size mutant written and restored inside one
+        second can leave a .pyc that still looks valid, so the mutation
+        baseline would execute mutated code and fail spuriously.
+        """
+        mutant = next(
+            item for item in harness.MUTANTS
+            if item.check == "t_count_classification"
+        )
+        path = harness.REPO_ROOT / mutant.target
+        original_text = path.read_text(encoding="utf-8")
+        original_stat = path.stat()
+        fixed = int(time.time()) - 5
+        try:
+            self.assertFalse(
+                harness.run_check_in_subprocess(mutant.check),
+                msg="unmutated source must not report the defect",
+            )
+            mutated_path, _ = harness.apply_mutant(mutant)
+            os.utime(mutated_path, (fixed, fixed))
+            self.assertTrue(
+                harness.run_check_in_subprocess(mutant.check),
+                msg="the mutant must be detected",
+            )
+            harness.restore_source(mutated_path, original_text)
+            os.utime(mutated_path, (fixed, fixed))
+            self.assertFalse(
+                harness.run_check_in_subprocess(mutant.check),
+                msg="restored source was checked through stale mutant bytecode",
+            )
+        finally:
+            harness.restore_source(path, original_text)
+            os.utime(path, (original_stat.st_atime, original_stat.st_mtime))
 
 
 class TestFullHarness(unittest.TestCase):
