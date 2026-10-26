@@ -9,9 +9,84 @@ permissions:
   contents: write
 
 jobs:
+  verify-required-ci:
+    name: Require green CI for the tagged SHA
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      ci_url: ${{ steps.ci.outputs.url }}
+    steps:
+      - name: Wait until ci.yml succeeded for ${{ github.sha }}
+        id: ci
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          deadline=$((SECONDS + 4200))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            runs="$(gh run list --repo "$REPO" --workflow ci.yml \
+              --commit "$SHA" --limit 50 \
+              --json status,conclusion,event,databaseId,url,headSha)" || {
+                echo "gh run list failed; retrying"; sleep 30; continue; }
+            rc=0
+            python - "$runs" <<'PY' || rc=$?
+          import json
+          import sys
+
+          runs = json.loads(sys.argv[1])
+          if not runs:
+              print("WAIT: no ci.yml run for this SHA yet")
+              sys.exit(3)
+          failed = [
+              r for r in runs
+              if r.get("status") == "completed"
+              and r.get("conclusion") not in ("success", "skipped", None)
+          ]
+          if failed:
+              for run in failed:
+                  print(f"FAILED: {run['conclusion']} {run['url']}")
+              sys.exit(1)
+          green = [
+              r for r in runs
+              if r.get("status") == "completed"
+              and r.get("conclusion") == "success"
+          ]
+          if green:
+              for run in green:
+                  print(f"GREEN: {run['url']}")
+              sys.exit(0)
+          print("WAIT: required CI is still running")
+          sys.exit(3)
+          PY
+            if [ "$rc" -eq 0 ]; then
+              green_url="$(gh run list --repo "$REPO" --workflow ci.yml \
+                --commit "$SHA" --limit 50 \
+                --json status,conclusion,url \
+                --jq '[.[] | select(.status == "completed" and .conclusion == "success")][0].url')"
+              echo "url=$green_url" >> "$GITHUB_OUTPUT"
+              echo "Required CI is green for $SHA: $green_url"
+              exit 0
+            fi
+            if [ "$rc" -eq 1 ]; then
+              echo "::error::Required CI is red for $SHA; refusing to publish"
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "::error::Timed out waiting for required CI on $SHA"
+          exit 1
+
   release:
     name: Build and Publish Release
+    needs: verify-required-ci
     runs-on: ubuntu-latest
+    env:
+      CI_RUN_URL: ${{ needs.verify-required-ci.outputs.ci_url }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -78,7 +153,14 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(python scripts/version.py)"
-          cp RELEASE_NOTES.md "dist/RELEASE_NOTES_v${VERSION}.md"
+          NOTES="dist/RELEASE_NOTES_v${VERSION}.md"
+          {
+            echo "**Source commit:** \`${GITHUB_SHA}\`"
+            echo ""
+            echo "**Required CI:** ${CI_RUN_URL}"
+            echo ""
+            cat RELEASE_NOTES.md
+          } > "$NOTES"
 
       - name: Generate checksums and SPDX SBOM
         run: python scripts/generate_sbom_and_checksums.py
@@ -101,6 +183,24 @@ jobs:
           done
           echo "all release assets present"
 
+      - name: Append final SHA256 values to the release body
+        run: |
+          set -euo pipefail
+          VERSION="$(python scripts/version.py)"
+          BODY="dist/release-body.md"
+          {
+            cat "dist/RELEASE_NOTES_v${VERSION}.md"
+            echo ""
+            echo "---"
+            echo ""
+            echo "## SHA256 checksums (final assets)"
+            echo ""
+            echo '```'
+            cat dist/sha256sums.txt
+            echo '```'
+          } > "$BODY"
+          cat "$BODY"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -113,4 +213,4 @@ jobs:
           generate_release_notes: false
           draft: false
           prerelease: false
-          body_path: dist/RELEASE_NOTES_v${{ steps.meta.outputs.version }}.md
+          body_path: dist/release-body.md

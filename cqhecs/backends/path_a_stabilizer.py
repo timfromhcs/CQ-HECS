@@ -13,6 +13,12 @@ import numpy as np
 
 from cqhecs.result import SimulationResult, hoeffding_total_variation_bound
 from cqhecs.circuit_parsing import parse_circuit
+from cqhecs.gate_manifest import (
+    NON_UNITARY,
+    clifford_rotation_kind,
+    get_gate,
+    path_gate_names,
+)
 
 
 class UnsupportedPathAOperation(ValueError):
@@ -307,15 +313,21 @@ class PathAStabilizerBackend:
     ``counts`` are a finite-shot sample and carry ``sampling_error_bound``.
     """
 
-    #: Gates the stabilizer tableau can apply.
-    SUPPORTED_GATES = frozenset({
-        "h", "x", "y", "z", "s", "sdg",
-        "cx", "cnot", "cz", "swap",
-        "id", "barrier",
-    })
+    #: Gates the stabilizer tableau can apply without decomposition, derived
+    #: from the shared manifest. Includes measurement and the angle gates that
+    #: are Clifford only at multiples of pi/2.
+    SUPPORTED_GATES = frozenset(
+        name
+        for name in path_gate_names("A")
+        if name not in NON_UNITARY and not get_gate(name).parameterised
+    )
 
     #: Angle-gated rotations that are Clifford only at multiples of pi/2.
-    _CLIFFORD_ROTATIONS = frozenset({"rz", "p", "u1"})
+    _CLIFFORD_ROTATIONS = frozenset(
+        name
+        for name in path_gate_names("A")
+        if name not in NON_UNITARY and get_gate(name).parameterised
+    )
 
     #: Table of gate name -> simulator method name. Absent entries are no-ops.
     _GATE_DISPATCH: Dict[str, str] = {
@@ -327,18 +339,8 @@ class PathAStabilizerBackend:
 
     @staticmethod
     def _clifford_rotation_kind(theta: float) -> Optional[str]:
-        """
-        Maps a rotation angle to its Clifford generator, or None if non-Clifford.
-
-        RZ(t)/P(t) coincide with a Pauli/Z90 rotation when t is a multiple of
-        pi/2, so those angles are exactly representable in the tableau.
-        """
-        import math as _math
-        norm = theta % (2.0 * _math.pi)
-        quarters = int(round(norm / (_math.pi / 2.0)))
-        if abs(norm / (_math.pi / 2.0) - quarters) > 1e-7:
-            return None
-        return {0: "id", 1: "s", 2: "z", 3: "sdg"}.get(quarters % 4)
+        """Delegates to the shared manifest implementation."""
+        return clifford_rotation_kind(theta)
 
     def _validate(self, instructions: List[Any]) -> Optional[List[int]]:
         """
@@ -373,8 +375,24 @@ class PathAStabilizerBackend:
                     raise UnsupportedPathAOperation(
                         "Measurement instruction has no qubit operand."
                     )
+                if len(qubits) != 1:
+                    raise UnsupportedPathAOperation(
+                        f"Measurement expects 1 qubit, got {len(qubits)}: {qubits}"
+                    )
                 measured.append(int(qubits[0]))
                 continue
+            spec = get_gate(name)
+            if spec is not None and not spec.barrier:
+                if len(qubits) != spec.arity:
+                    raise UnsupportedPathAOperation(
+                        f"Gate '{name}' expects {spec.arity} qubit(s), got "
+                        f"{len(qubits)}: {qubits}"
+                    )
+                if not (spec.min_params <= len(params) <= spec.max_params):
+                    raise UnsupportedPathAOperation(
+                        f"Gate '{name}' expects {spec.min_params}.."
+                        f"{spec.max_params} parameter(s), got {len(params)}."
+                    )
             if name in self.SUPPORTED_GATES:
                 continue
             if name in self._CLIFFORD_ROTATIONS and params:

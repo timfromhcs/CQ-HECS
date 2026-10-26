@@ -335,21 +335,15 @@ MUTANTS: List[SourceMutant] = [
         name="Wrong T-count classification",
         target="cqhecs/circuit_analyzer.py",
         original=(
-            '                if gname in ("barrier", "measure", "id", "openqasm", "include"):\n'
-            "                    continue\n"
-            "\n"
-            "                if gname in NON_CLIFFORD_T_GATES:\n"
-            '                    t_count += 7 if gname in ("ccx", "toffoli") else 1'
+            '    if name in ("t", "tdg"):\n'
+            "        return 1\n"
         ),
         replacement=(
-            '                if gname in ("barrier", "measure", "id", "openqasm", "include"):\n'
-            "                    continue\n"
-            "\n"
-            "                if gname in NON_CLIFFORD_T_GATES:\n"
-            '                    t_count += 7 if gname in ("ccx", "toffoli") else 0'
+            '    if name in ("t", "tdg"):\n'
+            "        return 0\n"
         ),
         check="t_count_classification",
-        mechanism="drops the T contribution in the OpenQASM analysis path",
+        mechanism="drops the T contribution in the shared resource classifier",
     ),
 ]
 
