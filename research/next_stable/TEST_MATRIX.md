@@ -8,8 +8,13 @@ Platform: Windows 11, Python 3.14.6, MSVC 19.44, CMake Release, Vulkan SDK
 Base: `812da806d9b4528f1c4f8ccd3cbb7b37b6f009ce` (`main`).
 Branch: `agent/cq-hecs-v2.2.2-stable-hardening`.
 Candidate results below were produced on this branch with the changes in
-`FINDINGS.md`. Final exact-SHA CI results are recorded in the pull request /
-release evidence, not assumed here.
+`FINDINGS.md`. Final exact-SHA CI evidence: PR run
+[`40583157053`](https://github.com/timfromhcs/CQ-HECS/actions/runs/40583157053)
+on `41eb6c0`, merged-`main` run
+[`40583940038`](https://github.com/timfromhcs/CQ-HECS/actions/runs/40583940038)
+on `1a36313`, and release run
+[`40584656588`](https://github.com/timfromhcs/CQ-HECS/actions/runs/40584656588)
+on the same merged SHA.
 
 ### Local gates after the fixes (2026-10-27)
 
@@ -26,7 +31,7 @@ release evidence, not assumed here.
 | Mutation harness | `python scripts/run_mutation_tests.py` | 11/11 mutants killed, clean baseline |
 | Workflow YAML | `python -c "import yaml; yaml.safe_load(...)"` for ci/nightly/release | PASS |
 | Action pins | `git ls-remote --tags` for each pinned action | PASS — SHAs match `v7.0.1`, `v7.1.0`, `v7.0.2`, `v3.0.3` (peeled commit), `v1.7.0` |
-| `git diff --check` | `git diff --check` | PASS for changed non-mission files; `GEMINI.md` retains pre-existing operator trailing spaces (not edited) |
+| `git diff --check` | `git diff --check` | PASS; `GEMINI.md` operator changes preserved with pre-existing trailing whitespace normalized |
 
 `verify_vulkan_shaders.py` proves shader source compiles. It is **not** a
 physical-GPU compute test and no GPU acceleration is claimed.
@@ -72,11 +77,12 @@ physical-GPU compute test and no GPU acceleration is claimed.
 
 | Gate | Status | Reason |
 | :--- | :--- | :--- |
-| Linux/macOS native build | NOT RUN locally | Windows host; delegated to GitHub Actions |
-| ASan/UBSan | NOT RUN locally | MSVC Release build; delegated to CI where configured |
+| Linux/macOS native build | PASS in CI | Merged-`main` run `40583940038` (Windows host locally) |
+| ASan/UBSan | PASS in CI | Merged-`main` run `40583940038`; MSVC cannot build the sanitizer target |
 | Cloud Build | NOT VERIFIED | Requires project/trigger access; see release report |
 | Physical GPU dispatch | NOT VERIFIED | No physical Vulkan compute device test performed |
-| Windows/Linux CI on this branch | SEE PR #8 | Exact-SHA check results are recorded on pull request #8; they are not duplicated here |
+| Windows/Linux CI on this branch | PASS | PR run `40583157053` on `41eb6c0` |
+| Published release assets | VERIFIED | Release `v2.2.2`; downloaded assets match `sha256sums.txt` and GitHub digests |
 
 ## Cycle 1 — merged hardening (base `9fe014b`)
 
