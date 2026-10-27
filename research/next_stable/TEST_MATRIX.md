@@ -55,6 +55,21 @@ The GPU test proves dispatch and readback for three primitive pipelines. It does
 not claim that the four Python simulation paths or the full native simulator run
 on the GPU.
 
+CI evidence: PR run
+[`40588504332`](https://github.com/timfromhcs/CQ-HECS/actions/runs/40588504332)
+(push) and
+[`40588525735`](https://github.com/timfromhcs/CQ-HECS/actions/runs/40588525735)
+(pull request) on `ce77841`; merged-`main` run
+[`40589383230`](https://github.com/timfromhcs/CQ-HECS/actions/runs/40589383230)
+on `47a9e8a`.
+
+| CI job | Result |
+| :--- | :--- |
+| Linux C++20, Vulkan & full Python suite | **19/19** CTest; the explicit Vulkan gate (`CQ_REQUIRE_VULKAN=1`) ran on llvmpipe `1.4.318` / Mesa `25.2.8` and passed all three dispatches |
+| Windows C++20, Vulkan & full Python suite | **19/19** CTest with `test_vulkan_compute_contract` reported as **Skipped** — no Vulkan ICD on the hosted runner, i.e. the designed no-device path |
+| Linux ASan + UBSan native tests | PASS (sanitizer job runs a fixed subset that excludes the GPU test) |
+| Python 3.12 / 3.13 / 3.14, static checks, package smoke | PASS |
+
 ### New and strengthened suites in cycle 2
 
 | Suite | Tests | What it actually exercises |
