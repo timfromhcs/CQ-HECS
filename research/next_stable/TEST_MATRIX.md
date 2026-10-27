@@ -76,7 +76,7 @@ physical-GPU compute test and no GPU acceleration is claimed.
 | ASan/UBSan | NOT RUN locally | MSVC Release build; delegated to CI where configured |
 | Cloud Build | NOT VERIFIED | Requires project/trigger access; see release report |
 | Physical GPU dispatch | NOT VERIFIED | No physical Vulkan compute device test performed |
-| Windows/Linux CI on this branch | PENDING | Recorded after push; see PR checks |
+| Windows/Linux CI on this branch | SEE PR #8 | Exact-SHA check results are recorded on pull request #8; they are not duplicated here |
 
 ## Cycle 1 — merged hardening (base `9fe014b`)
 

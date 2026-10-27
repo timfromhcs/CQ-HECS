@@ -190,7 +190,8 @@ the original checklist is recorded here as **CQ-01b**.
 
 ## CI / release status
 
-- PR, CI run URLs and the exact merged SHA are appended to the final report
-  after the branch is pushed and checks complete.
+- Pull request: https://github.com/timfromhcs/CQ-HECS/pull/8
+- Exact-SHA CI run URLs are recorded on that pull request's checks page; the
+  final merged SHA and release run are appended to the final report.
 - `v2.2.2` is tagged only from the verified merged SHA and only after the
   tag-triggered release workflow succeeds.
