@@ -24,7 +24,7 @@ on the same merged SHA.
 | Python compile | `python -m compileall -q cqhecs tests scripts` | PASS (exit 0) |
 | Python suite | `$env:PYTHONPATH="."; python -m pytest tests/ -q` | **366 passed in 83.85s** (0 failed, 0 skipped) |
 | Native build | `cmake --build build --config Release --parallel` | PASS (exit 0) |
-| Native suite | `ctest --test-dir build -C Release --output-on-failure` | **18/18 passed** in 17.13s |
+| Native suite | `ctest --test-dir build -C Release --output-on-failure` | **19/19 passed** in 18.98s (includes the GPU contract) |
 | Branch coverage | `python -m coverage run --branch --source=cqhecs -m pytest tests/ -q` then `python -m coverage report --fail-under=70` | **82%**, exit 0 (CI threshold 70%) |
 | Silent-truncation audit | `python scripts/verify_no_silent_truncation.py` | PASS |
 | Shader compilation | `python scripts/verify_vulkan_shaders.py` | PASS — 12/12 shaders, 0 warnings/errors |
@@ -33,8 +33,27 @@ on the same merged SHA.
 | Action pins | `git ls-remote --tags` for each pinned action | PASS — SHAs match `v7.0.1`, `v7.1.0`, `v7.0.2`, `v3.0.3` (peeled commit), `v1.7.0` |
 | `git diff --check` | `git diff --check` | PASS; `GEMINI.md` operator changes preserved with pre-existing trailing whitespace normalized |
 
-`verify_vulkan_shaders.py` proves shader source compiles. It is **not** a
-physical-GPU compute test and no GPU acceleration is claimed.
+`verify_vulkan_shaders.py` proves shader source compiles. Primitive GPU dispatch
+is covered separately by `tests/cpp/test_vulkan_compute_contract.cpp`; full
+simulator acceleration is not claimed.
+
+### Post-release GPU verification (2026-10-27)
+
+Branch: `agent/cq-hecs-gpu-dispatch-verification`. Device: AMD Radeon(TM)
+Graphics (integrated, vendor `0x1002`), Vulkan `1.4.315`, AMD driver `26.6.1`,
+Vulkan SDK `1.4.357.0`.
+
+| Gate | Command | Result |
+| :--- | :--- | :--- |
+| Native build | `cmake --build build --config Release --parallel 4` | PASS |
+| Native suite | `ctest --test-dir build -C Release --output-on-failure` | **19/19 passed** in 18.98s |
+| GPU compute contract | `CQ_REQUIRE_HARDWARE_GPU=1 test_vulkan_compute_contract.exe` | PASS — state reset, CORDIC phase/Pauli-X, Q30 tensor contraction |
+| Vulkan validation | `VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation` + hardware requirement | PASS, no validation errors after enabling `shaderInt64` |
+| Python suite | `$env:PYTHONPATH="."; python -m pytest tests/ -q` | **366 passed** in 60.74s |
+
+The GPU test proves dispatch and readback for three primitive pipelines. It does
+not claim that the four Python simulation paths or the full native simulator run
+on the GPU.
 
 ### New and strengthened suites in cycle 2
 
@@ -49,6 +68,7 @@ physical-GPU compute test and no GPU acceleration is claimed.
 | `tests/test_adversarial_aer_and_stim.py` | 6 | Statevector fidelity, 5σ/TVD sampling envelopes, untruncated Aer MPS, Aer statevector for `crx`/`cry` |
 | `tests/test_svd_precision.py` | 5 | Ill-conditioned/degenerate spectra, residual diagnostics, no-truncation roundoff |
 | `tests/cpp/test_sat_parser.cpp` (CTest `test_sat_parser`) | 1 suite | Strict DIMACS grammar, hash coverage, literal/header bounds, timeout classified as error |
+| `tests/cpp/test_vulkan_compute_contract.cpp` (CTest `test_vulkan_compute_contract`) | 3 dispatches | Real Vulkan dispatch and readback: state reset to `\|0>`/`\|1>`, CORDIC π/2 phase + inverse + Pauli-X, Q30 matrix contraction; exits 77 on hosts without a Vulkan device unless `CQ_REQUIRE_VULKAN`/`CQ_REQUIRE_HARDWARE_GPU` is set |
 | `tests/python/test_qiskit_backend_contract.py` | — | QFT via `synth_qft_full(4)` (no deprecation call) |
 
 ### Updated existing suites
@@ -71,7 +91,9 @@ physical-GPU compute test and no GPU acceleration is claimed.
   `MAX_MPS_QUBITS`, `MAX_SAMPLING_ELEMENTS`) and check both sides where the API
   permits it.
 - Unverified/unsupported paths (`RX/RY/U3/SWAP` on the MPS facade, >255-qubit
-  QASM operands, physical GPU dispatch) are tested for refusal, not skipped.
+  QASM operands) are tested for refusal, not skipped. Primitive Vulkan dispatch
+  is verified separately (see below); full GPU simulator acceleration remains
+  out of scope.
 
 ### Not run here
 
@@ -80,7 +102,7 @@ physical-GPU compute test and no GPU acceleration is claimed.
 | Linux/macOS native build | PASS in CI | Merged-`main` run `40583940038` (Windows host locally) |
 | ASan/UBSan | PASS in CI | Merged-`main` run `40583940038`; MSVC cannot build the sanitizer target |
 | Cloud Build | NOT VERIFIED | Requires project/trigger access; see release report |
-| Physical GPU dispatch | NOT VERIFIED | No physical Vulkan compute device test performed |
+| Physical GPU dispatch | VERIFIED locally | AMD Radeon(TM) Graphics iGPU, Vulkan `1.4.315`, driver `26.6.1`; `test_vulkan_compute_contract` passes with `CQ_REQUIRE_HARDWARE_GPU=1` and is validation-clean |
 | Windows/Linux CI on this branch | PASS | PR run `40583157053` on `41eb6c0` |
 | Published release assets | VERIFIED | Release `v2.2.2`; downloaded assets match `sha256sums.txt` and GitHub digests |
 

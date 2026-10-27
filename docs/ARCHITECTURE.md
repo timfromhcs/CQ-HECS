@@ -4,7 +4,8 @@
 > replaces an earlier aspirational "VRTS-300" specification whose bit-exact
 > Z(2^32) CORDIC phase ring and GPU VRAM accounting are not part of the
 > supported Python contract; the shipped native core does expose a 6x5x10
-> lattice engine, but no physical GPU acceleration is verified. The canonical,
+> lattice engine; primitive Vulkan compute dispatch is verified on an AMD iGPU,
+> but no end-to-end GPU acceleration is claimed. The canonical,
 > regularly maintained architecture overview lives in the repository root at
 > [`ARCHITECTURE.md`](../ARCHITECTURE.md).
 
@@ -33,7 +34,7 @@
 | Shader compilation | SPIR-V validation in CI | verified (compilation ≠ acceleration) |
 | Software Vulkan (Lavapipe) | CI subsystem tier | verified in CI contexts, depends on runner |
 | Vulkan loader | device enumeration | verified on the dev machine |
-| Physical GPU compute dispatch | actual dispatch on disswcrete/integrated GPU | **not verified in this cycle** — no acceleration claim is made |
+| Physical GPU compute dispatch | primitive Vulkan pipelines on an integrated GPU | **verified on AMD Radeon iGPU** via `test_vulkan_compute_contract`; no end-to-end acceleration claim |
 
 ## Cross-cutting guarantees
 

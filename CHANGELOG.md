@@ -6,6 +6,33 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [Unreleased]
+
+### Fixed — Vulkan compute dispatch is now verified and fails closed
+
+- **Spec fix:** `VkPhysicalDeviceFeatures::shaderInt64` is queried and enabled
+  before device creation. The embedded CORDIC shader declares the `Int64`
+  capability; without the feature, the Khronos validation layer reported
+  `VUID-VkShaderModuleCreateInfo-pCode-08740` for every pipeline.
+- **Fail-closed dispatch:** command-buffer allocation, recording, submission and
+  queue-wait results are checked in `dispatch_cordic`,
+  `dispatch_state_reset` and `dispatch_tensor_contract`; partial descriptor and
+  command-buffer state is released on error paths. A failed `initialize()` now
+  tears down whatever was already created.
+- **Evidence:** new `tests/cpp/test_vulkan_compute_contract.cpp` (CTest
+  `test_vulkan_compute_contract`) dispatches state reset, a CORDIC π/2 phase
+  with inverse and Pauli-X, and a Q30 matrix contraction on the GPU, then
+  compares the readback in device memory. It exits `77` (CTest SKIP) when no
+  Vulkan device exists; `CQ_REQUIRE_VULKAN=1` requires any device (Lavapipe
+  included, used by Linux CI) and `CQ_REQUIRE_HARDWARE_GPU=1` rejects software
+  ICDs.
+- **Verified locally** on an AMD Radeon(TM) Graphics iGPU (Vulkan `1.4.315`,
+  driver `26.6.1`, SDK `1.4.357.0`), validation-clean, with CTest **19/19** and
+  Python **366 passed**. This is primitive dispatch evidence only; no
+  end-to-end GPU simulator acceleration is claimed.
+
+---
+
 ## [2.2.2] — 2026-10-26
 
 ### Fixed — native simulation paths no longer report success without evolving a state

@@ -135,6 +135,13 @@ jobs:
           ctest --test-dir build --output-on-failure --schedule-random \
             -j"$(nproc)" --output-junit test-results/ctest.xml
 
+      - name: Verify Vulkan compute dispatch (software ICD allowed)
+        env:
+          CQ_REQUIRE_VULKAN: "1"
+        run: |
+          vulkaninfo --summary
+          ctest --test-dir build -R '^test_vulkan_compute_contract$' -V
+
       - name: Full Python suite with branch coverage
         env:
           PYTHONPATH: .
