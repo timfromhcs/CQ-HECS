@@ -17,68 +17,179 @@ SATSolverCPP::SATSolverCPP(size_t table_capacity)
 
 SATSolverCPP::~SATSolverCPP() = default;
 
-bool SATSolverCPP::parse_file(const std::string& filepath, CNFFormulaCPP& out_formula) {
+namespace {
+
+// Strict DIMACS token helpers. ``std::stoll`` rejects overflow by throwing, so
+// a token such as "99999999999999999999999" becomes a parse error instead of a
+// wrapped index.
+bool parse_unsigned_token(const std::string& token, uint64_t& out) {
+    if (token.empty()) return false;
+    for (char ch : token) {
+        if (ch < '0' || ch > '9') return false;
+    }
+    try {
+        const unsigned long long value = std::stoull(token);
+        out = static_cast<uint64_t>(value);
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+bool parse_literal_token(const std::string& token, int64_t& out) {
+    if (token.empty()) return false;
+    size_t pos = 0;
+    bool negative = false;
+    if (token[0] == '+' || token[0] == '-') {
+        negative = (token[0] == '-');
+        pos = 1;
+        if (token.size() == 1) return false;
+    }
+    for (size_t i = pos; i < token.size(); ++i) {
+        if (token[i] < '0' || token[i] > '9') return false;
+    }
+    try {
+        const long long value = std::stoll(token);
+        out = static_cast<int64_t>(value);
+    } catch (...) {
+        return false;
+    }
+    if (negative && out > 0) out = -out;
+    return true;
+}
+
+} // namespace
+
+bool SATSolverCPP::parse_file(const std::string& filepath, CNFFormulaCPP& out_formula,
+                              std::string* error) {
     if (filepath == "-") {
         // Read from standard input
         std::stringstream ss;
         ss << std::cin.rdbuf();
         out_formula.source_name = "stdin";
-        return parse_string(ss.str(), out_formula);
+        return parse_string(ss.str(), out_formula, error);
     }
 
     std::ifstream file(filepath);
     if (!file.is_open()) {
-        std::cerr << "[SATSolverCPP] Failed to open CNF file: " << filepath << std::endl;
+        if (error) *error = "failed to open CNF file: " + filepath;
         return false;
     }
     std::stringstream ss;
     ss << file.rdbuf();
     out_formula.source_name = filepath;
-    return parse_string(ss.str(), out_formula);
+    return parse_string(ss.str(), out_formula, error);
 }
 
-bool SATSolverCPP::parse_string(const std::string& content, CNFFormulaCPP& out_formula) {
-    std::istringstream stream(content);
-    std::string line;
-
+bool SATSolverCPP::parse_string(const std::string& content, CNFFormulaCPP& out_formula,
+                                std::string* error) {
     out_formula.num_vars = 0;
     out_formula.num_clauses = 0;
     out_formula.clauses.clear();
 
+    auto fail = [&](size_t line, const std::string& message) {
+        if (error) {
+            *error = (line > 0 ? "line " + std::to_string(line) + ": " : std::string()) + message;
+        }
+        out_formula.num_vars = 0;
+        out_formula.num_clauses = 0;
+        out_formula.clauses.clear();
+        return false;
+    };
+
+    if (content.size() > MAX_INPUT_BYTES) {
+        return fail(0, "DIMACS input exceeds the " +
+                           std::to_string(MAX_INPUT_BYTES) + "-byte limit");
+    }
+
+    std::istringstream stream(content);
+    std::string line;
     std::vector<int32_t> current_clause;
+    bool saw_header = false;
+    size_t line_number = 0;
 
     while (std::getline(stream, line)) {
-        if (line.empty()) continue;
-        size_t first = line.find_first_not_of(" \t\r\n");
+        ++line_number;
+        const size_t first = line.find_first_not_of(" \t\r\n");
         if (first == std::string::npos || line[first] == 'c') continue;
 
         if (line[first] == 'p') {
+            if (saw_header) {
+                return fail(line_number, "duplicate 'p cnf' header");
+            }
+            std::vector<std::string> tokens;
             std::istringstream p_line(line.substr(first));
-            std::string p_tok, format_tok;
-            p_line >> p_tok >> format_tok >> out_formula.num_vars >> out_formula.num_clauses;
+            std::string token;
+            while (p_line >> token) tokens.push_back(token);
+            if (tokens.size() != 4 || tokens[0] != "p" || tokens[1] != "cnf") {
+                return fail(line_number, "malformed DIMACS header; expected 'p cnf <vars> <clauses>'");
+            }
+            uint64_t declared_vars = 0;
+            uint64_t declared_clauses = 0;
+            if (!parse_unsigned_token(tokens[2], declared_vars) ||
+                !parse_unsigned_token(tokens[3], declared_clauses)) {
+                return fail(line_number, "DIMACS header counts must be non-negative integers");
+            }
+            if (declared_vars > MAX_VARIABLES) {
+                return fail(line_number, "header declares " + tokens[2] +
+                                             " variables; the ceiling is " +
+                                             std::to_string(MAX_VARIABLES));
+            }
+            if (declared_clauses > MAX_CLAUSES) {
+                return fail(line_number, "header declares " + tokens[3] +
+                                             " clauses; the ceiling is " +
+                                             std::to_string(MAX_CLAUSES));
+            }
+            out_formula.num_vars = static_cast<uint32_t>(declared_vars);
+            saw_header = true;
             continue;
         }
 
         std::istringstream c_line(line.substr(first));
-        int32_t lit = 0;
-        while (c_line >> lit) {
-            if (lit == 0) {
+        std::string token;
+        while (c_line >> token) {
+            int64_t literal = 0;
+            if (!parse_literal_token(token, literal)) {
+                return fail(line_number, "invalid DIMACS literal '" + token + "'");
+            }
+            if (literal == 0) {
+                if (out_formula.clauses.size() >= MAX_CLAUSES) {
+                    return fail(line_number, "clause count exceeds the ceiling of " +
+                                                 std::to_string(MAX_CLAUSES));
+                }
                 out_formula.clauses.push_back(current_clause);
                 current_clause.clear();
-            } else {
-                if (std::abs(lit) <= 100000) {
-                    current_clause.push_back(lit);
-                    uint32_t var_idx = static_cast<uint32_t>(std::abs(lit));
-                    if (var_idx > out_formula.num_vars) {
-                        out_formula.num_vars = var_idx;
-                    }
-                }
+                continue;
+            }
+            const int64_t magnitude = literal < 0 ? -literal : literal;
+            if (magnitude > static_cast<int64_t>(MAX_VARIABLES)) {
+                // Previously such literals were silently dropped, which turned
+                // a satisfiable formula into an "UNSAT" empty-clause result.
+                return fail(line_number, "literal " + token + " exceeds the variable ceiling " +
+                                             std::to_string(MAX_VARIABLES));
+            }
+            if (saw_header && magnitude > static_cast<int64_t>(out_formula.num_vars)) {
+                // With a declared header, a larger literal is malformed DIMACS.
+                // Silently growing the formula would accept a different circuit
+                // than the one the caller declared.
+                return fail(line_number, "literal " + token +
+                                             " exceeds the declared variable count " +
+                                             std::to_string(out_formula.num_vars));
+            }
+            if (current_clause.size() >= MAX_CLAUSE_LITERALS) {
+                return fail(line_number, "clause exceeds the literal ceiling of " +
+                                             std::to_string(MAX_CLAUSE_LITERALS));
+            }
+            current_clause.push_back(static_cast<int32_t>(literal));
+            const uint32_t var_idx = static_cast<uint32_t>(magnitude);
+            if (var_idx > out_formula.num_vars) {
+                out_formula.num_vars = var_idx;
             }
         }
     }
 
     if (!current_clause.empty()) {
-        out_formula.clauses.push_back(current_clause);
+        return fail(line_number, "final clause is not terminated by 0");
     }
     out_formula.num_clauses = static_cast<uint32_t>(out_formula.clauses.size());
     return true;
@@ -86,12 +197,14 @@ bool SATSolverCPP::parse_string(const std::string& content, CNFFormulaCPP& out_f
 
 uint64_t SATSolverCPP::compute_state_hash(const std::vector<int8_t>& assignment) {
     uint64_t h = 0x123456789ABCDEF0ULL;
-    for (size_t var = 1; var < assignment.size() && var <= 32; ++var) {
-        if (assignment[var] != -1) {
-            uint64_t bit = (assignment[var] == 1) ? 1ULL : 0ULL;
-            h ^= ((var * 0x9e3779b97f4a7c15ULL) + bit);
-            h = (h << 7) | (h >> 57);
-        }
+    // Every assigned variable participates. The previous implementation hashed
+    // only variables 1..32, so two branches that differed solely in a
+    // higher-numbered variable collided by construction and the cycle pruner
+    // could discard a satisfiable branch (a false UNSAT).
+    for (size_t var = 1; var < assignment.size(); ++var) {
+        if (assignment[var] == -1) continue;
+        const uint64_t bit = (assignment[var] == 1) ? 1ULL : 2ULL;
+        h ^= (static_cast<uint64_t>(var) * 0x9e3779b97f4a7c15ULL) + bit + (h << 6) + (h >> 2);
     }
     return h;
 }
@@ -224,6 +337,9 @@ bool SATSolverCPP::dpll(std::vector<std::vector<int32_t>>& clauses,
 {
     auto now = std::chrono::steady_clock::now();
     if (std::chrono::duration<double>(now - t_start).count() > timeout_sec) {
+        // A timeout is not a proof of unsatisfiability. Latch it so solve()
+        // can report an explicit error instead of a fabricated UNSAT.
+        m_timed_out = true;
         return false;
     }
 
@@ -295,7 +411,42 @@ SATSolverResultCPP SATSolverCPP::solve(const CNFFormulaCPP& formula, double time
     SATSolverResultCPP res;
     m_decisions = 0;
     m_pruned_cycles = 0;
+    m_timed_out = false;
     std::fill(m_cuckoo_table.begin(), m_cuckoo_table.end(), 0);
+
+    // Defensive validation for callers that build a formula directly instead of
+    // going through parse_string(). An out-of-range literal would otherwise
+    // index ``assignment`` out of bounds.
+    if (formula.num_vars > MAX_VARIABLES) {
+        res.input_valid = false;
+        res.error = "formula declares " + std::to_string(formula.num_vars) +
+                    " variables; the ceiling is " + std::to_string(MAX_VARIABLES);
+        return res;
+    }
+    if (formula.clauses.size() > MAX_CLAUSES) {
+        res.input_valid = false;
+        res.error = "formula has " + std::to_string(formula.clauses.size()) +
+                    " clauses; the ceiling is " + std::to_string(MAX_CLAUSES);
+        return res;
+    }
+    for (const auto& clause : formula.clauses) {
+        if (clause.size() > MAX_CLAUSE_LITERALS) {
+            res.input_valid = false;
+            res.error = "a clause exceeds the literal ceiling of " +
+                        std::to_string(MAX_CLAUSE_LITERALS);
+            return res;
+        }
+        for (int32_t lit : clause) {
+            const int64_t magnitude = lit < 0 ? -static_cast<int64_t>(lit) : lit;
+            if (lit == 0 || magnitude > static_cast<int64_t>(formula.num_vars)) {
+                res.input_valid = false;
+                res.error = "literal " + std::to_string(lit) +
+                            " is outside the declared variable range 1.." +
+                            std::to_string(formula.num_vars);
+                return res;
+            }
+        }
+    }
 
     auto t0 = std::chrono::steady_clock::now();
 
@@ -329,6 +480,16 @@ SATSolverResultCPP SATSolverCPP::solve(const CNFFormulaCPP& formula, double time
     res.elapsed_ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
     res.num_decisions = m_decisions;
     res.num_pruned_cycles = m_pruned_cycles;
+
+    if (m_timed_out) {
+        // Never return a timeout-shaped UNSAT.
+        res.timed_out = true;
+        res.satisfiable = false;
+        res.verified = false;
+        res.assignment.clear();
+        res.error = "solver exceeded its wall-clock budget; no SAT/UNSAT verdict";
+        return res;
+    }
 
     if (res.satisfiable) {
         res.assignment = assignment;

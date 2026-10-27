@@ -696,6 +696,11 @@ class PathDSparsePauliBackend:
     certified by the Pauli truncation bound.
     """
 
+    #: Observable construction is O(n) for singles and O(n^2) for pairs, so a
+    #: legal million-qubit QASM register must be refused before that loop.
+    MAX_QUBITS = 4096
+    MAX_SHOTS = 10_000_000
+
     def __init__(
         self,
         max_pauli_terms: int = 1024,
@@ -721,9 +726,18 @@ class PathDSparsePauliBackend:
 
         if shots <= 0:
             raise ValueError(f"shots must be a positive integer, got {shots}")
+        if shots > self.MAX_SHOTS:
+            raise ValueError(
+                f"shots must not exceed {self.MAX_SHOTS}, got {shots}"
+            )
 
         tol = error_tolerance if error_tolerance is not None else self.error_tolerance
         instructions, n_q = parse_circuit(circuit)
+        if n_q > self.MAX_QUBITS:
+            raise ValueError(
+                f"Path D supports at most {self.MAX_QUBITS} qubits "
+                f"(circuit has {n_q}); refusing before building observables."
+            )
 
         sim = SparsePauliDynamicsSimulator(
             num_qubits=n_q,

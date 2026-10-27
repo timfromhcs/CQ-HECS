@@ -8,6 +8,8 @@ Guarantees:
 """
 
 from __future__ import annotations
+import math
+import numbers
 import os
 import shutil
 import tempfile
@@ -67,6 +69,69 @@ def _memory_metadata() -> Dict[str, Any]:
             "psutil (or resource) is available."
         ),
     }
+
+
+#: Documented ceilings for the Python Path C resource contract. These bound the
+#: *bookkeeping* the interpreter can construct; they do not promise that a large
+#: accepted circuit will fit in the caller's machine.
+MAX_RAM_BUDGET_MB = 65_536.0          # 64 GiB active working set
+MAX_STORAGE_BUDGET_MB = 1_048_576.0   # 1 TiB retained MPS tensors + swap
+MAX_MPS_QUBITS = 4_096                # per-site array ceiling
+MAX_SHOTS = 10_000_000                # batched sampler rows
+MAX_SAMPLING_ELEMENTS = 50_000_000    # shots * qubits ceiling for all_bits
+
+#: Conservative multiplier applied to the contracted two-site matrix when
+#: estimating the temporary working set of ``numpy.linalg.svd``. NumPy exposes
+#: no allocator accounting, so this is a documented estimate, not a measurement.
+SVD_WORKSPACE_MULTIPLIER = 4.0
+
+
+class MPSResourceError(RuntimeError):
+    """A resource or paging failure that must fail closed as UNRESOLVED."""
+
+
+def _validate_budget_mb(value: Any, name: str, maximum: float) -> float:
+    """Validate a user-supplied MiB budget and convert it to bytes safely."""
+    if isinstance(value, bool) or not isinstance(value, numbers.Real):
+        raise ValueError(f"{name} must be a real number of MiB, got {value!r}")
+    v = float(value)
+    if not math.isfinite(v):
+        raise ValueError(f"{name} must be finite, got {v!r}")
+    if v <= 0.0:
+        raise ValueError(f"{name} must be positive, got {v!r}")
+    if v > maximum:
+        raise ValueError(
+            f"{name} must not exceed {maximum:g} MiB, got {v!r}"
+        )
+    if int(v * 1024 * 1024) < 1:
+        raise ValueError(f"{name} is below one byte, got {v!r}")
+    return v
+
+
+def _validate_shots(shots: Any) -> int:
+    """Reject invalid or unbounded shot counts before any allocation."""
+    if isinstance(shots, bool) or not isinstance(shots, numbers.Integral):
+        raise ValueError(f"shots must be an integer, got {shots!r}")
+    shots = int(shots)
+    if shots <= 0:
+        raise ValueError(f"shots must be a positive integer, got {shots}")
+    if shots > MAX_SHOTS:
+        raise ValueError(
+            f"shots must not exceed {MAX_SHOTS}, got {shots}"
+        )
+    return shots
+
+
+def _chain_two_qubit_matrix(matrix: np.ndarray) -> np.ndarray:
+    """Convert a canonical (Qiskit-little-endian) 4x4 gate to chain axes.
+
+    Qiskit's flat index is ``q_first + 2*q_second``; the MPS chain orders the
+    first gate operand as the outermost axis. Reversing each half of the tensor
+    (outputs and inputs) converts between them. Applying the raw matrix instead
+    silently transposes control/target for ``crx``/``cry``.
+    """
+    tensor = np.asarray(matrix, dtype=np.complex128).reshape(2, 2, 2, 2)
+    return np.ascontiguousarray(tensor.transpose(1, 0, 3, 2).reshape(4, 4))
 
 
 def _controlled_phase_matrix(theta: float) -> np.ndarray:
@@ -172,14 +237,34 @@ class ExactMPSTensorChain:
         max_storage_mb: float = 5120.0,
         temp_dir: Optional[str] = None
     ):
+        if isinstance(num_qubits, bool) or not isinstance(num_qubits, numbers.Integral):
+            raise ValueError(f"num_qubits must be an integer, got {num_qubits!r}")
+        num_qubits = int(num_qubits)
+        if num_qubits < 0:
+            raise ValueError(f"num_qubits must be non-negative, got {num_qubits}")
+        if num_qubits > MAX_MPS_QUBITS:
+            raise ValueError(
+                f"num_qubits {num_qubits} exceeds the MPS chain ceiling "
+                f"{MAX_MPS_QUBITS}; refusing before allocating site arrays"
+            )
+
         self.num_qubits = num_qubits
-        self.ram_budget_bytes = int(ram_budget_mb * 1024 * 1024)
-        self.max_storage_bytes = int(max_storage_mb * 1024 * 1024)
+        self.ram_budget_mb = _validate_budget_mb(
+            ram_budget_mb, "ram_budget_mb", MAX_RAM_BUDGET_MB
+        )
+        self.max_storage_mb = _validate_budget_mb(
+            max_storage_mb, "max_storage_mb", MAX_STORAGE_BUDGET_MB
+        )
+        self.ram_budget_bytes = int(self.ram_budget_mb * 1024 * 1024)
+        self.max_storage_bytes = int(self.max_storage_mb * 1024 * 1024)
         # Use a private subdirectory so concurrent runs never collide on the
         # fixed `mps_site_{q}.npy` names.
         self._owns_temp_dir = temp_dir is None
         self.temp_dir = temp_dir or tempfile.mkdtemp(prefix="cqhecs_mps_")
         self.swap_files: Dict[int, str] = {}
+        #: Bytes per offloaded site, retained so sampling can decide whether
+        #: rehydration would violate the RAM contract *before* loading pages.
+        self.site_nbytes: Dict[int, int] = {}
 
         # Site tensors: list of numpy arrays, shape (chi_left, 2, chi_right)
         # Initially in state |0...0>: each site is (1, 2, 1) with amplitude [1, 0]
@@ -190,6 +275,12 @@ class ExactMPSTensorChain:
         self.memory_limit_exceeded = False
         #: Which ceiling refused the operation: "storage" or "ram".
         self.resource_limit_kind: Optional[str] = None
+        #: Set when sampling refuses to rehydrate paged sites.
+        self.sampling_refusal_reason: Optional[str] = None
+        #: Set when a swap page is missing/corrupt; fails closed as UNRESOLVED.
+        self.storage_error: Optional[str] = None
+        #: Latest preflight estimate, exposed in result metadata.
+        self.last_preflight: Dict[str, Any] = {}
 
         # Roundoff accounting (see floating-point contract above).
         self.discarded_spectral_norm = 0.0
@@ -206,6 +297,7 @@ class ExactMPSTensorChain:
             t[0, 0, 0] = 1.0  # |0>
             self.sites.append(t)
             self.active_ram_bytes += t.nbytes
+            self.site_nbytes[i] = t.nbytes
         self.total_allocated_bytes = self.active_ram_bytes
 
     def apply_single_qubit_gate(self, q: int, gate_matrix: np.ndarray):
@@ -213,6 +305,15 @@ class ExactMPSTensorChain:
         self._ensure_site_in_ram(q)
         # site shape: (chi_L, 2, chi_R)
         t = self.sites[q]
+        # The contraction materialises one new tensor of the same size while the
+        # old one is still alive. Refuse before allocating if that transient
+        # working set cannot fit.
+        if self.active_ram_bytes + t.nbytes > self.ram_budget_bytes:
+            self._offload_distant_sites_to_nvme(q, q)
+        if self.active_ram_bytes + t.nbytes > self.ram_budget_bytes:
+            self.memory_limit_exceeded = True
+            self.resource_limit_kind = "ram"
+            return
         # t'_l, s', r = sum_s U_s',s * t_l, s, r
         new_t = np.einsum("ab,lbr->lar", gate_matrix, t)
         self.sites[q] = np.ascontiguousarray(new_t)
@@ -240,17 +341,35 @@ class ExactMPSTensorChain:
         chi_L = t_left.shape[0]
         chi_R = t_right.shape[2]
 
+        if not self._preflight_two_site(left, right, chi_L, chi_R):
+            return
+
         # 1. Contract over shared bond chi_M: (chi_L, 2, 2, chi_R)
         two_site = np.einsum("lsr,rmp->lsmp", t_left, t_right)
 
         # 2. Apply 4x4 gate: gate_4x4 shape (2, 2, 2, 2)
+        #
+        # Tensor-dimension derivation (do not "simplify" by eye):
+        #   two_site[l, s, m, p] has s = bit of `left` (= min(q1, q2)) and
+        #   m = bit of `right` (= max(q1, q2)).
+        #   u_tensor[b1, b2, a1, a2] is ordered by the *gate operands*, so
+        #   b1/a1 belong to q1 and b2/a2 to q2 (U[output, input] convention).
+        #
+        #   q1 < q2: s=a1, m=a2, output (s', m') = (b1, b2)
+        #       out[l, b1, b2, p] = sum_{a1,a2} U[b1,b2,a1,a2] two[l,a1,a2,p]
+        #       -> "absm,lsmp->labp"
+        #
+        #   q1 > q2: s=a2, m=a1, output (s', m') = (b2, b1)
+        #       out[l, b2, b1, p] = sum_{a1,a2} U[b1,b2,a1,a2] two[l,a2,a1,p]
+        #       -> "abcd,ldcp->lbap"  (a=b1, b=b2, c=a1, d=a2)
+        #
+        # Getting only the output axes right (an earlier defect) silently
+        # applies the gate with its control/target inputs transposed.
         u_tensor = gate_4x4.reshape(2, 2, 2, 2)
-        # two_site: l, s, m, p. Apply U on s, m -> a, b
         if q1 < q2:
             evolved = np.einsum("absm,lsmp->labp", u_tensor, two_site)
         else:
-            # reversed order
-            evolved = np.einsum("basm,lsmp->labp", u_tensor, two_site)
+            evolved = np.einsum("abcd,ldcp->lbap", u_tensor, two_site)
 
         # 3. Reshape into matrix for SVD: (chi_L * 2, 2 * chi_R)
         mat = evolved.reshape(chi_L * 2, 2 * chi_R)
@@ -326,6 +445,72 @@ class ExactMPSTensorChain:
         # pretending the offload satisfied a budget it did not.
         self._enforce_ram_budget(left, right)
 
+    def _preflight_two_site(
+        self, left: int, right: int, chi_l: int, chi_r: int
+    ) -> bool:
+        """
+        Refuse an adjacent two-site rewrite *before* any temporary allocation.
+
+        The estimates deliberately cover the whole contraction pipeline:
+
+        * ``two_site`` / ``evolved`` / ``mat``: three complex128 arrays of
+          ``chi_l * 2 * 2 * chi_r`` elements (NumPy may keep each alive);
+        * worst-case SVD outputs ``U``, ``S``, ``Vt`` for rank
+          ``min(2*chi_l, 2*chi_r)``;
+        * an SVD working-set multiplier, because LAPACK workspace is not
+          observable through NumPy.
+
+        These are conservative estimates, not allocator measurements. They are
+        recorded in ``last_preflight`` and surfaced in result metadata.
+        """
+        old_bytes = self.sites[left].nbytes + self.sites[right].nbytes
+        rank_max = min(chi_l * 2, chi_r * 2)
+        block_bytes = chi_l * 2 * 2 * chi_r * 16
+        svd_output_bytes = (
+            (chi_l * 2) * rank_max + rank_max + rank_max * (chi_r * 2)
+        ) * 16
+        temp_bytes = int(
+            block_bytes * 3
+            + svd_output_bytes
+            + SVD_WORKSPACE_MULTIPLIER * block_bytes
+        )
+        new_retained_bytes = (
+            (chi_l * 2) * rank_max + rank_max * (chi_r * 2)
+        ) * 16
+
+        projected_storage = (
+            self.total_allocated_bytes - old_bytes + new_retained_bytes
+        )
+        self.last_preflight = {
+            "old_retained_bytes": old_bytes,
+            "temporary_working_set_bytes": temp_bytes,
+            "projected_retained_bytes": projected_storage,
+            "svd_workspace_multiplier": SVD_WORKSPACE_MULTIPLIER,
+            "ram_budget_bytes": self.ram_budget_bytes,
+            "max_storage_bytes": self.max_storage_bytes,
+        }
+
+        if projected_storage > self.max_storage_bytes:
+            self.memory_limit_exceeded = True
+            self.resource_limit_kind = "storage"
+            return False
+
+        # Page out inactive sites first; sampling and evolution only need the
+        # two operand sites resident for this contraction.
+        if self.active_ram_bytes + temp_bytes + new_retained_bytes > self.ram_budget_bytes:
+            self._offload_distant_sites_to_nvme(left, right)
+        projected_working = (
+            self.active_ram_bytes - old_bytes
+            + temp_bytes
+            + new_retained_bytes
+        )
+        self.last_preflight["projected_working_set_bytes"] = projected_working
+        if projected_working > self.ram_budget_bytes:
+            self.memory_limit_exceeded = True
+            self.resource_limit_kind = "ram"
+            return False
+        return True
+
     def _enforce_ram_budget(self, keep_q1: int, keep_q2: int) -> None:
         """Pages inactive sites out, then refuses if the live set is still over."""
         if self.active_ram_bytes <= self.ram_budget_bytes:
@@ -367,19 +552,51 @@ class ExactMPSTensorChain:
                 return
 
     def _ensure_site_in_ram(self, q: int):
-        if self.sites[q] is None:
-            # Fetch from NVMe/disk swap
-            swap_path = self.swap_files.get(q)
-            if swap_path and os.path.exists(swap_path):
-                self.sites[q] = np.load(swap_path)
-                self.active_ram_bytes += self.sites[q].nbytes
+        if self.sites[q] is not None:
+            return
+        # Fetch from NVMe/disk swap. A missing, truncated or malformed page is a
+        # resource failure that must fail closed, never a silent ``None`` site
+        # that later produces a fabricated or partial result.
+        swap_path = self.swap_files.get(q)
+        if not swap_path:
+            self.storage_error = f"site {q} was paged out but has no swap path"
+            raise MPSResourceError(self.storage_error)
+        if not os.path.exists(swap_path):
+            self.storage_error = f"swap page for site {q} is missing: {swap_path}"
+            raise MPSResourceError(self.storage_error)
+        try:
+            loaded = np.load(swap_path, allow_pickle=False)
+        except Exception as exc:
+            self.storage_error = f"swap page for site {q} could not be read: {exc}"
+            raise MPSResourceError(self.storage_error) from exc
+        if (
+            loaded.ndim != 3
+            or loaded.shape[1] != 2
+            or not np.issubdtype(loaded.dtype, np.complexfloating)
+        ):
+            self.storage_error = (
+                f"swap page for site {q} has an invalid tensor shape/dtype: "
+                f"{loaded.shape} {loaded.dtype}"
+            )
+            raise MPSResourceError(self.storage_error)
+        site = np.ascontiguousarray(loaded.astype(np.complex128, copy=False))
+        self.sites[q] = site
+        self.site_nbytes[q] = site.nbytes
+        self.active_ram_bytes += site.nbytes
 
     def _offload_distant_sites_to_nvme(self, keep_q1: int, keep_q2: int):
         """Pages out inactive sites to NVMe/disk storage."""
         for q in range(self.num_qubits):
             if q not in (keep_q1, keep_q2) and self.sites[q] is not None:
                 swap_path = os.path.join(self.temp_dir, f"mps_site_{q}.npy")
-                np.save(swap_path, self.sites[q])
+                try:
+                    np.save(swap_path, self.sites[q])
+                except OSError as exc:
+                    self.storage_error = (
+                        f"failed to page out site {q} to {swap_path}: {exc}"
+                    )
+                    raise MPSResourceError(self.storage_error) from exc
+                self.site_nbytes[q] = self.sites[q].nbytes
                 self.swap_files[q] = swap_path
                 self.active_ram_bytes -= self.sites[q].nbytes
                 self.sites[q] = None
@@ -411,9 +628,35 @@ class ExactMPSTensorChain:
         """
         if shots <= 0:
             raise ValueError(f"shots must be a positive integer, got {shots}")
+        shots = _validate_shots(shots)
 
         if self.num_qubits > self.MAX_SAMPLING_QUBITS:
             return {}, False
+
+        # Never rehydrate more paged tensors than the configured RAM budget can
+        # hold. The old behaviour loaded every page and then sampled, so the
+        # "budget" only described retained tensors, not the real working set.
+        paged_bytes = sum(
+            self.site_nbytes.get(q, 0)
+            for q in range(self.num_qubits)
+            if self.sites[q] is None
+        )
+        if self.active_ram_bytes + paged_bytes > self.ram_budget_bytes:
+            self.sampling_refusal_reason = (
+                "sampling requires rehydrating "
+                f"{paged_bytes} paged byte(s) on top of "
+                f"{self.active_ram_bytes} active byte(s), which exceeds the "
+                f"{self.ram_budget_bytes}-byte RAM budget; refusing before "
+                "loading every page"
+            )
+            return {}, False
+
+        if shots * self.num_qubits > MAX_SAMPLING_ELEMENTS:
+            raise ValueError(
+                f"shots * qubits ({shots} * {self.num_qubits}) exceeds the "
+                f"batch ceiling {MAX_SAMPLING_ELEMENTS}; refusing before "
+                "allocating the shot matrix"
+            )
 
         # Ensure all sites are in RAM for contraction
         for q in range(self.num_qubits):
@@ -553,15 +796,24 @@ class PathCMPSExactBackend:
         if name not in NON_UNITARY
     )
 
+    #: Execution ceilings (see the module-level resource contract).
+    MAX_QUBITS = MAX_MPS_QUBITS
+    MAX_SHOTS = MAX_SHOTS
+
     #: Instructions that carry no state change.
     IGNORED_GATES = frozenset({"barrier", "id"})
 
     def __init__(self, ram_budget_mb: float = 120.0, max_storage_mb: float = 5120.0):
-        self.ram_budget_mb = ram_budget_mb
-        self.max_storage_mb = max_storage_mb
+        self.ram_budget_mb = _validate_budget_mb(
+            ram_budget_mb, "ram_budget_mb", MAX_RAM_BUDGET_MB
+        )
+        self.max_storage_mb = _validate_budget_mb(
+            max_storage_mb, "max_storage_mb", MAX_STORAGE_BUDGET_MB
+        )
 
     def execute(self, circuit: Any, shots: int = 1024, seed: int = 42) -> SimulationResult:
         t0 = time.perf_counter()
+        shots = _validate_shots(shots)
 
         instructions, n_q = parse_circuit(circuit)
 
@@ -623,13 +875,17 @@ class PathCMPSExactBackend:
                         np.array([[c, -s], [s, c]], dtype=np.complex128)
                     )
                 elif name in ("cx", "cnot"):
+                    # Canonical little-endian CX (Qiskit flat index is
+                    # q_first + 2*q_second); converted to chain axes below.
                     cx_mat = np.array([
                         [1, 0, 0, 0],
-                        [0, 1, 0, 0],
                         [0, 0, 0, 1],
-                        [0, 0, 1, 0]
+                        [0, 0, 1, 0],
+                        [0, 1, 0, 0]
                     ], dtype=np.complex128)
-                    mps.apply_two_qubit_gate(qubits[0], qubits[1], cx_mat)
+                    mps.apply_two_qubit_gate(
+                        qubits[0], qubits[1], _chain_two_qubit_matrix(cx_mat)
+                    )
                 elif name == "cz":
                     cz_mat = np.array([
                         [1, 0, 0, 0],
@@ -637,7 +893,9 @@ class PathCMPSExactBackend:
                         [0, 0, 1, 0],
                         [0, 0, 0, -1]
                     ], dtype=np.complex128)
-                    mps.apply_two_qubit_gate(qubits[0], qubits[1], cz_mat)
+                    mps.apply_two_qubit_gate(
+                        qubits[0], qubits[1], _chain_two_qubit_matrix(cz_mat)
+                    )
                 elif name == "swap":
                     swap_mat = np.array([
                         [1, 0, 0, 0],
@@ -645,11 +903,14 @@ class PathCMPSExactBackend:
                         [0, 1, 0, 0],
                         [0, 0, 0, 1]
                     ], dtype=np.complex128)
-                    mps.apply_two_qubit_gate(qubits[0], qubits[1], swap_mat)
-                elif name == "cp":
+                    mps.apply_two_qubit_gate(
+                        qubits[0], qubits[1], _chain_two_qubit_matrix(swap_mat)
+                    )
+                elif name in ("cp", "cu1"):
                     th = self._require_params(name, params)
                     mps.apply_two_qubit_gate(
-                        qubits[0], qubits[1], _controlled_phase_matrix(th)
+                        qubits[0], qubits[1],
+                        _chain_two_qubit_matrix(_controlled_phase_matrix(th))
                     )
                 elif name == "crz":
                     th = self._require_params(name, params)
@@ -657,41 +918,36 @@ class PathCMPSExactBackend:
                     e_p = np.exp(1j * th / 2.0)
                     mps.apply_two_qubit_gate(
                         qubits[0], qubits[1],
-                        np.array([
+                        _chain_two_qubit_matrix(np.array([
                             [1, 0, 0, 0],
-                            [0, 1, 0, 0],
-                            [0, 0, e_m, 0],
+                            [0, e_m, 0, 0],
+                            [0, 0, 1, 0],
                             [0, 0, 0, e_p]
-                        ], dtype=np.complex128)
+                        ], dtype=np.complex128))
                     )
                 elif name == "crx":
                     th = self._require_params(name, params)
                     c, s = np.cos(th / 2.0), np.sin(th / 2.0)
                     mps.apply_two_qubit_gate(
                         qubits[0], qubits[1],
-                        np.array([
+                        _chain_two_qubit_matrix(np.array([
                             [1, 0, 0, 0],
-                            [0, c, -1j * s, 0],
-                            [0, -1j * s, c, 0],
-                            [0, 0, 0, 1]
-                        ], dtype=np.complex128)
+                            [0, c, 0, -1j * s],
+                            [0, 0, 1, 0],
+                            [0, -1j * s, 0, c]
+                        ], dtype=np.complex128))
                     )
                 elif name == "cry":
                     th = self._require_params(name, params)
                     c, s = np.cos(th / 2.0), np.sin(th / 2.0)
                     mps.apply_two_qubit_gate(
                         qubits[0], qubits[1],
-                        np.array([
+                        _chain_two_qubit_matrix(np.array([
                             [1, 0, 0, 0],
-                            [0, c, -s, 0],
-                            [0, s, c, 0],
-                            [0, 0, 0, 1]
-                        ], dtype=np.complex128)
-                    )
-                elif name == "cu1":
-                    th = self._require_params(name, params)
-                    mps.apply_two_qubit_gate(
-                        qubits[0], qubits[1], _controlled_phase_matrix(th)
+                            [0, c, 0, -s],
+                            [0, 0, 1, 0],
+                            [0, s, 0, c]
+                        ], dtype=np.complex128))
                     )
 
                 if mps.memory_limit_exceeded:
@@ -718,6 +974,7 @@ class PathCMPSExactBackend:
                             "ram_budget_bytes": mps.ram_budget_bytes,
                             "active_tensor_bytes": mps.active_ram_bytes,
                             "truncation_applied": False,
+                            "preflight_estimate": mps.last_preflight,
                             **_memory_metadata(),
                         }
                     )
@@ -759,6 +1016,27 @@ class PathCMPSExactBackend:
             counts, supported = mps.sample(
                 shots=shots, seed=seed, measured_qubits=measured_qubits
             )
+            if mps.sampling_refusal_reason is not None:
+                t1 = time.perf_counter()
+                return SimulationResult(
+                    path="C",
+                    exact=False,
+                    error_bound=float("inf"),
+                    unresolved=True,
+                    counts={},
+                    execution_time_ms=(t1 - t0) * 1000.0,
+                    metadata={
+                        "reason": mps.sampling_refusal_reason,
+                        "resource_limit": "ram",
+                        "max_observed_chi": mps.max_observed_chi,
+                        "allocated_bytes": mps.total_allocated_bytes,
+                        "max_storage_bytes": mps.max_storage_bytes,
+                        "ram_budget_bytes": mps.ram_budget_bytes,
+                        "active_tensor_bytes": mps.active_ram_bytes,
+                        "truncation_applied": False,
+                        **_memory_metadata(),
+                    },
+                )
             # Support size: only the reported (measured) qubits contribute.
             n_reported = (
                 n_q if measured_qubits is None else len(measured_qubits)
@@ -810,6 +1088,29 @@ class PathCMPSExactBackend:
                     "silent_truncation": False,
                     "truncation_applied": False,
                     "numerical_mode": "float64-untruncated-mps",
+                    "preflight_estimate": mps.last_preflight,
+                    **_memory_metadata(),
+                }
+            )
+        except MPSResourceError as exc:
+            # Paging/storage failure: report the resource error and never expose
+            # a partial state or fabricated counts as a successful result.
+            t1 = time.perf_counter()
+            return SimulationResult(
+                path="C",
+                exact=False,
+                error_bound=float("inf"),
+                unresolved=True,
+                counts={},
+                execution_time_ms=(t1 - t0) * 1000.0,
+                metadata={
+                    "reason": str(exc),
+                    "resource_limit": "storage",
+                    "storage_error": mps.storage_error or str(exc),
+                    "max_observed_chi": mps.max_observed_chi,
+                    "allocated_bytes": mps.total_allocated_bytes,
+                    "active_tensor_bytes": mps.active_ram_bytes,
+                    "truncation_applied": False,
                     **_memory_metadata(),
                 }
             )
@@ -890,4 +1191,10 @@ class PathCMPSExactBackend:
                     f"{spec.max_params} parameter(s), got {len(params)}."
                 )
 
-        return measured_qubits or None
+        # Terminal measurements carry no classical destination in the flat IR,
+        # so the reported bitstring is defined over the measured qubits in
+        # ascending order (lowest qubit rightmost). Sorting here also makes a
+        # source-order-independent result for direct instruction-list input.
+        if not measured_qubits:
+            return None
+        return sorted(set(measured_qubits))

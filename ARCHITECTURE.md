@@ -40,7 +40,12 @@ graph TD
   $$T = \cos(\pi/8) I - i \sin(\pi/8) Z = c_0 I + c_1 Z$$
   $$R_Z(\theta) = \cos(\theta/2) I - i \sin(\theta/2) Z$$
 - **Complexity:** $O(2^{\alpha T} \cdot \text{poly}(N))$ where $\alpha \approx 0.47$.
-- **Error Guarantee:** $\epsilon = 0.0$ (Bit-Exact).
+- **Error Guarantee:** **No deliberate approximation**: the branch expansion is
+  algebraically exact, but amplitudes and branches are evaluated in IEEE-754
+  `float64` (`numerical_mode = "float64-exact-decomposition"`). `error_bound =
+  0.0` therefore means "nothing was deliberately truncated", **not** symbolic
+  exactness or universal bitwise identity; finite-precision rounding is
+  inherited from the float evaluation and is not certified away.
 
 ### Path C: Unbounded Matrix Product State + Storage Paging
 - **Target Circuit Class:** Circuits with low-to-moderate 1D bipartite entanglement cuts.
@@ -51,12 +56,17 @@ graph TD
   $$M = U S V^\dagger$$
   The bond dimension $\chi$ expands to the full **numerical rank** of the two-site block. There is no artificial ceiling and no truncation budget.
 - **Floating-Point Contract (important):**
-  Rank selection keeps every singular value above a *relative roundoff floor*, $\sigma_i > 10^{-13}\,\sigma_{\max}$. This is a statement about IEEE-754 double precision, not a mathematical approximation: values below the floor are numerically indistinguishable from zero. The discarded mass is **measured** and reported as `numerical_error_bound`; it is never silently dropped.
+  Rank selection keeps every singular value above a *relative roundoff floor*, $\sigma_i > 10^{-13}\,\sigma_{\max}$. This is a statement about IEEE-754 double precision, not a mathematical approximation: values below the floor are numerically indistinguishable from zero. The discarded mass is **measured** and reported as `discarded_spectral_mass_diagnostic`; it is never silently dropped. It is deliberately **not** reported as `numerical_error_bound`, because per-SVD discarded masses do not compose into a state-norm bound without a propagation analysis this backend does not perform, so `numerical_error_bound` stays `None`.
 - **Memory Ceiling & Escalation:**
   When RAM allocation exceeds user budgets, site tensors page out to a private scratch directory. If total storage limits are reached, the allocation is refused **before** any state is mutated, leaving the chain coherent, and the result is `unresolved=True`. The router may then escalate to Path D.
 - **Counts Limitation:**
-  Exact dense sampling costs $O(2^n)$. Circuits wider than `MAX_SAMPLING_QUBITS` (20) are executed and reported, but **no counts are produced** — the backend reports the fact rather than returning a placeholder.
-- **Reported Guarantee:** `error_bound = 0.0` (no *deliberate approximation*), `numerical_error_bound` = measured roundoff, `sampling_error_bound` = Hoeffding bound on the finite-shot counts.
+  MPS-native sampling avoids materialising $2^n$ amplitudes and is allowed up to
+  `MAX_SAMPLING_QUBITS` (500), bounded by the RAM budget and the
+  `shots × qubits` batch ceiling. Above that routing ceiling the circuit is
+  executed and reported, but **no counts are produced** — the backend reports
+  the fact rather than returning a placeholder. Dense statevector conversion is
+  a separate operation and is capped at `MAX_STATEVECTOR_QUBITS` (20).
+- **Reported Guarantee:** `error_bound = 0.0` (no *deliberate approximation*), `numerical_error_bound = None` (no defensible propagated roundoff bound is derived; the measured `discarded_spectral_mass_diagnostic` is not presented as one), `sampling_error_bound` = Hoeffding bound on the finite-shot counts.
 
 ### Path D: Certified Classical Approximation (Sparse-Pauli-Dynamics)
 - **Target Circuit Class:** Arbitrary quantum circuits exceeding exact memory/rank budgets.

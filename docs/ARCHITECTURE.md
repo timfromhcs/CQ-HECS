@@ -16,7 +16,7 @@
 | Router | Capability-first four-path router | `cqhecs/router.py`, `cqhecs/circuit_analyzer.py` | fail-closed: forced paths never silently reroute; unknown inputs raise |
 | Path A | Stabilizer tableau | `cqhecs/backends/path_a_stabilizer.py` | exact GF(2) symplectic arithmetic; Clifford gates only |
 | Path B | Stabilizer-rank decomposition | `cqhecs/backends/path_b_stabilizer_rank.py` | algebraically exact expansion; float64 evaluation; dense evaluation is bounded by a documented 22-qubit ceiling |
-| Path C | Exact MPS tensor chain | `cqhecs/backends/path_c_mps_exact.py` | untruncated bond dimension; rank selection uses a relative roundoff floor; private scratch dirs; dense sampling capped at 20 qubits |
+| Path C | Exact MPS tensor chain | `cqhecs/backends/path_c_mps_exact.py` | untruncated bond dimension; rank selection uses a relative roundoff floor; private scratch dirs; dense statevector conversion capped at 20 qubits; MPS-native sampling capped at 500 qubits and subject to the RAM/shots budgets |
 | Path D | Sparse-Pauli (Heisenberg) dynamics | `cqhecs/backends/path_d_sparse_pauli.py` | certified bound on requested observables (⟨Z_q⟩, ⟨Z_q Z_r⟩); joint counts opt-in and labelled |
 | Result contract | `SimulationResult` | `cqhecs/result.py` | separates deliberate approximation, float roundoff and finite-shot sampling error; status enum (SUCCESS / UNRESOLVED / FAILED) |
 | Qiskit integration | BackendV2 + provider | `cqhecs/backend.py`, `cqhecs/provider.py` | reports the real package version; classical-bit mapping verified against Aer |

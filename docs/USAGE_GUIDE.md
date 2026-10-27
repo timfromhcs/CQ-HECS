@@ -117,8 +117,11 @@ Every result separates three error sources:
 * **D** returns `expectation_values`, not `counts`. Its error bound certifies
   observables, not a bitstring distribution. If you need counts, force A, B or
   C.
-* **C** returns no counts above 20 measured qubits. It reports the fact rather
-  than inventing a result.
+* **C** samples natively from the MPS up to 500 qubits (subject to the RAM
+  budget and a `shots × qubits` batch ceiling) and refuses counts above that
+  routing ceiling rather than inventing a result. The separate 20-qubit cap
+  applies only to dense statevector conversion (`to_statevector()`), not to
+  MPS-native sampling.
 
 ### Forces
 

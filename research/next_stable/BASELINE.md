@@ -55,3 +55,21 @@ The baseline was green but not truthful: several tests asserted
 implementation artefacts (exact 50/50 shot splits, bond-dimension-only GHZ
 classification, planner metadata) rather than state-dependent quantum results.
 Those gaps are itemised in `FINDINGS.md`.
+
+## Cycle 2 — post-merge baseline (2026-10-27)
+
+Captured after PR #7 was merged and before the cycle-2 fixes.
+
+| Item | Value |
+| :--- | :--- |
+| Base SHA | `812da806d9b4528f1c4f8ccd3cbb7b37b6f009ce` (`main`) |
+| Feature branch | `agent/cq-hecs-v2.2.2-stable-hardening` |
+| Latest published release | `v2.2.1`; no `v2.2.2` tag/release at capture |
+| Canonical version | `2.2.2` (already bumped by PR #7, unreleased) |
+| Worktree | pre-existing `GEMINI.md` operator changes plus the cycle-2 edits |
+| Platform | Windows 11 Pro; Python 3.14.6; MSVC 19.44; CMake Release; Vulkan SDK 1.4.357.0 |
+
+Baseline gates on the merged tree at the start of cycle 2 matched the cycle-1
+record (`311` Python tests, `17/17` CTest). The CQ regression suites and the
+rebuilt native parser raise the final counts to `366` Python tests and `18/18`
+CTest; exact commands and timings are in `TEST_MATRIX.md`.

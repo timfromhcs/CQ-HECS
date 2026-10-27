@@ -39,6 +39,86 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   the 8-bit `J_QuantumOpcode` fields. The legacy Qiskit provider now tests a
   256-qubit GHZ circuit and requires a 300-qubit circuit to fail closed.
 
+### Fixed — Path C two-qubit operand order and gate matrices
+
+- `ExactMPSTensorChain.apply_two_qubit_gate()` used `basm,lsmp->labp` for the
+  `q1 > q2` branch, which swapped the gate's output axes but not its input
+  axes. It now uses the operand-ordered contraction `abcd,ldcp->lbap`.
+- `PathCMPSExactBackend` passed raw Qiskit little-endian matrices to a chain
+  whose axes are operand-ordered, and its `crx`/`cry`/`crz` matrices sat on the
+  wrong basis block. Every two-qubit gate now uses a canonical little-endian
+  matrix and `_chain_two_qubit_matrix()` (transpose `(1,0,3,2)`) at the chain
+  boundary.
+- Added `tests/test_path_c_operand_order.py`: reversed and non-adjacent
+  CX/CP/SWAP plus backend-level CRX/CRY/CRZ in both operand orders against
+  Qiskit `Statevector`.
+
+### Hardened — Path C resources, paging and circuit-size ceilings
+
+- Budgets (`ram_budget_mb`, `max_storage_mb`), `num_qubits` and `shots` are
+  validated before allocation. Two-site updates run a pre-allocation preflight
+  covering contraction, SVD outputs and a documented SVD workspace multiplier.
+- Paged sampling checks the rehydration working set before loading pages and
+  refuses fail-closed when it would exceed the RAM budget. Missing, truncated or
+  malformed swap pages raise `MPSResourceError` and surface as `UNRESOLVED`.
+- Added `MAX_MPS_QUBITS = 4096`, `MAX_SHOTS = 10_000_000` and
+  `MAX_SAMPLING_ELEMENTS`. Path A/D cap at 4096 qubits, Path B at its 22-qubit
+  dense-statevector ceiling, and every path enforces the shot ceiling before
+  execution.
+- Added `tests/test_path_c_resources.py` (12 tests) and
+  `tests/test_circuit_size_limits.py` (3 tests).
+
+### Fixed — measurement mapping and qubit-index coercion
+
+- Direct `parse_circuit()` now accepts only identity terminal measurements
+  (`measure q[i] -> c[i]`); `CQHecsBackend` remains the supported surface for
+  arbitrary `(qubit, clbit)` layouts and preserves repeated measurements.
+- Terminal measurements are normalised once (ascending, duplicates removed) so
+  the lowest measured qubit is rightmost in every backend. Mid-circuit
+  measurements stay in place.
+- Instruction-list qubit indices accept only `numbers.Integral`; `bool`, floats,
+  strings, complex values, NaN/inf, negatives and indices `>= 1<<20` are
+  rejected. Operand and parameter arguments must be iterables.
+- Added `tests/test_parser_strictness.py` (18 tests).
+
+### Fixed — native SAT parser, timeout and exit codes
+
+- Strict DIMACS parsing with byte/variable/clause/literal ceilings; malformed
+  headers, extra tokens, truncated clauses and literals above the declared
+  count are rejected.
+- A search timeout is an explicit error (exit 1), never UNSAT; invalid input
+  uses the documented exit 2. The subprocess fuzz helper times out at 30 s.
+- Added `tests/cpp/test_sat_parser.cpp` (CTest `test_sat_parser`) and expanded
+  `tests/test_fuzz_sat.py` to 14 tests.
+
+### Changed — CI actions and property tests
+
+- Upgraded to Node 24 action releases pinned by full SHA:
+  `actions/checkout@v7.0.1`, `actions/setup-python@v7.1.0`,
+  `actions/upload-artifact@v7.0.2`, `softprops/action-gh-release@v3.0.3`,
+  `jakoch/install-vulkan-sdk-action@v1.7.0`. Workflow-wide `contents: write`
+  was reduced to `contents: read`; only the release job retains write access.
+- Added deterministic Hypothesis parser properties
+  (`tests/test_property_parser.py`) and declared `hypothesis>=6.0.0` in the dev
+  extra; `constraints/ci-py311.txt` pins `6.170.12`.
+- Replaced deprecated `QFT(4).decompose()` coverage with `synth_qft_full(4)`.
+- Corrected the documentation that called Path B "Bit-Exact", conflated Path C's
+  20-qubit dense conversion with its 500-qubit MPS sampling ceiling, and
+  reported discarded spectral mass as `numerical_error_bound` instead of
+  `discarded_spectral_mass_diagnostic`.
+
+### Verification
+
+- Local Python suite: **366 passed in 83.85s** (0 failed, 0 skipped) on Windows
+  11 / Python 3.14.6.
+- Native CTest: **18/18 passed** in 17.13s.
+- Branch coverage: **82%** (CI threshold 70%).
+- Mutation harness: **11/11 killed**, baseline clean.
+- Shader compilation: **12/12** sources compile with 0 warnings/errors.
+- Version consistency: all surfaces report `2.2.2`.
+- Exact-SHA Linux/Windows CI and release-asset checks are recorded in the PR and
+  published release; they are not inferred from these local runs.
+
 ### Tests
 
 - Added `test_statevector_contract`, `test_mps_contract` and

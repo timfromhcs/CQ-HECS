@@ -10,6 +10,7 @@ Verifies bit-exact classical agreement against industry-standard engines:
 import unittest
 import numpy as np
 from qiskit import QuantumCircuit
+from qiskit.quantum_info import Statevector
 from qiskit_aer import AerSimulator
 
 import stim
@@ -18,6 +19,39 @@ from cqhecs.backends.path_a_stabilizer import PathAStabilizerBackend
 from cqhecs.backends.path_b_stabilizer_rank import PathBStabilizerRankBackend
 from cqhecs.backends.path_c_mps_exact import PathCMPSExactBackend
 from cqhecs.backends.path_d_sparse_pauli import PathDSparsePauliBackend, SparsePauliDynamicsSimulator
+from tests.test_path_c_operand_order import (
+    _fidelity_ignoring_global_phase,
+    _run_unitary_circuit_on_chain,
+)
+
+
+def _counts_to_probabilities(counts, num_qubits):
+    total = sum(counts.values())
+    assert total > 0, "cannot normalize empty counts"
+    out = np.zeros(1 << num_qubits, dtype=float)
+    for bitstring, count in counts.items():
+        out[int(bitstring, 2)] = count / total
+    return out
+
+
+def _assert_sampling_matches(
+    case, counts, exact_probs, shots, *, tolerance=0.05, sigma=5.0
+):
+    """Coordinate-wise 5σ envelope plus a TVD bound for deterministic seeds."""
+    assert sum(counts.values()) == shots, (case, sum(counts.values()), shots)
+    empirical = _counts_to_probabilities(counts, int(np.log2(len(exact_probs))))
+    # Every observed bitstring must be in the exact support (up to 1/N
+    # discretisation for outcomes the reference treats as exactly zero).
+    for bitstring in counts:
+        idx = int(bitstring, 2)
+        assert exact_probs[idx] >= 0.0
+    for p_hat, p in zip(empirical, exact_probs):
+        envelope = sigma * np.sqrt(max(p * (1.0 - p), 0.0) / shots) + 1.0 / shots
+        assert abs(p_hat - p) <= envelope, (
+            case, "coordinate outside 5-sigma envelope", p_hat, p, envelope
+        )
+    tvd = 0.5 * np.abs(empirical - exact_probs).sum()
+    assert tvd < tolerance, (case, "TVD", tvd)
 
 
 class TestAdversarialAerAndStim(unittest.TestCase):
@@ -158,36 +192,133 @@ class TestAdversarialAerAndStim(unittest.TestCase):
     # 3. Comparative Verification: Path C vs Qiskit Aer MPS
     # -------------------------------------------------------------
     def test_path_c_vs_qiskit_aer_mps(self):
-        """Path C unbounded MPS matches Qiskit Aer matrix_product_state simulator."""
-        n = 4
-        qc = QuantumCircuit(n)
-        for i in range(n):
-            qc.h(i)
-        for i in range(n - 1):
-            qc.cx(i, i + 1)
-        qc.rz(0.45, 1)
-        qc.cx(0, 1)
+        """
+        Path C must agree with exact Statevector and with untruncated Aer MPS.
 
-        # 1. Qiskit Aer MPS
+        The previous version only asserted that one count key was shared, which
+        would pass for many wrong distributions. This version checks:
+
+        * statevectors up to global phase (fidelity, not counts only);
+        * exact probabilities against sampled counts (5σ envelope + TVD);
+        * both CNOT directions, CZ, SWAP, phase-sensitive and non-adjacent
+          gates, and random bounded circuits.
+        """
+        n = 4
+        shots = 20_000
+
+        cases = {}
+
+        qc = QuantumCircuit(n)
+        qc.h(0)
+        qc.ry(0.63, 1)
+        qc.cx(1, 0)          # reversed operand order
+        qc.rz(0.37, 0)
+        qc.cx(0, 1)
+        qc.cz(1, 2)
+        cases["asymmetric_cnot_both_directions"] = qc
+
+        qc = QuantumCircuit(n)
+        qc.h(0)
+        qc.cp(0.41, 0, 1)
+        qc.swap(0, 2)        # non-adjacent SWAP routing
+        qc.crx(0.53, 2, 3)
+        qc.cry(-0.29, 1, 3)
+        qc.crz(0.71, 0, 2)
+        qc.cp(0.23, 1, 2)
+        cases["parameterised_nonadjacent"] = qc
+
+        rng = np.random.default_rng(2026)
+        singles = ("h", "x", "y", "z", "s", "sdg", "t", "tdg")
+        rotations = ("rx", "ry", "rz")
+        pairs = (("cx", None), ("cz", None), ("swap", None),
+                 ("cp", "angle"), ("crx", "angle"), ("cry", "angle"),
+                 ("crz", "angle"))
+        for trial in range(2):
+            qc = QuantumCircuit(n)
+            for _ in range(14):
+                roll = rng.integers(0, 3)
+                q = int(rng.integers(0, n))
+                if roll == 0:
+                    getattr(qc, str(rng.choice(singles)))(q)
+                elif roll == 1:
+                    getattr(qc, str(rng.choice(rotations)))(
+                        float(rng.uniform(-np.pi, np.pi)), q
+                    )
+                else:
+                    name, kind = pairs[int(rng.integers(0, len(pairs)))]
+                    a, b = rng.choice(n, size=2, replace=False)
+                    if kind == "angle":
+                        getattr(qc, name)(float(rng.uniform(-np.pi, np.pi)), int(a), int(b))
+                    else:
+                        getattr(qc, name)(int(a), int(b))
+            cases[f"random_{trial}"] = qc
+
+        for name, qc in cases.items():
+            with self.subTest(case=name):
+                exact = Statevector(qc).data
+                exact_probs = np.abs(exact) ** 2
+
+                # 1. Deterministic statevector differential (global phase-free).
+                actual = _run_unitary_circuit_on_chain(qc)
+                fidelity = _fidelity_ignoring_global_phase(exact, actual)
+                self.assertGreater(
+                    fidelity, 1.0 - 1e-10,
+                    f"{name}: statevector fidelity {fidelity}",
+                )
+
+                # 2. Path C sampled distribution vs exact probabilities.
+                backend_c = PathCMPSExactBackend(ram_budget_mb=50.0)
+                res_c = backend_c.execute(qc, shots=shots, seed=1234)
+                self.assertEqual(res_c.path, "C")
+                self.assertTrue(res_c.exact)
+                self.assertEqual(res_c.error_bound, 0.0)
+                self.assertFalse(res_c.unresolved)
+                _assert_sampling_matches(name, res_c.counts, exact_probs, shots)
+
+                # 3. Aer statevector counts, an independent sampler over the
+                # same exact amplitudes (Aer MPS does not support CRY).
+                qc_aer = qc.copy()
+                qc_aer.measure_all()
+                aer_counts = AerSimulator(method="statevector").run(
+                    qc_aer, shots=shots, seed_simulator=4321
+                ).result().get_counts()
+                _assert_sampling_matches(
+                    f"{name}/aer_statevector", aer_counts, exact_probs, shots
+                )
+
+    def test_path_c_vs_aer_mps_untruncated(self):
+        """Independent MPS cross-check with truncation explicitly disabled."""
+        n = 4
+        shots = 20_000
+        qc = QuantumCircuit(n)
+        qc.h(0)
+        qc.ry(0.41, 1)
+        qc.cx(1, 0)          # reversed operand
+        qc.cz(0, 2)
+        qc.swap(1, 3)        # non-adjacent in the MPS chain
+        qc.cp(0.37, 2, 3)
+        qc.rz(0.29, 2)
+        qc.cx(0, 3)
+
+        exact_probs = Statevector(qc).probabilities()
+
         qc_aer = qc.copy()
         qc_aer.measure_all()
-        aer_mps = AerSimulator(method="matrix_product_state")
-        aer_counts = aer_mps.run(qc_aer, shots=2000, seed_simulator=42).result().get_counts()
+        aer_mps = AerSimulator(
+            method="matrix_product_state",
+            matrix_product_state_max_bond_dimension=None,
+            matrix_product_state_truncation_threshold=0.0,
+        )
+        aer_counts = aer_mps.run(
+            qc_aer, shots=shots, seed_simulator=99
+        ).result().get_counts()
+        _assert_sampling_matches("aer_mps", aer_counts, exact_probs, shots)
 
-        # 2. CQ-HECS Path C
-        backend_c = PathCMPSExactBackend(ram_budget_mb=50.0)
-        res_c = backend_c.execute(qc, shots=2000, seed=42)
-
-        self.assertEqual(res_c.path, "C")
-        self.assertTrue(res_c.exact)
-        self.assertEqual(res_c.error_bound, 0.0)
+        res_c = PathCMPSExactBackend(ram_budget_mb=50.0).execute(
+            qc, shots=shots, seed=7
+        )
         self.assertFalse(res_c.unresolved)
-
-        # Total shots match
-        self.assertEqual(sum(res_c.counts.values()), 2000)
-        # Shared non-zero basis states between both MPS simulators
-        common_keys = set(aer_counts.keys()).intersection(set(res_c.counts.keys()))
-        self.assertGreaterEqual(len(common_keys), 1)
+        _assert_sampling_matches("path_c", res_c.counts, exact_probs, shots)
 
     # -------------------------------------------------------------
     # 4. Differential Verification: Path D vs Qiskit Aer Statevector

@@ -1,8 +1,37 @@
 # Findings — next Stable after v2.2.1
 
-All findings were checked against live source at `9fe014b` and re-verified
-after the fixes. Status meanings: `CONFIRMED` (defect reproduced),
-`ALREADY FIXED` (no current defect), `NOT REPRODUCED`, `BLOCKED` (external).
+Two audit cycles are recorded here.
+
+- **Cycle 1** (base `9fe014b5509096ebe203ebae26cc146cb13b0a69`) produced PR #7,
+  merged to `main` as `812da806d9b4528f1c4f8ccd3cbb7b37b6f009ce`.
+- **Cycle 2** (base `812da80`, branch `agent/cq-hecs-v2.2.2-stable-hardening`)
+  re-audited the merged tree against the mission's CQ-01…CQ-14 checklist. Its
+  outcomes follow.
+
+Status meanings: `CONFIRMED` (defect reproduced), `ALREADY FIXED` (no current
+defect), `NOT REPRODUCED`, `BLOCKED` (external).
+
+## Cycle 2 — CQ checklist (base `812da80`)
+
+| ID | Severity | Surface | Status | Root cause | Fix | Regression test |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| CQ-01 | P1 | `ExactMPSTensorChain.apply_two_qubit_gate` (Path C) | CONFIRMED → fixed | The `q1 > q2` branch swapped the gate's **output** axes but left its **input** axes in chain order (`basm,lsmp->labp`), so a reversed two-qubit gate was applied with transposed inputs. | Replaced with the operand-ordered contraction `abcd,ldcp->lbap` and documented the tensor-index derivation. | `tests/test_path_c_operand_order.py` (8 tests: reversed CX/CP/SWAP, non-adjacent gates, both orders vs `Statevector`) |
+| CQ-01b | P1 | `PathCMPSExactBackend` two-qubit gates | CONFIRMED → fixed (new finding) | The backend passed raw Qiskit little-endian 4×4 matrices (and hand-written `crx`/`cry`/`crz` matrices on the wrong basis block) to a chain whose axes are operand-ordered. Correct operand order alone could not fix CRX/CRY. | Added canonical little-endian matrices for CX/CZ/SWAP/CP/CU1/CRZ/CRX/CRY and `_chain_two_qubit_matrix()` (transpose `(1,0,3,2)`) at the chain boundary. | Same suite; backend-level CRX/CRY/CRZ in both operand orders match `Statevector` at fidelity 1.0 |
+| CQ-02 | P1 | Path C RAM/storage budgets and paging | CONFIRMED → fixed | Budgets were converted to bytes without validation; two-site updates allocated before checking; sampling rehydrated every paged site regardless of RAM; missing/corrupt pages could leave `None` sites. | Validated finite/positive/bounded budgets; pre-allocation two-site and single-site preflight with a documented SVD workspace multiplier; fail-closed sampling refusal; `MPSResourceError` for missing/corrupt pages; `MAX_MPS_QUBITS=4096`, `MAX_SHOTS=10_000_000`. | `tests/test_path_c_resources.py` (12 tests) |
+| CQ-03 | P1 | `parse_circuit` / Qiskit measurement mapping | CONFIRMED → fixed | The flat instruction IR carries qubit operands only, but Qiskit `measure(q[i]) -> c[j]` with `i != j` was silently relabelled as `c[i]`; terminal measurements also depended on source order. | Direct `parse_circuit()` accepts only identity terminal `measure q[i] -> c[i]`; `CQHecsBackend` keeps the full `(qubit, clbit)` layout via `_normalize_measurements()`/`_pad_counts()`. Terminal measurements are sorted ascending and exact duplicates removed. | `tests/test_parser_strictness.py` (18 tests), `tests/python/test_qiskit_backend_contract.py` |
+| CQ-04 | P1 | Instruction-list qubit indices | CONFIRMED → fixed | `int(q)` coerced floats, strings and booleans (e.g. `1.7 → 1`, `True → 1`), silently simulating a different circuit; scalar operand lists were iterated or failed obscurely. | Accept only `numbers.Integral` (excluding `bool`); reject floats, strings, complex, NaN/inf and negatives; reject indices `>= 1<<20`; require iterable operand/parameter lists. | `tests/test_parser_strictness.py` |
+| CQ-05 | P2 | Path C/Aer differential test | CONFIRMED under-proof → fixed | The earlier test compared only overlapping count keys and could pass without checking the state. | Real statevector fidelity for deterministic circuits; 5σ/TVD sampling envelope; explicit untruncated Aer MPS run for supported gates; Aer statevector for gates Aer MPS rejects (`crx`/`cry`). | `tests/test_adversarial_aer_and_stim.py` (6 tests) |
+| CQ-06 | P2 | Native SAT subprocess fuzz helper | CONFIRMED → fixed | The helper could wait forever on a hostile DIMACS input, and the native parser accepted malformed/oversized headers, coerced literals and reported timeouts as UNSAT. | 30 s subprocess timeout in the test; strict DIMACS parsing with byte/var/clause/literal ceilings; timeout is an explicit error and exit 1, invalid input exits 2; hash covers all assigned variables; literals above the declared header count rejected. | `tests/test_fuzz_sat.py` (14 tests), `tests/cpp/test_sat_parser.cpp`, CTest `test_sat_parser` |
+| CQ-07 | P2 | Path B "Bit-Exact" claim | CONFIRMED → fixed | Root `ARCHITECTURE.md` advertised `ε = 0.0 (Bit-Exact)` for Path B, which evaluates float64 amplitudes and branches. | Documented that `error_bound = 0.0` means "no deliberate approximation", not symbolic exactness or universal bitwise identity; cited `numerical_mode = "float64-exact-decomposition"`. | Documentation audit (no code change) |
+| CQ-08 | P1/P2 | Path C numerical-rank cutoff wording | CONFIRMED → fixed | `ARCHITECTURE.md` claimed the discarded mass was reported as `numerical_error_bound`; the code deliberately reports it as `discarded_spectral_mass_diagnostic` and keeps `numerical_error_bound = None`. | Corrected the architecture text and preserved the distinction between deliberate approximation, measured diagnostics and derived bounds. | `tests/test_svd_precision.py` (5 tests), `tests/test_path_c_resources.py` |
+| CQ-09 | P1 | Vulkan/native status claims | VERIFIED — no defect | Existing labels were already accurate. | No change: `PLANNER_ONLY`, `CPU_REFERENCE`, `LEGACY_DIAGNOSTIC`, `EXPERIMENTAL`, `PHYSICAL_GPU_UNVERIFIED` remain in README/ARCHITECTURE/V2 matrix. | Documentation audit; shader check is compile-only |
+| CQ-10 | P1/P2 | Large-register validation | CONFIRMED → fixed | A syntactically legal huge QASM register could reach per-qubit allocations before any ceiling. | Per-backend ceilings: A/D `4096`, B `22` (dense statevector), C `4096`; all `MAX_SHOTS = 10_000_000`; refusals occur before tableau/statevector/observable allocation. | `tests/test_circuit_size_limits.py` (3 tests), `tests/test_path_c_resources.py` |
+| CQ-11 | P2 | Version/docs consistency | CONFIRMED → fixed | Guides conflated Path C's 20-qubit dense-conversion cap with its 500-qubit MPS-native sampling ceiling; architecture text contradicted the result metadata. | Corrected `ARCHITECTURE.md`, `docs/ARCHITECTURE.md`, `docs/USAGE_GUIDE.md`; `python scripts/check_version.py` passes for `2.2.2`. | `python scripts/check_version.py` |
+| CQ-12 | P2 | CI action runtime and pinning | CONFIRMED → fixed | Workflows used Node 20 actions (`checkout@v4`, `setup-python@v5`, `upload-artifact@v4`), movable tags and workflow-wide write permission. | Node 24 releases pinned by full SHA: `checkout@v7.0.1`, `setup-python@v7.1.0`, `upload-artifact@v7.0.2`, `action-gh-release@v3.0.3`, `install-vulkan-sdk-action@v1.7.0`. `contents: write` limited to the release job. SHAs verified with `git ls-remote` (annotated tag peeled). | YAML parse + upstream ref verification |
+| CQ-13 | P2 | Qiskit QFT deprecation | CONFIRMED → fixed | The test used the deprecated `QFT(4).decompose()` blueprint. | Replaced with `synth_qft_full(4)` while keeping the same execution contract. | `tests/python/test_qiskit_backend_contract.py` (no QFT deprecation warning) |
+| CQ-14 | P2 | Property/fuzz coverage | CONFIRMED → fixed | No property-based tests; Hypothesis undeclared. | Added deterministic Hypothesis parser properties; declared `hypothesis>=6.0.0` in dev extras and pinned `6.170.12` in `constraints/ci-py311.txt`; all CI install lanes include it. | `tests/test_property_parser.py` (5 tests) |
+
+## Cycle 1 — merged findings (base `9fe014b`)
 
 | ID | Severity | Surface | Status | Root cause | Fix | Regression test |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -22,7 +51,7 @@ after the fixes. Status meanings: `CONFIRMED` (defect reproduced),
 
 | Surface | Status |
 | :--- | :--- |
-| `cqhecs` four-path Python router/backends | SUPPORTED (unchanged in this release) |
+| `cqhecs` four-path Python router/backends | SUPPORTED |
 | `cq_hecs::core::StateVectorSimulator` | SUPPORTED reference, ≤ 28 qubits, Q1.31 storage with double-precision sampling |
 | `cq_hecs::core::MPSSimulator` | EXPERIMENTAL CPU reference: SVD updates and seeded sampling; truncation diagnostic is not a certified error bound |
 | `cq_hecs::core::VulkanQpuEngine` | CPU reference facade; no GPU dispatch is claimed; QASM operands limited to qubits 0–255 |
@@ -33,6 +62,13 @@ after the fixes. Status meanings: `CONFIRMED` (defect reproduced),
 
 ## Known limitations carried into the release
 
+- Path C's `1e-13` relative singular-value floor is a double-precision rank
+  convention. Discarded mass is reported as
+  `discarded_spectral_mass_diagnostic`; `numerical_error_bound` stays `None`
+  because no propagation bound is derived.
+- Path C MPS-native sampling is capped at 500 qubits and is subject to the RAM
+  budget and `shots × qubits` batch ceiling. Dense statevector conversion is a
+  separate operation capped at 20 qubits.
 - `MPSSimulator` truncation is a per-update diagnostic. No propagated global
   error bound is claimed; `cumulative_discarded_weight` is not a certificate.
 - Generic MPS sampling costs `O(n · χ² · shots)` (plus environment build); the

@@ -12,7 +12,7 @@ import unittest
 
 import numpy as np
 from qiskit import QuantumCircuit, transpile
-from qiskit.circuit.library import QFT
+from qiskit.synthesis.qft import synth_qft_full
 
 from cqhecs.backend import CQHecsBackend
 
@@ -215,7 +215,9 @@ class TestBackendV2Contract(unittest.TestCase):
         )
 
     def test_qft_circuit_runs(self):
-        qc = QFT(4).decompose()
+        # Qiskit 2.1 deprecated the ``QFT`` BlueprintCircuit; ``synth_qft_full``
+        # is the documented replacement and yields the same h/cp/swap circuit.
+        qc = synth_qft_full(4)
         qc.measure_all()
         backend = CQHecsBackend(num_qubits=4)
         counts = backend.run(qc, shots=256, seed_simulator=5).result().get_counts()

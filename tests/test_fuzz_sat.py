@@ -9,6 +9,10 @@ import json
 import os
 from pathlib import Path
 
+#: Conservative wall-clock bound for a *fuzz* input. The solver itself has a
+#: 15 s budget; the subprocess ceiling also catches a parser that never returns.
+SAT_FUZZ_TIMEOUT_SECONDS = 30
+
 
 class TestFuzzSAT(unittest.TestCase):
     @classmethod
@@ -19,13 +23,22 @@ class TestFuzzSAT(unittest.TestCase):
         if os.name != 'nt':
             os.chmod(cls.exe_path, 0o755)
 
-    def run_cpp_sat(self, cnf_str: str):
-        res = subprocess.run(
-            [str(self.exe_path), "sat", "-", "--json"],
-            input=cnf_str,
-            capture_output=True,
-            text=True
-        )
+    def run_cpp_sat(self, cnf_str: str, label: str = ""):
+        try:
+            res = subprocess.run(
+                [str(self.exe_path), "sat", "-", "--json"],
+                input=cnf_str,
+                capture_output=True,
+                text=True,
+                timeout=SAT_FUZZ_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            # Sanitized: report only the input size and test label, never the
+            # arbitrary hostile payload.
+            self.fail(
+                f"SAT subprocess exceeded {SAT_FUZZ_TIMEOUT_SECONDS}s for "
+                f"{len(cnf_str)} bytes of DIMACS input{(' (' + label + ')') if label else ''}"
+            )
         return res
 
     def test_empty_cnf(self):
@@ -82,6 +95,48 @@ class TestFuzzSAT(unittest.TestCase):
         self.assertEqual(res.returncode, 0)
         data = json.loads(res.stdout)
         self.assertEqual(data["status"], "SAT")
+
+    def test_huge_declared_variable_count_is_rejected_without_allocating(self):
+        # 100 million declared variables must be refused by the parser ceiling,
+        # not turned into a 100M-element allocation.
+        res = self.run_cpp_sat("p cnf 100000000 0\n", label="huge-vars")
+        self.assertEqual(res.returncode, 2)
+        self.assertEqual(json.loads(res.stdout)["status"], "ERROR")
+
+    def test_huge_declared_clause_count_is_rejected_without_allocating(self):
+        res = self.run_cpp_sat("p cnf 1 100000000\n", label="huge-clauses")
+        self.assertEqual(res.returncode, 2)
+        self.assertEqual(json.loads(res.stdout)["status"], "ERROR")
+
+    def test_unterminated_clause_is_rejected(self):
+        res = self.run_cpp_sat("p cnf 2 1\n1 2\n", label="unterminated")
+        self.assertEqual(res.returncode, 2)
+        self.assertEqual(json.loads(res.stdout)["status"], "ERROR")
+
+    def test_literal_beyond_declared_variable_count_is_rejected(self):
+        res = self.run_cpp_sat("p cnf 2 1\n3 0\n", label="literal-out-of-range")
+        self.assertEqual(res.returncode, 2)
+        self.assertEqual(json.loads(res.stdout)["status"], "ERROR")
+
+    def test_non_numeric_literal_is_rejected(self):
+        res = self.run_cpp_sat("p cnf 2 1\nx 0\n", label="non-numeric")
+        self.assertEqual(res.returncode, 2)
+        self.assertEqual(json.loads(res.stdout)["status"], "ERROR")
+
+    def test_duplicate_header_is_rejected(self):
+        res = self.run_cpp_sat("p cnf 2 1\np cnf 2 1\n1 0\n", label="dup-header")
+        self.assertEqual(res.returncode, 2)
+        self.assertEqual(json.loads(res.stdout)["status"], "ERROR")
+
+    def test_duplicate_literals_are_accepted(self):
+        res = self.run_cpp_sat("p cnf 2 1\n1 1 0\n")
+        self.assertEqual(res.returncode, 0)
+        self.assertEqual(json.loads(res.stdout)["status"], "SAT")
+
+    def test_tautological_clause_is_accepted(self):
+        res = self.run_cpp_sat("p cnf 2 1\n1 -1 0\n")
+        self.assertEqual(res.returncode, 0)
+        self.assertEqual(json.loads(res.stdout)["status"], "SAT")
 
 
 if __name__ == "__main__":

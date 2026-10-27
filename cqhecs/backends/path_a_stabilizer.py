@@ -313,6 +313,12 @@ class PathAStabilizerBackend:
     ``counts`` are a finite-shot sample and carry ``sampling_error_bound``.
     """
 
+    #: Bookkeeping ceiling: the symplectic tableau is O(n^2) bytes, so a legal
+    #: million-qubit QASM register must not be materialised. 300-qubit workloads
+    #: remain supported.
+    MAX_QUBITS = 4096
+    MAX_SHOTS = 10_000_000
+
     #: Gates the stabilizer tableau can apply without decomposition, derived
     #: from the shared manifest. Includes measurement and the angle gates that
     #: are Clifford only at multiples of pi/2.
@@ -407,7 +413,10 @@ class PathAStabilizerBackend:
                 f"Path A supports Clifford gates only and cannot apply '{name}'. "
                 "Dropping a non-Clifford gate would silently produce a wrong state."
             )
-        return measured or None
+        if not measured:
+            return None
+        # Ascending order: the lowest measured qubit is rendered rightmost.
+        return sorted(set(measured))
 
     def _apply_instructions(self, target: Any, instructions: List[Any]) -> None:
         """Applies each validated non-measurement instruction to a simulator."""
@@ -433,10 +442,20 @@ class PathAStabilizerBackend:
 
         if shots <= 0:
             raise ValueError(f"shots must be a positive integer, got {shots}")
+        if shots > self.MAX_SHOTS:
+            raise ValueError(
+                f"shots must not exceed {self.MAX_SHOTS}, got {shots}"
+            )
 
         instructions, n_q = parse_circuit(circuit)
         if n_q <= 0:
             raise ValueError("Path A requires a circuit with at least one qubit.")
+        if n_q > self.MAX_QUBITS:
+            raise ValueError(
+                f"Path A supports at most {self.MAX_QUBITS} qubits "
+                f"(circuit has {n_q}); refusing before allocating the "
+                f"{2 * n_q + 1}x{2 * n_q + 1} tableau."
+            )
         measured_qubits = self._validate(instructions)
 
         # The native engine cannot marginalize onto a subset of qubits, and it lacks

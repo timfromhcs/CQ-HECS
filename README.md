@@ -465,11 +465,11 @@ bleibt der historische Nachweis für `v2.2.1`.
 
 | Gate | Ergebnis |
 | :--- | :--- |
-| CTest (MSVC Release) | **17/17 bestanden** |
-| Python-Suite (CPython 3.14 + Nativkern) | **311 bestanden** |
+| CTest (MSVC Release) | **18/18 bestanden** |
+| Python-Suite (CPython 3.14 + Nativkern) | **366 bestanden** (0 übersprungen) |
 | Python-Suite (CPython 3.11, gepinnte Abhängigkeiten, ohne Nativkern) | im CI-Matrixjob; native Tests skippen dort sichtbar |
 | Mutation-Harness | **11/11 Mutanten erkannt**, Baseline sauber |
-| Branch-Coverage | **81 %** lokal; CI-Schwelle **70 %** |
+| Branch-Coverage | **82 %** lokal; CI-Schwelle **70 %** |
 | Shader-Verifikation | **12/12** SPIR-V-Shader |
 | Version-Konsistenz | alle Flächen melden `2.2.2` |
 | Silent-Truncation-Audit | keine Muster gefunden |

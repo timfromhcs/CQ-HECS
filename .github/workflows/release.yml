@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify-required-ci:
@@ -85,16 +85,18 @@ jobs:
     name: Build and Publish Release
     needs: verify-required-ci
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       CI_RUN_URL: ${{ needs.verify-required-ci.outputs.ci_url }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
 
       - name: Setup Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.11'
 
@@ -202,7 +204,7 @@ jobs:
           cat "$BODY"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           files: |
             dist/cqhecs-${{ steps.meta.outputs.version }}-py3-none-any.whl
