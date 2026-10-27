@@ -385,6 +385,11 @@ class PathBStabilizerRankBackend:
     #: Instructions with no effect on the state.
     IGNORED_GATES = frozenset({"barrier", "id"})
 
+    #: This backend's exact branch decomposition contracts to a dense
+    #: statevector, so the simulator's own ceiling is the execution ceiling.
+    MAX_QUBITS = StabilizerRankSimulator.MAX_STATEVECTOR_QUBITS
+    MAX_SHOTS = 10_000_000
+
     def __init__(self, max_rank_branches: int = 16384):
         self.max_rank_branches = max_rank_branches
 
@@ -393,8 +398,18 @@ class PathBStabilizerRankBackend:
 
         if shots <= 0:
             raise ValueError(f"shots must be a positive integer, got {shots}")
+        if shots > self.MAX_SHOTS:
+            raise ValueError(
+                f"shots must not exceed {self.MAX_SHOTS}, got {shots}"
+            )
 
         instructions, n_q = parse_circuit(circuit)
+        if n_q > self.MAX_QUBITS:
+            raise StabilizerRankError(
+                f"Path B supports at most {self.MAX_QUBITS} qubits "
+                f"(circuit has {n_q}); refusing before allocating a dense "
+                "statevector. Route the circuit to Path C or D."
+            )
         self._validate_instructions(instructions)
 
         sim = StabilizerRankSimulator(n_q, max_rank_branches=self.max_rank_branches)

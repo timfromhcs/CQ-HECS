@@ -29,7 +29,9 @@ two implementations can be compared differentially.
 from __future__ import annotations
 
 import math
+import numbers
 import re
+from collections.abc import Iterable as _Iterable
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 #: Parsed instruction: (gate_name_lowercase, qubit_indices, params)
@@ -244,6 +246,46 @@ _CONTROL_FLOW_OPS = frozenset({
 })
 
 
+def _sort_terminal_measurements(
+    instructions: List[Instruction],
+) -> List[Instruction]:
+    """
+    Sorts a terminal measurement suffix by qubit and removes exact duplicates.
+
+    Measurements are terminal in every supported execution path, so their
+    source order carries no semantics. The result contract renders the lowest
+    measured qubit rightmost; normalising once here means the direct backends,
+    the QASM reader and the Qiskit provider all agree.
+
+    A mid-circuit measurement (one followed by a state-changing operation) is
+    left exactly where it is; sorting it to the end would change the state the
+    later gates see.
+    """
+    positions = [
+        i for i, (name, _q, _p) in enumerate(instructions) if name == "measure"
+    ]
+    if not positions:
+        return list(instructions)
+    first = positions[0]
+    suffix = instructions[first:]
+    if not all(name == "measure" for name, _q, _p in suffix):
+        return list(instructions)
+
+    ordered = sorted(suffix, key=lambda item: item[1][0])
+    deduplicated: List[Instruction] = []
+    seen_qubits = set()
+    for item in ordered:
+        qubit = item[1][0]
+        if qubit in seen_qubits:
+            # A repeated terminal measurement of the same qubit yields the same
+            # outcome; the flat IR carries no classical destination, so keeping
+            # both would fabricate a second output bit.
+            continue
+        seen_qubits.add(qubit)
+        deduplicated.append(item)
+    return instructions[:first] + deduplicated
+
+
 def _parse_qiskit(circuit: Any) -> Tuple[List[Instruction], int]:
     instructions: List[Instruction] = []
     for index, inst in enumerate(circuit.data):
@@ -257,6 +299,27 @@ def _parse_qiskit(circuit: Any) -> Tuple[List[Instruction], int]:
                 "before simulation, not silently reordered."
             )
         qubits = [circuit.find_bit(q).index for q in inst.qubits]
+        if name == "measure":
+            # The flat instruction triple carries qubit operands only, so a
+            # nontrivial classical destination cannot be represented. The
+            # QASM contract already requires `measure q[i] -> c[i]`; applying
+            # the same rule here keeps both parsers truthful instead of
+            # silently sampling a differently-labelled circuit.
+            clbits = [circuit.find_bit(c).index for c in inst.clbits]
+            if len(qubits) != 1 or len(clbits) != 1:
+                raise UnsupportedCircuitInputError(
+                    f"Instruction {index} (measure) must target exactly one "
+                    f"qubit and one classical bit, got {len(qubits)} qubit(s) "
+                    f"and {len(clbits)} classical bit(s)."
+                )
+            if qubits[0] != clbits[0]:
+                raise UnsupportedCircuitInputError(
+                    f"Instruction {index} measures qubit {qubits[0]} into "
+                    f"classical bit {clbits[0]}. Classical-bit remapping is not "
+                    "supported by parse_circuit()/the direct backends; use "
+                    "CQHecsBackend (the Qiskit provider), which preserves "
+                    "arbitrary (qubit, clbit) layouts."
+                )
         raw_params = list(getattr(op, "params", []) or [])
         try:
             params = [float(p) for p in raw_params]
@@ -272,7 +335,61 @@ def _parse_qiskit(circuit: Any) -> Tuple[List[Instruction], int]:
                 f"{params!r}. NaN/inf cannot be simulated."
             )
         instructions.append((name, qubits, params))
-    return instructions, int(circuit.num_qubits)
+    return _sort_terminal_measurements(instructions), int(circuit.num_qubits)
+
+
+#: Largest accepted qubit index for the flat instruction-list input. Parsing a
+#: legal-but-unmaterialisable width is not the same as being able to simulate
+#: it; this ceiling prevents an index such as 10**12 from creating a
+#: correspondingly huge per-qubit object list downstream.
+_MAX_INSTRUCTION_QUBIT_INDEX = 1 << 20
+
+
+def _coerce_qubit_index(value: Any, instruction_index: int) -> int:
+    """
+    Accepts genuine integral indices only.
+
+    ``int(value)`` used to turn ``1.7`` into ``1``, ``True`` into ``1`` and
+    ``"2"`` into ``2``, silently simulating a different circuit. Booleans,
+    floats (even integral ones), strings, complex values, NaN and infinity are
+    rejected with a structured error. ``numbers.Integral`` deliberately includes
+    NumPy integer scalars, which are a legitimate API type.
+    """
+    if isinstance(value, bool) or not isinstance(value, numbers.Integral):
+        raise UnsupportedCircuitInputError(
+            f"Instruction {instruction_index} has a non-integer qubit index "
+            f"{value!r} (type {type(value).__name__}). Only integer indices are "
+            "accepted; floats, booleans and strings are not coerced."
+        )
+    index = int(value)
+    if index < 0:
+        raise UnsupportedCircuitInputError(
+            f"Instruction {instruction_index} has a negative qubit index "
+            f"{index}."
+        )
+    if index >= _MAX_INSTRUCTION_QUBIT_INDEX:
+        raise UnsupportedCircuitInputError(
+            f"Instruction {instruction_index} has qubit index {index}, which "
+            f"exceeds the parser ceiling "
+            f"{_MAX_INSTRUCTION_QUBIT_INDEX - 1}. A legal index is not a "
+            "simulable width."
+        )
+    return index
+
+
+def _coerce_iterable(value: Any, instruction_index: int, what: str) -> List[Any]:
+    """Rejects scalars/strings where a list of operands is required."""
+    if isinstance(value, (str, bytes)) or not isinstance(value, _Iterable):
+        raise UnsupportedCircuitInputError(
+            f"Instruction {instruction_index} has {what} {value!r} "
+            f"(type {type(value).__name__}); expected an iterable of values."
+        )
+    try:
+        return list(value)
+    except TypeError as exc:  # pragma: no cover - Iterable guarantees this
+        raise UnsupportedCircuitInputError(
+            f"Instruction {instruction_index} has an unreadable {what}: {value!r}"
+        ) from exc
 
 
 def _parse_instruction_list(items: Sequence[Any]) -> Tuple[List[Instruction], int]:
@@ -289,18 +406,17 @@ def _parse_instruction_list(items: Sequence[Any]) -> Tuple[List[Instruction], in
             raise UnsupportedCircuitInputError(
                 f"Instruction {idx} has a non-string gate name: {name!r}"
             )
-        try:
-            q_indices = [int(q) for q in qubits]
-        except (TypeError, ValueError) as exc:
+        if not name.strip():
             raise UnsupportedCircuitInputError(
-                f"Instruction {idx} has non-integer qubit indices: {qubits!r}"
-            ) from exc
-        if any(q < 0 for q in q_indices):
-            raise UnsupportedCircuitInputError(
-                f"Instruction {idx} has negative qubit indices: {q_indices!r}"
+                f"Instruction {idx} has an empty gate name."
             )
+
+        raw_qubits = _coerce_iterable(qubits, idx, "qubit operand list")
+        q_indices = [_coerce_qubit_index(q, idx) for q in raw_qubits]
+
+        raw_params = _coerce_iterable(params, idx, "parameter list")
         try:
-            param_values = [float(p) for p in params]
+            param_values = [float(p) for p in raw_params]
         except (TypeError, ValueError) as exc:
             raise UnsupportedCircuitInputError(
                 f"Instruction {idx} has non-numeric parameters: {params!r}"
@@ -314,7 +430,7 @@ def _parse_instruction_list(items: Sequence[Any]) -> Tuple[List[Instruction], in
             num_qubits = max(num_qubits, max(q_indices) + 1)
         instructions.append((name.lower(), q_indices, param_values))
 
-    return instructions, num_qubits
+    return _sort_terminal_measurements(instructions), num_qubits
 
 
 # ---------------------------------------------------------------------------
@@ -640,21 +756,11 @@ class _QasmReader:
     # -- finish ---------------------------------------------------------
     def finish(self) -> Tuple[List[Instruction], int]:
         # Measurements were recorded in source order. When they form a terminal
-        # suffix, sort them by qubit so every backend renders the sampled
+        # suffix, normalise them by qubit so every backend renders the sampled
         # bitstring with qubit 0 rightmost regardless of source order. A
         # mid-circuit measurement is deliberately left in place: sorting it to
         # the end would silently change its semantics.
-        positions = [
-            i for i, (name, _q, _p) in enumerate(self.instructions)
-            if name == "measure"
-        ]
-        if positions:
-            first = positions[0]
-            suffix = self.instructions[first:]
-            if all(name == "measure" for name, _q, _p in suffix):
-                suffix = sorted(suffix, key=lambda item: item[1][0])
-                return self.instructions[:first] + suffix, self.num_qubits
-        return self.instructions, self.num_qubits
+        return _sort_terminal_measurements(self.instructions), self.num_qubits
 
 
 def _matching_paren(text: str, open_index: int) -> int:

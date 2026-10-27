@@ -184,13 +184,27 @@ static int cmd_sat(const std::vector<std::string>& args) {
 
     SATSolverCPP solver(16384);
     CNFFormulaCPP formula;
-    if (!solver.parse_file(filepath, formula)) {
-        if (json_mode) std::cout << JSONFormatter::format_error("Failed to parse DIMACS CNF input: " + filepath);
-        else std::cerr << "[SAT] Failed to parse input file: " << filepath << "\n";
-        return 1;
+    std::string parse_error;
+    if (!solver.parse_file(filepath, formula, &parse_error)) {
+        if (parse_error.empty()) {
+            // Could not even open the file: a runtime error, not invalid input.
+            const std::string message = "Failed to open DIMACS CNF input: " + filepath;
+            if (json_mode) std::cout << JSONFormatter::format_error(message);
+            else std::cerr << "[SAT] " << message << "\n";
+            return 1;
+        }
+        if (json_mode) std::cout << JSONFormatter::format_error(parse_error);
+        else std::cerr << "[SAT] " << parse_error << "\n";
+        // Documented exit code 2: valid invocation, invalid input.
+        return 2;
     }
 
     SATSolverResultCPP res = solver.solve(formula, 15.0);
+    if (!res.input_valid || res.timed_out || !res.error.empty()) {
+        if (json_mode) std::cout << JSONFormatter::format_error(res.error);
+        else std::cerr << "[SAT] " << res.error << "\n";
+        return 1;
+    }
 
     if (json_mode) {
         std::cout << JSONFormatter::format_sat_result(formula, res);
