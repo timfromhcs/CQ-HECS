@@ -27,8 +27,10 @@ claim that its results transfer to CQ-HECS.
   QASM serialisation; the tests assert the provider's own contract, not Qiskit
   sampling streams.
 - MQT Bench circuit families (GHZ, QFT, random) as workload-shape guidance.
-- Stim / Qiskit Aer were **not** run as differential oracles in this change.
-  No claim of agreement with them is made here.
+- Cycle 2 uses Qiskit Aer (`Statevector`, MPS method) and Stim as **differential
+  oracles** for small circuits: statevector fidelity, 5σ/TVD sampling bands and
+  untruncated Aer MPS where the gate set permits it. These are test-only
+  references; no claim of agreement beyond the exercised circuits is made.
 
 ## Engineering decisions recorded
 
