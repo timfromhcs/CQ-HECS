@@ -178,20 +178,44 @@ the original checklist is recorded here as **CQ-01b**.
 | Twine | `python -m twine check dist/cqhecs-2.2.2-*` | docs tree | PASS | `dist/*` also contains SBOM JSON, which twine rejects as a non-distribution |
 | Fresh venv | install `cqhecs-2.2.2-py3-none-any.whl`; `cq-hecs version/doctor`; JSON bell run | docs tree | PASS | run from `%TEMP%`; counts `{"00":491,"11":509}` sum to 1000; state `EXACT` |
 
-## Not run locally
+## CI evidence (post-merge)
+
+| Gate | Exact run | SHA | Result |
+| :--- | :--- | :--- | :--- |
+| Pull request CI | [run 40583157053](https://github.com/timfromhcs/CQ-HECS/actions/runs/40583157053) | `41eb6c0` | PASS — static/package smoke, Python 3.12/3.13/3.14, Linux C++/Vulkan/full suite, Windows C++/Vulkan/full suite, Linux ASan/UBSan |
+| Merged `main` CI | [run 40583940038](https://github.com/timfromhcs/CQ-HECS/actions/runs/40583940038) | `1a36313` | PASS — all jobs, including the full Windows suite |
+| Release workflow | [run 40584656588](https://github.com/timfromhcs/CQ-HECS/actions/runs/40584656588) | `1a36313` | PASS — required-CI guard, build, clean-wheel smoke, SBOM, release publish |
+
+## Not run locally (final status)
 
 | Gate | Status | Reason |
 | :--- | :--- | :--- |
-| Linux native build and full CI | PENDING | Recorded on the PR after push |
-| ASan/UBSan | PENDING | Delegated to CI; MSVC cannot build the sanitizer target |
+| Linux native build and full CI | PASS in CI | Run `40583940038` on the merged SHA |
+| ASan/UBSan | PASS in CI | Run `40583940038`; MSVC cannot build the sanitizer target locally |
 | Cloud Build | NOT VERIFIED | No project/trigger access |
 | Physical GPU compute | NOT VERIFIED | No device dispatch exercised |
-| Published release assets | PENDING | Requires merged SHA, tag and release workflow |
+| Published release assets | VERIFIED | Downloaded from the published release; SHA-256 matches `sha256sums.txt` and the GitHub asset digests |
 
 ## CI / release status
 
-- Pull request: https://github.com/timfromhcs/CQ-HECS/pull/8
-- Exact-SHA CI run URLs are recorded on that pull request's checks page; the
-  final merged SHA and release run are appended to the final report.
-- `v2.2.2` is tagged only from the verified merged SHA and only after the
-  tag-triggered release workflow succeeds.
+- Pull request: https://github.com/timfromhcs/CQ-HECS/pull/8 — merged
+  2026-10-27T21:06:27Z as `1a36313e4a8eeb38bd6cb3d2e5a96f761c70d7d4`.
+- Tag `v2.2.2` is annotated from the merged SHA (`1a36313`); its tag object is
+  `68e11324df62eade80343b5ba930bc756c14e66f`.
+- Release: https://github.com/timfromhcs/CQ-HECS/releases/tag/v2.2.2
+- Published assets, independently re-hashed after download:
+
+  | Asset | SHA-256 |
+  | :--- | :--- |
+  | `cqhecs-2.2.2-py3-none-any.whl` | `fefb329a60bd955e7ba61684cfec41db55dbe1cede2987814af1ad6e9d018768` |
+  | `cqhecs-2.2.2.tar.gz` | `d24ea79263d374b3afaab7c4f840e229febdc8fea115ecae19efa03d041b80e4` |
+  | `cqhecs-sbom.spdx.json` | `7b423620901c8d1c6e76c2bb4bcd412fe434c32c91e686c8c31733542a92a3d5` |
+  | `RELEASE_NOTES_v2.2.2.md` | `84a5583cc5ad49bb3767943c7fa8723be7e7330a9a6f70277e6012efd846a4cf` |
+
+- SBOM `documentNamespace` and `git-commit` reference `1a36313`, matching the
+  tagged commit.
+- Published-wheel smoke, run from `%TEMP%` outside the repository: `cq-hecs
+  version` reports `2.2.2`; `run name:ghz8 --shots 1000 --seed 42` returns
+  `{"00000000": 491, "11111111": 509}` with state `EXACT`; CQ-01 operand-order
+  support checks and CQ-03/CQ-04 parser rejection checks pass against the
+  installed wheel.
