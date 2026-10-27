@@ -34,12 +34,30 @@ VulkanContext::~VulkanContext() {
 bool VulkanContext::initialize() {
     if (m_initialized) return true;
 
-    if (!create_instance()) return false;
-    if (!select_physical_device()) return false;
-    if (!create_logical_device()) return false;
-    if (!create_command_pool()) return false;
-    if (!create_descriptor_pool()) return false;
-    if (!init_pipelines()) return false;
+    if (!create_instance()) {
+        cleanup();
+        return false;
+    }
+    if (!select_physical_device()) {
+        cleanup();
+        return false;
+    }
+    if (!create_logical_device()) {
+        cleanup();
+        return false;
+    }
+    if (!create_command_pool()) {
+        cleanup();
+        return false;
+    }
+    if (!create_descriptor_pool()) {
+        cleanup();
+        return false;
+    }
+    if (!init_pipelines()) {
+        cleanup();
+        return false;
+    }
 
     m_initialized = true;
     return true;
@@ -172,7 +190,16 @@ bool VulkanContext::create_logical_device() {
     queue_create_info.queueCount = 1;
     queue_create_info.pQueuePriorities = &queue_priority;
 
+    VkPhysicalDeviceFeatures supported_features{};
+    vkGetPhysicalDeviceFeatures(m_physical_device, &supported_features);
+    if (!supported_features.shaderInt64) {
+        std::cerr << "[VulkanContext] Device does not support shaderInt64, which "
+                     "the embedded compute shaders require.\n";
+        return false;
+    }
+
     VkPhysicalDeviceFeatures device_features{};
+    device_features.shaderInt64 = VK_TRUE;
 
     VkDeviceCreateInfo create_info{};
     create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -291,12 +318,20 @@ bool VulkanContext::dispatch_cordic(VulkanBuffer& buffer, uint32_t gate_type, ui
     cmd_alloc.commandBufferCount = 1;
 
     VkCommandBuffer cmd = VK_NULL_HANDLE;
-    vkAllocateCommandBuffers(m_device, &cmd_alloc, &cmd);
+    if (vkAllocateCommandBuffers(m_device, &cmd_alloc, &cmd) != VK_SUCCESS ||
+        cmd == VK_NULL_HANDLE) {
+        vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &desc_set);
+        return false;
+    }
 
     VkCommandBufferBeginInfo begin_info{};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(cmd, &begin_info);
+    if (vkBeginCommandBuffer(cmd, &begin_info) != VK_SUCCESS) {
+        vkFreeCommandBuffers(m_device, m_command_pool, 1, &cmd);
+        vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &desc_set);
+        return false;
+    }
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline_cordic.get_pipeline());
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline_cordic.get_layout(), 0, 1, &desc_set, 0, nullptr);
@@ -307,20 +342,26 @@ bool VulkanContext::dispatch_cordic(VulkanBuffer& buffer, uint32_t gate_type, ui
     uint32_t groups = (total_pairs + 63) / 64;
     vkCmdDispatch(cmd, groups > 0 ? groups : 1, 1, 1);
 
-    vkEndCommandBuffer(cmd);
+    if (vkEndCommandBuffer(cmd) != VK_SUCCESS) {
+        vkFreeCommandBuffers(m_device, m_command_pool, 1, &cmd);
+        vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &desc_set);
+        return false;
+    }
 
     VkSubmitInfo submit_info{};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &cmd;
 
-    vkQueueSubmit(m_compute_queue, 1, &submit_info, VK_NULL_HANDLE);
-    vkQueueWaitIdle(m_compute_queue);
+    VkResult submit_result = vkQueueSubmit(m_compute_queue, 1, &submit_info, VK_NULL_HANDLE);
+    VkResult wait_result = submit_result == VK_SUCCESS
+                               ? vkQueueWaitIdle(m_compute_queue)
+                               : submit_result;
 
     vkFreeCommandBuffers(m_device, m_command_pool, 1, &cmd);
     vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &desc_set);
 
-    return true;
+    return submit_result == VK_SUCCESS && wait_result == VK_SUCCESS;
 }
 
 bool VulkanContext::dispatch_state_reset(VulkanBuffer& buffer, uint32_t total_elements, uint32_t target_basis) {
@@ -359,12 +400,20 @@ bool VulkanContext::dispatch_state_reset(VulkanBuffer& buffer, uint32_t total_el
     cmd_alloc.commandBufferCount = 1;
 
     VkCommandBuffer cmd = VK_NULL_HANDLE;
-    vkAllocateCommandBuffers(m_device, &cmd_alloc, &cmd);
+    if (vkAllocateCommandBuffers(m_device, &cmd_alloc, &cmd) != VK_SUCCESS ||
+        cmd == VK_NULL_HANDLE) {
+        vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &desc_set);
+        return false;
+    }
 
     VkCommandBufferBeginInfo begin_info{};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(cmd, &begin_info);
+    if (vkBeginCommandBuffer(cmd, &begin_info) != VK_SUCCESS) {
+        vkFreeCommandBuffers(m_device, m_command_pool, 1, &cmd);
+        vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &desc_set);
+        return false;
+    }
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline_state_reset.get_pipeline());
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline_state_reset.get_layout(), 0, 1, &desc_set, 0, nullptr);
@@ -375,20 +424,26 @@ bool VulkanContext::dispatch_state_reset(VulkanBuffer& buffer, uint32_t total_el
     uint32_t groups = (total_elements + 63) / 64;
     vkCmdDispatch(cmd, groups > 0 ? groups : 1, 1, 1);
 
-    vkEndCommandBuffer(cmd);
+    if (vkEndCommandBuffer(cmd) != VK_SUCCESS) {
+        vkFreeCommandBuffers(m_device, m_command_pool, 1, &cmd);
+        vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &desc_set);
+        return false;
+    }
 
     VkSubmitInfo submit_info{};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &cmd;
 
-    vkQueueSubmit(m_compute_queue, 1, &submit_info, VK_NULL_HANDLE);
-    vkQueueWaitIdle(m_compute_queue);
+    VkResult submit_result = vkQueueSubmit(m_compute_queue, 1, &submit_info, VK_NULL_HANDLE);
+    VkResult wait_result = submit_result == VK_SUCCESS
+                               ? vkQueueWaitIdle(m_compute_queue)
+                               : submit_result;
 
     vkFreeCommandBuffers(m_device, m_command_pool, 1, &cmd);
     vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &desc_set);
 
-    return true;
+    return submit_result == VK_SUCCESS && wait_result == VK_SUCCESS;
 }
 
 bool VulkanContext::dispatch_tensor_contract(VulkanBuffer& buf_a, VulkanBuffer& buf_b, VulkanBuffer& buf_c, uint32_t m, uint32_t k, uint32_t n) {
@@ -429,12 +484,20 @@ bool VulkanContext::dispatch_tensor_contract(VulkanBuffer& buf_a, VulkanBuffer& 
     cmd_alloc.commandBufferCount = 1;
 
     VkCommandBuffer cmd = VK_NULL_HANDLE;
-    vkAllocateCommandBuffers(m_device, &cmd_alloc, &cmd);
+    if (vkAllocateCommandBuffers(m_device, &cmd_alloc, &cmd) != VK_SUCCESS ||
+        cmd == VK_NULL_HANDLE) {
+        vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &desc_set);
+        return false;
+    }
 
     VkCommandBufferBeginInfo begin_info{};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(cmd, &begin_info);
+    if (vkBeginCommandBuffer(cmd, &begin_info) != VK_SUCCESS) {
+        vkFreeCommandBuffers(m_device, m_command_pool, 1, &cmd);
+        vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &desc_set);
+        return false;
+    }
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline_contract.get_pipeline());
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline_contract.get_layout(), 0, 1, &desc_set, 0, nullptr);
@@ -446,20 +509,26 @@ bool VulkanContext::dispatch_tensor_contract(VulkanBuffer& buf_a, VulkanBuffer& 
     uint32_t gy = (m + 15) / 16;
     vkCmdDispatch(cmd, gx > 0 ? gx : 1, gy > 0 ? gy : 1, 1);
 
-    vkEndCommandBuffer(cmd);
+    if (vkEndCommandBuffer(cmd) != VK_SUCCESS) {
+        vkFreeCommandBuffers(m_device, m_command_pool, 1, &cmd);
+        vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &desc_set);
+        return false;
+    }
 
     VkSubmitInfo submit_info{};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &cmd;
 
-    vkQueueSubmit(m_compute_queue, 1, &submit_info, VK_NULL_HANDLE);
-    vkQueueWaitIdle(m_compute_queue);
+    VkResult submit_result = vkQueueSubmit(m_compute_queue, 1, &submit_info, VK_NULL_HANDLE);
+    VkResult wait_result = submit_result == VK_SUCCESS
+                               ? vkQueueWaitIdle(m_compute_queue)
+                               : submit_result;
 
     vkFreeCommandBuffers(m_device, m_command_pool, 1, &cmd);
     vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &desc_set);
 
-    return true;
+    return submit_result == VK_SUCCESS && wait_result == VK_SUCCESS;
 }
 
 } // namespace cq_hecs

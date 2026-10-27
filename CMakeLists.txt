@@ -330,6 +330,10 @@ add_executable(test_qpu_facade_contract tests/cpp/test_qpu_facade_contract.cpp)
 target_include_directories(test_qpu_facade_contract PRIVATE include src)
 target_link_libraries(test_qpu_facade_contract PRIVATE ${Vulkan_LIBRARIES})
 
+add_executable(test_vulkan_compute_contract tests/cpp/test_vulkan_compute_contract.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
+target_include_directories(test_vulkan_compute_contract PRIVATE include src)
+target_link_libraries(test_vulkan_compute_contract PRIVATE ${Vulkan_LIBRARIES})
+
 # 7. CTest Verification Suite
 enable_testing()
 add_test(NAME test_reversibility COMMAND test_reversibility)
@@ -350,6 +354,8 @@ add_test(NAME test_sat_parser COMMAND test_sat_parser)
 add_test(NAME test_statevector_contract COMMAND test_statevector_contract)
 add_test(NAME test_mps_contract COMMAND test_mps_contract)
 add_test(NAME test_qpu_facade_contract COMMAND test_qpu_facade_contract)
+add_test(NAME test_vulkan_compute_contract COMMAND test_vulkan_compute_contract)
+set_tests_properties(test_vulkan_compute_contract PROPERTIES SKIP_RETURN_CODE 77)
 
 # 8. Nanobind Python C++20 Modules
 find_package(Python 3.11 COMPONENTS Interpreter Development.Module QUIET)

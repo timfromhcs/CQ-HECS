@@ -32,8 +32,12 @@ and tested by CTest, and their contracts are deliberately narrow.
 | `VRTS300Engine` | **legacy diagnostic** | Compact fully-correlated GHZ-like representation; `measure_parity_shots(shots, seed)` validates correlation and draws seeded shots; arbitrary 300-qubit states are refused | `tests/test_ghz300.cpp`, `test_300q_stress` |
 | Legacy native QASM executor (`QASMParserCPP::execute_on_vulkan`) | **legacy diagnostic** | `engine_class = legacy_z8_phase_ledger`, `statevector_simulation = false`; parse errors block execution | `tests/test_qasm_contract.cpp` |
 
-Physical Vulkan compute dispatch is **not verified** and is not claimed. Shader
-compilation is checked separately by `scripts/verify_vulkan_shaders.py`.
+Primitive Vulkan compute dispatch (state reset, CORDIC phase gate, Q30 tensor
+contraction) is **verified on an AMD Radeon iGPU** by
+`tests/cpp/test_vulkan_compute_contract.cpp` and is exercised in CI whenever a
+Vulkan device (including Lavapipe) is available. Full simulator acceleration is
+not claimed. Shader compilation is checked separately by
+`scripts/verify_vulkan_shaders.py`.
 
 
 ## Deferral / rejection summary
@@ -50,7 +54,7 @@ compilation is checked separately by `scripts/verify_vulkan_shaders.py`.
 | Exact ring arithmetic (`Z[1/√2, i]`) backend | deferred | algebra known; separate backend not justified yet; float64 declared explicitly |
 | Noise trajectories / density matrix / MPO | rejected for v2 | changes result contract semantics, not just adds a method |
 | Monte Carlo stabilizer / quasiprobability | deferred | sampling complexity analysis required; not a current need |
-| GPU compute via Vulkan | deferred | loader enumerated; **no physical-GPU compute dispatch demonstrated**; no acceleration claim is made |
+| GPU compute via Vulkan | primitive dispatch verified | state reset, CORDIC phase gate and Q30 tensor contraction dispatched on an AMD iGPU; end-to-end simulator acceleration remains deferred |
 | Cache/gate-fusion/SIMD (performance work) | deferred | correctness-first; no optimization without differential baselines |
 
 ## Gate set and routing
@@ -81,7 +85,8 @@ and the router contract tests.
 
 ## What v2 explicitly does not include
 
-- No physical-GPU compute claim (loader-only status; see METHOD_CATALOG §3).
+- No end-to-end GPU acceleration claim; only primitive Vulkan dispatch is
+  verified (see METHOD_CATALOG §3).
 - No mixed-state / noise-channel backend.
 - No joint bitstring counts from Path D by default.
 - No performance claims from a single circuit family.

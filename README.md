@@ -39,7 +39,7 @@ Schaltungsklasse den passenden Pfad wählt — und an der Grenze lieber
 | **Keine erfundenen Resultate** | Nicht gemessene Counts werden nicht ausgegeben. Unbekannte Gatter werden typisiert abgelehnt, nicht als Identität behandelt. |
 | **Fehlerschranken mit Namen** | `error_bound`, `numerical_error_bound` und `sampling_error_bound` sind getrennte Größen mit getrennten Metriken. |
 | **Fail-closed statt fail-open** | Ungültiges OpenQASM, unbekannte Gates und Ressourcenüberschreitungen führen zu strukturierten Fehlern — nie zu einer Teilausführung. |
-| **Ehrliche Hardware-Aussagen** | Alle vier Python-Pfade rechnen auf der CPU. Physische GPU-Beschleunigung ist **nicht verifiziert** und wird nicht behauptet. |
+| **Ehrliche Hardware-Aussagen** | Alle vier Python-Pfade rechnen auf der CPU. Vulkan-Compute-Dispatch wurde auf einer AMD-Radeon-iGPU verifiziert; eine herstellerübergreifende oder End-to-End-GPU-Beschleunigung wird **nicht** behauptet. |
 
 > **Status:** `v2.2.2` ist ein Patch-Release auf `v2.2.1`. Es beseitigt
 > Erfolgsmeldungen ohne echte Zustandsevolution in den nativen Referenz- und
@@ -465,7 +465,7 @@ bleibt der historische Nachweis für `v2.2.1`.
 
 | Gate | Ergebnis |
 | :--- | :--- |
-| CTest (MSVC Release) | **18/18 bestanden** |
+| CTest (MSVC Release) | **19/19 bestanden** |
 | Python-Suite (CPython 3.14 + Nativkern) | **366 bestanden** (0 übersprungen) |
 | Python-Suite (CPython 3.11, gepinnte Abhängigkeiten, ohne Nativkern) | im CI-Matrixjob; native Tests skippen dort sichtbar |
 | Mutation-Harness | **11/11 Mutanten erkannt**, Baseline sauber |
@@ -474,7 +474,7 @@ bleibt der historische Nachweis für `v2.2.1`.
 | Version-Konsistenz | alle Flächen melden `2.2.2` |
 | Silent-Truncation-Audit | keine Muster gefunden |
 | GitHub Actions | Linux/Windows nativ, ASan/UBSan, Python 3.12–3.14, Package-Smoke |
-| Physische GPU | **nicht verifiziert** |
+| Physische GPU | **Dispatch auf AMD-Radeon-iGPU verifiziert**; keine herstellerübergreifende Garantie |
 | Google Cloud Build | **nicht verifiziert** (keine Projekt-/Credential-Verifikation in der Audit-Umgebung) |
 
 ### Selbst prüfen
@@ -506,14 +506,16 @@ python scripts/run_mutation_tests.py
 | :--- | :--- | :---: | :--- |
 | Ubuntu Linux x64 + Mesa Lavapipe | Vulkan 1.3 SPIR-V (Software) | `CI_VERIFIED` | Shader- und Pipeline-Konformität in GitHub Actions; **keine physische GPU** |
 | Windows Headless CI | Headless-Fallback / Null-Device-Guard | `CI_VERIFIED` | GitHub Actions (`windows-latest`) |
-| Lokale Windows-Workstation | Vulkan 1.4 Loader | `LOADER_VERIFIED` | Loader enumeriert ein Gerät; **kein Compute-Dispatch nachgewiesen** |
+| Lokale Windows-Workstation (AMD Radeon iGPU) | Vulkan 1.4.315, AMD-Treiber 26.6.1 | `COMPUTE_VERIFIED` | `test_vulkan_compute_contract`: State-Reset, CORDIC-Phasen-/Pauli-X-Gate und Q30-Matrix-Kontraktion auf der GPU ausgeführt und zurückgelesen |
 | Apple Silicon (M1–M4) | MoltenVK / Metal | `NOT_VERIFIED` | kein Test |
 | Intel Arc / NVIDIA / AMD diskret | Vulkan 1.3 Treiber | `NOT_VERIFIED` | kein Test |
 
 > **Wichtig:** Der Python-Pfad (Paket, CLI, alle vier Pfade) rechnet
-> ausschließlich auf der **CPU**. Shader-Kompilierung und Software-Vulkan
-> belegen Integrationsverhalten, **nicht** physische GPU-Beschleunigung und
-> **keine** herstellerübergreifende Kompatibilität.
+> ausschließlich auf der **CPU**. Der verifizierte Vulkan-Dispatch betrifft
+> nur die nativen Primitiv-Pipelines (`state_reset`, CORDIC-Gate,
+> Tensor-Kontraktion), nicht eine GPU-beschleunigte Simulation. Es gibt
+> **keine** herstellerübergreifende Kompatibilitäts- oder
+> Beschleunigungsgarantie.
 
 ---
 
@@ -521,8 +523,9 @@ python scripts/run_mutation_tests.py
 
 - **Kein universeller Quantensimulator.** Jeder Pfad hat eine dokumentierte
   Zielklasse und eine harte Grenze.
-- **Kein GPU-Beschleunigungsversprechen.** Physische GPU-Ausführung ist nicht
-  verifiziert.
+- **Kein herstellerübergreifendes GPU-Beschleunigungsversprechen.** Der
+  Vulkan-Compute-Dispatch ist auf einer AMD-Radeon-iGPU verifiziert; die
+  Python-Pfade bleiben CPU-only.
 - **Kein Brechen voller kryptografischer Primitive.** Die ARX-/SAT-Module sind
   eine Testbench für reduzierte Runden, keine Preimage-Inversion für 256-Bit-
   Vollversionen.
