@@ -256,6 +256,53 @@ def cmd_backend(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+
+def cmd_profile(args: argparse.Namespace) -> int:
+    from cqhecs.hardware_bridge import FakeHardwareProvider
+
+    provider = FakeHardwareProvider()
+    if args.profile_command == "list":
+        backends = provider.backends()
+        payload = {
+            "schema_version": JSON_SCHEMA_VERSION,
+            "profiles": [b.profile.to_dict() for b in backends],
+        }
+        if args.format == "json":
+            _emit_json(payload)
+        else:
+            for b in backends:
+                p = b.profile
+                print(f"Profile: {p.name} (qubits: {p.num_qubits}, provider: {p.provider_name}, synthetic: {p.is_synthetic})")
+                print(f"  Coupling edges: {len(p.coupling_map)}")
+                print(f"  Basis gates: {', '.join(p.basis_gates)}")
+        return EXIT_OK
+    elif args.profile_command == "show":
+        try:
+            b = provider.get_backend(args.name)
+        except KeyError as e:
+            LOG.error("%s", e)
+            return EXIT_USAGE
+        p = b.profile
+        payload = {
+            "schema_version": JSON_SCHEMA_VERSION,
+            "profile": p.to_dict(),
+        }
+        if args.format == "json":
+            _emit_json(payload)
+        else:
+            print(f"Name         : {p.name}")
+            print(f"Provider     : {p.provider_name}")
+            print(f"Qubits       : {p.num_qubits}")
+            print(f"Schema ver   : {p.schema_version}")
+            print(f"Captured     : {p.capture_timestamp}")
+            print(f"Synthetic    : {p.is_synthetic}")
+            print(f"Basis gates  : {', '.join(p.basis_gates)}")
+            print(f"Coupling     : {p.coupling_map}")
+            print(f"Readout errs : {p.readout_errors}")
+        return EXIT_OK
+    return EXIT_USAGE
+
+
 def cmd_analyze(args: argparse.Namespace) -> int:
     from cqhecs.circuit_analyzer import CircuitAnalyzer
 
@@ -288,21 +335,41 @@ def cmd_run(args: argparse.Namespace) -> int:
     circuit = _load_circuit(args.circuit)
     backend = args.backend.upper()
 
-    router = EntanglementAdaptiveRouter(
-        error_tolerance=args.error_tolerance,
-        max_pauli_terms=args.max_pauli_terms,
-    )
-    LOG.info(
-        "executing %s via %s (shots=%d, seed=%s)",
-        args.circuit, backend, args.shots, args.seed,
-    )
-    result = router.route_and_execute(
-        circuit,
-        shots=args.shots,
-        seed=args.seed,
-        preferred_path=None if backend == "AUTO" else backend,
-        error_tolerance=args.error_tolerance,
-    )
+    if getattr(args, "profile", None):
+        from cqhecs.hardware_bridge import FakeHardwareProvider, ExecutionMode
+        provider = FakeHardwareProvider()
+        fake_backend = provider.get_backend(args.profile)
+        exec_mode = (
+            ExecutionMode.NOISY_CLASSICAL
+            if getattr(args, "noisy", True)
+            else ExecutionMode.IDEAL_CLASSICAL
+        )
+        LOG.info(
+            "executing %s via hardware profile %s (mode=%s, shots=%d, seed=%s)",
+            args.circuit, args.profile, exec_mode.value, args.shots, args.seed,
+        )
+        result = fake_backend.run(
+            circuit,
+            shots=args.shots,
+            seed=args.seed,
+            execution_mode=exec_mode,
+        )
+    else:
+        router = EntanglementAdaptiveRouter(
+            error_tolerance=args.error_tolerance,
+            max_pauli_terms=args.max_pauli_terms,
+        )
+        LOG.info(
+            "executing %s via %s (shots=%d, seed=%s)",
+            args.circuit, backend, args.shots, args.seed,
+        )
+        result = router.route_and_execute(
+            circuit,
+            shots=args.shots,
+            seed=args.seed,
+            preferred_path=None if backend == "AUTO" else backend,
+            error_tolerance=args.error_tolerance,
+        )
 
     payload = {
         "schema_version": JSON_SCHEMA_VERSION,
@@ -313,6 +380,10 @@ def cmd_run(args: argparse.Namespace) -> int:
         _emit_json(payload)
     else:
         print(f"Path        : {result.path}")
+        if result.execution_mode:
+            print(f"Mode        : {result.execution_mode.value if hasattr(result.execution_mode, 'value') else result.execution_mode}")
+        if result.backend_profile_id:
+            print(f"Profile     : {result.backend_profile_id}")
         print(f"State       : {result.state.value if result.state else 'UNKNOWN'}")
         print(f"Exact       : {result.exact}")
         print(f"Error bound : {result.error_bound:.3e}")
@@ -586,6 +657,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("version", help="Print version information")
     sub.add_parser("doctor", help="Report the execution environment")
+    p_prof = sub.add_parser("profile", help="Inspect hardware calibration profiles")
+    prof_sub = p_prof.add_subparsers(dest="profile_command", required=True)
+    prof_sub.add_parser("list", help="List available hardware calibration profiles")
+    p_show = prof_sub.add_parser("show", help="Show details of a hardware profile")
+    p_show.add_argument("name", help="Profile name (e.g. fake_manila, linear_5q)")
 
     p_backend = sub.add_parser("backend", help="Inspect backend capabilities")
     backend_sub = p_backend.add_subparsers(dest="backend_command", required=True)
@@ -609,6 +685,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument(
         "--max-pauli-terms", type=int, default=1024,
         help="Pauli term budget for Path D",
+    )
+    p_run.add_argument(
+        "--profile", default=None,
+        help="Hardware profile to emulate (e.g. fake_manila, linear_5q)",
+    )
+    p_run.add_argument(
+        "--noisy", action=argparse.BooleanOptionalAction, default=True,
+        help="Enable/disable noise model when running with --profile",
     )
 
     p_verify = sub.add_parser("verify", help="Compare against a reference backend")
@@ -680,6 +764,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "version": cmd_version,
         "doctor": cmd_doctor,
         "backend": cmd_backend,
+        "profile": cmd_profile,
         "analyze": cmd_analyze,
         "run": cmd_run,
         "verify": cmd_verify,

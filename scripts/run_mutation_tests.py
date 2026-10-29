@@ -235,6 +235,30 @@ def check_dense_y_orientation() -> bool:
     return abs(res.values["Y0"] - 1.0) > 1e-9
 
 
+
+def check_hardware_authorization() -> bool:
+    """Real hardware execution without authorized=True must fail closed."""
+    from cqhecs.hardware_bridge import RealHardwareProvider, HardwareAuthorizationRequiredError
+    provider = RealHardwareProvider()
+    backend = provider.get_backend("ibm_brisbane")
+    try:
+        backend.run([("h", [0], [])], authorized=False, api_token="valid_token")
+        return True  # defect observed: did not fail closed on unauthorized run
+    except HardwareAuthorizationRequiredError:
+        return False
+    except Exception:
+        return True
+
+
+def check_profile_self_loop() -> bool:
+    """BackendProfile must reject self-loops in coupling map."""
+    from cqhecs.hardware_bridge import BackendProfile, InvalidProfileError
+    try:
+        BackendProfile(name="test", num_qubits=2, coupling_map=[(0, 0)])
+        return True  # defect observed: self-loop was accepted
+    except InvalidProfileError:
+        return False
+
 CHECKS: Dict[str, Callable[[], bool]] = {
     "qubit_bit_order": check_qubit_bit_order,
     "cz_conjugation": check_cz_conjugation,
@@ -250,6 +274,8 @@ CHECKS: Dict[str, Callable[[], bool]] = {
     "toffoli_lowering": check_toffoli_lowering,
     "stabilizer_expectation_sign": check_stabilizer_expectation_sign,
     "dense_y_orientation": check_dense_y_orientation,
+    "hardware_authorization": check_hardware_authorization,
+    "profile_self_loop": check_profile_self_loop,
 }
 
 
@@ -420,6 +446,22 @@ MUTANTS: List[SourceMutant] = [
         check="dense_y_orientation",
         mechanism="transposes the Pauli-Y matrix so Y expectations change sign",
     ),
+    SourceMutant(
+        name="Real hardware authorization bypassed",
+        target="cqhecs/hardware_bridge.py",
+        original="        if not authorized:\n",
+        replacement="        if False and not authorized:\n",
+        check="hardware_authorization",
+        mechanism="bypasses authorization check in RealHardwareBackend.run()",
+    ),
+    SourceMutant(
+        name="Hardware profile self-loop allowed",
+        target="cqhecs/hardware_bridge.py",
+        original="            if u == v:\n",
+        replacement="            if False and u == v:\n",
+        check="profile_self_loop",
+        mechanism="allows self-loops in backend coupling map",
+    ),
 ]
 
 
@@ -485,17 +527,25 @@ def _invalidate_bytecode(path: Path) -> None:
 
 
 def _atomic_write(path: Path, text: str) -> None:
-    """Writes text so an interrupted run cannot leave a half-written file."""
-    with tempfile.NamedTemporaryFile(
-        "w", encoding="utf-8", newline="", delete=False, dir=str(path.parent)
-    ) as handle:
-        handle.write(text)
+    """Writes text preserving the file's native newline convention."""
+    newline = "\n"
+    if path.exists():
+        try:
+            raw = path.read_bytes()
+            if b"\r\n" in raw:
+                newline = "\r\n"
+        except Exception:
+            pass
+    normalized = text.replace("\r\n", "\n")
+    encoded = normalized.replace("\n", newline).encode("utf-8")
+    with tempfile.NamedTemporaryFile("wb", delete=False, dir=str(path.parent)) as handle:
+        handle.write(encoded)
         temp_name = handle.name
     os.replace(temp_name, path)
 
 
 def apply_mutant(mutant: SourceMutant) -> Tuple[Path, str]:
-    """Validates the anchor, writes the mutated source and returns (path, original)."""
+    """Validates the anchor, writes the mutated source and returns (path, original_text)."""
     path = REPO_ROOT / mutant.target
     if not path.is_file():
         raise HarnessError(f"mutant target missing: {mutant.target}")

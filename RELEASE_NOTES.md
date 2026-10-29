@@ -1,12 +1,12 @@
 # CQ-HECS Release Notes
 
-**Version:** 2.4.0
-**Release date:** 2026-10-29
+**Version:** 2.5.0
+**Release date:** 2026-10-30
 **License:** Apache 2.0
 **Repository:** [https://github.com/timfromhcs/CQ-HECS](https://github.com/timfromhcs/CQ-HECS)
 
 > The release workflow copies this file to
-> `dist/RELEASE_NOTES_v2.4.0.md`, prepends the exact source commit and required
+> `dist/RELEASE_NOTES_v2.5.0.md`, prepends the exact source commit and required
 > CI run, and appends the SHA256 values of the final assets. The content
 > describes the code in this tree.
 
@@ -25,7 +25,7 @@ are that `SimulationResult.total_error_bound` is `None` in cases where it used t
 print a misleading number, and that circuits using the newly lowered gates now run
 instead of being refused.
 
-| Surface | Status in 2.4.0 |
+| Surface | Status in 2.5.0 |
 | :--- | :--- |
 | `cqhecs` four-path router/backends | supported; composite gates lowered exactly |
 | `cqhecs.expectation` (Pauli expectation values) | supported; exact on Clifford and dense registers, certified beyond |

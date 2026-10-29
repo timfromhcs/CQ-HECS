@@ -41,15 +41,7 @@ Schaltungsklasse den passenden Pfad wählt — und an der Grenze lieber
 | **Fail-closed statt fail-open** | Ungültiges OpenQASM, unbekannte Gates und Ressourcenüberschreitungen führen zu strukturierten Fehlern — nie zu einer Teilausführung. |
 | **Ehrliche Hardware-Aussagen** | Alle vier Python-Pfade rechnen auf der CPU. Vulkan-Compute-Dispatch wurde auf einer AMD-Radeon-iGPU verifiziert; eine herstellerübergreifende oder End-to-End-GPU-Beschleunigung wird **nicht** behauptet. |
 
-> **Status:** `v2.4.0` ist ein Feature-Release auf `v2.3.0`. Neu sind
-> **exakte Pauli-Erwartungswerte** (`cq-hecs expect`, `cqhecs.expectation`:
-> Stabilizer-Tableau für Clifford-Schaltungen bis 4096 Qubits, dichter
-> Referenzsimulator bis 22 Qubits, zertifiziertes Path D darüber), neun weitere
-> exakte Gate-Zerlegungen (`r`, `iswap`, `dcx`, `ecr`, `cu3`, `cu`, `csx`,
-> `c3x`, `c4x`) und drei geschlossene Ergebnisvertrags-Funde (`total_error_bound`,
-> Path-C-Rangschwelle, Konfidenzschranken-Wortlaut). Es gibt **keinen neuen
-> Simulationspfad, keine Rauschmodelle und keine GPU-Beschleunigung**.
-> Details: [Release Notes](RELEASE_NOTES.md) · [Changelog](CHANGELOG.md).
+> **Status:** `v2.5.0` ist ein Feature-Release auf `v2.4.0`. Neu ist die **Hardware-Aware Quantum Bridge** (`cqhecs.hardware_bridge`: typisierte Backend-Profile, verifiziert vollständige Kraus-Rauschkanäle, exakter float64-Dichtematrix-Simulator bis 10 Qubits, offline Fake-Hardware mit Topologie-Prüfung und Fail-Closed-Schutz für echte QPU-Provider). Es gibt **keine universelle Beschleunigungsbehauptung und keine heimlichen Fallbacks**. Details: [Release Notes](RELEASE_NOTES.md) · [Changelog](CHANGELOG.md).
 
 ---
 
@@ -335,8 +327,8 @@ pip install -e .
 
 ```bash
 python -m build
-# dist/cqhecs-2.4.0-py3-none-any.whl
-# dist/cqhecs-2.4.0.tar.gz
+# dist/cqhecs-2.5.0-py3-none-any.whl
+# dist/cqhecs-2.5.0.tar.gz
 ```
 
 Die veröffentlichten Artefakte, Checksums und die SPDX-SBOM stehen unter
@@ -353,8 +345,10 @@ Die veröffentlichten Artefakte, Checksums und die SPDX-SBOM stehen unter
 | `cq-hecs version` | Version und Laufzeitumgebung |
 | `cq-hecs doctor` | OS, Python, Native-Binding, Vulkan-Stufen |
 | `cq-hecs backend list` | Fähigkeiten und Gate-Sets der Pfade A–D |
+| `cq-hecs profile list` | Hardware-Profile (z. B. fake_manila, linear_5q) und Topologien anzeigen |
 | `cq-hecs analyze name:ghz8` | statische Analyse und Pfadempfehlung |
 | `cq-hecs run name:bell --shots 1000` | Schaltung ausführen |
+| `cq-hecs run name:bell --profile fake_manila` | Schaltung mit Hardware-Topologie und Rauschmodell ausführen |
 | `cq-hecs verify name:bell --reference aer` | gegen Referenz vergleichen |
 | `cq-hecs expect name:bell -o ZZ -o XX` | exakte bzw. zertifizierte Pauli-Erwartungswerte |
 | `cq-hecs benchmark smoke` | reproduzierbarer Smoke-Benchmark |
@@ -488,21 +482,20 @@ erfundenen 50/50-Counts.
 
 ## ✅ Verifikation
 
-Die folgenden Zahlen sind lokale Messungen für den `v2.4.0`-Kandidaten, keine
+Die folgenden Zahlen sind lokale Messungen für den `v2.5.0`-Kandidaten, keine
 Leistungsbenchmarks. CI-Ergebnisse werden für den exakt gepushten SHA separat
-in [`research/next_stable/TEST_MATRIX.md`](research/next_stable/TEST_MATRIX.md)
-festgehalten; [`research/v2_2/TEST_MATRIX.md`](research/v2_2/TEST_MATRIX.md)
-bleibt der historische Nachweis für `v2.2.1`.
+in [`research/v2_5/TEST_MATRIX.md`](research/v2_5/TEST_MATRIX.md)
+festgehalten; frühere Release-Audit-Pfade bleiben als historische Nachweise erhalten.
 
 | Gate | Ergebnis |
 | :--- | :--- |
 | CTest (MSVC Release) | **19/19 bestanden** |
-| Python-Suite (CPython 3.14 + Nativkern) | **377 bestanden** (0 übersprungen) |
+| Python-Suite (CPython 3.14 + Nativkern) | **452 bestanden** (0 übersprungen) |
 | Python-Suite (CPython 3.11, gepinnte Abhängigkeiten, ohne Nativkern) | im CI-Matrixjob; native Tests skippen dort sichtbar |
-| Mutation-Harness | **12/12 Mutanten erkannt**, Baseline sauber |
-| Branch-Coverage | **83 %** lokal; CI-Schwelle **70 %** |
+| Mutation-Harness | **16/16 Mutanten erkannt**, Baseline sauber |
+| Branch-Coverage | **84 %** lokal; CI-Schwelle **70 %** |
 | Shader-Verifikation | **12/12** SPIR-V-Shader |
-| Version-Konsistenz | alle Flächen melden `2.3.0` |
+| Version-Konsistenz | alle Flächen melden `2.5.0` |
 | Lint | `flake8 --select=E9,F` sauber auf `cqhecs`, `python_bridge`, `scripts`, `tests` |
 | Silent-Truncation-Audit | keine Muster gefunden |
 | GitHub Actions | Linux/Windows nativ, ASan/UBSan, Python 3.12–3.14, Package-Smoke |
@@ -652,7 +645,7 @@ Repository. GitHub bietet über [`CITATION.cff`](CITATION.cff) einen
 @software{cqhecs2026,
   author  = {Stark, Tim Johann},
   title   = {CQ-HECS: Classical Quantum High-Efficiency Compute Simulator},
-  version = {2.4.0},
+  version = {2.5.0},
   year    = {2026},
   url     = {https://github.com/timfromhcs/CQ-HECS},
   license = {Apache-2.0}

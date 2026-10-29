@@ -10,6 +10,21 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [2.5.0] — 2026-10-30
+
+### Added — Hardware-Aware Quantum Bridge
+
+- **ExecutionMode hierarchy**: Added explicit, irreducibly separated execution modes (`IDEAL_CLASSICAL`, `NOISY_CLASSICAL`, `REAL_HARDWARE`) ensuring simulation, noise emulation, and hardware execution results can never be silently conflated or substituted.
+- **BackendProfile schema**: Added typed, versioned device profiles capturing coupling maps, calibrated 1Q/2Q gate error rates, readout assignment errors ($p_{01}$, $p_{10}$), relaxation time $T_1$, dephasing time $T_2$, and synthetic vs physical calibration provenance flags. Includes Qiskit `Target` export and default calibration profiles (`fake_manila`, `linear_5q`).
+- **Mathematically verified NoiseModel**: Implemented single- and two-qubit Kraus noise channels (`DepolarizingChannel`, `AmplitudeDampingChannel`, `PhaseDampingChannel`, `TwoQubitDepolarizingChannel`, `ReadoutErrorChannel`) with strict mathematical completeness checks ($\sum K_k^\dagger K_k = I_d$), trace preservation, Hermiticity, and positive semidefiniteness.
+- **NoisyDensityMatrixBackend**: Added exact float64 density matrix simulator for circuits up to 10 qubits with tensor-contraction channel application, multinomial count sampling, and Hoeffding total-variation error bounds. Validated against independent analytical formulas and Qiskit Aer differential tests.
+- **FakeHardwareProvider & FakeHardwareBackend**: Deterministic offline emulation enforcing device connectivity topology (rejecting gates violating coupling map) and tracking calibration provenance metadata.
+- **RealHardwareProvider & RealHardwareBackend**: Fail-closed provider boundary enforcing explicit user authorization (`authorized=True`) and valid API credentials; strictly rejects unauthenticated execution and never silently falls back to classical emulation.
+- **CLI Commands**: Added `cq-hecs profile list`, `cq-hecs profile show <NAME>`, and `--profile <NAME>` / `--noisy` options to `cq-hecs run`.
+- **Qiskit Provider Integration**: Extended `CQHecsProvider` with `fake_hardware` and `real_hardware` accessors and registered fake backends.
+
+---
+
 ## [2.4.0] — 2026-10-29
 
 ### Added — Pauli expectation values

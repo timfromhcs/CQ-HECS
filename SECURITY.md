@@ -1,4 +1,4 @@
-﻿# Security Policy
+# Security Policy
 
 ## Supported Versions
 
@@ -6,8 +6,8 @@ Security fixes are provided for the current release line only.
 
 | Version | Supported |
 | :--- | :---: |
-| 2.2.x | Yes |
-| < 2.2 | No |
+| 2.5.x | Yes |
+| < 2.5 | No |
 
 ## Reporting a Vulnerability
 

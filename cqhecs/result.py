@@ -31,6 +31,19 @@ class SimulationState(str, Enum):
     UNRESOLVED = "UNRESOLVED"
     FAILED = "FAILED"
 
+class ExecutionMode(str, Enum):
+    """
+    Irreducibly separate execution modes for CQ-HECS:
+    - IDEAL_CLASSICAL: Ideal classical simulation using a CQ-HECS engine.
+    - NOISY_CLASSICAL: Classical emulation with an explicit, versioned noise model;
+      output is a modelled distribution or estimator, not a physical measurement.
+    - REAL_HARDWARE: Executed on an identified physical quantum processing unit (QPU).
+      Silent fallback to classical emulation is strictly prohibited.
+    """
+    IDEAL_CLASSICAL = "IDEAL_CLASSICAL"
+    NOISY_CLASSICAL = "NOISY_CLASSICAL"
+    REAL_HARDWARE = "REAL_HARDWARE"
+
 
 def hoeffding_proportion_bound(
     shots: int,
@@ -219,6 +232,12 @@ class SimulationResult:
     state: Optional[SimulationState] = None
     sampling_error_bound: Optional[float] = None
     numerical_error_bound: Optional[float] = None
+    execution_mode: ExecutionMode = ExecutionMode.IDEAL_CLASSICAL
+    backend_profile_id: Optional[str] = None
+    noise_model_id: Optional[str] = None
+    is_real_hardware: bool = False
+    calibration_timestamp: Optional[str] = None
+    provider_job_id: Optional[str] = None
 
     def __post_init__(self):
         if self.state is None:
@@ -320,6 +339,16 @@ class SimulationResult:
             "expectation_values": self.expectation_values,
             "execution_time_ms": self.execution_time_ms,
             "metadata": self.metadata,
+            "execution_mode": (
+                self.execution_mode.value
+                if isinstance(self.execution_mode, ExecutionMode)
+                else str(self.execution_mode)
+            ),
+            "backend_profile_id": self.backend_profile_id,
+            "noise_model_id": self.noise_model_id,
+            "is_real_hardware": self.is_real_hardware,
+            "calibration_timestamp": self.calibration_timestamp,
+            "provider_job_id": self.provider_job_id,
         }
 
     def __getitem__(self, key: str) -> Any:

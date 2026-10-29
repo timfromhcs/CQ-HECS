@@ -35,7 +35,7 @@ class TestCliBasics(unittest.TestCase):
         self.assertEqual(ctx.exception.code, 0)
 
     def test_every_command_has_help(self):
-        for command in ("version", "doctor", "analyze", "run", "verify", "benchmark"):
+        for command in ("version", "doctor", "profile", "analyze", "run", "verify", "expect", "benchmark"):
             with self.subTest(command=command):
                 with self.assertRaises(SystemExit) as ctx:
                     run_cli(command, "--help")
@@ -207,6 +207,52 @@ class TestBackendDispatch(unittest.TestCase):
         self.assertEqual(result["counts"], {})
         self.assertTrue(result["expectation_values"])
         self.assertFalse(result["metadata"]["counts_are_joint_distribution"])
+
+
+
+class TestCliProfileAndBridge(unittest.TestCase):
+    """Tests for 'cq-hecs profile' and hardware bridge execution flags."""
+
+    def test_profile_list_text(self):
+        code, out, _ = run_cli("profile", "list")
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("fake_manila", out)
+        self.assertIn("linear_5q", out)
+
+    def test_profile_list_json(self):
+        code, out, _ = run_cli("--format", "json", "profile", "list")
+        self.assertEqual(code, EXIT_OK)
+        doc = json.loads(out)
+        self.assertEqual(doc["schema_version"], JSON_SCHEMA_VERSION)
+        names = [p["name"] for p in doc["profiles"]]
+        self.assertIn("fake_manila", names)
+
+    def test_profile_show_manila(self):
+        code, out, _ = run_cli("profile", "show", "fake_manila")
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("Name         : fake_manila", out)
+        self.assertIn("Qubits       : 5", out)
+
+    def test_run_with_profile_fake_manila(self):
+        code, out, _ = run_cli(
+            "--format", "json", "run", "name:bell", "--profile", "fake_manila", "--shots", "500"
+        )
+        self.assertEqual(code, EXIT_OK)
+        res = json.loads(out)["result"]
+        self.assertEqual(res["path"], "NOISY_DM")
+        self.assertEqual(res["execution_mode"], "NOISY_CLASSICAL")
+        self.assertEqual(res["backend_profile_id"], "fake_manila")
+        self.assertFalse(res["is_real_hardware"])
+        self.assertEqual(sum(res["counts"].values()), 500)
+
+    def test_run_with_profile_noiseless(self):
+        code, out, _ = run_cli(
+            "--format", "json", "run", "name:bell", "--profile", "fake_manila", "--no-noisy", "--shots", "200"
+        )
+        self.assertEqual(code, EXIT_OK)
+        res = json.loads(out)["result"]
+        self.assertEqual(res["execution_mode"], "IDEAL_CLASSICAL")
+        self.assertEqual(res["path"], "NOISY_DM")
 
 
 if __name__ == "__main__":
