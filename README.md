@@ -41,13 +41,14 @@ Schaltungsklasse den passenden Pfad wählt — und an der Grenze lieber
 | **Fail-closed statt fail-open** | Ungültiges OpenQASM, unbekannte Gates und Ressourcenüberschreitungen führen zu strukturierten Fehlern — nie zu einer Teilausführung. |
 | **Ehrliche Hardware-Aussagen** | Alle vier Python-Pfade rechnen auf der CPU. Vulkan-Compute-Dispatch wurde auf einer AMD-Radeon-iGPU verifiziert; eine herstellerübergreifende oder End-to-End-GPU-Beschleunigung wird **nicht** behauptet. |
 
-> **Status:** `v2.2.2` ist ein Patch-Release auf `v2.2.1`. Es beseitigt
-> Erfolgsmeldungen ohne echte Zustandsevolution in den nativen Referenz- und
-> Legacy-Flächen: Der Vulkan-Engine-Planer lehnt Gates/Sampling ab, VRTS-300
-> prüft die GHZ-Korrelation und sampelt geseedet, Statevector und MPS sampeln
-> nach der Born-Regel, und der QASM-Bytecode lehnt Qubit-Indizes > 255 ab,
-> statt sie still abzuschneiden. Es fügt **keinen neuen Simulator und keine
-> GPU-Beschleunigung** hinzu.
+> **Status:** `v2.3.0` ist ein Feature-Release auf `v2.2.2`. Neu ist ein
+> **exaktes Gate-Lowering**: `u/u3/u2`, `sx/sxdg`, `cy`, `ch`, `cs/csdg`,
+> `rzz/rxx/ryy`, `ccx/toffoli`, `ccz` und `cswap/fredkin` werden beim Parsen
+> per exakter Unitär-Identität (inklusive globaler Phase) in native Gates
+> zerlegt und laufen damit auf den vier Pfaden, statt abgelehnt zu werden.
+> Dazu: reparierter Nightly-CI-Lauf, neue Referenzschaltungen
+> (`toffoli_adder`, `qft4`, `ising6`), schärferes Lint-Gate. Es gibt
+> **keinen neuen Simulator und keine GPU-Beschleunigung**.
 > Details: [Release Notes](RELEASE_NOTES.md) · [Changelog](CHANGELOG.md).
 
 ---
@@ -273,6 +274,7 @@ measure q[0] -> c[0];
 | :--- | :--- |
 | Gültige, unterstützte Anweisung | wird ausgeführt |
 | Fehlendes Semikolon | strukturierter Parse-Fehler |
+| Zusammengesetztes Gatter (`u3`, `ccx`, `cy`, `rzz`, `cswap`, …) | exakt in native Gates zerlegt, dann ausgeführt |
 | Unbekanntes Gatter | `unsupported_gate`, keine Ausführung |
 | Nicht-endlicher/ungültiger Winkel | `invalid_parameter` |
 | Nicht deklariertes Register | strukturierter Parse-Fehler |
@@ -286,7 +288,8 @@ measure q[0] -> c[0];
 - Native Klassifikation: `engine_class = legacy_z8_phase_ledger`,
   `statevector_simulation = false`.
 - Der native Executor kennt nur seinen in §5 des QASM-Vertrags dokumentierten
-  Gate-Satz; `p/u1/cu1/crx/cry/crz` sind Python/Path-C-only. Keine Eingabe wird
+  Gate-Satz; `p/u1/cu1/crx/cry/crz` und alle zerlegten Composite-Gates sind
+  Python-only. Keine Eingabe wird
   von einem Parser akzeptiert und vom anderen mit anderer Semantik ausgeführt.
 
 ---
@@ -336,8 +339,8 @@ python -m build
 # dist/cqhecs-2.3.0.tar.gz
 ```
 
-Die veröffentlichten Artefakte, Checksums und die SPDX-SBOM stehen im
-[Release v2.2.2](https://github.com/timfromhcs/CQ-HECS/releases/tag/v2.2.2).
+Die veröffentlichten Artefakte, Checksums und die SPDX-SBOM stehen unter
+[GitHub-Releases](https://github.com/timfromhcs/CQ-HECS/releases) (aktuell veröffentlicht: `v2.2.2`; `v2.3.0` nach Tag).
 
 ---
 
@@ -368,7 +371,7 @@ Verwendungsfehler, `3` unresolved, `4` Umgebung nicht verfügbar. Der native
 ### Referenzschaltungen
 
 `bell`, `bell_measured`, `clifford6`, `ghz8`, `ghz8_measured`, `ghz16`,
-`low_t_rank4`, `mps6`, `sparse_pauli4`
+`low_t_rank4`, `mps6`, `sparse_pauli4`, `toffoli_adder`, `qft4`, `ising6`
 
 ### Router
 
@@ -457,7 +460,7 @@ erfundenen 50/50-Counts.
 
 ## ✅ Verifikation
 
-Die folgenden Zahlen sind lokale Messungen für den `v2.2.2`-Kandidaten, keine
+Die folgenden Zahlen sind lokale Messungen für den `v2.3.0`-Kandidaten, keine
 Leistungsbenchmarks. CI-Ergebnisse werden für den exakt gepushten SHA separat
 in [`research/next_stable/TEST_MATRIX.md`](research/next_stable/TEST_MATRIX.md)
 festgehalten; [`research/v2_2/TEST_MATRIX.md`](research/v2_2/TEST_MATRIX.md)
@@ -466,12 +469,13 @@ bleibt der historische Nachweis für `v2.2.1`.
 | Gate | Ergebnis |
 | :--- | :--- |
 | CTest (MSVC Release) | **19/19 bestanden** |
-| Python-Suite (CPython 3.14 + Nativkern) | **366 bestanden** (0 übersprungen) |
+| Python-Suite (CPython 3.14 + Nativkern) | **377 bestanden** (0 übersprungen) |
 | Python-Suite (CPython 3.11, gepinnte Abhängigkeiten, ohne Nativkern) | im CI-Matrixjob; native Tests skippen dort sichtbar |
-| Mutation-Harness | **11/11 Mutanten erkannt**, Baseline sauber |
-| Branch-Coverage | **82 %** lokal; CI-Schwelle **70 %** |
+| Mutation-Harness | **12/12 Mutanten erkannt**, Baseline sauber |
+| Branch-Coverage | **83 %** lokal; CI-Schwelle **70 %** |
 | Shader-Verifikation | **12/12** SPIR-V-Shader |
-| Version-Konsistenz | alle Flächen melden `2.2.2` |
+| Version-Konsistenz | alle Flächen melden `2.3.0` |
+| Lint | `flake8 --select=E9,F` sauber auf `cqhecs`, `python_bridge`, `scripts`, `tests` |
 | Silent-Truncation-Audit | keine Muster gefunden |
 | GitHub Actions | Linux/Windows nativ, ASan/UBSan, Python 3.12–3.14, Package-Smoke |
 | Physische GPU | **Dispatch auf AMD-Radeon-iGPU verifiziert**; keine herstellerübergreifende Garantie |
@@ -546,7 +550,7 @@ python scripts/run_mutation_tests.py
   Entscheidend sind Verschränkung, tatsächliche Bond-Dimension und Speicher.
 - **Python- und Native-Parser haben unterschiedliche Gate-Obergrenzen.**
   Beide lehnen nicht implementierte Gates ab; die Python-Seite kennt zusätzlich
-  die Path-C-Gates. Details: [`docs/QASM_CONTRACT.md`](docs/QASM_CONTRACT.md) §6.
+  die Path-C-Gates und zerlegt Composite-Gates exakt. Details: [`docs/QASM_CONTRACT.md`](docs/QASM_CONTRACT.md) §6.
 - **Kein Cloud-Build-Nachweis in diesem Audit.** `cloudbuild.yaml` ist
   vorhanden, wurde aber ohne verifizierten Projekt-/Credential-Zugang nicht
   beobachtet.

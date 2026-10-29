@@ -111,6 +111,11 @@ Path D does **not** claim to bypass this bound or simulate arbitrary quantum cir
   `cqhecs/gate_manifest.py`; `PATH_CAPABILITIES` is derived from it. The
   analyzer's "supported" answer therefore implies execution by the selected
   path, or a refusal before execution.
+- Composite gates (`u/u3/u2`, `sx/sxdg`, `cy`, `ch`, `cs/csdg`, `rzz/rxx/ryy`,
+  `ccx/toffoli`, `ccz`, `cswap/fredkin`) have no kernel of their own.
+  `parse_circuit` rewrites them through exact unitary identities in
+  `cqhecs/gate_lowering.py` (global phase included) before analysis, so routing
+  and resource counts reflect the decomposition.
 - Parameterised gates are classified per angle: `cp`, `crz`, `rz`, `p` and `u1`
   are only Clifford at exact multiples of π/2, and `cp`/`cu1`/`crx`/`cry`/`crz`
   are Path C only. `reset`, mid-circuit measurement and classical conditions are
