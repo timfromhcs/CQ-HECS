@@ -116,6 +116,10 @@ Path D does **not** claim to bypass this bound or simulate arbitrary quantum cir
   `parse_circuit` rewrites them through exact unitary identities in
   `cqhecs/gate_lowering.py` (global phase included) before analysis, so routing
   and resource counts reflect the decomposition.
+- `cqhecs/expectation.py` evaluates Pauli expectation values on top of the same
+  parser and lowering: the Path A tableau (exact `-1/0/+1` read-out), the
+  independent dense reference `cqhecs/backends/dense_reference.py`, or Path D
+  with basis rotation. It never samples, and an uncertifiable value is `None`.
 - Parameterised gates are classified per angle: `cp`, `crz`, `rz`, `p` and `u1`
   are only Clifford at exact multiples of π/2, and `cp`/`cu1`/`crx`/`cry`/`crz`
   are Path C only. `reset`, mid-circuit measurement and classical conditions are

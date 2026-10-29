@@ -10,6 +10,60 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [2.4.0] — 2026-10-29
+
+### Added — Pauli expectation values
+
+- New `cqhecs.expectation.expectation_values(circuit, observables)` and
+  `cq-hecs expect CIRCUIT -o PAULI [...]` evaluate `<psi|P|psi>` for general
+  Pauli strings (`X`, `Y`, `Z`) and weighted sums, replacing the Z-only,
+  Path-D-only observable surface. Strings are dense Qiskit labels (`IZX`,
+  rightmost = qubit 0) or sparse (`X0 Z2`, `X[0]Z[2]`).
+- Engines: `stabilizer` (exact tableau read-out for Clifford circuits up to
+  4096 qubits, no sampling), `dense` (exact float64 statevector up to 22
+  qubits, ceiling 26) and `sparse_pauli` (Path D with the certified
+  truncation bound, basis-rotating `X`/`Y` into `Z`). `auto` picks the first
+  that applies. Values that cannot be certified are `None` and
+  `unresolved`; nothing is guessed. Mid-circuit measurement and `reset` are
+  refused.
+- New `cqhecs.backends.dense_reference`: a small, self-contained dense
+  simulator that shares no code with the production paths. It is also the
+  independent oracle for the new tests.
+- Nine more exact gate lowerings: `r`, `iswap`, `dcx`, `ecr`, `cu3`, `cu`,
+  `csx` and the multi-controlled `c3x`/`c4x` (Qiskit `mcx` with 3 or 4
+  controls). Each is verified as a unitary identity including global phase.
+  The Qiskit `Target` advertises the one- and two-qubit ones.
+- Contract metadata (`numerical_status`, `numerical_rank_truncation_applied`,
+  `bond_dimension_truncation_applied`, `error_bound_covers`,
+  `counts_are_joint_distribution`, ...) is forwarded into the Qiskit
+  `ExperimentResult.header`.
+
+### Fixed — result and numerical contracts (from the v2.4 audit)
+
+- **CQ-NEXT-H0:** `SimulationResult.total_error_bound` no longer sums an
+  observable-space bound (Path D) into a total-variation figure for sampled
+  counts, nor reports a number for unresolved/failed results or for
+  independent-marginal counts.
+- **CQ-NEXT-H1:** Path C's relative singular-value floor can discard a
+  nonzero Schmidt coefficient. Results now say so explicitly
+  (`numerical_rank_truncation_applied`, `discarded_singular_value_sum`,
+  `numerical_status`) and distinguish it from a bond-dimension budget
+  truncation. `exact=True` is documented as "no deliberate approximation
+  beyond the documented numerical-rank rule", not mathematical exactness.
+- **H8:** the sampling-bound documentation now states that
+  `hoeffding_proportion_bound` holds simultaneously over the whole support
+  and that `K*ln 2` conservatively replaces `ln(2^K - 2)`; exact-formula tests
+  pin both bounds.
+- Path D infers its width from the highest used qubit of an instruction list,
+  so observables on an idle top qubit were rejected; the expectation API pads
+  the circuit to the declared width.
+
+### Changed
+
+- Version 2.4.0 on every surface; mutation gate now has 14 mutants (added
+  stabilizer-expectation sign and dense Pauli-Y orientation).
+
+
 ## [2.3.0] — 2026-10-29
 
 ### Added — exact composite-gate lowering

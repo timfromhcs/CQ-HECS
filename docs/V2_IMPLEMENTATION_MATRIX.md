@@ -73,7 +73,8 @@ cannot drift independently.
 
 Since v2.3.0 the composite gates `u`, `u3`, `u2`, `sx`, `sxdg`, `cy`, `ch`,
 `cs`, `csdg`, `rzz`, `rxx`, `ryy`, `ccx`/`toffoli`, `ccz` and `cswap`/`fredkin`
-are lowered exactly to the native gates above during parsing
+(and, since v2.4.0, `r`, `iswap`, `dcx`, `ecr`, `cu3`, `cu`, `csx`, `c3x`,
+`c4x`) are lowered exactly to the native gates above during parsing
 (`cqhecs/gate_lowering.py`), so the table applies to their decompositions.
 `reset` is known to the manifest but supported by **no** path; it produces a
 precise capability refusal instead of an identity fallback.
