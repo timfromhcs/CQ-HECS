@@ -5,7 +5,7 @@
 using namespace cq_hecs;
 
 int main() {
-    std::cout << "CQ-HECS 2.2.2-VRTS-Vulkan: 300-Qubit GHZ Example\n";
+    std::cout << "CQ-HECS 2.3.0-VRTS-Vulkan: 300-Qubit GHZ Example\n";
     auto vulkan = std::make_shared<VulkanContext>();
     if (vulkan->initialize()) {
         std::cout << "Vulkan Initialized on Device: " << vulkan->get_device_name() << "\n";

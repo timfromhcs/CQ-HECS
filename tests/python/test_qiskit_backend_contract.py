@@ -199,7 +199,7 @@ class TestBackendV2Contract(unittest.TestCase):
         """A circuit the backend cannot run must not silently reroute."""
         qc = QuantumCircuit(3)
         qc.h(0)
-        qc.ccx(0, 1, 2)  # Toffoli: supported by neither Path A nor the router
+        qc.reset(1)  # Reset: non-unitary, implemented by no path
         qc.measure_all()
         backend = CQHecsBackend(num_qubits=3)
         try:

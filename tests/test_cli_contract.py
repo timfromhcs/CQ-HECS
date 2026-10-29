@@ -14,7 +14,6 @@ import unittest
 
 from cqhecs.cli import (
     EXIT_OK,
-    EXIT_UNRESOLVED,
     EXIT_USAGE,
     JSON_SCHEMA_VERSION,
     main,

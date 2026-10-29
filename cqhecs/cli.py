@@ -27,7 +27,7 @@ import logging
 import os
 import platform
 import sys
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence
 
 # Version is read from the package rather than duplicated here.
 from cqhecs import __version__
@@ -98,7 +98,6 @@ def _load_circuit(path: str) -> Any:
 
 # ---------------------------------------------------------------- commands
 def cmd_version(args: argparse.Namespace) -> int:
-    from cqhecs import router as router_mod
     payload = {
         "schema_version": JSON_SCHEMA_VERSION,
         "name": "cq-hecs",
@@ -282,7 +281,6 @@ def cmd_analyze(args: argparse.Namespace) -> int:
 def cmd_run(args: argparse.Namespace) -> int:
     from cqhecs.router import (
         EntanglementAdaptiveRouter,
-        UnsupportedCircuitError,
     )
     from cqhecs.result import SimulationState
 
@@ -339,8 +337,6 @@ def cmd_run(args: argparse.Namespace) -> int:
 def cmd_verify(args: argparse.Namespace) -> int:
     """Compares CQ-HECS against a trusted reference implementation."""
     from cqhecs.router import EntanglementAdaptiveRouter
-    from cqhecs.result import SimulationState
-    import numpy as np
 
     circuit = _load_circuit(args.circuit)
     backend = args.backend.upper()
@@ -411,7 +407,6 @@ def cmd_verify(args: argparse.Namespace) -> int:
     # No joint counts: verify the certified expectation values instead.
     if result.expectation_values and args.reference == "aer":
         try:
-            from qiskit import QuantumCircuit
             from qiskit_aer import AerSimulator
         except ImportError:
             _emit_json({

@@ -11,7 +11,6 @@ Validates the v2.1.0 capabilities across:
 
 from __future__ import annotations
 import unittest
-import numpy as np
 from qiskit import QuantumCircuit
 
 from cqhecs.backends.path_a_stabilizer import PathAStabilizerBackend

@@ -1148,10 +1148,7 @@ class PathCMPSExactBackend:
             if not get_gate(name).barrier
         }
 
-        # Identify measurement instructions and verify they are all terminal.
-        measure_positions = [
-            i for i, (name, _, _) in enumerate(instructions) if name == "measure"
-        ]
+        # Verify that every measurement instruction is terminal.
         last_state_op = max(
             (i for i, (name, _, _) in enumerate(instructions)
              if name not in self.IGNORED_GATES and name != "measure"),

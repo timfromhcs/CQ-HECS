@@ -70,7 +70,9 @@ A circuit argument is one of:
 * `module.py:NAME` — import `NAME` from a Python module
 
 Builtins: `ghz8`, `ghz16`, `bell`, `clifford6`, `low_t_rank4`, `mps6`,
-`sparse_pauli4`, `ghz8_measured`, `bell_measured`.
+`sparse_pauli4`, `ghz8_measured`, `bell_measured`, `toffoli_adder`
+(CCX full adder, measured), `qft4` (controlled-phase QFT), `ising6`
+(RZZ/RX Trotter steps).
 
 ### Output contract
 

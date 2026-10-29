@@ -71,9 +71,12 @@ cannot drift independently.
 | C | every implemented manifest gate: 1q rotations, CX/CNOT/CZ/SWAP and CP/CU1/CRX/CRY/CRZ; no silent gate drop | raises on unknown ops and on the 500-qubit routing/sampling ceiling |
 | D | 1q rotations expressed in Pauli propagation, CX/CZ/SWAP conjugation, terminal measurement | raises `UnsupportedPathDOperation` on missing rules; joint counts opt-in and labelled uncertified |
 
-`u`, `u2`, `u3`, `ccx`, `toffoli`, `ch`, `cs`, `csdg` and `reset` are known to
-the manifest but supported by **no** path. They produce a precise capability
-refusal instead of an "unknown gate" parse error or an identity fallback.
+Since v2.3.0 the composite gates `u`, `u3`, `u2`, `sx`, `sxdg`, `cy`, `ch`,
+`cs`, `csdg`, `rzz`, `rxx`, `ryy`, `ccx`/`toffoli`, `ccz` and `cswap`/`fredkin`
+are lowered exactly to the native gates above during parsing
+(`cqhecs/gate_lowering.py`), so the table applies to their decompositions.
+`reset` is known to the manifest but supported by **no** path; it produces a
+precise capability refusal instead of an identity fallback.
 `cp`, `cu1`, `crx`, `cry` and `crz` are Path C only. `measure` is supported by
 A and C. Mid-circuit measurement, reset and classical conditions are refused
 before execution.

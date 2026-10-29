@@ -121,28 +121,33 @@ Anything else is `unsupported_gate` and is never executed as the identity.
 
 The Python parser validates syntax and signature against
 `cqhecs/gate_manifest.py`, the single capability source shared with the
-analyzer, router and backends. It accepts these names so that the refusal
-happens at the **capability** layer with a precise message:
+analyzer, router and backends. Since v2.3.0 it accepts three groups:
 
-- implemented somewhere: `h, x, y, z, s, sdg, t, tdg, id, rx, ry, rz, p, u1,
-  cx, cnot, cz, swap, cp, cu1, crx, cry, crz, measure, barrier`
-- known but not implemented by any path: `u, u2, u3, ccx, toffoli, ch, cs,
-  csdg, reset`
+- **native** (executed by at least one path): `h, x, y, z, s, sdg, t, tdg, id,
+  rx, ry, rz, p, u1, cx, cnot, cz, swap, cp, cu1, crx, cry, crz, measure,
+  barrier`
+- **composite** (exactly lowered to native gates by `cqhecs/gate_lowering.py`
+  during `parse_circuit`, global phase included): `u, u3, u2, sx, sxdg, cy, ch,
+  cs, csdg, rzz, rxx, ryy, ccx, toffoli, ccz, cswap, fredkin`
+- **known but implemented by no path**: `reset` (refused at the capability
+  layer)
 
-The deliberate difference is therefore only the **layer** at which the two
-parsers refuse `u/u2/u3/ccx/toffoli/ch/cs/csdg` (and the additional implemented
-Path-C gates `p/u1/cu1/crx/cry/crz`):
+Composite gates must have their documented arity and parameter count and
+pairwise distinct operands; otherwise parsing fails before any lowering.
 
 | Input | Python parser | Native parser | Execution |
 | :--- | :--- | :--- | :--- |
-| `u`, `u2`, `u3`, `ccx`, `toffoli`, `ch`, `cs`, `csdg` | parses, then capability refusal | `unsupported_gate` at parse time | refused by both |
+| composite gates (`u3`, `ccx`, `cy`, `rzz`, ...) | parses, lowers exactly, executes | `unsupported_gate` at parse time | Python only |
 | `p`, `u1`, `cu1`, `crx`, `cry`, `crz` | parses, executes on Path C | `unsupported_gate` at parse time | Python only |
+| `reset` | parses, then capability refusal | rejected | refused by both |
 | unknown name | `unsupported_gate` | `unsupported_gate` | refused by both |
 
-No input is accepted by one parser and silently executed with different
-semantics by the other. The divergence is an acceptance *ceiling*, not a
-semantic difference, and `tests/test_hardening_v221.py::TestPythonNativeQASMDifferential`
-asserts it.
+No input is accepted by one parser and executed with different semantics by
+the other. The native legacy executor (`legacy_z8_phase_ledger`) does not
+evolve a statevector and deliberately keeps its smaller gate set. The
+divergence is an acceptance *ceiling*, not a semantic difference;
+`tests/test_hardening_v221.py::TestPythonNativeQASMDifferential` and
+`tests/test_gate_lowering.py` assert it.
 
 ## 7. Rejection categories
 

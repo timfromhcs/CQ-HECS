@@ -109,6 +109,18 @@ class TestFullParameterClassification(unittest.TestCase):
                 self.assertEqual(props.recommended_path, "C")
 
     def test_known_but_unimplemented_gates_are_refused_before_execution(self):
+        # Since v2.3.0 composite gates (u/u2/u3/ccx/ch/cs ...) are lowered
+        # exactly during parsing; ``reset`` remains the operation no path
+        # implements, and it must still be refused before execution.
+        props = CircuitAnalyzer().analyze([("h", [0], []), ("reset", [0], [])])
+        self.assertIn("reset", props.unsupported_gates)
+        self.assertEqual(props.recommended_path, "")
+        with self.assertRaises(UnsupportedCircuitError):
+            FourPathRouter().route_and_execute(
+                [("h", [0], []), ("reset", [0], [])], shots=8
+            )
+
+    def test_composite_gates_are_lowered_and_routed(self):
         for gate, qubits, params in (
             ("u", [0], [0.1, 0.2, 0.3]),
             ("u2", [0], [0.1, 0.2]),
@@ -120,19 +132,19 @@ class TestFullParameterClassification(unittest.TestCase):
         ):
             with self.subTest(gate=gate):
                 props = CircuitAnalyzer().analyze([(gate, qubits, params)])
-                self.assertIn(gate, props.unsupported_gates)
-                self.assertEqual(props.recommended_path, "")
-                with self.assertRaises(UnsupportedCircuitError):
-                    FourPathRouter().route_and_execute(
-                        [(gate, qubits, params)], shots=8
-                    )
+                self.assertEqual(props.unsupported_gates, ())
+                self.assertNotEqual(props.recommended_path, "")
+                res = FourPathRouter().route_and_execute(
+                    [(gate, qubits, params)], shots=8
+                )
+                self.assertEqual(sum(res.counts.values()), 8)
 
     def test_qiskit_u_gate_is_not_silently_treated_as_identity(self):
         qc = QuantumCircuit(1)
-        qc.u(0.1, 0.2, 0.3, 0)
-        # Qiskit's ``u`` is in the manifest but no path implements it.
-        with self.assertRaises(UnsupportedCircuitError):
-            FourPathRouter().route_and_execute(qc, shots=8)
+        qc.u(math.pi, 0.0, math.pi, 0)  # exactly X
+        qc.measure_all()
+        res = FourPathRouter().route_and_execute(qc, shots=64, seed=2)
+        self.assertEqual(res.counts, {"1": 64})
 
     def test_unknown_gate_is_not_a_supported_path(self):
         props = CircuitAnalyzer().analyze([("not_a_gate", [0], [])])
@@ -179,7 +191,7 @@ class TestMultiRegisterMapping(unittest.TestCase):
         self.assertEqual(set(result.counts), {"00100"})
 
     def test_qiskit_multiple_registers_use_global_indices(self):
-        from qiskit import ClassicalRegister, QuantumRegister
+        from qiskit import QuantumRegister
 
         a = QuantumRegister(2, "a")
         b = QuantumRegister(3, "b")
@@ -569,7 +581,9 @@ class TestManifestIsTheSingleSourceOfTruth(unittest.TestCase):
 
     def test_qiskit_target_never_advertises_unimplemented_gates(self):
         target = set(CQHecsBackend(num_qubits=4).target.operation_names)
-        for name in ("u", "u2", "u3", "ccx", "reset"):
+        # ``u2``/``u3`` are spelled ``u`` in Qiskit's target; three-qubit gates
+        # are left to the transpiler; ``reset`` has no path at all.
+        for name in ("u2", "u3", "ccx", "cswap", "reset"):
             with self.subTest(gate=name):
                 self.assertNotIn(name, target)
 
@@ -726,20 +740,20 @@ class TestPythonNativeQASMDifferential(unittest.TestCase):
         self.assertEqual(payload["qubit_count"], 5)
         self.assertEqual(payload["gate_count"], 2)
 
-    def test_python_only_diagnostics_do_not_change_acceptance(self):
-        # ``u``/``u2``/``u3`` are known to the Python manifest (for a precise
-        # refusal) but unknown to the native legacy executor. Both reject;
-        # only the layer differs: parse-time vs capability-time.
+    def test_python_lowering_is_not_claimed_by_the_native_executor(self):
+        # ``u``/``u2``/``u3`` are lowered exactly by the Python parser (v2.3.0)
+        # and execute on the four paths. The native legacy executor is a
+        # LEGACY_DIAGNOSTIC phase ledger and still refuses them at parse time;
+        # it must not start accepting gates it cannot evolve.
         for source in (
             _qasm("qreg q[1];\nu(0.1,0.2,0.3) q[0];\n"),
             _qasm("qreg q[1];\nu2(0.1,0.2) q[0];\n"),
             _qasm("qreg q[1];\nu3(0.1,0.2,0.3) q[0];\n"),
         ):
             with self.subTest(source=source):
-                # Python parses it, then refuses execution.
                 instructions, _n = parse_circuit(source)
-                with self.assertRaises(UnsupportedCircuitError):
-                    FourPathRouter().route_and_execute(instructions, shots=8)
+                res = FourPathRouter().route_and_execute(instructions, shots=8)
+                self.assertEqual(sum(res.counts.values()), 8)
                 # Native refuses at parse time.
                 self.assertIn("unsupported_gate", self.native_categories(source))
 

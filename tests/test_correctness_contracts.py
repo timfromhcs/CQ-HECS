@@ -286,7 +286,7 @@ class TestPathCContract(unittest.TestCase):
         """A refused allocation must not leave a half-applied rewrite."""
         mps = ExactMPSTensorChain(num_qubits=4, max_storage_mb=0.0001)
         mps.max_storage_bytes = 1  # force immediate refusal
-        before = mps.to_statevector().copy()
+        mps.to_statevector().copy()
         cx = np.array([[1, 0, 0, 0], [0, 1, 0, 0],
                        [0, 0, 0, 1], [0, 0, 1, 0]], dtype=np.complex128)
         # Entangle so a partial rewrite would be observable.
@@ -666,9 +666,9 @@ class TestPathDContract(unittest.TestCase):
     def test_unknown_gate_is_refused(self):
         with self.assertRaises(UnsupportedPathDOperation) as ctx:
             self.backend.execute(
-                [("h", [0], []), ("ccx", [0, 1, 2], [])], shots=10
+                [("h", [0], []), ("reset", [0], [])], shots=10
             )
-        self.assertIn("ccx", str(ctx.exception))
+        self.assertIn("reset", str(ctx.exception))
 
     def test_mid_circuit_measurement_is_refused(self):
         qc = QuantumCircuit(2, 2)

@@ -10,7 +10,6 @@ import hashlib
 import json
 import os
 import re
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -337,7 +336,7 @@ def main():
         fid = p["family_id"]
         ftitle = family_titles.get(fid, p["family_title"] or f"Family {fid}")
         fsec = family_sections.get(fid, "Unknown")
-        fdesc = family_descs.get(fid, p["family_desc"] or "")
+        family_descs.get(fid, p["family_desc"] or "")
         plink = p["link"]
         ptitle = p["paper_title"]
         pabstract = p["abstract"]
@@ -411,7 +410,7 @@ def main():
     # 3. Write UPSTREAM_SNAPSHOT.md
     snapshot_path = os.path.join(out_dir, "UPSTREAM_SNAPSHOT.md")
     with open(snapshot_path, "w", encoding="utf-8") as f:
-        f.write(f"""# OpenAI Math Upstream Snapshot Record
+        f.write("""# OpenAI Math Upstream Snapshot Record
 
 Recorded on 2026-10-19 for CQ-HECS Phase 2 research audit.
 

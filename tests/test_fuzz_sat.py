@@ -7,7 +7,6 @@ import unittest
 import subprocess
 import json
 import os
-from pathlib import Path
 
 #: Conservative wall-clock bound for a *fuzz* input. The solver itself has a
 #: 15 s budget; the subprocess ceiling also catches a parser that never returns.

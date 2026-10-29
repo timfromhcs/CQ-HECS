@@ -18,7 +18,7 @@ import stim
 from cqhecs.backends.path_a_stabilizer import PathAStabilizerBackend
 from cqhecs.backends.path_b_stabilizer_rank import PathBStabilizerRankBackend
 from cqhecs.backends.path_c_mps_exact import PathCMPSExactBackend
-from cqhecs.backends.path_d_sparse_pauli import PathDSparsePauliBackend, SparsePauliDynamicsSimulator
+from cqhecs.backends.path_d_sparse_pauli import SparsePauliDynamicsSimulator
 from tests.test_path_c_operand_order import (
     _fidelity_ignoring_global_phase,
     _run_unitary_circuit_on_chain,

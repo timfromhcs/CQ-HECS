@@ -3,7 +3,6 @@ Test Suite: J-Space Beta (Exact Z_8 Phase Ring, Clifford+T, Destructive Interfer
 """
 
 import unittest
-import math
 from python_bridge.cq_hecs import JSpaceBeta
 
 

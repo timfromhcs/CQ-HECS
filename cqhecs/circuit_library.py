@@ -79,6 +79,42 @@ def sparse_pauli(num_qubits: int = 4, depth: int = 4) -> QuantumCircuit:
     return qc
 
 
+def toffoli_adder() -> QuantumCircuit:
+    """1-bit full adder (a, b, cin -> sum, cout) from CCX/CX on inputs |111>."""
+    qc = QuantumCircuit(4, name="toffoli_adder")
+    qc.x([0, 1, 2])
+    qc.ccx(0, 1, 3)
+    qc.cx(0, 1)
+    qc.ccx(1, 2, 3)
+    qc.cx(1, 2)
+    qc.cx(0, 1)
+    return qc
+
+
+def qft(num_qubits: int = 4) -> QuantumCircuit:
+    """Quantum Fourier transform of a basis state, using controlled phases."""
+    qc = QuantumCircuit(num_qubits, name=f"qft{num_qubits}")
+    qc.x(0)
+    for target in reversed(range(num_qubits)):
+        qc.h(target)
+        for control in reversed(range(target)):
+            qc.cp(3.141592653589793 / 2 ** (target - control), control, target)
+    for i in range(num_qubits // 2):
+        qc.swap(i, num_qubits - 1 - i)
+    return qc
+
+
+def ising_trotter(num_qubits: int = 6, steps: int = 3) -> QuantumCircuit:
+    """Transverse-field Ising Trotter steps built from RZZ and RX."""
+    qc = QuantumCircuit(num_qubits, name=f"ising{num_qubits}")
+    for _ in range(steps):
+        for i in range(num_qubits - 1):
+            qc.rzz(0.4, i, i + 1)
+        for i in range(num_qubits):
+            qc.rx(0.3, i)
+    return qc
+
+
 def _measured(circuit: QuantumCircuit) -> QuantumCircuit:
     """Returns a copy of `circuit` with all qubits measured."""
     measured = circuit.copy()
@@ -97,6 +133,9 @@ BUILTIN_CIRCUITS: Dict[str, Callable[[], QuantumCircuit]] = {
     "sparse_pauli4": lambda: sparse_pauli(4),
     "ghz8_measured": lambda: _measured(ghz(8)),
     "bell_measured": lambda: _measured(bell()),
+    "toffoli_adder": lambda: _measured(toffoli_adder()),
+    "qft4": lambda: qft(4),
+    "ising6": lambda: ising_trotter(6),
 }
 
 

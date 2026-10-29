@@ -15,9 +15,8 @@ this" cannot drift from what path X actually executes.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
-from typing import Any, Dict, FrozenSet, List, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, FrozenSet, List, Sequence, Set, Tuple
 
 from cqhecs.circuit_parsing import (
     Instruction,
