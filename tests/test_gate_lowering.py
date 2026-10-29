@@ -13,8 +13,9 @@ import unittest
 import numpy as np
 from qiskit import QuantumCircuit
 from qiskit.circuit.library import (
-    CCXGate, CCZGate, CHGate, CSGate, CSdgGate, CSwapGate, CYGate,
-    RXXGate, RYYGate, RZZGate, SXGate, SXdgGate, U2Gate, U3Gate, UGate,
+    C3XGate, C4XGate, CCXGate, CCZGate, CHGate, CSGate, CSXGate, CSdgGate,
+    CSwapGate, CU3Gate, CUGate, CYGate, DCXGate, ECRGate, RGate, RXXGate,
+    RYYGate, RZZGate, SXGate, SXdgGate, U2Gate, U3Gate, UGate, iSwapGate,
 )
 from qiskit.quantum_info import Operator, Statevector
 
@@ -25,7 +26,7 @@ from cqhecs.gate_lowering import LOWERING_RULES, is_lowered_gate, lower_instruct
 from cqhecs.gate_manifest import MANIFEST, path_gate_names
 from cqhecs.router import FourPathRouter
 
-_ANGLES = (0.37, -1.21, 2.5)
+_ANGLES = (0.37, -1.21, 2.5, 0.83)
 
 #: (name, qiskit gate factory, arity, parameter count)
 _CASES = (
@@ -46,6 +47,15 @@ _CASES = (
     ("ccz", lambda p: CCZGate(), 3, 0),
     ("cswap", lambda p: CSwapGate(), 3, 0),
     ("fredkin", lambda p: CSwapGate(), 3, 0),
+    ("r", lambda p: RGate(*p), 1, 2),
+    ("iswap", lambda p: iSwapGate(), 2, 0),
+    ("dcx", lambda p: DCXGate(), 2, 0),
+    ("ecr", lambda p: ECRGate(), 2, 0),
+    ("cu3", lambda p: CU3Gate(*p), 2, 3),
+    ("cu", lambda p: CUGate(*p), 2, 4),
+    ("csx", lambda p: CSXGate(), 2, 0),
+    ("c3x", lambda p: C3XGate(), 4, 0),
+    ("c4x", lambda p: C4XGate(), 5, 0),
 )
 
 
@@ -160,6 +170,22 @@ class LoweredExecutionTests(unittest.TestCase):
         qc.ccz(0, 1, 2)
         qc.csdg(3, 2)
         self._assert_router_matches_statevector(qc)
+
+    def test_qiskit_mcx_is_lowered_by_control_count(self):
+        for controls in (3, 4):
+            qc = QuantumCircuit(controls + 1)
+            qc.x(range(controls))
+            qc.mcx(list(range(controls)), controls)
+            qc.measure_all()
+            res = FourPathRouter().route_and_execute(qc, shots=32, seed=1)
+            with self.subTest(controls=controls):
+                self.assertEqual(res.counts, {"1" * (controls + 1): 32})
+
+    def test_unsupported_mcx_width_is_refused(self):
+        qc = QuantumCircuit(6)
+        qc.mcx(list(range(5)), 5)
+        with self.assertRaises(Exception):
+            FourPathRouter().route_and_execute(qc, shots=8)
 
     def test_qasm_source_with_composite_gates(self):
         source = (

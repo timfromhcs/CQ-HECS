@@ -9,6 +9,7 @@ This is the single supported command-line entry point. Commands:
     cq-hecs analyze CIRCUIT
     cq-hecs run CIRCUIT [--backend auto|A|B|C|D] [--shots N] [--seed N]
     cq-hecs verify CIRCUIT --reference aer
+    cq-hecs expect CIRCUIT -o PAULI [-o PAULI ...] [--method auto|stabilizer|dense|sparse_pauli]
     cq-hecs benchmark smoke
 
 Output contract
@@ -334,6 +335,39 @@ def cmd_run(args: argparse.Namespace) -> int:
     return EXIT_UNRESOLVED if result.state == SimulationState.UNRESOLVED else EXIT_OK
 
 
+def cmd_expect(args: argparse.Namespace) -> int:
+    """Evaluates Pauli expectation values (exact where possible)."""
+    from cqhecs.expectation import expectation_values
+
+    circuit = _load_circuit(args.circuit)
+    result = expectation_values(
+        circuit,
+        args.observable,
+        method=args.method,
+        error_tolerance=args.error_tolerance,
+        max_pauli_terms=args.max_pauli_terms,
+    )
+    payload = {
+        "schema_version": JSON_SCHEMA_VERSION,
+        "version": __version__,
+        "result": result.to_dict(),
+    }
+    if args.format == "json":
+        _emit_json(payload)
+    else:
+        print(f"Method      : {result.method}")
+        print(f"Exact       : {result.exact}")
+        print(f"Error bound : {result.error_bound:.3e}")
+        print(f"Time (ms)   : {result.execution_time_ms:.2f}")
+        print("Expectations:")
+        for key, value in result.values.items():
+            shown = "UNRESOLVED" if value is None else f"{value:+.6f}"
+            print(f"  {key:<24} {shown}")
+        if result.unresolved:
+            print(f"Unresolved  : {result.metadata.get('reason', 'see metadata')}")
+    return EXIT_UNRESOLVED if result.unresolved else EXIT_OK
+
+
 def cmd_verify(args: argparse.Namespace) -> int:
     """Compares CQ-HECS against a trusted reference implementation."""
     from cqhecs.router import EntanglementAdaptiveRouter
@@ -587,6 +621,34 @@ def build_parser() -> argparse.ArgumentParser:
     p_verify.add_argument("--seed", type=int, default=42, help="RNG seed")
     p_verify.add_argument("--backend", default="auto", help="auto or A/B/C/D")
 
+    p_expect = sub.add_parser(
+        "expect", help="Evaluate Pauli expectation values",
+        description=(
+            "Exact for Clifford circuits (stabilizer) and up to 22 qubits "
+            "(dense); certified Heisenberg propagation (sparse_pauli) beyond. "
+            "Pauli strings: dense Qiskit label such as 'IZX' (rightmost = "
+            "qubit 0) or sparse 'X0 Z2'."
+        ),
+    )
+    p_expect.add_argument("circuit", help=".qasm file, 'name:<builtin>' or 'mod.py:NAME'")
+    p_expect.add_argument(
+        "-o", "--observable", action="append", required=True, metavar="PAULI",
+        help="Pauli string; repeat for several observables",
+    )
+    p_expect.add_argument(
+        "--method", default="auto",
+        choices=["auto", "stabilizer", "dense", "sparse_pauli"],
+        help="Evaluation engine (default: auto)",
+    )
+    p_expect.add_argument(
+        "--error-tolerance", type=float, default=0.05,
+        help="Accepted bound for the sparse_pauli engine",
+    )
+    p_expect.add_argument(
+        "--max-pauli-terms", type=int, default=1024,
+        help="Pauli term budget for the sparse_pauli engine",
+    )
+
     p_bench = sub.add_parser("benchmark", help="Run benchmarks")
     bench_sub = p_bench.add_subparsers(dest="benchmark_command", required=True)
     bench_sub.add_parser("smoke", help="Fast end-to-end smoke benchmark")
@@ -621,6 +683,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "analyze": cmd_analyze,
         "run": cmd_run,
         "verify": cmd_verify,
+        "expect": cmd_expect,
         "benchmark": cmd_benchmark,
     }
     handler = handlers[args.command]

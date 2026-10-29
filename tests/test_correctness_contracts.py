@@ -144,9 +144,26 @@ class TestResultSchema(unittest.TestCase):
         from cqhecs.result import SimulationResult
         res = SimulationResult(
             path="X", exact=False, error_bound=0.1, unresolved=False,
+            counts={"0": 950, "1": 50},
             numerical_error_bound=1e-12, sampling_error_bound=0.05,
+            metadata={
+                "counts_are_joint_distribution": True,
+                "error_bound_covers": "joint_distribution",
+            },
         )
         self.assertAlmostEqual(res.total_error_bound, 0.1 + 1e-12 + 0.05, places=15)
+
+    def test_total_error_bound_is_none_without_a_returned_distribution(self):
+        from cqhecs.result import SimulationResult
+        for state in (SimulationState.UNRESOLVED, SimulationState.FAILED):
+            with self.subTest(state=state):
+                res = SimulationResult(
+                    path="D", exact=False, error_bound=0.1,
+                    unresolved=state == SimulationState.UNRESOLVED,
+                    state=state,
+                )
+                self.assertIsNone(res.total_error_bound)
+                self.assertIsNone(res.to_dict()["error_bound_metric"])
 
     def test_total_error_bound_is_none_for_observable_only_results(self):
         """
@@ -217,6 +234,62 @@ class TestPathCContract(unittest.TestCase):
         # Roundoff-level, and reported rather than hidden.
         self.assertLess(mps.discarded_spectral_norm, 1e-12)
         self.assertGreaterEqual(mps.max_retained_singular_value, 0.5)
+
+    def test_numerical_rank_truncation_is_explicit_at_floor_boundaries(self):
+        ratio = ExactMPSTensorChain.SINGULAR_VALUE_ROUNDOFF_RATIO
+        for eps in (0.5 * ratio, ratio, 2.0 * ratio):
+            with self.subTest(eps=eps):
+                circuit = [
+                    ("ry", [0], [2.0 * np.arcsin(eps)]),
+                    ("cx", [0, 1], []),
+                ]
+                res = self.backend.execute(circuit, shots=16, seed=1)
+                truncated = eps <= ratio
+
+                # The circuit analytically prepares alpha|00> + eps|11>.
+                # A discarded nonzero Schmidt coefficient is numerical rank
+                # reduction, not a bond-budget truncation or a rigorous bound.
+                self.assertTrue(res.exact)
+                self.assertEqual(res.error_bound, 0.0)
+                self.assertIsNone(res.numerical_error_bound)
+                self.assertIs(
+                    res.metadata["numerical_rank_truncation_applied"], truncated
+                )
+                self.assertFalse(res.metadata["bond_dimension_truncation_applied"])
+                self.assertIs(res.metadata["truncation_applied"], truncated)
+                expected_sum = eps if truncated else 0.0
+                self.assertAlmostEqual(
+                    res.metadata["discarded_singular_value_sum"], expected_sum,
+                    places=28,
+                )
+
+    def test_small_physical_schmidt_coefficient_is_not_called_untruncated(self):
+        eps = 1e-14
+        alpha = np.sqrt(1.0 - eps**2)
+        mps = ExactMPSTensorChain(num_qubits=2)
+        try:
+            mps.apply_single_qubit_gate(
+                0, np.array([[alpha, -eps], [eps, alpha]], dtype=complex)
+            )
+            # Chain-basis CX: control q0, target q1. The exact two-site matrix
+            # is diag(alpha, eps), so its nonzero singular values are analytical.
+            mps.apply_two_qubit_gate(
+                0, 1,
+                np.array(
+                    [[1, 0, 0, 0], [0, 1, 0, 0],
+                     [0, 0, 0, 1], [0, 0, 1, 0]], dtype=complex,
+                ),
+            )
+            actual = mps.to_statevector()
+        finally:
+            mps.cleanup()
+
+        np.testing.assert_allclose(actual, [1.0, 0.0, 0.0, 0.0], atol=0.0)
+        self.assertAlmostEqual(np.linalg.norm(actual - [alpha, 0.0, 0.0, eps]), eps)
+        exact_xx = 2.0 * alpha * eps
+        actual_xx = 2.0 * np.real(actual[0] * actual[3])
+        self.assertGreater(exact_xx, 0.0)
+        self.assertEqual(actual_xx, 0.0)
 
     def test_result_reports_roundoff_separately_from_approximation(self):
         n = 3
@@ -663,6 +736,23 @@ class TestPathDContract(unittest.TestCase):
         ) / total
         self.assertLess(joint_parity, 0.7)
 
+    def test_opt_in_marginal_counts_have_no_joint_tv_total_bound(self):
+        backend = PathDSparsePauliBackend(allow_uncertified_joint_counts=True)
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        res = backend.execute(qc, shots=1000, seed=1)
+
+        self.assertFalse(res.metadata["counts_are_joint_distribution"])
+        self.assertEqual(res.metadata["error_bound_covers"], "expectation_values")
+        # Independent mathematical oracle: the ideal independent Bell
+        # marginals are uniform, which has TV distance 0.5 from the Bell joint.
+        # Finite-shot error on the product distribution cannot bound that gap.
+        self.assertLess(res.sampling_error_bound, 0.5)
+        payload = res.to_dict()
+        self.assertIsNone(payload["total_error_bound"])
+        self.assertIsNone(payload["error_bound_metric"])
+
     def test_unknown_gate_is_refused(self):
         with self.assertRaises(UnsupportedPathDOperation) as ctx:
             self.backend.execute(
@@ -694,6 +784,9 @@ class TestPathDContract(unittest.TestCase):
         self.assertGreater(res.error_bound, 1e-4)
         self.assertIsNone(res.expectation_values)
         self.assertEqual(res.counts, {})
+        payload = res.to_dict()
+        self.assertIsNone(payload["total_error_bound"])
+        self.assertIsNone(payload["error_bound_metric"])
 
     def test_invalid_shots_rejected(self):
         qc = QuantumCircuit(1)

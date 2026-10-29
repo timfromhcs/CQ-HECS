@@ -41,14 +41,14 @@ Schaltungsklasse den passenden Pfad wählt — und an der Grenze lieber
 | **Fail-closed statt fail-open** | Ungültiges OpenQASM, unbekannte Gates und Ressourcenüberschreitungen führen zu strukturierten Fehlern — nie zu einer Teilausführung. |
 | **Ehrliche Hardware-Aussagen** | Alle vier Python-Pfade rechnen auf der CPU. Vulkan-Compute-Dispatch wurde auf einer AMD-Radeon-iGPU verifiziert; eine herstellerübergreifende oder End-to-End-GPU-Beschleunigung wird **nicht** behauptet. |
 
-> **Status:** `v2.3.0` ist ein Feature-Release auf `v2.2.2`. Neu ist ein
-> **exaktes Gate-Lowering**: `u/u3/u2`, `sx/sxdg`, `cy`, `ch`, `cs/csdg`,
-> `rzz/rxx/ryy`, `ccx/toffoli`, `ccz` und `cswap/fredkin` werden beim Parsen
-> per exakter Unitär-Identität (inklusive globaler Phase) in native Gates
-> zerlegt und laufen damit auf den vier Pfaden, statt abgelehnt zu werden.
-> Dazu: reparierter Nightly-CI-Lauf, neue Referenzschaltungen
-> (`toffoli_adder`, `qft4`, `ising6`), schärferes Lint-Gate. Es gibt
-> **keinen neuen Simulator und keine GPU-Beschleunigung**.
+> **Status:** `v2.4.0` ist ein Feature-Release auf `v2.3.0`. Neu sind
+> **exakte Pauli-Erwartungswerte** (`cq-hecs expect`, `cqhecs.expectation`:
+> Stabilizer-Tableau für Clifford-Schaltungen bis 4096 Qubits, dichter
+> Referenzsimulator bis 22 Qubits, zertifiziertes Path D darüber), neun weitere
+> exakte Gate-Zerlegungen (`r`, `iswap`, `dcx`, `ecr`, `cu3`, `cu`, `csx`,
+> `c3x`, `c4x`) und drei geschlossene Ergebnisvertrags-Funde (`total_error_bound`,
+> Path-C-Rangschwelle, Konfidenzschranken-Wortlaut). Es gibt **keinen neuen
+> Simulationspfad, keine Rauschmodelle und keine GPU-Beschleunigung**.
 > Details: [Release Notes](RELEASE_NOTES.md) · [Changelog](CHANGELOG.md).
 
 ---
@@ -274,7 +274,7 @@ measure q[0] -> c[0];
 | :--- | :--- |
 | Gültige, unterstützte Anweisung | wird ausgeführt |
 | Fehlendes Semikolon | strukturierter Parse-Fehler |
-| Zusammengesetztes Gatter (`u3`, `ccx`, `cy`, `rzz`, `cswap`, …) | exakt in native Gates zerlegt, dann ausgeführt |
+| Zusammengesetztes Gatter (`u3`, `ccx`, `cy`, `rzz`, `cswap`, `iswap`, `ecr`, `c3x`, …) | exakt in native Gates zerlegt, dann ausgeführt |
 | Unbekanntes Gatter | `unsupported_gate`, keine Ausführung |
 | Nicht-endlicher/ungültiger Winkel | `invalid_parameter` |
 | Nicht deklariertes Register | strukturierter Parse-Fehler |
@@ -335,12 +335,12 @@ pip install -e .
 
 ```bash
 python -m build
-# dist/cqhecs-2.3.0-py3-none-any.whl
-# dist/cqhecs-2.3.0.tar.gz
+# dist/cqhecs-2.4.0-py3-none-any.whl
+# dist/cqhecs-2.4.0.tar.gz
 ```
 
 Die veröffentlichten Artefakte, Checksums und die SPDX-SBOM stehen unter
-[GitHub-Releases](https://github.com/timfromhcs/CQ-HECS/releases) (aktuell veröffentlicht: `v2.2.2`; `v2.3.0` nach Tag).
+[GitHub-Releases](https://github.com/timfromhcs/CQ-HECS/releases) (aktuell veröffentlicht: `v2.3.0`; `v2.4.0` nach Tag).
 
 ---
 
@@ -356,6 +356,7 @@ Die veröffentlichten Artefakte, Checksums und die SPDX-SBOM stehen unter
 | `cq-hecs analyze name:ghz8` | statische Analyse und Pfadempfehlung |
 | `cq-hecs run name:bell --shots 1000` | Schaltung ausführen |
 | `cq-hecs verify name:bell --reference aer` | gegen Referenz vergleichen |
+| `cq-hecs expect name:bell -o ZZ -o XX` | exakte bzw. zertifizierte Pauli-Erwartungswerte |
 | `cq-hecs benchmark smoke` | reproduzierbarer Smoke-Benchmark |
 
 `--format json` ist eine **globale** Option und muss vor dem Unterbefehl stehen:
@@ -392,6 +393,31 @@ print(result.path, result.exact, result.error_bound, result.unresolved)
 
 Der Router ist fail-closed: erzwungene Pfade werden nicht still umgeleitet;
 nur typisierte Capability- oder Ressourcenfehler lösen eine Eskalation aus.
+
+### Pauli-Erwartungswerte
+
+```bash
+cq-hecs expect name:bell -o ZZ -o XX -o YY          # stabilizer, exakt
+cq-hecs --format json expect name:ising6 -o "X0 X1"  # dense, exakt (<= 22 Qubits)
+```
+
+```python
+from cqhecs import expectation_values
+
+res = expectation_values(circuit, {"H": [(0.5, "ZZ"), (-1.25, "XX")]})
+print(res.values, res.method, res.exact, res.error_bound)
+```
+
+| Engine | Einsatz | Ergebnis |
+| :--- | :--- | :--- |
+| `stabilizer` | Clifford-Schaltung, bis 4096 Qubits | exakt `-1/0/+1` aus dem Tableau, ohne Sampling |
+| `dense` | bis 22 Qubits (Obergrenze 26) | exakter float64-Statevektor, keine absichtliche Näherung |
+| `sparse_pauli` | breitere Nicht-Clifford-Schaltungen | Path D mit zertifizierter Schranke; sonst `None` + `unresolved` |
+
+`method="auto"` wählt die erste zutreffende Zeile. Pauli-Strings sind dichte
+Qiskit-Labels (`IZX`, rechts = Qubit 0) oder sparse (`X0 Z2`). Mid-Circuit-
+Messung und `reset` werden abgelehnt. Die Werte sind Erwartungswerte der
+idealen Schaltung, keine gesampelten Counts.
 
 ### Pfad D explizit
 
@@ -447,9 +473,11 @@ gegen Aer getestet.
 ```python
 from cqhecs.result import SimulationState
 
-result = backend.run(qc, shots=1000).result()
-if result.unresolved:
-    raise RuntimeError("Simulation unresolved: " + ", ".join(result.diagnostics))
+job = backend.run(qc, shots=1000)
+sim = job.simulation_results[0]          # cqhecs.result.SimulationResult
+if sim.unresolved:
+    raise RuntimeError("Simulation unresolved: " + str(sim.metadata.get("reason")))
+header = job.result().results[0].header  # path, exact, error_bound, numerical_status, ...
 ```
 
 Unbekannte Gates, ungültige QASM-Eingaben und Ressourcenüberschreitungen
@@ -460,7 +488,7 @@ erfundenen 50/50-Counts.
 
 ## ✅ Verifikation
 
-Die folgenden Zahlen sind lokale Messungen für den `v2.3.0`-Kandidaten, keine
+Die folgenden Zahlen sind lokale Messungen für den `v2.4.0`-Kandidaten, keine
 Leistungsbenchmarks. CI-Ergebnisse werden für den exakt gepushten SHA separat
 in [`research/next_stable/TEST_MATRIX.md`](research/next_stable/TEST_MATRIX.md)
 festgehalten; [`research/v2_2/TEST_MATRIX.md`](research/v2_2/TEST_MATRIX.md)
@@ -561,7 +589,7 @@ python scripts/run_mutation_tests.py
 
 ```text
 CQ-HECS/
-├── cqhecs/                 # Python-Kern: Parser, Router, vier Backends
+├── cqhecs/                 # Python-Kern: Parser, Lowering, Router, vier Backends, Erwartungswerte
 ├── python_bridge/          # Legacy-Referenz- und Diagnostikschicht
 ├── src/                    # C++20-Nativkern und C-ABI
 ├── include/                # Öffentliche C-/C++-Header
@@ -624,7 +652,7 @@ Repository. GitHub bietet über [`CITATION.cff`](CITATION.cff) einen
 @software{cqhecs2026,
   author  = {Stark, Tim Johann},
   title   = {CQ-HECS: Classical Quantum High-Efficiency Compute Simulator},
-  version = {2.3.0},
+  version = {2.4.0},
   year    = {2026},
   url     = {https://github.com/timfromhcs/CQ-HECS},
   license = {Apache-2.0}

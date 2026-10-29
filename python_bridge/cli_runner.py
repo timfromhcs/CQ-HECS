@@ -143,7 +143,7 @@ def cmd_run_stress(iterations: int = 100000):
 
 def run_legacy_benchmarks(args):
     print("=" * 68)
-    print(" CQ-HECS 2.3.0: High-Performance Quantum Classical Simulation Benchmark")
+    print(" CQ-HECS 2.4.0: High-Performance Quantum Classical Simulation Benchmark")
     print("=" * 68)
 
     scheduler = VulkanComputeScheduler()
@@ -198,7 +198,7 @@ def run_legacy_benchmarks(args):
 
 def run_legacy_solver():
     print("=" * 68)
-    print(" CQ-HECS 2.3.0: Cryptographic ARX Constraint Inversion Solver")
+    print(" CQ-HECS 2.4.0: Cryptographic ARX Constraint Inversion Solver")
     print("=" * 68)
     alpha = JSpaceAlpha(bit_width=64)
     gamma = JSpaceGamma(table_capacity=1024)
@@ -226,7 +226,7 @@ def run_legacy_solver():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="CQ-HECS 2.3.0 CLI")
+    parser = argparse.ArgumentParser(description="CQ-HECS 2.4.0 CLI")
     subparsers = parser.add_subparsers(dest="subcommand", help="Subcommand to execute")
 
     # 1. run subcommand

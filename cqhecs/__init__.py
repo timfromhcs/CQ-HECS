@@ -6,7 +6,7 @@ C) MPS without Cutoff + NVMe-Offload (exact up to memory limit)
 D) Certified Classical Approximation (Sparse-Pauli-Dynamics) with proven error bound
 """
 
-__version__ = "2.3.0"
+__version__ = "2.4.0"
 
 from cqhecs.backend import CQHecsBackend
 from cqhecs.provider import CQHecsProvider
@@ -24,6 +24,11 @@ from cqhecs.router import (
     FourPathRouter,
     EntanglementAdaptiveRouter,
     UnsupportedCircuitError,
+)
+from cqhecs.expectation import (
+    ExpectationError,
+    ExpectationResult,
+    expectation_values,
 )
 from cqhecs.scheduler import VulkanComputeScheduler
 from cqhecs.backends import (
@@ -49,6 +54,9 @@ __all__ = [
     "FourPathRouter",
     "EntanglementAdaptiveRouter",
     "UnsupportedCircuitError",
+    "ExpectationError",
+    "ExpectationResult",
+    "expectation_values",
     "VulkanComputeScheduler",
     "PathAStabilizerBackend",
     "StabilizerTableauSimulator",

@@ -201,13 +201,14 @@ class ExactMPSTensorChain:
     Floating-point contract
     -----------------------
     The tensor network is contracted in ``numpy.complex128`` (IEEE-754 double
-    precision). SVD rank selection therefore uses a *roundoff* threshold rather
-    than an approximation threshold: singular values below it are numerically
-    indistinguishable from zero, not physically small. The discarded mass is
-    measured and reported rather than discarded silently:
+    precision). SVD rank selection uses a relative numerical-rank floor. A
+    nonzero physical Schmidt coefficient below that floor can be discarded;
+    relative smallness alone does not prove that it is roundoff. The discarded
+    values are therefore measured and reported as numerical rank reduction:
 
-    * ``discarded_spectral_norm`` - sum of discarded singular values across all
-      rewrites. This is a **diagnostic**, not a certified error bound: the
+    * ``discarded_spectral_norm`` - legacy name for the sum of discarded
+      singular values across all rewrites (not a spectral norm). This is a
+      **diagnostic**, not a certified error bound: the
       per-step masses do not compose into a state-norm error without a
       propagation analysis this backend does not perform.
     * ``max_retained_singular_value`` - reference scale for the cutoff.
@@ -217,9 +218,9 @@ class ExactMPSTensorChain:
     resulting guarantee.
     """
 
-    #: Singular values at or below this fraction of the largest retained
-    #: singular value are treated as roundoff noise (numerically rank-deficient),
-    #: not as a deliberate approximation.
+    #: Singular values at or below this fraction of the largest singular value
+    #: define the numerical rank. Discarding them is reported explicitly and is
+    #: distinct from a bond-dimension/resource-budget truncation.
     SINGULAR_VALUE_ROUNDOFF_RATIO = 1e-13
 
     #: Dense statevector contraction costs O(2**n); refuse beyond this width.
@@ -322,7 +323,7 @@ class ExactMPSTensorChain:
     def apply_two_qubit_gate(self, q1: int, q2: int, gate_4x4: np.ndarray):
         """
         Applies 4x4 unitary to adjacent qubits (q1, q2).
-        Retains ALL non-zero singular values (exact rank). NO chi=48 cutoff!
+        Retains the full numerical rank at the documented floor. NO chi cap!
         """
         if abs(q1 - q2) != 1:
             # For non-adjacent qubits in 1D chain, swap to adjacent, apply, swap back
@@ -374,13 +375,12 @@ class ExactMPSTensorChain:
         # 3. Reshape into matrix for SVD: (chi_L * 2, 2 * chi_R)
         mat = evolved.reshape(chi_L * 2, 2 * chi_R)
 
-        # 4. SVD without approximation: keep every singular value that is
-        #    numerically non-zero in double precision.
+        # 4. SVD with an explicit numerical-rank policy and no bond-dimension cap.
         U, S, Vt = np.linalg.svd(mat, full_matrices=False)
 
-        # Rank selection is a *roundoff* decision, not an approximation: we keep
-        # every singular value above the numerical noise floor relative to the
-        # largest one.
+        # Keep every singular value above the numerical-rank floor relative to
+        # the largest one. A nonzero physical value below the floor may be lost;
+        # the result metadata therefore exposes this reduction explicitly.
         #
         # The discarded mass is accumulated as a DIAGNOSTIC only. It is *not* a
         # certified error bound on the final state: each SVD step perturbs the
@@ -408,7 +408,7 @@ class ExactMPSTensorChain:
             # tensor shapes stay valid; the state magnitude is preserved as 0.
             exact_rank = 1
 
-        # Slice to exact rank (NO truncation of physical information)
+        # Slice to numerical rank (nonzero values below the floor may be removed)
         U_kept = U[:, :exact_rank]
         S_kept = S[:exact_rank]
         Vt_kept = Vt[:exact_rank, :]
@@ -770,22 +770,45 @@ class ExactMPSTensorChain:
                 pass
 
 
+def _numerical_rank_metadata(mps: ExactMPSTensorChain) -> Dict[str, Any]:
+    """Describe numerical rank reduction separately from bond-budget truncation."""
+    discarded = float(mps.discarded_spectral_norm)
+    rank_reduced = discarded > 0.0
+    return {
+        # Historical key retained for compatibility; the value is a sum of
+        # singular values, not a spectral norm or an end-to-end error bound.
+        "discarded_spectral_mass_diagnostic": discarded,
+        "discarded_singular_value_sum": discarded,
+        "numerical_rank_truncation_applied": rank_reduced,
+        "bond_dimension_truncation_applied": False,
+        "silent_truncation": False,
+        "truncation_applied": rank_reduced,
+        "numerical_status": (
+            "numerical_rank_reduced" if rank_reduced else "full_numerical_rank_retained"
+        ),
+        "numerical_mode": (
+            "float64-mps-numerical-rank-reduced" if rank_reduced
+            else "float64-mps-full-numerical-rank"
+        ),
+    }
+
+
 class PathCMPSExactBackend:
     """
     Path C Classical Backend: MPS with unbounded bond dimension & NVMe offload.
 
     Correctness class
     -----------------
-    No bond-dimension truncation is performed: the bond dimension always grows
-    to the full numerical rank of the two-site block, so ``error_bound`` is 0.0
-    (no *deliberate approximation*). Rank selection discards only singular
-    values below the double-precision roundoff floor; that residual is a
-    floating-point effect and is reported separately as
-    ``numerical_error_bound`` (measured, never assumed).
+    No bond-dimension/resource-budget truncation is performed: the bond
+    dimension grows to the full numerical rank of the two-site block, so
+    ``error_bound`` is 0.0 (no deliberate budget approximation). The documented
+    numerical-rank floor can still discard a nonzero physical Schmidt value.
+    That reduction and its singular-value-sum diagnostic are reported separately;
+    no propagated numerical error bound is claimed.
 
-    ``exact=True`` therefore means "no approximation was applied", not
-    "mathematically exact". Finite-shot sampling error is reported separately as
-    ``sampling_error_bound``.
+    ``exact=True`` therefore means "no approximation beyond the documented
+    numerical-rank rule", not mathematical exactness or zero roundoff.
+    Finite-shot sampling error is reported separately as ``sampling_error_bound``.
     """
 
     #: Gates this backend actually implements as matrices, derived from the
@@ -973,7 +996,7 @@ class PathCMPSExactBackend:
                             "max_storage_bytes": mps.max_storage_bytes,
                             "ram_budget_bytes": mps.ram_budget_bytes,
                             "active_tensor_bytes": mps.active_ram_bytes,
-                            "truncation_applied": False,
+                            **_numerical_rank_metadata(mps),
                             "preflight_estimate": mps.last_preflight,
                             **_memory_metadata(),
                         }
@@ -1000,15 +1023,12 @@ class PathCMPSExactBackend:
                             f"{ExactMPSTensorChain.MAX_SAMPLING_QUBITS} qubits; "
                             f"this circuit has {n_q}. No counts were fabricated."
                         ),
-                        "discarded_spectral_mass_diagnostic":
-                            mps.discarded_spectral_norm,
                         "numerical_error_bound_reason": (
                             "not derived: per-SVD discarded mass does not "
                             "compose into a state-norm bound without "
                             "propagation analysis across rewrites"
                         ),
-                        "truncation_applied": False,
-                        "numerical_mode": "float64-untruncated-mps",
+                        **_numerical_rank_metadata(mps),
                         **_memory_metadata(),
                     }
                 )
@@ -1033,7 +1053,7 @@ class PathCMPSExactBackend:
                         "max_storage_bytes": mps.max_storage_bytes,
                         "ram_budget_bytes": mps.ram_budget_bytes,
                         "active_tensor_bytes": mps.active_ram_bytes,
-                        "truncation_applied": False,
+                        **_numerical_rank_metadata(mps),
                         **_memory_metadata(),
                     },
                 )
@@ -1071,10 +1091,7 @@ class PathCMPSExactBackend:
                     "nvme_swap_pages": len(mps.swap_files),
                     "shots": shots,
                     "seed": seed,
-                    # Roundoff discarded at the rank-selection floor. Diagnostic
-                    # only: not a certified bound on the state.
-                    "discarded_spectral_mass_diagnostic":
-                        mps.discarded_spectral_norm,
+                    # Numerical-rank diagnostic only: not a certified state bound.
                     "numerical_error_bound_reason": (
                         "not derived: per-SVD discarded mass does not compose "
                         "into a state-norm bound without propagation analysis "
@@ -1084,10 +1101,8 @@ class PathCMPSExactBackend:
                     "two_qubit_rewrites": mps.num_two_qubit_rewrites,
                     "singular_value_roundoff_ratio":
                         ExactMPSTensorChain.SINGULAR_VALUE_ROUNDOFF_RATIO,
-                    # Retained key: asserts no bond-dimension truncation occurred.
-                    "silent_truncation": False,
-                    "truncation_applied": False,
-                    "numerical_mode": "float64-untruncated-mps",
+                    # No bond-dimension cap; numerical rank reduction is explicit.
+                    **_numerical_rank_metadata(mps),
                     "preflight_estimate": mps.last_preflight,
                     **_memory_metadata(),
                 }
@@ -1110,7 +1125,7 @@ class PathCMPSExactBackend:
                     "max_observed_chi": mps.max_observed_chi,
                     "allocated_bytes": mps.total_allocated_bytes,
                     "active_tensor_bytes": mps.active_ram_bytes,
-                    "truncation_applied": False,
+                    **_numerical_rank_metadata(mps),
                     **_memory_metadata(),
                 }
             )

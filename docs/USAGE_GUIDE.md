@@ -141,6 +141,31 @@ counts. Forcing it on a circuit it cannot evolve at all (unsupported gate) exits
 
 ---
 
+### Pauli expectation values
+
+```bash
+cq-hecs expect name:bell -o ZZ -o XX -o YY
+cq-hecs --format json expect name:ising6 -o "X0 X1" --method dense
+```
+
+`expect` evaluates `<psi|P|psi>` for Pauli strings: a dense Qiskit label
+(`IZX`, rightmost character = qubit 0, length = qubit count) or a sparse list
+(`X0 Z2`, `X[0]Z[2]`). Every qubit may appear once. Engines:
+
+* `stabilizer` - Clifford circuits up to 4096 qubits; exact `-1/0/+1` from the
+  tableau, no sampling.
+* `dense` - exact float64 statevector up to 22 qubits (library ceiling 26).
+* `sparse_pauli` - wider non-Clifford circuits through Path D. Its certified
+  bound covers the expectation values only; a value that cannot be certified
+  inside `--error-tolerance` is printed as `UNRESOLVED` (JSON `null`) and the
+  command exits 3. Path D keeps its gate set, so `cp`/`crx`/... circuits are
+  refused here instead of approximated.
+
+`--method auto` (default) uses the first engine that applies. Mid-circuit
+measurement and `reset` are refused (exit 2). The JSON document has the same
+`schema_version` as the other commands; `result.values` maps each requested
+name to its value.
+
 ## 4. Python API
 
 ```python

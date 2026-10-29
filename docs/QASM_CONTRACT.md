@@ -127,8 +127,10 @@ analyzer, router and backends. Since v2.3.0 it accepts three groups:
   rx, ry, rz, p, u1, cx, cnot, cz, swap, cp, cu1, crx, cry, crz, measure,
   barrier`
 - **composite** (exactly lowered to native gates by `cqhecs/gate_lowering.py`
-  during `parse_circuit`, global phase included): `u, u3, u2, sx, sxdg, cy, ch,
-  cs, csdg, rzz, rxx, ryy, ccx, toffoli, ccz, cswap, fredkin`
+  during `parse_circuit`, global phase included): `u, u3, u2, r, sx, sxdg, cy,
+  ch, cs, csdg, csx, cu, cu3, rzz, rxx, ryy, iswap, dcx, ecr, ccx, toffoli,
+  ccz, cswap, fredkin, c3x, c4x` (Qiskit `mcx` with 3 or 4 controls maps to
+  `c3x`/`c4x`; wider `mcx` is refused)
 - **known but implemented by no path**: `reset` (refused at the capability
   layer)
 

@@ -18,6 +18,15 @@ Every rule below is an *exact* identity of unitaries, not an approximation:
 * ``rzz(theta) = cx . rz_t(theta) . cx``; ``rxx``/``ryy`` by local basis change
 * ``ccx`` by the standard 7-T Clifford+T circuit; ``ccz = h_t . ccx . h_t``;
   ``cswap = cx(b, a) . ccx(c, a, b) . cx(b, a)``
+* ``r(theta, phi) = u3(theta, phi - pi/2, pi/2 - phi)``
+* ``iswap = s . s . h_a . cx(a, b) . cx(b, a) . h_b``, ``dcx = cx(a, b) . cx(b, a)``
+* ``ecr = rzx(pi/4) . x_a . rzx(-pi/4)`` with ``rzx = h_b . cx . rz_b . cx . h_b``
+* ``cu3``/``cu`` by the qelib1 identity (``cu`` adds ``p(gamma)`` on the control);
+  ``csx = h_t . cs . h_t``
+* ``c3x``/``c4x`` (multi-controlled X): ``h_t . C^kZ . h_t`` where the diagonal
+  ``exp(i pi x_1...x_m)`` is the parity expansion
+  ``sum_S (-1)^{|S|+1} pi / 2^(m-1) * parity_S`` over non-empty qubit subsets,
+  each realised by a CX ladder onto a pivot and one ``p`` rotation
 
 (Products read right to left; the emitted instruction lists read left to
 right.) ``tests/test_gate_lowering.py`` checks each rule against Qiskit's
@@ -138,6 +147,89 @@ def _cswap(q: Sequence[int], _p: Sequence[float]) -> List[Instruction]:
     return [("cx", [b, a], []), ("ccx", [c, a, b], []), ("cx", [b, a], [])]
 
 
+def _r(q: Sequence[int], p: Sequence[float]) -> List[Instruction]:
+    theta, phi = p
+    return [("u3", [q[0]], [theta, phi - _PI / 2.0, _PI / 2.0 - phi])]
+
+
+def _iswap(q: Sequence[int], _p: Sequence[float]) -> List[Instruction]:
+    a, b = q
+    return [
+        ("s", [a], []),
+        ("s", [b], []),
+        ("h", [a], []),
+        ("cx", [a, b], []),
+        ("cx", [b, a], []),
+        ("h", [b], []),
+    ]
+
+
+def _dcx(q: Sequence[int], _p: Sequence[float]) -> List[Instruction]:
+    a, b = q
+    return [("cx", [a, b], []), ("cx", [b, a], [])]
+
+
+def _rzx(a: int, b: int, theta: float) -> List[Instruction]:
+    return [
+        ("h", [b], []),
+        ("cx", [a, b], []),
+        ("rz", [b], [theta]),
+        ("cx", [a, b], []),
+        ("h", [b], []),
+    ]
+
+
+def _ecr(q: Sequence[int], _p: Sequence[float]) -> List[Instruction]:
+    a, b = q
+    return _rzx(a, b, _PI / 4.0) + [("x", [a], [])] + _rzx(a, b, -_PI / 4.0)
+
+
+def _cu3(q: Sequence[int], p: Sequence[float]) -> List[Instruction]:
+    c, t = q
+    theta, phi, lam = p
+    return [
+        ("p", [c], [(lam + phi) / 2.0]),
+        ("p", [t], [(lam - phi) / 2.0]),
+        ("cx", [c, t], []),
+        ("u3", [t], [-theta / 2.0, 0.0, -(phi + lam) / 2.0]),
+        ("cx", [c, t], []),
+        ("u3", [t], [theta / 2.0, phi, 0.0]),
+    ]
+
+
+def _cu(q: Sequence[int], p: Sequence[float]) -> List[Instruction]:
+    return [("p", [q[0]], [p[3]])] + _cu3(q, p[:3])
+
+
+def _csx(q: Sequence[int], _p: Sequence[float]) -> List[Instruction]:
+    c, t = q
+    return [("h", [t], [])] + _cs([c, t], []) + [("h", [t], [])]
+
+
+def _multi_controlled_z(qubits: Sequence[int]) -> List[Instruction]:
+    """
+    Exact diagonal ``exp(i*pi*x_1*...*x_m)`` over ``m`` qubits.
+
+    ``x_1...x_m = 2^-(m-1) * sum_S (-1)^(|S|+1) * parity_S(x)`` over the
+    non-empty subsets ``S`` of the qubits, so each subset contributes one phase
+    rotation on a parity computed by a CX ladder.
+    """
+    m = len(qubits)
+    out: List[Instruction] = []
+    for mask in range(1, 1 << m):
+        subset = [qubits[i] for i in range(m) if mask >> i & 1]
+        pivot = subset[-1]
+        ladder = [("cx", [other, pivot], []) for other in subset[:-1]]
+        angle = (-1.0) ** (len(subset) + 1) * _PI / 2.0 ** (m - 1)
+        out += ladder + [("p", [pivot], [angle])] + list(reversed(ladder))
+    return out
+
+
+def _mcx(q: Sequence[int], _p: Sequence[float]) -> List[Instruction]:
+    t = q[-1]
+    return [("h", [t], [])] + _multi_controlled_z(list(q)) + [("h", [t], [])]
+
+
 #: Composite gate name -> exact rewrite. Every name here has an empty ``paths``
 #: set and ``lowered=True`` in the manifest.
 LOWERING_RULES: Dict[str, Callable[[Sequence[int], Sequence[float]], List[Instruction]]] = {
@@ -158,6 +250,15 @@ LOWERING_RULES: Dict[str, Callable[[Sequence[int], Sequence[float]], List[Instru
     "ccz": _ccz,
     "cswap": _cswap,
     "fredkin": _cswap,
+    "r": _r,
+    "iswap": _iswap,
+    "dcx": _dcx,
+    "ecr": _ecr,
+    "cu3": _cu3,
+    "cu": _cu,
+    "csx": _csx,
+    "c3x": _mcx,
+    "c4x": _mcx,
 }
 
 #: Recursion guard. Rules nest at most three deep (cswap -> ccx -> primitives).

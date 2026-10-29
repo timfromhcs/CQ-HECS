@@ -5,6 +5,7 @@ from typing import Any, List, Optional, Dict
 from qiskit.providers import BackendV2, Options
 from qiskit.transpiler import Target
 from qiskit.circuit.library import (
+    CSXGate, CU3Gate, CUGate, DCXGate, ECRGate, RGate, iSwapGate,
     CHGate, CPhaseGate, CRXGate, CRYGate, CRZGate, CSGate, CSdgGate,
     CU1Gate, CXGate, CYGate, CZGate,
     HGate, IGate, Measure, PhaseGate, RXGate, RXXGate, RYGate, RYYGate,
@@ -82,7 +83,7 @@ class CQHecsBackend(BackendV2):
             self._target.add_instruction(gate)
         for gate in (
             RZGate(0.0), PhaseGate(0.0), RXGate(0.0), RYGate(0.0),
-            UGate(0.0, 0.0, 0.0),
+            UGate(0.0, 0.0, 0.0), RGate(0.0, 0.0),
         ):
             self._target.add_instruction(gate)
         self._target.add_instruction(Measure())
@@ -98,6 +99,8 @@ class CQHecsBackend(BackendV2):
             CRXGate(0.0), CRYGate(0.0), CRZGate(0.0),
             CYGate(), CHGate(), CSGate(), CSdgGate(),
             RZZGate(0.0), RXXGate(0.0), RYYGate(0.0),
+            iSwapGate(), DCXGate(), ECRGate(), CSXGate(),
+            CUGate(0.0, 0.0, 0.0, 0.0), CU3Gate(0.0, 0.0, 0.0),
         ):
             self._target.add_instruction(gate, pair_props)
 
@@ -283,21 +286,40 @@ class CQHecsBackend(BackendV2):
             )
             t_exp_end = time.time()
 
+            contract_metadata_keys = (
+                "counts_are_joint_distribution",
+                "error_bound_covers",
+                "error_bound_excludes",
+                "numerical_status",
+                "numerical_mode",
+                "numerical_rank_truncation_applied",
+                "bond_dimension_truncation_applied",
+                "truncation_applied",
+                "discarded_singular_value_sum",
+                "discarded_spectral_mass_diagnostic",
+            )
+            header = {
+                "name": getattr(qc, "name", f"circuit_{idx}"),
+                "memory_slots": getattr(qc, "num_clbits", qc.num_qubits),
+                "path": sim_res.path,
+                "exact": sim_res.exact,
+                "error_bound": sim_res.error_bound,
+                "numerical_error_bound": sim_res.numerical_error_bound,
+                "sampling_error_bound": sim_res.sampling_error_bound,
+                "total_error_bound": sim_res.total_error_bound,
+                "unresolved": sim_res.unresolved,
+            }
+            # Forward the metric-scope and numerical-rank contract so Qiskit
+            # callers can tell what ``error_bound`` covers and whether the
+            # numerical rank was reduced, without reaching into metadata.
+            for key in contract_metadata_keys:
+                if key in sim_res.metadata:
+                    header[key] = sim_res.metadata[key]
             exp_res = ExperimentResult(
                 shots=shots,
                 success=not sim_res.unresolved,
                 data=ExperimentResultData(counts=counts),
-                header={
-                    "name": getattr(qc, "name", f"circuit_{idx}"),
-                    "memory_slots": getattr(qc, "num_clbits", qc.num_qubits),
-                    "path": sim_res.path,
-                    "exact": sim_res.exact,
-                    "error_bound": sim_res.error_bound,
-                    "numerical_error_bound": sim_res.numerical_error_bound,
-                    "sampling_error_bound": sim_res.sampling_error_bound,
-                    "total_error_bound": sim_res.total_error_bound,
-                    "unresolved": sim_res.unresolved,
-                },
+                header=header,
                 status="UNRESOLVED" if sim_res.unresolved else "DONE",
                 time_taken=t_exp_end - t_exp_start
             )

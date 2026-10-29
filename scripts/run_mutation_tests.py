@@ -215,6 +215,26 @@ def check_toffoli_lowering() -> bool:
     return not np.allclose(Operator(qc).data, Operator(reference).data, atol=1e-12)
 
 
+def check_stabilizer_expectation_sign() -> bool:
+    """Bell <YY> is -1 and the stabilizer engine must report the sign."""
+    from cqhecs.expectation import expectation_values
+
+    res = expectation_values(
+        [("h", [0], []), ("cx", [0, 1], [])], ["YY", "XX"], method="stabilizer"
+    )
+    return not (res.values["YY"] == -1.0 and res.values["XX"] == 1.0)
+
+
+def check_dense_y_orientation() -> bool:
+    """H then S prepares |+i>, so <Y> must be +1 in the dense engine."""
+    from cqhecs.expectation import expectation_values
+
+    res = expectation_values(
+        [("h", [0], []), ("s", [0], [])], ["Y0"], method="dense"
+    )
+    return abs(res.values["Y0"] - 1.0) > 1e-9
+
+
 CHECKS: Dict[str, Callable[[], bool]] = {
     "qubit_bit_order": check_qubit_bit_order,
     "cz_conjugation": check_cz_conjugation,
@@ -228,6 +248,8 @@ CHECKS: Dict[str, Callable[[], bool]] = {
     "cli_json_schema_field": check_cli_json_schema_field,
     "t_count_classification": check_t_count_classification,
     "toffoli_lowering": check_toffoli_lowering,
+    "stabilizer_expectation_sign": check_stabilizer_expectation_sign,
+    "dense_y_orientation": check_dense_y_orientation,
 }
 
 
@@ -381,6 +403,22 @@ MUTANTS: List[SourceMutant] = [
         ),
         check="toffoli_lowering",
         mechanism="flips one T to T-dagger in the exact CCX decomposition",
+    ),
+    SourceMutant(
+        name="Stabilizer expectation sign dropped",
+        target="cqhecs/expectation.py",
+        original="    return 1 - 2 * int(tab[2 * n, 2 * n])\n",
+        replacement="    return 1\n",
+        check="stabilizer_expectation_sign",
+        mechanism="reports +1 for every deterministic Pauli, ignoring the tableau phase",
+    ),
+    SourceMutant(
+        name="Dense Pauli-Y orientation flipped",
+        target="cqhecs/backends/dense_reference.py",
+        original='        "y": [[0, -1j], [1j, 0]],\n',
+        replacement='        "y": [[0, 1j], [-1j, 0]],\n',
+        check="dense_y_orientation",
+        mechanism="transposes the Pauli-Y matrix so Y expectations change sign",
     ),
 ]
 
