@@ -1,4 +1,3 @@
-import pytest
 import numpy as np
 from qiskit import QuantumCircuit
 from cqhecs.backend import CQHecsBackend
@@ -45,7 +44,6 @@ class TestQiskitBackend:
 
         # Apply oracle marking target |513> (bitmask: 1000000001)
         # Flip phase of target
-        target = 513
         # Diffusion operator
         for i in range(n):
             qc.h(i)
@@ -102,5 +100,5 @@ class TestQiskitBackend:
         counts = job.result().get_counts()
 
         # Fidelity F == 1.0 means high probability of observing |42>
-        expected_bs = format(test_state, f'0{n}b')
+        format(test_state, f'0{n}b')
         assert len(counts) > 0

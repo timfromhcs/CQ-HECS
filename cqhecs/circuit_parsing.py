@@ -226,11 +226,24 @@ def parse_circuit(circuit: Any) -> Tuple[List[Instruction], int]:
     """
     # Qiskit circuit duck-typing first, so QASM strings stay on the string path.
     if hasattr(circuit, "data") and hasattr(circuit, "num_qubits"):
-        return _parse_qiskit(circuit)
-    if isinstance(circuit, str):
-        return _parse_qasm(circuit)
-    if isinstance(circuit, (list, tuple)):
-        return _parse_instruction_list(circuit)
+        instructions, num_qubits = _parse_qiskit(circuit)
+    elif isinstance(circuit, str):
+        instructions, num_qubits = _parse_qasm(circuit)
+    elif isinstance(circuit, (list, tuple)):
+        instructions, num_qubits = _parse_instruction_list(circuit)
+    else:
+        _raise_unsupported_input(circuit)
+    # Composite gates (u3, ccx, cy, rzz, ...) are rewritten exactly into the
+    # native gate set here, once, so every later stage sees the same circuit.
+    from cqhecs.gate_lowering import GateLoweringError, lower_instructions
+
+    try:
+        return lower_instructions(instructions), num_qubits
+    except GateLoweringError as exc:
+        raise UnsupportedCircuitInputError(str(exc)) from exc
+
+
+def _raise_unsupported_input(circuit: Any) -> None:
     raise UnsupportedCircuitInputError(
         f"Unsupported circuit input type {type(circuit).__name__!r}. "
         "Expected a Qiskit QuantumCircuit, an OpenQASM 2.0 string, or a list "

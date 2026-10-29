@@ -1,7 +1,7 @@
 #ifndef CQ_HECS_API_H
 #define CQ_HECS_API_H
 
-#define CQ_HECS_VERSION "2.2.2"
+#define CQ_HECS_VERSION "2.3.0"
 
 #include <stdint.h>
 #include <stddef.h>

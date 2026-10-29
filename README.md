@@ -332,8 +332,8 @@ pip install -e .
 
 ```bash
 python -m build
-# dist/cqhecs-2.2.2-py3-none-any.whl
-# dist/cqhecs-2.2.2.tar.gz
+# dist/cqhecs-2.3.0-py3-none-any.whl
+# dist/cqhecs-2.3.0.tar.gz
 ```
 
 Die veröffentlichten Artefakte, Checksums und die SPDX-SBOM stehen im
@@ -620,7 +620,7 @@ Repository. GitHub bietet über [`CITATION.cff`](CITATION.cff) einen
 @software{cqhecs2026,
   author  = {Stark, Tim Johann},
   title   = {CQ-HECS: Classical Quantum High-Efficiency Compute Simulator},
-  version = {2.2.2},
+  version = {2.3.0},
   year    = {2026},
   url     = {https://github.com/timfromhcs/CQ-HECS},
   license = {Apache-2.0}

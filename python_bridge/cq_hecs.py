@@ -5,20 +5,17 @@ Complete Python 3.11 / PyTorch / NumPy Reference Model of all 5 J-Spaces & Vulka
 
 from __future__ import annotations
 
-__version__ = "2.2.2"
+__version__ = "2.3.0"
 import math
-import struct
 import time
 import os
 import tempfile
-from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
 # Optional PyTorch acceleration
 try:
-    import torch
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
@@ -311,7 +308,7 @@ class JSpaceDelta:
         and caches truncated subspace for lossless re-inflation.
         """
         U, S, Vt = np.linalg.svd(matrix, full_matrices=False)
-        total_energy = float(np.sum(S ** 2))
+        float(np.sum(S ** 2))
 
         if len(S) > self.max_chi:
             u_kept = U[:, :self.max_chi]

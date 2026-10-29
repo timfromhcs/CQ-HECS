@@ -8,6 +8,42 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+---
+
+## [2.3.0] — 2026-10-29
+
+### Added — exact composite-gate lowering
+
+- New `cqhecs.gate_lowering`: `parse_circuit()` rewrites composite gates into
+  natively executed gates through exact unitary identities (global phase
+  included). Newly executable: `u`, `u3`, `u2`, `sx`, `sxdg`, `cy`, `ch`, `cs`,
+  `csdg`, `rzz`, `rxx`, `ryy`, `ccx`/`toffoli`, `ccz`, `cswap`/`fredkin`.
+  Routing sees the lowered circuit, so Clifford composites (`sx`, `cy`,
+  `rzz(pi/2)`) still reach Path A and the T-count of `ccx` is its real
+  decomposition cost. Malformed operands (wrong arity, duplicate qubits) are
+  refused before execution.
+- The Qiskit `Target` advertises the one- and two-qubit composites; three-qubit
+  gates are left to the transpiler and are lowered when submitted untranspiled.
+- New builtin circuits: `toffoli_adder`, `qft4`, `ising6`.
+- `tests/test_gate_lowering.py` checks every rule against Qiskit's reference
+  matrices in both operand orders and end to end against `Statevector`; a new
+  mutant (`Toffoli lowering phase error`) keeps the decomposition pinned.
+
+### Changed
+
+- `reset` is now the only manifest operation that no path executes.
+- The native legacy QASM executor (LEGACY_DIAGNOSTIC) still rejects `u`/`u2`/`u3`;
+  only the Python four-path stack lowers them.
+
+### Fixed
+
+- Nightly workflow failed at test collection since 2026-10-28 because it did
+  not install `hypothesis`; the dependency is now installed as in `ci.yml`.
+- `python_bridge/cli_runner.py` annotated `Optional` without importing it.
+- Removed dead locals and unused imports across `cqhecs`, `python_bridge`,
+  `scripts` and `tests`; CI lint now enforces the full pyflakes `F` rule set
+  and covers `python_bridge`.
+
 ### Fixed — Vulkan compute dispatch is now verified and fails closed
 
 - **Spec fix:** `VkPhysicalDeviceFeatures::shaderInt64` is queried and enabled

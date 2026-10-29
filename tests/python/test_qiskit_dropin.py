@@ -48,7 +48,7 @@ class TestQiskitDropin(unittest.TestCase):
         # Assert ~50% distribution (within 6 sigma bounds)
         ratio_zeros = counts[all_zeros] / shots
         ratio_ones = counts[all_ones] / shots
-        print(f"\n[Qiskit Drop-In] 100-Qubit GHZ Results:")
+        print("\n[Qiskit Drop-In] 100-Qubit GHZ Results:")
         print(f"  |0>^{num_qubits}: {counts[all_zeros]} ({ratio_zeros * 100:.1f}%)")
         print(f"  |1>^{num_qubits}: {counts[all_ones]} ({ratio_ones * 100:.1f}%)")
 

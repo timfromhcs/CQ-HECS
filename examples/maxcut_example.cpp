@@ -5,7 +5,7 @@
 using namespace cq_hecs;
 
 int main() {
-    std::cout << "CQ-HECS 2.2.2-VRTS-Vulkan: 300-Node MaxCut Example\n";
+    std::cout << "CQ-HECS 2.3.0-VRTS-Vulkan: 300-Node MaxCut Example\n";
     auto vulkan = std::make_shared<VulkanContext>();
     vulkan->initialize();
 

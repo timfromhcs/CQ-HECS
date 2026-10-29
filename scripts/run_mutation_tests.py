@@ -193,6 +193,28 @@ def check_t_count_classification() -> bool:
     return props.t_count < 1 or props.is_clifford
 
 
+def check_toffoli_lowering() -> bool:
+    """The lowered CCX must equal Qiskit's CCX unitary, phases included.
+
+    A truth-table check is not enough: a T/T-dagger swap on a control qubit
+    only changes relative phases, which basis-state inputs never observe.
+    """
+    import numpy as np
+    from qiskit import QuantumCircuit
+    from qiskit.circuit.library import CCXGate
+    from qiskit.quantum_info import Operator
+
+    from cqhecs.circuit_parsing import parse_circuit
+
+    lowered, _ = parse_circuit([("ccx", [0, 1, 2], [])])
+    qc = QuantumCircuit(3)
+    for name, qubits, params in lowered:
+        getattr(qc, name)(*params, *qubits)
+    reference = QuantumCircuit(3)
+    reference.append(CCXGate(), [0, 1, 2])
+    return not np.allclose(Operator(qc).data, Operator(reference).data, atol=1e-12)
+
+
 CHECKS: Dict[str, Callable[[], bool]] = {
     "qubit_bit_order": check_qubit_bit_order,
     "cz_conjugation": check_cz_conjugation,
@@ -205,6 +227,7 @@ CHECKS: Dict[str, Callable[[], bool]] = {
     "cli_usage_exit_status": check_cli_usage_exit_status,
     "cli_json_schema_field": check_cli_json_schema_field,
     "t_count_classification": check_t_count_classification,
+    "toffoli_lowering": check_toffoli_lowering,
 }
 
 
@@ -344,6 +367,20 @@ MUTANTS: List[SourceMutant] = [
         ),
         check="t_count_classification",
         mechanism="drops the T contribution in the shared resource classifier",
+    ),
+    SourceMutant(
+        name="Toffoli lowering phase error",
+        target="cqhecs/gate_lowering.py",
+        original=(
+            '        ("t", [a], []),\n'
+            '        ("tdg", [b], []),\n'
+        ),
+        replacement=(
+            '        ("tdg", [a], []),\n'
+            '        ("tdg", [b], []),\n'
+        ),
+        check="toffoli_lowering",
+        mechanism="flips one T to T-dagger in the exact CCX decomposition",
     ),
 ]
 

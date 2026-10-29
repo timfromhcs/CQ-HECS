@@ -360,9 +360,6 @@ class PathAStabilizerBackend:
             Ordered measured qubit indices, or None when there is no
             measurement.
         """
-        measure_positions = [
-            i for i, (name, _, _) in enumerate(instructions) if name == "measure"
-        ]
         last_state_op = max(
             (i for i, (name, _, _) in enumerate(instructions)
              if name not in ("measure", "id", "barrier")),

@@ -143,7 +143,7 @@ class TestPathCSamplingPaging(unittest.TestCase):
         backend = PathCMPSExactBackend(
             ram_budget_mb=0.0002, max_storage_mb=1.0
         )
-        qc = [(f"h", [q], []) for q in range(8)]
+        qc = [("h", [q], []) for q in range(8)]
         result = backend.execute(qc, shots=4, seed=1)
         self.assertTrue(result.unresolved)
         self.assertEqual(result.counts, {})

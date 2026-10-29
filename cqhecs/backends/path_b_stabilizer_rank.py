@@ -9,7 +9,7 @@ from __future__ import annotations
 import cmath
 import math
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 import numpy as np
 
 from cqhecs.circuit_parsing import parse_circuit

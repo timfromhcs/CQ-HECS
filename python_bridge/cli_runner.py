@@ -12,6 +12,7 @@ Subcommands:
 """
 
 import argparse
+from typing import Optional
 import sys
 import time
 from pathlib import Path
@@ -23,9 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from python_bridge.cq_hecs import (
     VulkanComputeScheduler,
     JSpaceAlpha,
-    JSpaceBeta,
     JSpaceGamma,
-    JSpaceDelta,
     JSpaceEpsilon,
     MPS300QubitSimulator,
     TieredMemoryGovernor
@@ -108,10 +107,9 @@ def cmd_run_stress(iterations: int = 100000):
     governor = TieredMemoryGovernor(max_vram_mb=120.0)
     mps = MPS300QubitSimulator(num_qubits=300, max_chi=64, governor=governor)
     alpha = JSpaceAlpha(bit_width=64)
-    eps = JSpaceEpsilon()
+    JSpaceEpsilon()
     scheduler = VulkanComputeScheduler()
 
-    seed = 0xabcdef1234567890
     check_interval = max(1, iterations // 10)
 
     for i in range(1, iterations + 1):
@@ -140,12 +138,12 @@ def cmd_run_stress(iterations: int = 100000):
     mem_delta = mem_final - mem_initial
     print(f"  [PASS] {iterations:,} cycles completed in {elapsed:.2f} s ({iterations/elapsed:,.0f} cycles/sec).")
     print(f"  [PASS] Host Memory Delta: {mem_delta:+.2f} MB (0 Uncontrolled Leaks).")
-    print(f"  [PASS] Active VRAM strictly within budget (< 120 MB).")
+    print("  [PASS] Active VRAM strictly within budget (< 120 MB).")
 
 
 def run_legacy_benchmarks(args):
     print("=" * 68)
-    print(" CQ-HECS 2.2.2: High-Performance Quantum Classical Simulation Benchmark")
+    print(" CQ-HECS 2.3.0: High-Performance Quantum Classical Simulation Benchmark")
     print("=" * 68)
 
     scheduler = VulkanComputeScheduler()
@@ -200,7 +198,7 @@ def run_legacy_benchmarks(args):
 
 def run_legacy_solver():
     print("=" * 68)
-    print(" CQ-HECS 2.2.2: Cryptographic ARX Constraint Inversion Solver")
+    print(" CQ-HECS 2.3.0: Cryptographic ARX Constraint Inversion Solver")
     print("=" * 68)
     alpha = JSpaceAlpha(bit_width=64)
     gamma = JSpaceGamma(table_capacity=1024)
@@ -228,7 +226,7 @@ def run_legacy_solver():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="CQ-HECS 2.2.2 CLI")
+    parser = argparse.ArgumentParser(description="CQ-HECS 2.3.0 CLI")
     subparsers = parser.add_subparsers(dest="subcommand", help="Subcommand to execute")
 
     # 1. run subcommand

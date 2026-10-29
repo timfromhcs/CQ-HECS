@@ -1,14 +1,15 @@
 from __future__ import annotations
 import time
-from typing import Any, List, Optional, Union, Dict
-import numpy as np
+from typing import Any, List, Optional, Dict
 
 from qiskit.providers import BackendV2, Options
 from qiskit.transpiler import Target
 from qiskit.circuit.library import (
-    CPhaseGate, CRXGate, CRYGate, CRZGate, CU1Gate, CXGate, CZGate,
-    HGate, IGate, Measure, PhaseGate, RXGate, RYGate, RZGate,
-    SGate, SdgGate, SwapGate, TGate, TdgGate, XGate, YGate, ZGate,
+    CHGate, CPhaseGate, CRXGate, CRYGate, CRZGate, CSGate, CSdgGate,
+    CU1Gate, CXGate, CYGate, CZGate,
+    HGate, IGate, Measure, PhaseGate, RXGate, RXXGate, RYGate, RYYGate,
+    RZGate, RZZGate, SGate, SXGate, SXdgGate, SdgGate, SwapGate, TGate,
+    TdgGate, UGate, XGate, YGate, ZGate,
 )
 from qiskit.result import Result
 from qiskit.result.models import ExperimentResult, ExperimentResultData
@@ -62,9 +63,12 @@ class CQHecsBackend(BackendV2):
         This is the *transpilation* view of the same manifest the router uses:
         every instruction here is executable by at least one path. Aliases that
         Qiskit canonicalises (``cnot`` -> ``cx``, ``u1`` -> ``p``) are omitted;
-        pseudo-instructions such as ``barrier`` need no target entry. Gates
-        without any path (``u2``/``u3``/``ccx``/``toffoli``/``reset``) are
-        deliberately absent so the transpiler cannot emit them.
+        pseudo-instructions such as ``barrier`` need no target entry.
+        One- and two-qubit composite gates (``u``, ``sx``, ``cy``, ``rzz`` ...)
+        are listed because parsing lowers them exactly. Three-qubit gates
+        (``ccx``, ``cswap``) are left to the transpiler on this linear target;
+        ``backend.run`` still lowers them when they reach it untranspiled.
+        ``reset`` has no path and is deliberately absent.
 
         Connectivity is the linear chain. The backends themselves accept
         non-adjacent two-qubit gates (Path C swaps internally), but a linear
@@ -73,11 +77,12 @@ class CQHecsBackend(BackendV2):
         # 1-Qubit Gates
         for gate in (
             HGate(), IGate(), SGate(), SdgGate(), TGate(), TdgGate(),
-            XGate(), YGate(), ZGate(),
+            XGate(), YGate(), ZGate(), SXGate(), SXdgGate(),
         ):
             self._target.add_instruction(gate)
         for gate in (
             RZGate(0.0), PhaseGate(0.0), RXGate(0.0), RYGate(0.0),
+            UGate(0.0, 0.0, 0.0),
         ):
             self._target.add_instruction(gate)
         self._target.add_instruction(Measure())
@@ -91,6 +96,8 @@ class CQHecsBackend(BackendV2):
             CXGate(), CZGate(), SwapGate(),
             CPhaseGate(0.0), CU1Gate(0.0),
             CRXGate(0.0), CRYGate(0.0), CRZGate(0.0),
+            CYGate(), CHGate(), CSGate(), CSdgGate(),
+            RZZGate(0.0), RXXGate(0.0), RYYGate(0.0),
         ):
             self._target.add_instruction(gate, pair_props)
 

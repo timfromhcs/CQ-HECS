@@ -8,7 +8,6 @@ Generates:
 - Updates audit/release_tracking.json with artifact provenance
 """
 
-import os
 import sys
 import json
 import re

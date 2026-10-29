@@ -7,9 +7,9 @@ Parses standard DIMACS .cnf benchmark files and maps clauses into:
 
 from __future__ import annotations
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from python_bridge.cq_hecs import JSpaceAlpha, JSpaceGamma
 
@@ -45,7 +45,6 @@ class DIMACSParser:
     @staticmethod
     def parse_string(content: str) -> CNFFormula:
         num_vars = 0
-        num_clauses = 0
         clauses: List[List[int]] = []
 
         for raw_line in content.splitlines():
@@ -56,7 +55,7 @@ class DIMACSParser:
                 parts = line.split()
                 if len(parts) >= 4 and parts[1] == "cnf":
                     num_vars = int(parts[2])
-                    num_clauses = int(parts[3])
+                    int(parts[3])
                 continue
 
             # Parse clause integers ending in 0

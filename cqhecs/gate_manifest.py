@@ -24,6 +24,9 @@ Fields
 ``measurement``  Terminal measurement instruction.
 ``reset``        Non-unitary reset; currently executable by no path.
 ``barrier``      Pseudo-instruction with variable arity and no state effect.
+``lowered``      Composite gate with no kernel of its own. ``parse_circuit``
+                 rewrites it exactly into native gates (see
+                 :mod:`cqhecs.gate_lowering`), so ``paths`` stays empty.
 """
 
 from __future__ import annotations
@@ -46,6 +49,7 @@ class GateSpec:
     measurement: bool = False
     reset: bool = False
     barrier: bool = False
+    lowered: bool = False
 
     @property
     def parameterised(self) -> bool:
@@ -106,20 +110,20 @@ for _name in ("rx", "ry"):
 for _name in ("cp", "cu1", "crx", "cry", "crz"):
     _add(_spec(_name, 2, "C", params=1))
 
-# -- known but unimplemented operations ----------------------------------
-# They are syntactically valid OpenQASM/Qiskit operations.  Keeping them in the
-# manifest gives a precise "no path supports ..." refusal instead of an
-# "unknown gate" syntax error, and guarantees that no backend silently treats
-# them as the identity.
-for _name in ("u", "u2", "u3", "ccx", "toffoli", "ch", "cs", "csdg"):
-    if _name in ("u",):
-        _add(GateSpec(name=_name, arity=1, min_params=1, max_params=3))
-    elif _name == "u2":
-        _add(GateSpec(name=_name, arity=1, min_params=2, max_params=2))
-    elif _name == "u3":
-        _add(GateSpec(name=_name, arity=1, min_params=3, max_params=3))
-    else:
-        _add(_spec(_name, 2 if _name in ("ch", "cs", "csdg") else 3))
+# -- composite operations ---------------------------------------------------
+# No path has a dedicated kernel for these. They are exactly rewritten into
+# the native gates above by ``cqhecs.gate_lowering`` during parsing, so they
+# carry no ``paths`` of their own and are never silently treated as identity.
+for _name, _arity, _params in (
+    ("u", 1, 3), ("u3", 1, 3), ("u2", 1, 2),
+    ("sx", 1, 0), ("sxdg", 1, 0),
+    ("cy", 2, 0), ("ch", 2, 0), ("cs", 2, 0), ("csdg", 2, 0),
+    ("rzz", 2, 1), ("rxx", 2, 1), ("ryy", 2, 1),
+    ("ccx", 3, 0), ("toffoli", 3, 0), ("ccz", 3, 0),
+    ("cswap", 3, 0), ("fredkin", 3, 0),
+):
+    _add(GateSpec(name=_name, arity=_arity, min_params=_params,
+                  max_params=_params, lowered=True))
 
 # -- measurement / reset --------------------------------------------------
 _add(GateSpec(name="measure", arity=1, paths=frozenset({"A", "C"}),

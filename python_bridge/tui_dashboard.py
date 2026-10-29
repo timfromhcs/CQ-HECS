@@ -1,5 +1,5 @@
 """
-CQ-HECS 2.2.2 Interactive Terminal UI (Rich TUI Dashboard)
+CQ-HECS 2.3.0 Interactive Terminal UI (Rich TUI Dashboard)
 Real-time monitoring for:
   - Active VRAM Gauge (0 to 120 MB limit monitor)
   - 5 J-Spaces Workload Heatmap (Alpha, Beta, Gamma, Delta, Epsilon)
@@ -13,7 +13,6 @@ import argparse
 import sys
 import time
 import math
-import random
 from pathlib import Path
 
 # Add project root to sys.path
@@ -30,9 +29,7 @@ from rich.text import Text
 from rich.live import Live
 
 from python_bridge.cq_hecs import (
-    VulkanComputeScheduler,
-    MPS300QubitSimulator,
-    TieredMemoryGovernor
+    VulkanComputeScheduler
 )
 
 
@@ -87,7 +84,7 @@ class TUIRenderer:
         return layout
 
     def render_header(self, state: TUIRuntimeState) -> Panel:
-        title = Text(" CQ-HECS 2.2.2 :: CLASSICAL QUANTUM VULKAN COMPUTE SIMULATOR & FOUR-PATH ROUTER ", style="bold white on blue")
+        title = Text(" CQ-HECS 2.3.0 :: CLASSICAL QUANTUM VULKAN COMPUTE SIMULATOR & FOUR-PATH ROUTER ", style="bold white on blue")
         sub = Text(f" [Cycle #{state.cycle_count:06d}]  Target: Win11/MSVC/Vulkan1.3  |  Engine: ACTIVE (100% Deterministic) ", style="dim cyan")
         grid = Table.grid(expand=True)
         grid.add_column(justify="center")
@@ -195,7 +192,7 @@ def run_dashboard_loop(max_cycles: Optional[int] = None, refresh_rate: float = 0
     scheduler = VulkanComputeScheduler()
 
     cycle = 0
-    with Live(layout, console=console, refresh_per_second=10, screen=False) as live:
+    with Live(layout, console=console, refresh_per_second=10, screen=False):
         try:
             while True:
                 cycle += 1
