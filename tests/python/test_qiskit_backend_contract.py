@@ -226,3 +226,40 @@ class TestBackendV2Contract(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class TestHeaderForwardsContractMetadata(unittest.TestCase):
+    """The Qiskit header must expose the numerical-rank / metric-scope contract."""
+
+    def test_path_c_header_reports_numerical_status(self):
+        qc = QuantumCircuit(3, 3)
+        qc.h(0)
+        qc.cp(0.3, 0, 1)
+        qc.crx(0.7, 1, 2)
+        qc.measure(range(3), range(3))
+        result = CQHecsBackend(num_qubits=3).run(qc, shots=64, seed_simulator=1).result()
+        header = result.results[0].header
+        self.assertEqual(header["path"], "C")
+        self.assertIn(
+            header["numerical_status"],
+            {"full_numerical_rank_retained", "numerical_rank_reduced"},
+        )
+        self.assertIs(header["bond_dimension_truncation_applied"], False)
+        self.assertIsInstance(header["numerical_rank_truncation_applied"], bool)
+
+
+class TestDocumentedErrorHandling(unittest.TestCase):
+    """The README error-handling example must use attributes that exist."""
+
+    def test_job_exposes_simulation_results_with_unresolved_flag(self):
+        qc = QuantumCircuit(2, 2)
+        qc.h(0)
+        qc.cx(0, 1)
+        qc.measure([0, 1], [0, 1])
+        job = CQHecsBackend(num_qubits=2).run(qc, shots=16, seed_simulator=1)
+        sim = job.simulation_results[0]
+        self.assertIs(sim.unresolved, False)
+        self.assertIsNone(sim.metadata.get("reason"))
+        header = job.result().results[0].header
+        self.assertIn("path", header)
+        self.assertIn("exact", header)
+        self.assertFalse(hasattr(job.result(), "unresolved"))

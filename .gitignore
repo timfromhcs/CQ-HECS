@@ -86,3 +86,7 @@ htmlcov/
 *.bak
 *.db
 cq_test_swap.bin
+
+# bulky raw upstream dumps (see research/v2_4/evidence/README.md)
+research/v2_4/evidence/openai_math_tree.json
+research/v2_4/evidence/*.b64

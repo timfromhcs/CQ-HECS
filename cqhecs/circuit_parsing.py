@@ -312,6 +312,11 @@ def _parse_qiskit(circuit: Any) -> Tuple[List[Instruction], int]:
                 "before simulation, not silently reordered."
             )
         qubits = [circuit.find_bit(q).index for q in inst.qubits]
+        if name == "mcx":
+            # Qiskit names every multi-controlled X "mcx"; the manifest keys
+            # them by control count (c3x, c4x). Larger widths stay unknown and
+            # are refused rather than approximated.
+            name = f"c{len(qubits) - 1}x"
         if name == "measure":
             # The flat instruction triple carries qubit operands only, so a
             # nontrivial classical destination cannot be represented. The

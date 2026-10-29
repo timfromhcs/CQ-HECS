@@ -121,6 +121,9 @@ for _name, _arity, _params in (
     ("rzz", 2, 1), ("rxx", 2, 1), ("ryy", 2, 1),
     ("ccx", 3, 0), ("toffoli", 3, 0), ("ccz", 3, 0),
     ("cswap", 3, 0), ("fredkin", 3, 0),
+    ("r", 1, 2), ("iswap", 2, 0), ("dcx", 2, 0), ("ecr", 2, 0),
+    ("cu3", 2, 3), ("cu", 2, 4), ("csx", 2, 0),
+    ("c3x", 4, 0), ("c4x", 5, 0),
 ):
     _add(GateSpec(name=_name, arity=_arity, min_params=_params,
                   max_params=_params, lowered=True))

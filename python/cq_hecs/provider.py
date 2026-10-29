@@ -64,7 +64,7 @@ class VulkanQpuBackend(BackendV2):
         super().__init__(
             name=f"cq_hecs_vulkan_{topology}_{num_qubits}q",
             description=f"Legacy CQ-HECS provider ({topology.upper()} topology, {num_qubits} qubits)",
-            backend_version="2.3.0"
+            backend_version="2.4.0"
         )
         self._num_qubits = num_qubits
         self._topology = topology.lower()

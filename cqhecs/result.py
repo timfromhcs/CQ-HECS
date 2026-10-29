@@ -15,10 +15,11 @@ from typing import Any, Dict, Optional
 class SimulationState(str, Enum):
     """
     Explicit, machine-readable simulation states for the Four-Path architecture:
-    - EXACT: The underlying computation introduces no approximation error
-      (no truncation, no deliberate approximation). Note this describes the
-      *computation*, not finite-shot sampling: any backend that returns sampled
-      `counts` also reports `sampling_error_bound`.
+    - EXACT: The computation applies no deliberate approximation beyond its
+      documented numerical-rank/zero policy. This is not a claim of symbolic
+      exactness or zero floating-point error; backends expose any numerical
+      rank reduction separately. Finite-shot sampling is also separate: any
+      backend that returns sampled `counts` reports `sampling_error_bound`.
     - CERTIFIED: The computation is approximate but carries a rigorous,
       derived error bound within the caller's tolerance.
     - UNRESOLVED: Circuit cannot be solved within allocated budget/tolerance
@@ -49,13 +50,16 @@ def hoeffding_proportion_bound(
 
     Args:
         shots: Number of iid samples. Must be > 0.
-        delta: Failure probability for this single coordinate, in (0, 1).
+        delta: Failure probability, in (0, 1). With ``support_size = K`` the
+            bound holds **simultaneously for all K outcomes** with probability
+            at least ``1 - delta`` (union bound over ``delta / K`` each).
         support_size: Number of distinct outcomes. Defaults to 2 (a binary
-            measurement). It only widens the per-coordinate bound via the
-            Bonferroni-corrected ``delta/support_size`` below.
+            measurement). It widens the bound through the Bonferroni-corrected
+            ``ln(2K / delta)`` below.
 
     Returns:
-        Upper bound on |P_hat(y) - P(y)| for one outcome.
+        Upper bound on |P_hat(y) - P(y)| that holds for every outcome y at
+        once, with probability at least ``1 - delta``.
 
     Raises:
         ValueError: If shots <= 0, delta outside (0, 1), or support_size < 1.
@@ -149,10 +153,10 @@ def hoeffding_total_variation_bound(
         # for any realistic shot count. Returning 1.0 avoids int-to-float OverflowError.
         return 1.0
     else:
-        # ln(2^K - 2), computed stably. For K >= 2 the correction from the
-        # subtracted 2 is below double precision, so ln(2^K - 2) = K*ln2 to
-        # machine accuracy; writing it this way avoids overflowing 2^K for
-        # wide registers (K = 1000 overflows exp()).
+        # ln(2^K - 2) <= K*ln2, so K*ln2 is a valid (slightly conservative)
+        # replacement. The excess is ln(2^K / (2^K - 2)): about 0.29 at K = 3,
+        # 0.13 at K = 4 and below double precision from K ~ 54. Using K*ln2
+        # also avoids overflowing 2^K for wide registers (K = 1000).
         log_prefactor = support_size * math.log(2.0)
 
     log_ratio = log_prefactor - math.log(delta)
@@ -188,8 +192,10 @@ class SimulationResult:
 
     Attributes:
         path (str): Execution path used ('A', 'B', 'C', or 'D').
-        exact (bool): True when no *deliberate approximation* was applied.
-        error_bound (float): Upper bound on deliberate approximation error.
+        exact (bool): True when no deliberate approximation beyond the backend's
+            documented numerical-rank/zero policy was applied.
+        error_bound (float): Upper bound on deliberate approximation error;
+            not a floating-point or finite-shot error bound.
         numerical_error_bound (Optional[float]): Measured floating-point roundoff.
         sampling_error_bound (Optional[float]): TV bound for finite-shot counts.
         unresolved (bool): True if the circuit could not be resolved without
@@ -250,8 +256,24 @@ class SimulationResult:
         probability >= 1 - delta, not deterministically. Treat the sum as a
         confidence statement, not a worst case.
         """
+        if self.unresolved or self.is_failed:
+            # No successful output distribution exists to certify.
+            return None
         if self.expectation_values is not None and not self.counts:
             # Observable-space bound only; there is no distribution to bound.
+            return None
+        if self.counts and self.metadata.get("counts_are_joint_distribution") is False:
+            # Independent marginal samples are not the circuit's joint output.
+            return None
+
+        covers = self.metadata.get("error_bound_covers")
+        if covers is not None and covers not in {
+            "counts", "probabilities", "joint_distribution", "total_variation",
+        }:
+            # In particular, Path D's observable bound excludes sampled counts.
+            return None
+        excludes = self.metadata.get("error_bound_excludes")
+        if excludes is not None and "sampled_counts" in str(excludes):
             return None
 
         components = [float(self.error_bound)]
