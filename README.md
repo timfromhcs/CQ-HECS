@@ -407,7 +407,7 @@ python -m build
 
 Published wheels, sdists, SHA-256 checksums, and the SPDX SBOM are attached to
 [GitHub Releases](https://github.com/timfromhcs/CQ-HECS/releases). The latest
-release is `v3.1.0`. This tree is the v3.2.0 candidate; its release assets will be published after CI.
+release is `v3.2.0`.
 
 ---
 
@@ -592,7 +592,7 @@ performance claims. The release audit records the exact SHA and CI runs.
 | Gate | Result |
 | :--- | :--- |
 | Python suite | **676 passed**, 3 opt-in exe skips, 1 opt-in `slow` gate |
-| Branch coverage | **84 %** measured locally on this tree (v3.0.0 release audit: 86 %) |
+| Branch coverage | **83 %** on the Linux CI lane (v3.0.0 release audit: 86 %) |
 | CTest (native) | **21/21**, including a `WILL_FAIL` meta-test proving checks run in Release builds |
 | Source mutation | **40/40** killed |
 | Metamorphic selftest | **12/12** |
