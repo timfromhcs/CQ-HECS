@@ -32,4 +32,18 @@ v2.5.0 wheel reproduces CQ-V251-01 in a clean venv.
 
 ## 2. Cloud gates (exact SHA)
 
-PENDING — filled in after the branch is pushed and CI completes.
+Candidate SHA `777a66f73ec953f576151e16bcab7351398d4f32` (PR #15):
+
+- push run https://github.com/timfromhcs/CQ-HECS/actions/runs/40981978372 — success
+- pull_request run https://github.com/timfromhcs/CQ-HECS/actions/runs/40982014830 — success, 7/7 jobs:
+
+| Job | Conclusion |
+|---|---|
+| Static checks & package smoke (Python 3.11) | success |
+| Linux C++20, Vulkan & full Python suite (CTest, software-ICD dispatch, coverage, mutation gate) | success |
+| Windows C++20, Vulkan & full Python suite (CTest, mutation gate) | success |
+| Linux ASan + UBSan native tests | success |
+| Python 3.12 / 3.13 / 3.14 compatibility (no native) | success ×3 |
+
+This commit only adds the table above; it changes no code and is re-tested by
+its own CI run.
