@@ -351,6 +351,8 @@ Die veröffentlichten Artefakte, Checksums und die SPDX-SBOM stehen unter
 | `cq-hecs run name:bell --profile fake_manila` | Schaltung mit Hardware-Topologie und Rauschmodell ausführen |
 | `cq-hecs verify name:bell --reference aer` | gegen Referenz vergleichen |
 | `cq-hecs expect name:bell -o ZZ -o XX` | exakte bzw. zertifizierte Pauli-Erwartungswerte |
+| `cq-hecs reference list` | gepinnte reale Messdatensätze (R-IO-5, R-IO-6) |
+| `cq-hecs reference run --bootstrap 5000` | H-V3-1-Auswertung gegen echte IBM-Messdaten (derzeit `INCONCLUSIVE`) |
 | `cq-hecs benchmark smoke` | reproduzierbarer Smoke-Benchmark |
 
 `--format json` ist eine **globale** Option und muss vor dem Unterbefehl stehen:

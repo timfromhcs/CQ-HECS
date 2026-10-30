@@ -1,7 +1,10 @@
 # CQ-HECS v3.0.0 Stable Plan — Real-Reference Bridge
 
 **Status:** IN PROGRESS (2026-10-30). Baseline: v2.5.2 (released, `a65c35b`).
-W1 and W2 implemented and tested (see §6); W4 blocked by B-NET.
+W1 and W2 implemented and tested (see §6); W8 implemented and tested. W4 is
+**PARTIAL**: R-IO-5 is reachable, vendored and evaluated (H-V3-1 pooled result
+`INCONCLUSIVE`, identifiable subset exploratory `SUPPORTED`); R-IO-1/2/3 remain
+blocked. W3 and W5 are not started. W6 is partial.
 **Goal:** Measure how close CQ-HECS's noisy emulation gets to *real* quantum
 hardware, using complete public input/output records (circuit + raw measured
 outcomes + calibration at run time), and ship v3.0.0 Stable only when that
@@ -28,7 +31,9 @@ data is reported as such and blocks the claim, not the measurement.
 
 | ID | Dataset | Real content | Licence | Usable for |
 |---|---|---|---|---|
-| **R-IO-5** | [`sahilfarib/quantum-noise-transfer`](https://hf.co/datasets/sahilfarib/quantum-noise-transfer) (arXiv:2604.24397) | Real raw counts from `ibm_fez` (job `d7gh5li2khts739ogh20`, 2026-04-16) and `ibm_marrakesh`, 85 circuits each (40 random, 15 Bell, 15 GHZ, 15 QFT, 2–5 qubits), device calibration snapshots (`calibration_A/B.json`, 156 qubits), ideal distributions | MIT | **Partial only.** The circuits are not published: `circuit_meta.json` has gate *counts* only (no angles, no qubit assignment, no physical layout), QFT has no input state, and the "ideal" distributions are themselves sampled (values like 0.0003). Raw counts sum to 1024 per circuit although the README says 8192 shots. Only Bell/GHZ are reconstructible (ideal output known analytically); without the physical layout only device-mean calibration can be used. |
+| **R-IO-5** | [`sahilfarib/quantum-noise-transfer`](https://hf.co/datasets/sahilfarib/quantum-noise-transfer) (arXiv:2604.24397) | Real raw counts from `ibm_fez` (job `d7gh5li2khts739ogh20`, 2026-04-16) and `ibm_marrakesh`, 85 circuits each (40 random, 15 Bell, 15 GHZ, 15 QFT, 2–5 qubits), device calibration snapshots (`calibration_A/B.json`, 156 qubits) | MIT | **Yes.** Hub API and `resolve/main` downloads work; 5 files vendored and SHA-256-pinned (179 923 bytes). Usable for real Bell/GHZ/QFT I/O (W4). |
+| **R-IO-6** | [`BlueQubitDev/rcs-nighthawk`](https://github.com/BlueQubitDev/rcs-nighthawk) (revision `b9dd86b`) | 233 QASM/QPY circuits (4–40 cycles), 61 logical qubits of `ibm_phoenix`, raw patched bitstrings, 10^6-shot 36-cycle sample, mirror survival, layout | Apache-2.0 | **Yes.** `raw.githubusercontent.com` reachable; 4 small files pinned. Usable for 20-qubit patch XEB (future H-V3-4); not evaluated by W4 (above 10-qubit DM ceiling). |
+
 | R-CAL-2 | [`phanerozoic/qiskit-calibration-drift`](https://hf.co/datasets/phanerozoic/qiskit-calibration-drift) | 30.1 M rows of IBM Heron calibration values (`backend.properties()` every 30 min, `is_failure_ceiling` flag, calibration age) joined with weather/space-weather data; updated daily | CC-BY-4.0 | Calibration history and staleness for W1 (choose the snapshot valid at a job's run time); no counts |
 | — | `LightRiderInc/random-quantum-circuits`, `…/random-circuits-8q-rigetti` | 500 circuits each (QASM + JSON); tagged `synthetic`, the hardware only provided a random seed | CC-BY-4.0 | Circuit families only; no measured outputs |
 | — | `merileijona/quantum-circuits-8k/21k`, `racineai/VDR_*`, `Neura-parse/*`, `Qiskit/qiskit_humaneval*` | text / code / image corpora for LLMs | various | not relevant |
@@ -41,12 +46,15 @@ they must be confirmed by downloading and reading the README before any use.
 The datasets are not committed to the repository unless their licence permits
 redistribution; otherwise tests download them by DOI/URL and pin SHA-256.
 
-**Blocker B-NET:** v3 Stable needs at least one R-IO dataset with complete
-circuits. The operator must add `zenodo.org`, `datadryad.org` and
-`huggingface.co` to the environment's allowed domains (cloud environment
-settings → Network access). R-IO-5 alone is not sufficient for V3-D because
-its circuits are not published; it can serve as a supplementary Bell/GHZ
-check.
+**Blocker B-NET (revised 2026-10-30):** the original blocker assumed no
+real-I/O dataset was reachable. That is false for R-IO-5 and R-IO-6. R-IO-5 is
+admitted and evaluated; its missing circuits/layout are a *dataset limitation*
+(device-mean model, 14 unique reconstructible circuits), not a network blocker.
+Full v3 Stable still needs at least one record with **complete circuits and a
+published layout** at a width the exact noisy path can handle, or a validated
+trajectory path for R-IO-6. R-IO-1 (Dryad payload 401) and R-IO-2/3 (Zenodo
+403) remain blocked; R-IO-5 cannot carry the "close to real hardware" claim on
+its own.
 
 ### Measured facts about R-CAL (drive the import design)
 
@@ -182,13 +190,13 @@ before any run.
 | V3-A | W1: all 69 R-CAL snapshots import or are refused with a typed reason; zero silent clipping/dropping; flagged elements refuse circuits |
 | V3-B | W2: Aer parity ≤ 1e-9 TV on the preregistered families |
 | V3-C | W5: new gates differential-tested; mutation harness extended |
-| V3-D | W4: ≥ 1 real I/O dataset downloaded, licence checked, SHA-256 pinned; metrics and H-V3-1 outcome recorded for the exact release SHA |
+| V3-D | W4: ≥ 1 real I/O dataset downloaded, licence checked, SHA-256 pinned; metrics and H-V3-1 outcome recorded for the exact release SHA. **PARTIAL** — R-IO-5 admitted; pooled H-V3-1 `INCONCLUSIVE`; layout-aware dataset or trajectory path still needed for the full gate |
 | V3-E | W6: schema 2.0 documented, migration tested, CLI/JSON contract tests |
 | V3-F | CI 7/7 on the release SHA, release assets re-hashed, RELEASE_AUDIT |
 
-**Release rule:** all of V3-A…F pass → `v3.0.0` Stable. If only B-NET blocks
-V3-D, the bridge without real-data evaluation may ship as `v2.6.0` (additive
-parts only) — never as v3 Stable and never with a "close to real hardware"
+**Release rule:** all of V3-A…F pass → `v3.0.0` Stable. If only the missing
+layout-aware/trajectory evaluation blocks full V3-D, the additive parts may
+ship as `v2.6.0` — never as v3 Stable and never with a "close to real hardware"
 claim.
 
 ## 4a. Complexity boundaries that bind every v3 claim
@@ -219,8 +227,9 @@ claim.
 | W1 import | DONE (local) | `cqhecs/calibration_import.py`; all 68 shipped snapshots import (qiskit-ibm-runtime 0.51.0): 1049 non-operational gate entries and 59 relaxation-excluded qubits flagged, 0 clipped; `tests/test_v3_calibration_bridge.py` |
 | W2 relaxation + Aer parity | DONE (local), amended criterion | channel parity ≤ 1.6e-15 (manila); circuit parity ≤ 1e-12 + Aer trace loss on manila/quito/lagos; preregistered 1e-9 not met on manila (Aer trace loss) |
 | W3 basis translation | NOT STARTED | — |
-| W4 real I/O | BLOCKED (B-NET) | zenodo.org, datadryad.org, ieee-dataport.org denied by the network policy |
+| W4 real I/O | **PARTIAL** (R-IO-5 evaluated; R-IO-1/2/3 blocked) | `cqhecs/reference.py`, `scripts/run_reference_evaluation.py`, `tests/test_reference.py`; 14 unique circuits, median ΔTV −0.015660, 95 % CI [−0.032546, 0.000000], pooled `INCONCLUSIVE`; Bell+GHZ exploratory `SUPPORTED`; `research/v3/evidence/r_io_5_evaluation.json` |
 | W5 Sycamore gates | NOT STARTED | — |
-| W6 contract/CLI | PARTIAL | schema 2.0 profile fields; CLI not yet |
+| W6 contract/CLI | PARTIAL | schema 2.0 profile fields; `reference list/run` CLI and JSON contract added; migration guide still missing |
 | W8 noisy expectation values | DONE (local) | both engines = Aer to ≤ 1e-12 + trace loss (channels from Aer constructors; Aer `from_backend` on manila/lagos); truncated bound never violated (25 circuits); 127-qubit ibm_brisbane calibration, ~4000 gates: < 1.2 s, bound ≈ 1e-4 (functional check, not a benchmark); mutants 28–31 killed |
-| Research: P vs NP / complexity | DONE | `LITERATURE_MAP.md` §1: no proof-barrier result is implementable; they constrain claims only |
+| Datasets | R-IO-5 admitted; R-IO-6 registered; R-IO-1/2/3 blocked | `research/v3/DATASETS.md` |
+| Research: P vs NP / complexity | DONE (boundary only) | `LITERATURE_MAP.md` §1, `COMPLEXITY_BOUNDARY.md`: no proof; the item is `BLOCKED — open problem` |

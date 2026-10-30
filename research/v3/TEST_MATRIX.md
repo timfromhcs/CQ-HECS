@@ -18,4 +18,12 @@ Base: `main` = `a65c35b` (v2.5.2). Environment as in
 | All shipped snapshots | `test_all_shipped_snapshots_import` | 68/68 import, noise models with and without relaxation |
 | Aer channel parity | `test_every_gate_channel_matches` (manila, quito, lagos) | max SuperOp diff ≤ 1e-12 (observed ≤ 1.6e-15) |
 | Aer circuit parity | `test_random_basis_circuits_match_aer_density_matrix`, 12 circuits × 3 backends | TV ≤ 1e-12 + Aer trace loss (preregistered 1e-9 not met on manila, E-V3-02) |
-| Real I/O (W4) | — | BLOCKED (network policy) |
+| Real I/O (W4) | `python scripts/run_reference_evaluation.py --bootstrap 5000` | R-IO-5, 14 unique circuits: median ΔTV −0.015660, CI [−0.032546, 0.000000], pooled `INCONCLUSIVE`; Bell+GHZ (exploratory) −0.031797, CI [−0.054182, −0.017122] |
+| W4 integrity | `python -m pytest tests/test_reference.py -q` | 24 passed |
+| W4 CLI contract | `python -m pytest tests/test_cli_reference.py -q` | 4 passed |
+| W4 dataset digest | `sha256sum tests/data/quantum_noise_transfer/*.json` | 5/5 match `SHA256SUMS`; combined `8069ad50…12a3` |
+| R-IO-6 registration | `cq-hecs reference list` | 4 pinned files at revision `b9dd86b`; not evaluated (≥20 qubits) |
+| Full Python suite | `python -m pytest tests/ -q` | 540 passed, 4 skipped (qiskit-ibm-runtime not installed) |
+| Coverage | `python -m coverage run --branch -m pytest tests/` + `coverage report` | 88 % total; `reference.py` 81 % |
+| Mutation | `python scripts/run_mutation_tests.py` | 33/33 killed (mutants 32–33 cover the reference hash check and verdict) |
+| Native | `ctest --test-dir build -C Release` | 19/19 passed |

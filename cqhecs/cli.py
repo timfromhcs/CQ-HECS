@@ -28,6 +28,7 @@ import logging
 import os
 import platform
 import sys
+from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
 
 # Version is read from the package rather than duplicated here.
@@ -302,6 +303,72 @@ def cmd_profile(args: argparse.Namespace) -> int:
             print(f"Readout errs : {p.readout_errors}")
         return EXIT_OK
     return EXIT_USAGE
+
+
+def cmd_reference(args: argparse.Namespace) -> int:
+    from cqhecs.reference import DATASETS, ReferenceDataError, evaluate
+
+    if args.reference_command == "list":
+        payload = {
+            "schema_version": JSON_SCHEMA_VERSION,
+            "datasets": [
+                {
+                    "dataset_id": record.dataset_id,
+                    "title": record.title,
+                    "licence": record.licence,
+                    "source": record.source,
+                    "pinned_revision": record.pinned_revision,
+                    "complete_circuits": record.complete_circuits,
+                    "files": [entry.path for entry in record.files],
+                    "notes": list(record.notes),
+                }
+                for record in DATASETS.values()
+            ],
+        }
+        if args.format == "json":
+            _emit_json(payload)
+        else:
+            for item in payload["datasets"]:
+                print(f"{item['dataset_id']}: {item['title']}")
+                print(f"  licence: {item['licence']}  circuits: {item['complete_circuits']}")
+                print(f"  source : {item['source']}")
+        return EXIT_OK
+
+    if args.dataset not in DATASETS:
+        LOG.error("unknown reference dataset %r", args.dataset)
+        return EXIT_USAGE
+    try:
+        result = evaluate(
+            Path(args.data_dir),
+            bootstrap_samples=args.bootstrap,
+            seed=args.seed,
+        )
+    except ReferenceDataError as exc:
+        LOG.error("%s", exc)
+        return EXIT_USAGE
+
+    payload = result.to_dict()
+    if args.json_out:
+        Path(args.json_out).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.json_out).write_text(json.dumps(payload, indent=2) + "\n", "utf-8")
+    if args.format == "json":
+        _emit_json(payload)
+    else:
+        aggregate = payload["aggregate"]
+        print(f"Dataset : {payload['dataset_id']} ({payload['dataset_sha256'][:16]}...)")
+        print(f"Circuits: {aggregate['n_circuits']} unique")
+        print(f"Median delta TV (noisy - ideal): {aggregate['median_delta_tv']:+.6f}")
+        print(f"95% bootstrap CI: [{aggregate['ci95_low']:+.6f}, {aggregate['ci95_high']:+.6f}]")
+        print(f"Verdict : {aggregate['verdict']}")
+        for family, summary in aggregate["by_family"].items():
+            print(
+                f"  {family:4s} n={summary['n']:2d} "
+                f"median dTV={summary['median_delta_tv']:+.6f} "
+                f"noisy-better={summary['n_noisy_better']}/{summary['n']}"
+            )
+        if args.json_out:
+            print(f"Wrote   : {args.json_out}")
+    return EXIT_OK
 
 
 def cmd_analyze(args: argparse.Namespace) -> int:
@@ -667,6 +734,28 @@ def build_parser() -> argparse.ArgumentParser:
     p_show = prof_sub.add_parser("show", help="Show details of a hardware profile")
     p_show.add_argument("name", help="Profile name (e.g. fake_manila, linear_5q)")
 
+    p_ref = sub.add_parser(
+        "reference",
+        help="Evaluate a noise model against real measured bitstrings",
+    )
+    ref_sub = p_ref.add_subparsers(dest="reference_command", required=True)
+    ref_sub.add_parser("list", help="List registered real-input/output datasets")
+    p_ref_run = ref_sub.add_parser("run", help="Run the preregistered reference evaluation")
+    p_ref_run.add_argument(
+        "--dataset", default="r-io-5",
+        help="Registered dataset ID (default: r-io-5)",
+    )
+    p_ref_run.add_argument(
+        "--data-dir", default="tests/data/quantum_noise_transfer",
+        help="Directory containing the verified dataset files",
+    )
+    p_ref_run.add_argument(
+        "--bootstrap", type=int, default=1000,
+        help="Bootstrap resamples for the median-delta interval",
+    )
+    p_ref_run.add_argument("--seed", type=int, default=20261030, help="Bootstrap seed")
+    p_ref_run.add_argument("--json-out", default=None, help="Write the full result JSON here")
+
     p_backend = sub.add_parser("backend", help="Inspect backend capabilities")
     backend_sub = p_backend.add_subparsers(dest="backend_command", required=True)
     backend_sub.add_parser("list", help="List backends and their supported gates")
@@ -769,6 +858,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "doctor": cmd_doctor,
         "backend": cmd_backend,
         "profile": cmd_profile,
+        "reference": cmd_reference,
         "analyze": cmd_analyze,
         "run": cmd_run,
         "verify": cmd_verify,
