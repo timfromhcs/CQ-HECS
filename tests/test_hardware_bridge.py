@@ -64,7 +64,7 @@ class TestHardwareBridge(unittest.TestCase):
     def test_backend_profile_invalid_schema_version(self):
         """Unsupported schema version must be rejected."""
         with self.assertRaises(InvalidProfileError):
-            BackendProfile(name="test", num_qubits=2, schema_version="2.0")
+            BackendProfile(name="test", num_qubits=2, schema_version="3.0")
 
     def test_backend_profile_invalid_num_qubits(self):
         """Non-positive qubit count must be rejected."""

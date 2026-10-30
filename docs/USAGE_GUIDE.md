@@ -199,6 +199,39 @@ convention as `run` without a profile: qubit 0 rightmost, measured qubits only.
   `capture_timestamp` and `provenance_uri`.
 * An unknown profile name or a gate on a missing coupling edge exits with `2`.
 
+#### Real calibration snapshots (unreleased, v3 work)
+
+```python
+from cqhecs.calibration_import import load_qiskit_ibm_runtime_snapshot
+from cqhecs.hardware_bridge import FakeHardwareBackend
+
+profile = load_qiskit_ibm_runtime_snapshot("manila")    # needs qiskit-ibm-runtime
+backend = FakeHardwareBackend(profile, relaxation=True)  # depolarizing + T1/T2
+result = backend.run([("h", [0], []), ("cx", [0, 1], []),
+                      ("measure", [0], []), ("measure", [1], [])], shots=1000, seed=7)
+```
+
+The profile is `is_synthetic=False` with the snapshot's `last_update_date`,
+a `pypi:qiskit-ibm-runtime==<version>#...` provenance URI and the SHA-256 of
+the source file. It describes the device on that date, not today. Data the
+model cannot use is listed in `profile.calibration_flags`; a circuit that
+touches such a qubit or pair raises `OutOfModelError`. With `relaxation=True`
+the noise per gate is Qiskit Aer's device model; the result is still
+`NOISY_CLASSICAL` (a model), not a hardware measurement.
+
+Noisy expectation values work beyond the 10-qubit density-matrix limit:
+
+```python
+res = backend.expectation_values(circuit, ["Z[20]", "Z[19]Z[20]"],
+                                 prune_threshold=1e-6, error_tolerance=0.01)
+res.values, res.method, res.error_bound   # 'noisy_pauli_propagation' above 10 qubits
+```
+
+`error_bound` is the 1-norm of the Pauli terms dropped during propagation. It
+bounds the difference to the exact value *of the noise model* for this circuit
+and the |0…0⟩ input; it does not bound the distance to real hardware. Values
+whose bound exceeds `error_tolerance` are `None`.
+
 ## 4. Python API
 
 ```python

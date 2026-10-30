@@ -36,6 +36,7 @@ dev = [
     "coverage>=7.0.0",
     "flake8>=6.0.0",
     "nanobind>=1.8.0",
+    "qiskit-ibm-runtime>=0.40.0",
 ]
 benchmark = [
     "psutil>=5.9.0",

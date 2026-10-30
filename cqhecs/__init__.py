@@ -33,6 +33,12 @@ from cqhecs.hardware_bridge import (
     TwoQubitDepolarizingChannel,
     ReadoutErrorChannel,
     HardwareBridgeError,
+    OutOfModelError,
+    ThermalRelaxationChannel,
+    TensorChannel,
+    ComposedChannel,
+    average_gate_infidelity,
+    depolarizing_parameter_with_relaxation,
     HardwareAuthorizationRequiredError,
     HardwareAuthenticationError,
     InvalidProfileError,
@@ -58,6 +64,7 @@ from cqhecs.expectation import (
     ExpectationResult,
     expectation_values,
 )
+from cqhecs.noisy_expectation import noisy_expectation_values
 from cqhecs.scheduler import VulkanComputeScheduler
 from cqhecs.backends import (
     PathAStabilizerBackend,
@@ -93,6 +100,13 @@ __all__ = [
     "create_fake_manila_profile",
     "create_linear_profile",
     "depolarizing_parameter_from_infidelity",
+    "OutOfModelError",
+    "noisy_expectation_values",
+    "ThermalRelaxationChannel",
+    "TensorChannel",
+    "ComposedChannel",
+    "average_gate_infidelity",
+    "depolarizing_parameter_with_relaxation",
     "NoisyDensityMatrixBackend",
     "HardwareBridgeError",
     "HardwareAuthorizationRequiredError",
