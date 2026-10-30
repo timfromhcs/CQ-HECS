@@ -206,9 +206,12 @@ class TestArgumentValidation(unittest.TestCase):
                 self.assertIn("parameter", res.metadata["error"])
 
     def test_unsupported_gate_names_the_gate(self):
-        res = self.backend.simulate([("crz", [0, 1], [0.3])])
+        # Since v2.5.2 every manifest gate is supported (crz was the example
+        # here before; tests/test_v252_regressions.py checks it against
+        # Qiskit), so an unknown name is the remaining unsupported case.
+        res = self.backend.simulate([("frobnicate", [0, 1], [])])
         self.assertEqual(res.state, SimulationState.FAILED)
-        self.assertIn("'crz'", res.metadata["error"])
+        self.assertIn("'frobnicate'", res.metadata["error"])
 
     def test_same_seed_same_counts(self):
         qc = QuantumCircuit(2)

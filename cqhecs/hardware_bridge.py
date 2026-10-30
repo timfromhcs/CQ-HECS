@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from cqhecs.gate_manifest import get_gate
 from cqhecs.result import ExecutionMode, SimulationResult
 
 
@@ -355,6 +356,44 @@ class NoiseModel:
         }
 
 
+def _is_real(value: Any) -> bool:
+    """True for a non-NaN int/float that is not a bool."""
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, float, np.integer, np.floating)):
+        return False
+    return not math.isnan(float(value))
+
+
+def depolarizing_parameter_from_infidelity(infidelity: float, num_qubits: int) -> float:
+    """
+    Converts an average gate infidelity into a depolarizing parameter.
+
+    For ``E(rho) = (1 - p) rho + p I/d`` on ``d = 2**num_qubits`` levels the
+    average gate fidelity is ``F_avg = 1 - p (d - 1)/d`` (Nielsen, Phys. Lett.
+    A 303, 249 (2002)), so ``p = d r / (d - 1)``. This is the same conversion
+    Qiskit Aer applies to a backend's reported gate error when relaxation is
+    ignored.
+
+    Raises:
+        InvalidNoiseModelError: For ``num_qubits`` other than 1 or 2, or an
+            infidelity outside ``[0, (d - 1)/d]`` (``p`` would exceed 1, which
+            the channel classes do not represent).
+    """
+    if num_qubits not in (1, 2):
+        raise InvalidNoiseModelError(
+            f"Only 1- and 2-qubit gate errors can be converted, got {num_qubits} qubits"
+        )
+    if not _is_real(infidelity) or infidelity < 0.0:
+        raise InvalidNoiseModelError(f"Gate infidelity must be a number >= 0, got {infidelity!r}")
+    d = 1 << num_qubits
+    limit = (d - 1) / d
+    if infidelity > limit:
+        raise InvalidNoiseModelError(
+            f"Gate infidelity {infidelity} exceeds {limit}, the largest value a "
+            f"{num_qubits}-qubit depolarizing channel reaches (fully depolarizing)"
+        )
+    return min(1.0, d * float(infidelity) / (d - 1))
+
+
 # ---------------------------------------------------------------------------
 # Backend Profile Schema
 # ---------------------------------------------------------------------------
@@ -410,35 +449,80 @@ class BackendProfile:
         for edge in self.coupling_map:
             if not isinstance(edge, (tuple, list)) or len(edge) != 2:
                 raise InvalidProfileError(f"Coupling map edge must be a (u, v) pair, got {edge}")
-            u, v = int(edge[0]), int(edge[1])
-            if u < 0 or u >= self.num_qubits or v < 0 or v >= self.num_qubits:
-                raise InvalidProfileError(f"Coupling edge ({u}, {v}) out of qubit range [0, {self.num_qubits - 1}]")
+            u = self._qubit(edge[0], "coupling map")
+            v = self._qubit(edge[1], "coupling map")
             if u == v:
                 raise InvalidProfileError(f"Self-loops not allowed in coupling map: ({u}, {v})")
 
-        # Gate errors validation
+        # Gate errors validation. A key's width must match the gate's arity
+        # (for gates the manifest knows), and only 1- and 2-qubit errors can be
+        # turned into a noise channel; anything else would be dropped silently.
         for gate, q_dict in self.gate_errors.items():
             for qubits, err in q_dict.items():
-                if not (0.0 <= err <= 1.0) or math.isnan(err):
-                    raise InvalidProfileError(f"Gate error for {gate} on {qubits} must be in [0, 1], got {err}")
-                for q in qubits:
-                    if q < 0 or q >= self.num_qubits:
-                        raise InvalidProfileError(f"Qubit index {q} in gate error out of range [0, {self.num_qubits - 1}]")
+                self._gate_key(gate, qubits, "gate error")
+                self._probability(err, f"Gate error for {gate} on {qubits}")
+
+        for gate, q_dict in self.gate_durations_ns.items():
+            for qubits, dur in q_dict.items():
+                self._gate_key(gate, qubits, "gate duration")
+                if not _is_real(dur) or not math.isfinite(dur) or dur < 0.0:
+                    raise InvalidProfileError(
+                        f"Gate duration for {gate} on {qubits} must be a finite "
+                        f"non-negative number of ns, got {dur!r}"
+                    )
 
         # Readout errors validation
-        for q, (p01, p10) in self.readout_errors.items():
-            if q < 0 or q >= self.num_qubits:
-                raise InvalidProfileError(f"Qubit {q} in readout errors out of range [0, {self.num_qubits - 1}]")
-            if not (0.0 <= p01 <= 1.0) or not (0.0 <= p10 <= 1.0) or math.isnan(p01) or math.isnan(p10):
-                raise InvalidProfileError(f"Readout errors on qubit {q} must be in [0, 1], got ({p01}, {p10})")
+        for q, errs in self.readout_errors.items():
+            self._qubit(q, "readout errors")
+            if not isinstance(errs, (tuple, list)) or len(errs) != 2:
+                raise InvalidProfileError(f"Readout errors on qubit {q} must be a (p01, p10) pair, got {errs!r}")
+            for value in errs:
+                self._probability(value, f"Readout errors on qubit {q}")
 
         # T1 / T2 validation
-        for q, t1 in self.t1_us.items():
-            if t1 <= 0.0 or math.isnan(t1):
-                raise InvalidProfileError(f"T1 on qubit {q} must be positive, got {t1}")
+        for label, table in (("T1", self.t1_us), ("T2", self.t2_us)):
+            for q, t in table.items():
+                self._qubit(q, f"{label} table")
+                if not _is_real(t) or not math.isfinite(t) or t <= 0.0:
+                    raise InvalidProfileError(f"{label} on qubit {q} must be a finite positive number, got {t!r}")
+        # Physical consistency: 1/T2 = 1/(2 T1) + 1/T_phi with T_phi > 0, so
+        # T2 <= 2 T1 for every qubit that reports both.
         for q, t2 in self.t2_us.items():
-            if t2 <= 0.0 or math.isnan(t2):
-                raise InvalidProfileError(f"T2 on qubit {q} must be positive, got {t2}")
+            t1 = self.t1_us.get(q)
+            if t1 is not None and t2 > 2.0 * t1 * (1.0 + 1e-12):
+                raise InvalidProfileError(
+                    f"T2 = {t2} us on qubit {q} exceeds 2*T1 = {2.0 * t1} us, "
+                    "which no physical qubit can satisfy"
+                )
+
+    def _qubit(self, value: Any, where: str) -> int:
+        """Returns ``value`` as an in-range qubit index or raises."""
+        if not isinstance(value, (int, np.integer)) or isinstance(value, (bool, np.bool_)):
+            raise InvalidProfileError(f"Qubit index in {where} must be an int, got {value!r}")
+        q = int(value)
+        if q < 0 or q >= self.num_qubits:
+            raise InvalidProfileError(f"Qubit {q} in {where} out of range [0, {self.num_qubits - 1}]")
+        return q
+
+    def _gate_key(self, gate: str, qubits: Any, where: str) -> None:
+        if not isinstance(qubits, tuple) or len(qubits) not in (1, 2):
+            raise InvalidProfileError(
+                f"{where} key for {gate!r} must be a tuple of 1 or 2 qubits, got {qubits!r}"
+            )
+        indices = [self._qubit(q, f"{where} for {gate!r}") for q in qubits]
+        if len(set(indices)) != len(indices):
+            raise InvalidProfileError(f"{where} for {gate!r} repeats a qubit: {qubits}")
+        spec = get_gate(gate)
+        if spec is not None and not spec.barrier and spec.arity and len(qubits) != spec.arity:
+            raise InvalidProfileError(
+                f"{where} for {gate!r} is keyed by {len(qubits)} qubit(s), "
+                f"but {gate!r} acts on {spec.arity}"
+            )
+
+    @staticmethod
+    def _probability(value: Any, what: str) -> None:
+        if not _is_real(value) or not (0.0 <= value <= 1.0):
+            raise InvalidProfileError(f"{what} must be in [0, 1], got {value!r}")
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize profile to JSON-compatible dictionary."""
@@ -508,18 +592,32 @@ class BackendProfile:
         )
 
     def to_noise_model(self) -> NoiseModel:
-        """Derive a calibrated NoiseModel from the profile's gate and readout errors."""
+        """
+        Derive a NoiseModel from the profile's gate and readout errors.
+
+        ``gate_errors`` holds the average gate infidelity ``r = 1 - F_avg``,
+        the quantity Qiskit's ``InstructionProperties.error`` (used by
+        :meth:`to_target`) and IBM calibration exports report. It is not the
+        depolarizing parameter. Each error becomes the depolarizing channel
+        with that infidelity, ``p = d r / (d - 1)`` (``d = 2**k`` for a
+        k-qubit gate; see :func:`depolarizing_parameter_from_infidelity`).
+        Relaxation (T1/T2) is not modelled.
+
+        Raises:
+            InvalidNoiseModelError: If an infidelity exceeds the range a
+                depolarizing channel can represent, ``(d - 1) / d``.
+        """
         model = NoiseModel(name=f"{self.name}_noise_model")
         # Readout errors
         for q, (p01, p10) in self.readout_errors.items():
             model.set_readout_error(q, p01, p10)
-        # 1-qubit gate errors -> depolarizing channel
         for gate, qmap in self.gate_errors.items():
             for qubits, err in qmap.items():
+                p = depolarizing_parameter_from_infidelity(err, len(qubits))
                 if len(qubits) == 1:
-                    model.add_1q_channel(gate, qubits[0], DepolarizingChannel(err))
-                elif len(qubits) == 2:
-                    model.add_2q_channel(gate, (qubits[0], qubits[1]), TwoQubitDepolarizingChannel(err))
+                    model.add_1q_channel(gate, qubits[0], DepolarizingChannel(p))
+                else:
+                    model.add_2q_channel(gate, (qubits[0], qubits[1]), TwoQubitDepolarizingChannel(p))
         model.validate()
         return model
 

@@ -40,6 +40,7 @@ from cqhecs.hardware_bridge import (
     InvalidTopologyError,
     create_fake_manila_profile,
     create_linear_profile,
+    depolarizing_parameter_from_infidelity,
 )
 from cqhecs.backends.noisy_density_matrix import NoisyDensityMatrixBackend
 from cqhecs.circuit_analyzer import (
@@ -91,6 +92,7 @@ __all__ = [
     "RealHardwareBackend",
     "create_fake_manila_profile",
     "create_linear_profile",
+    "depolarizing_parameter_from_infidelity",
     "NoisyDensityMatrixBackend",
     "HardwareBridgeError",
     "HardwareAuthorizationRequiredError",

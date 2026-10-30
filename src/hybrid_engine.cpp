@@ -91,13 +91,17 @@ void HybridEngine::apply_cx(uint32_t ctrl, uint32_t tgt) {
 }
 
 void HybridEngine::apply_swap(uint32_t q1, uint32_t q2) {
+    if (q1 == q2) return;
     if (active_backend == SimulationBackend::STABILIZER_TABLEAU) {
         tableau.apply_swap(q1, q2);
     }
     if (num_qubits <= 16) {
-        apply_cx(q1, q2);
-        apply_cx(q2, q1);
-        apply_cx(q1, q2);
+        // Update the shadow statevector only. Calling HybridEngine::apply_cx
+        // here would apply three more CX to the tableau, so in tableau mode
+        // the SWAP cancelled itself and became the identity (CQ-V252-03).
+        statevector.apply_cx(q1, q2);
+        statevector.apply_cx(q2, q1);
+        statevector.apply_cx(q1, q2);
     }
 }
 

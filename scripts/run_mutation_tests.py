@@ -298,6 +298,58 @@ def check_profile_provenance_required() -> bool:
         return False
 
 
+def check_path_b_t_sign() -> bool:
+    """H T S H |0> has P(0) = (1 + cos(3 pi / 4)) / 2 on Path B."""
+    import math
+    from cqhecs.router import FourPathRouter
+
+    shots = 4000
+    res = FourPathRouter().route_and_execute(
+        [("h", [0], []), ("t", [0], []), ("s", [0], []), ("h", [0], [])],
+        shots=shots, seed=1, preferred_path="B",
+    )
+    expected = (1.0 + math.cos(3.0 * math.pi / 4.0)) / 2.0
+    return abs(res.counts.get("0", 0) / shots - expected) > 0.1
+
+
+def check_gate_error_is_infidelity() -> bool:
+    """The channel built from a gate error must have that average infidelity."""
+    import numpy as np
+    from cqhecs.hardware_bridge import BackendProfile
+
+    profile = BackendProfile(name="t", num_qubits=1, gate_errors={"x": {(0,): 0.02}})
+    kraus = profile.to_noise_model().channels_1q["x"][0][0].kraus_operators
+    # F_avg = (sum_k |Tr K_k|^2 + d) / (d (d + 1)) (Horodecki et al. 1999),
+    # computed here without the conversion code under test.
+    d = 2
+    f_avg = (sum(abs(np.trace(k)) ** 2 for k in kraus) + d) / (d * (d + 1))
+    return abs((1.0 - f_avg) - 0.02) > 1e-9
+
+
+def check_profile_t2_bound() -> bool:
+    """T2 > 2 T1 is physically impossible and must be refused."""
+    from cqhecs.hardware_bridge import BackendProfile, InvalidProfileError
+    try:
+        BackendProfile(name="t", num_qubits=1, t1_us={0: 10.0}, t2_us={0: 50.0})
+        return True
+    except InvalidProfileError:
+        return False
+
+
+def check_profile_gate_key_width() -> bool:
+    """A 3-qubit gate-error key would be dropped by the noise model; refuse it.
+
+    The gate name is not in the manifest, so the arity check cannot catch it
+    and the width check is the only guard.
+    """
+    from cqhecs.hardware_bridge import BackendProfile, InvalidProfileError
+    try:
+        BackendProfile(name="t", num_qubits=3, gate_errors={"vendor_ms": {(0, 1, 2): 0.1}})
+        return True
+    except InvalidProfileError:
+        return False
+
+
 CHECKS: Dict[str, Callable[[], bool]] = {
     "qubit_bit_order": check_qubit_bit_order,
     "cz_conjugation": check_cz_conjugation,
@@ -319,6 +371,10 @@ CHECKS: Dict[str, Callable[[], bool]] = {
     "noisy_dm_measured_marginal": check_noisy_dm_measured_marginal,
     "noise_on_source_gate": check_noise_on_source_gate,
     "profile_provenance_required": check_profile_provenance_required,
+    "path_b_t_sign": check_path_b_t_sign,
+    "gate_error_is_infidelity": check_gate_error_is_infidelity,
+    "profile_t2_bound": check_profile_t2_bound,
+    "profile_gate_key_width": check_profile_gate_key_width,
 }
 
 
@@ -536,6 +592,38 @@ MUTANTS: List[SourceMutant] = [
         replacement="        if False:\n",
         check="profile_provenance_required",
         mechanism="accepts a profile that claims real calibration without provenance",
+    ),
+    SourceMutant(
+        name="Path B T decomposition sign flipped",
+        target="cqhecs/backends/path_b_stabilizer_rank.py",
+        original="                c1 = (1.0 - w) / 2.0\n",
+        replacement="                c1 = (w - 1.0) / 2.0\n",
+        check="path_b_t_sign",
+        mechanism="decomposes T as diag(w, 1), the adjoint up to global phase, as before v2.5.2",
+    ),
+    SourceMutant(
+        name="Gate error used as depolarizing parameter",
+        target="cqhecs/hardware_bridge.py",
+        original="    return min(1.0, d * float(infidelity) / (d - 1))\n",
+        replacement="    return float(infidelity)\n",
+        check="gate_error_is_infidelity",
+        mechanism="treats the reported gate infidelity as the channel parameter p",
+    ),
+    SourceMutant(
+        name="Profile T2 <= 2 T1 check removed",
+        target="cqhecs/hardware_bridge.py",
+        original="            if t1 is not None and t2 > 2.0 * t1 * (1.0 + 1e-12):\n",
+        replacement="            if False:\n",
+        check="profile_t2_bound",
+        mechanism="accepts T2 above the physical limit 2 T1",
+    ),
+    SourceMutant(
+        name="Profile gate-error key width unchecked",
+        target="cqhecs/hardware_bridge.py",
+        original="        if not isinstance(qubits, tuple) or len(qubits) not in (1, 2):\n",
+        replacement="        if not isinstance(qubits, tuple):\n",
+        check="profile_gate_key_width",
+        mechanism="accepts gate-error keys the noise model cannot represent",
     ),
 ]
 
