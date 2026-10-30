@@ -41,5 +41,11 @@ BASELINE.md §2.
 
 ## 3. Cloud gates (exact SHA)
 
-Pending at the time this file was written; filled in by a follow-up commit
-with the run URLs and job conclusions.
+Recorded after the merge (this file was not changed on the tested SHA):
+
+- PR head `3f59729`: push run https://github.com/timfromhcs/CQ-HECS/actions/runs/40990556773
+  and pull_request run https://github.com/timfromhcs/CQ-HECS/actions/runs/40990588972 —
+  both success, 7/7 jobs.
+- Merged `a65c35b` on `main`: https://github.com/timfromhcs/CQ-HECS/actions/runs/40991232761 — success.
+
+See RELEASE_AUDIT.md.
