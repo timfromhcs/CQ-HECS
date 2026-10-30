@@ -35,7 +35,7 @@ class TestCliBasics(unittest.TestCase):
         self.assertEqual(ctx.exception.code, 0)
 
     def test_every_command_has_help(self):
-        for command in ("version", "doctor", "profile", "analyze", "run", "verify", "expect", "benchmark"):
+        for command in ("version", "doctor", "profile", "reference", "selftest", "analyze", "run", "verify", "expect", "benchmark"):
             with self.subTest(command=command):
                 with self.assertRaises(SystemExit) as ctx:
                     run_cli(command, "--help")

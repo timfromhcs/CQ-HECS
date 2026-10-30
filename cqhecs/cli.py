@@ -10,6 +10,8 @@ This is the single supported command-line entry point. Commands:
     cq-hecs run CIRCUIT [--backend auto|A|B|C|D] [--shots N] [--seed N]
     cq-hecs verify CIRCUIT --reference aer
     cq-hecs expect CIRCUIT -o PAULI [-o PAULI ...] [--method auto|stabilizer|dense|sparse_pauli]
+    cq-hecs reference list|run
+    cq-hecs selftest [--cases N]
     cq-hecs benchmark smoke
 
 Output contract
@@ -369,6 +371,26 @@ def cmd_reference(args: argparse.Namespace) -> int:
         if args.json_out:
             print(f"Wrote   : {args.json_out}")
     return EXIT_OK
+
+
+def cmd_selftest(args: argparse.Namespace) -> int:
+    from cqhecs.selftest import run_selftest
+
+    try:
+        report = run_selftest(cases=args.cases, seed=args.seed)
+    except ValueError as exc:
+        LOG.error("%s", exc)
+        return EXIT_USAGE
+    payload = report.to_dict()
+    if args.format == "json":
+        _emit_json(payload)
+    else:
+        print(f"Metamorphic self-test: {len(report.checks)} checks, seed {report.seed}, cases {report.cases}")
+        for check in report.checks:
+            status = "PASS" if check.passed else "FAIL"
+            print(f"  [{status}] {check.name:24s} {check.duration_ms:7.1f} ms  {check.detail}")
+        print("Result:", "PASS" if report.passed else "FAIL")
+    return EXIT_OK if report.passed else EXIT_ERROR
 
 
 def cmd_analyze(args: argparse.Namespace) -> int:
@@ -756,6 +778,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_ref_run.add_argument("--seed", type=int, default=20261030, help="Bootstrap seed")
     p_ref_run.add_argument("--json-out", default=None, help="Write the full result JSON here")
 
+    p_selftest = sub.add_parser(
+        "selftest",
+        help="Run metamorphic and property-based installation checks",
+    )
+    p_selftest.add_argument("--cases", type=int, default=8, help="Random circuits per property")
+    p_selftest.add_argument("--seed", type=int, default=20261030, help="Deterministic seed")
+
     p_backend = sub.add_parser("backend", help="Inspect backend capabilities")
     backend_sub = p_backend.add_subparsers(dest="backend_command", required=True)
     backend_sub.add_parser("list", help="List backends and their supported gates")
@@ -859,6 +888,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "backend": cmd_backend,
         "profile": cmd_profile,
         "reference": cmd_reference,
+        "selftest": cmd_selftest,
         "analyze": cmd_analyze,
         "run": cmd_run,
         "verify": cmd_verify,
