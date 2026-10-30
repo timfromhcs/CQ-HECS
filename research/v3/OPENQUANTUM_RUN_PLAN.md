@@ -1,10 +1,11 @@
 # Open Quantum real-QPU suite (`r-io-7`) — preregistration
 
-**Status:** PREREGISTERED, NOT RUN (2026-10-30). No job has been submitted.
-The cloud session that wrote this plan could not reach
-`id.openquantum.com`, `scheduler.openquantum.com` or
-`management.openquantum.com` (proxy `403` on `CONNECT`). Nothing in this file
-or in the repository is a measured QPU result.
+**Status:** RUN, 25/25 jobs (2026-10-30, `rigetti:cepheus-1-108q`, Public /
+Standard, 1000 shots, 25 credits). H-V3-8 **`SUPPORTED`**: median ΔTV
+−0.071905, 95 % CI [−0.135899, −0.006703]. Evidence:
+`research/v3/evidence/openquantum/rigetti_cepheus-1-108q/`. The text below is
+the protocol as preregistered before submission; it was not edited after the
+counts were known.
 
 ## 1. Why our own runs
 

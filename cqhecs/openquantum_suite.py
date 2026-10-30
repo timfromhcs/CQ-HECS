@@ -675,6 +675,8 @@ def evaluate_suite(
         "backend": run.backend,
         "dataset_sha256": run.dataset_sha256,
         "calibration_files": run.calibration_files,
+        # Explicit, never defaulted: a run without snapshots says "absent".
+        "calibration_status": "present" if run.calibration_files else "absent",
         "bit_order": order,
         "model": model.to_dict(),
         "hypothesis": {

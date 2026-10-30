@@ -129,15 +129,40 @@ quantum amplitudes. See `research/v3/LITERATURE_MAP.md` §1 and
 
 ## H-V3-8 — A fitted 3-parameter model beats the ideal distribution on our own QPU runs
 
-**Status: PREREGISTERED, NOT RUN.** Protocol: `research/v3/OPENQUANTUM_RUN_PLAN.md`.
+**Status: SUPPORTED (2026-10-30, one backend, one day).** Protocol:
+`research/v3/OPENQUANTUM_RUN_PLAN.md`. `rigetti:cepheus-1-108q`, 25/25 jobs:
+median ΔTV −0.071905, 95 % CI [−0.135899, −0.006703], 14/20 EVAL circuits
+better than ideal. Reproduced offline with
+`cq-hecs reference run --dataset r-io-7` (aggregate equal up to the last
+floating-point digit of the bootstrap).
 
 * **Claim:** on the 20 held-out EVAL jobs of the `r-io-7` suite, `M-FIT`
   (mean readout + one CX depolarizing parameter, fitted on the 5 FIT jobs only)
   has a smaller TV to the measured counts than the ideal distribution.
 * **Test:** median paired `ΔTV < 0` with a 95 % bootstrap interval (circuits
   resampled, 5000 draws, seed 20261030) excluding 0.
-* **Data:** none yet. The Open Quantum API was not reachable from the session
-  that registered this hypothesis.
+* **Data:** `research/v3/evidence/openquantum/rigetti_cepheus-1-108q/`; no
+  calibration snapshot was delivered for any job.
+
+## H-V3-9 — Per-qubit readout transfers between jobs without a published layout
+
+**Status: REJECTED on r-io-7 (exploratory, post-hoc).**
+
+* **Claim tested:** `M-FIT-2` (per-qubit asymmetric readout from OQ-01/OQ-02,
+  CX term fitted after that readout) predicts the EVAL jobs better than the
+  frozen device-mean `M-FIT`.
+* **Result:** median ΔTV(M-FIT-2 − M-FIT) **+0.055345**, 95 % CI
+  [−0.006595, +0.091789], 7/20 better; against ideal −0.001335,
+  CI [−0.139938, +0.043086]. Bell goes from TV 0.115 (M-FIT) to 0.243.
+* **Cause, from the counts:** the P(0|1) = 0.531 defect on logical qubit 0
+  appears only in the gate-free probes (OQ-02: 404 of 1000 shots read
+  `11110`); in the GHZ jobs logical qubit 0 is not special (15–24 shots). The
+  provider placed the probes and the entangling circuits on different
+  physical qubits. Per-qubit readout cannot be transferred without a layout
+  or a readout probe inside each job.
+* **Consequence:** the device mean was not "the wrong shape by accident"; it
+  is the better estimator when the layout is unknown. A per-qubit model needs
+  layout data (W3 of the v3 plan) or per-job readout calibration.
 
 ## Experiment index
 
@@ -145,4 +170,5 @@ quantum amplitudes. See `research/v3/LITERATURE_MAP.md` §1 and
 |---|---|---|---|
 | E-V3-04 | H-V3-1 (pooled + exploratory) | R-IO-5, digest `8069ad50…` | `research/v3/evidence/r_io_5_evaluation.json` |
 | E-V3-05 | H-V3-2 (unital invariance) | analytic + QFT simulation | this file; `tests/test_reference.py::test_qft_is_invariant_under_unital_noise` |
-| E-V3-06 | H-V3-8 (own QPU suite) | R-IO-7 — **not run** | `research/v3/OPENQUANTUM_RUN_PLAN.md`; results will go to `research/v3/evidence/openquantum/` |
+| E-V3-06 | H-V3-8 (own QPU suite) | R-IO-7, `rigetti:cepheus-1-108q`, digest `ee11d817…` | `research/v3/evidence/openquantum/rigetti_cepheus-1-108q/h_v3_8_evaluation.json` |
+| E-V3-07 | H-V3-9 (M-FIT-2, post-hoc) | R-IO-7, same digest | `research/v3/evidence/openquantum/rigetti_cepheus-1-108q/m_fit_2_exploratory.json`, `m_fit_2_profile.json` |

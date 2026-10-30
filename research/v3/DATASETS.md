@@ -56,14 +56,17 @@ Limitations that are part of the record:
 | pinned | `data/layout.json`, `data/circuits/manifest.json`, `data/counts/mirror_survival.json`, `data/results/patch_xeb.json` (digests in `cqhecs/reference.py`) |
 | use here | registered; not evaluated by W4 because exact density matrices stop at 10 qubits and the smallest patched circuit is 20 qubits |
 
-### R-IO-7 — own Open Quantum suite (preregistered, not run)
+### R-IO-7 — own Open Quantum suite (run 2026-10-30, `rigetti:cepheus-1-108q`)
 
 | field | value |
 |---|---|
 | source | jobs authored here and submitted through Open Quantum (IonQ, Rigetti, IQM, AQT) |
 | circuits | 25 OpenQASM 2.0 files, SHA-256-pinned in `research/v3/openquantum_suite/manifest.json` |
 | licence | results belong to the submitter; Public-plan results must cite Open Quantum |
-| reachability | **no** from the cloud session on 2026-10-30: `id`/`scheduler`/`management.openquantum.com` → proxy `403` |
+| reachability | submitted from a machine with access (the cloud session gets a proxy `403`); 25/25 jobs completed, 25 credits |
+| pinned | `research/v3/evidence/openquantum/rigetti_cepheus-1-108q/OQ-xx/{circuit.qasm,result.json,job.json}`, dataset digest `ee11d81750d6f38a…` (`cq-hecs reference run --dataset r-io-7`) |
+| calibration | none delivered (`calibration_data_url = null` for every job) |
+| layout | not published; probe and entangling jobs evidently ran on different physical qubits (H-V3-9) |
 | use here | `cqhecs.openquantum_suite`, `scripts/run_openquantum_suite.py`, `cq-hecs reference run --dataset r-io-7`; protocol in `OPENQUANTUM_RUN_PLAN.md` |
 
 ## 2. Reachable metadata, blocked payloads

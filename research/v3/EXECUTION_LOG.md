@@ -158,3 +158,23 @@ was found that commits real raw counts.
 - **Blocked:** `oq.py doctor` from the cloud session: all three Open Quantum
   hosts fail with a proxy `403` on `CONNECT`. No job was quoted or submitted
   and no credit was spent. H-V3-8 stays `PREREGISTERED, NOT RUN`.
+
+## E-V3-06b r-io-7 results (2026-10-30)
+
+- 25/25 jobs completed on `rigetti:cepheus-1-108q` (submitted from a machine
+  with Open Quantum access, not from the cloud session). Reproduced offline
+  here: `cq-hecs reference run --dataset r-io-7` gives the committed model
+  exactly and the aggregate up to the last floating-point digit. H-V3-8
+  `SUPPORTED`. No Open Quantum credential is present in the repository
+  (`git grep` for the key prefixes: no hit).
+
+## E-V3-07 Per-qubit noise fit, M-FIT-2 (2026-10-30, post-hoc)
+
+- Implemented `cqhecs/noise_fit.py` and `cq-hecs noise-fit` (EMULATOR_BUILD_PLAN
+  W1/W3/W4/W5) and `tests/test_noise_fit.py` (10 tests).
+- W3: per-qubit readout through the density-matrix path equals the analytic
+  product on GHZ-5 to 1e-12.
+- Exploratory score on the 20 EVAL jobs: worse than the frozen M-FIT (median
+  ΔTV +0.055345, CI [−0.006595, +0.091789]). Root cause from the raw counts:
+  the qubit-0 readout defect (OQ-02: 404/1000 `11110`) is absent in the GHZ
+  jobs (15–24/1000), i.e. a different physical layout. H-V3-9 rejected.

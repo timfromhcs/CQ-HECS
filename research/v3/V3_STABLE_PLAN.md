@@ -190,7 +190,7 @@ before any run.
 | V3-A | W1: all 69 R-CAL snapshots import or are refused with a typed reason; zero silent clipping/dropping; flagged elements refuse circuits |
 | V3-B | W2: Aer parity ≤ 1e-9 TV on the preregistered families |
 | V3-C | W5: new gates differential-tested; mutation harness extended |
-| V3-D | W4: ≥ 1 real I/O dataset downloaded, licence checked, SHA-256 pinned; metrics and H-V3-1 outcome recorded for the exact release SHA. **PARTIAL** — R-IO-5 admitted; pooled H-V3-1 `INCONCLUSIVE`; layout-aware dataset or trajectory path still needed for the full gate. R-IO-7 (own Open Quantum suite, complete circuits) is preregistered and can close this once run |
+| V3-D | W4: ≥ 1 real I/O dataset downloaded, licence checked, SHA-256 pinned; metrics and H-V3-1 outcome recorded for the exact release SHA. **PARTIAL** — R-IO-5 admitted; pooled H-V3-1 `INCONCLUSIVE`; layout-aware dataset or trajectory path still needed for the full gate. R-IO-7 (own Open Quantum suite, complete circuits) **ran 25/25 on `rigetti:cepheus-1-108q`; H-V3-8 `SUPPORTED`**. Open: one backend, one day, no calibration snapshot, no layout |
 | V3-E | W6: schema 2.0 documented, migration tested, CLI/JSON contract tests |
 | V3-F | CI 7/7 on the release SHA, release assets re-hashed, RELEASE_AUDIT |
 
@@ -232,6 +232,7 @@ claim.
 | W6 contract/CLI | PARTIAL | schema 2.0 profile fields; `reference list/run` CLI and JSON contract added; migration guide still missing |
 | W8 noisy expectation values | DONE (local) | both engines = Aer to ≤ 1e-12 + trace loss (channels from Aer constructors; Aer `from_backend` on manila/lagos); truncated bound never violated (25 circuits); 127-qubit ibm_brisbane calibration, ~4000 gates: < 1.2 s, bound ≈ 1e-4 (functional check, not a benchmark); mutants 28–31 killed |
 | Datasets | R-IO-5 admitted; R-IO-6 registered; R-IO-1/2/3 blocked | `research/v3/DATASETS.md` |
-| W4 own QPU suite (R-IO-7) | **PREREGISTERED, NOT RUN** — Open Quantum API blocked from the cloud session | 25 circuits pinned (`research/v3/openquantum_suite/`), ingest/fit/evaluation + spend guard tested on synthetic counts (`tests/test_openquantum_suite.py`); H-V3-8 in `OPENQUANTUM_RUN_PLAN.md` |
+| W4 own QPU suite (R-IO-7) | **RUN, H-V3-8 SUPPORTED** (2026-10-30) | 25/25 jobs on `rigetti:cepheus-1-108q`; median ΔTV −0.071905, CI [−0.135899, −0.006703]; `research/v3/evidence/openquantum/` |
+| Per-qubit noise fit (M-FIT-2) | DONE (code), H-V3-9 **REJECTED** (post-hoc) | `cqhecs/noise_fit.py`, `cq-hecs noise-fit`, `tests/test_noise_fit.py`; per-qubit readout does not transfer without layout |
 | Testing techniques | DONE (selftest + property tests) | `research/v3/TESTING_TECHNIQUES.md`; `cqhecs/selftest.py`; `tests/test_property_circuits.py`; 12/12 selftest checks |
 | Research: P vs NP / complexity | DONE (boundary only) | `LITERATURE_MAP.md` §1, `COMPLEXITY_BOUNDARY.md`: no proof; the item is `BLOCKED — open problem` |
