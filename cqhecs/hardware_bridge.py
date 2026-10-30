@@ -11,6 +11,7 @@ Provides:
 from __future__ import annotations
 
 import math
+import re
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -49,6 +50,15 @@ class InvalidNoiseModelError(HardwareBridgeError):
 
 class InvalidTopologyError(HardwareBridgeError):
     """Raised when a circuit violates backend coupling topology constraints."""
+
+
+class OutOfModelError(HardwareBridgeError):
+    """
+    Raised when a circuit uses a qubit or edge whose calibration the profile
+    flags as outside the noise model (non-operational, or relaxation data
+    missing or physically inconsistent). Such data is never clipped or
+    replaced by a guess.
+    """
 
 
 # ---------------------------------------------------------------------------
@@ -256,6 +266,134 @@ class TwoQubitDepolarizingChannel(NoiseChannel):
         return {"type": "depolarizing_2q", "p": self.p}
 
 
+def average_gate_infidelity(kraus: List[np.ndarray]) -> float:
+    """
+    ``1 - F_avg`` of the channel with Kraus operators ``kraus`` (compared with
+    the identity), using ``F_avg = (sum_k |Tr K_k|^2 + d) / (d (d + 1))``
+    (Horodecki et al., Phys. Rev. A 60, 1888 (1999); Nielsen 2002).
+    """
+    d = kraus[0].shape[0]
+    total = sum(abs(np.trace(k)) ** 2 for k in kraus)
+    return 1.0 - float((total + d) / (d * (d + 1)))
+
+
+def _prune(kraus: List[np.ndarray]) -> List[np.ndarray]:
+    """Drops exactly-zero Kraus operators (they contribute nothing)."""
+    kept = [k for k in kraus if np.any(k != 0)]
+    return kept or [np.zeros_like(kraus[0])]
+
+
+class ThermalRelaxationChannel(NoiseChannel):
+    """
+    Single-qubit T1/T2 relaxation for a duration ``t`` at zero temperature.
+
+    Amplitude damping with ``gamma = 1 - exp(-t/T1)`` followed by phase
+    damping with ``lambda = 1 - exp(-2t/T2) / (1 - gamma)``, so that the
+    excited population decays as ``exp(-t/T1)`` and the coherence as
+    ``exp(-t/T2)``. This is the channel of Qiskit Aer's
+    ``thermal_relaxation_error(T1, T2, t)`` with zero excited-state
+    population. It exists only for ``T2 <= 2 T1``; anything else is refused.
+
+    Units: ``t1_us`` and ``t2_us`` in microseconds, ``time_ns`` in nanoseconds.
+    """
+
+    def __init__(self, t1_us: float, t2_us: float, time_ns: float):
+        for label, value in (("T1", t1_us), ("T2", t2_us)):
+            if not _is_real(value) or not math.isfinite(value) or value <= 0.0:
+                raise InvalidNoiseModelError(f"{label} must be a finite positive number of us, got {value!r}")
+        if not _is_real(time_ns) or not math.isfinite(time_ns) or time_ns < 0.0:
+            raise InvalidNoiseModelError(f"duration must be a finite number of ns >= 0, got {time_ns!r}")
+        if t2_us > 2.0 * t1_us * (1.0 + 1e-12):
+            raise InvalidNoiseModelError(
+                f"T2 = {t2_us} us exceeds 2*T1 = {2.0 * t1_us} us; no relaxation channel exists"
+            )
+        self.t1_us = float(t1_us)
+        self.t2_us = float(t2_us)
+        self.time_ns = float(time_ns)
+        self._kraus = self._build_kraus()
+        self.validate_kraus_completeness()
+
+    @property
+    def name(self) -> str:
+        return "thermal_relaxation"
+
+    @property
+    def kraus_operators(self) -> List[np.ndarray]:
+        return self._kraus
+
+    def _build_kraus(self) -> List[np.ndarray]:
+        t = self.time_ns * 1e-3
+        if t == 0.0:
+            return [np.eye(2, dtype=complex)]
+        gamma = 1.0 - math.exp(-t / self.t1_us)
+        coherence = math.exp(-t / self.t2_us)
+        # T2 = 2 T1 makes lambda zero up to rounding; never let it go negative.
+        lambd = min(1.0, max(0.0, 1.0 - coherence ** 2 / (1.0 - gamma)))
+        damping = [
+            np.array([[1.0, 0.0], [0.0, math.sqrt(1.0 - gamma)]], dtype=complex),
+            np.array([[0.0, math.sqrt(gamma)], [0.0, 0.0]], dtype=complex),
+        ]
+        dephasing = [
+            np.array([[1.0, 0.0], [0.0, math.sqrt(1.0 - lambd)]], dtype=complex),
+            np.array([[0.0, 0.0], [0.0, math.sqrt(lambd)]], dtype=complex),
+        ]
+        return _prune([pd @ ad for ad in damping for pd in dephasing])
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"type": "thermal_relaxation", "t1_us": self.t1_us, "t2_us": self.t2_us, "time_ns": self.time_ns}
+
+
+class TensorChannel(NoiseChannel):
+    """
+    Two-qubit product ``first (x) second``: ``first`` acts on the gate's first
+    operand, ``second`` on its second (the operand order of
+    ``NoisyDensityMatrixBackend``'s two-qubit Kraus application).
+    """
+
+    def __init__(self, first: NoiseChannel, second: NoiseChannel):
+        for ch in (first, second):
+            if ch.kraus_operators[0].shape != (2, 2):
+                raise InvalidNoiseModelError("TensorChannel combines two single-qubit channels")
+        self.first = first
+        self.second = second
+        self._kraus = _prune([np.kron(a, b) for a in first.kraus_operators for b in second.kraus_operators])
+        self.validate_kraus_completeness()
+
+    @property
+    def name(self) -> str:
+        return f"tensor({self.first.name},{self.second.name})"
+
+    @property
+    def kraus_operators(self) -> List[np.ndarray]:
+        return self._kraus
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"type": "tensor", "first": self.first.to_dict(), "second": self.second.to_dict()}
+
+
+class ComposedChannel(NoiseChannel):
+    """Applies ``first`` and then ``second`` (``E = second o first``)."""
+
+    def __init__(self, first: NoiseChannel, second: NoiseChannel):
+        if first.kraus_operators[0].shape != second.kraus_operators[0].shape:
+            raise InvalidNoiseModelError("ComposedChannel needs channels of the same dimension")
+        self.first = first
+        self.second = second
+        self._kraus = _prune([b @ a for a in first.kraus_operators for b in second.kraus_operators])
+        self.validate_kraus_completeness()
+
+    @property
+    def name(self) -> str:
+        return f"compose({self.first.name},{self.second.name})"
+
+    @property
+    def kraus_operators(self) -> List[np.ndarray]:
+        return self._kraus
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"type": "compose", "first": self.first.to_dict(), "second": self.second.to_dict()}
+
+
 class ReadoutErrorChannel:
     """
     Classical assignment error for single-qubit measurement:
@@ -300,6 +438,8 @@ class NoiseModel:
         self.channels_1q: Dict[str, Dict[int, List[NoiseChannel]]] = {}
         self.channels_2q: Dict[str, Dict[Tuple[int, int], List[NoiseChannel]]] = {}
         self.readout_errors: Dict[int, ReadoutErrorChannel] = {}
+        #: How the model was derived (conversion conventions, special cases).
+        self.metadata: Dict[str, Any] = {}
 
     def add_1q_channel(self, gate: str, qubit: int, channel: NoiseChannel) -> None:
         gate_l = gate.lower()
@@ -336,6 +476,7 @@ class NoiseModel:
         return {
             "name": self.name,
             "schema_version": self.schema_version,
+            "metadata": dict(self.metadata),
             "readout_errors": {
                 str(q): ch.to_dict() for q, ch in self.readout_errors.items()
             },
@@ -394,6 +535,46 @@ def depolarizing_parameter_from_infidelity(infidelity: float, num_qubits: int) -
     return min(1.0, d * float(infidelity) / (d - 1))
 
 
+def depolarizing_parameter_with_relaxation(
+    infidelity: float, num_qubits: int, relaxation_fidelity: float
+) -> Tuple[float, bool]:
+    """
+    Depolarizing parameter that, followed by a relaxation channel with average
+    gate fidelity ``F_r``, gives the reported infidelity ``r`` in total.
+
+    For ``E = R o D_p``, ``F(E) = F_r - p (d F_r - 1)/d``, hence
+    ``p = d (F_r - F) / (d F_r - 1)`` with ``F = 1 - r``. This is Qiskit Aer's
+    device-model convention. When relaxation alone already reaches the
+    reported error (``r <= 1 - F_r``) no depolarizing part is added and the
+    second return value is True, so the caller can record it; the total
+    infidelity of the model is then ``1 - F_r``, not ``r``.
+
+    Raises:
+        InvalidNoiseModelError: For an invalid ``num_qubits``, infidelity or
+            fidelity, or when ``p`` would exceed 1.
+    """
+    if num_qubits not in (1, 2):
+        raise InvalidNoiseModelError(
+            f"Only 1- and 2-qubit gate errors can be converted, got {num_qubits} qubits"
+        )
+    if not _is_real(infidelity) or infidelity < 0.0:
+        raise InvalidNoiseModelError(f"Gate infidelity must be a number >= 0, got {infidelity!r}")
+    if not _is_real(relaxation_fidelity) or not (0.0 < relaxation_fidelity <= 1.0):
+        raise InvalidNoiseModelError(f"relaxation fidelity must lie in (0, 1], got {relaxation_fidelity!r}")
+    if relaxation_fidelity == 1.0:
+        return depolarizing_parameter_from_infidelity(infidelity, num_qubits), False
+    if infidelity <= 1.0 - relaxation_fidelity:
+        return 0.0, True
+    d = 1 << num_qubits
+    p = d * (relaxation_fidelity - (1.0 - infidelity)) / (d * relaxation_fidelity - 1.0)
+    if p > 1.0:
+        raise InvalidNoiseModelError(
+            f"Gate infidelity {infidelity} needs a depolarizing parameter {p} > 1 "
+            "on top of the relaxation channel"
+        )
+    return p, False
+
+
 # ---------------------------------------------------------------------------
 # Backend Profile Schema
 # ---------------------------------------------------------------------------
@@ -420,6 +601,15 @@ class BackendProfile:
     t1_us: Dict[int, float] = field(default_factory=dict)
     t2_us: Dict[int, float] = field(default_factory=dict)
     dynamic_circuit_features: Dict[str, bool] = field(default_factory=dict)
+    #: Schema 2.0. Calibration data the noise model cannot use, kept instead of
+    #: being clipped or dropped. Keys (all optional):
+    #: ``non_operational`` - list of ``{"gate", "qubits", "gate_error"}``;
+    #: ``relaxation_excluded`` - ``{qubit: reason}`` for missing or
+    #: inconsistent T1/T2; ``not_modelled`` - list of ``{"gate", "qubits"}``
+    #: for reported operations without a noise channel (e.g. ``reset``).
+    calibration_flags: Dict[str, Any] = field(default_factory=dict)
+    #: Schema 2.0. SHA-256 of the source file the calibration was read from.
+    source_sha256: Optional[str] = None
 
     def __post_init__(self):
         self.validate()
@@ -432,8 +622,13 @@ class BackendProfile:
             or self.num_qubits < 1
         ):
             raise InvalidProfileError(f"num_qubits must be a positive integer >= 1, got {self.num_qubits}")
-        if self.schema_version != "1.0":
-            raise InvalidProfileError(f"Unsupported schema_version: {self.schema_version!r} (expected '1.0')")
+        if self.schema_version not in ("1.0", "2.0"):
+            raise InvalidProfileError(
+                f"Unsupported schema_version: {self.schema_version!r} (expected '1.0' or '2.0')"
+            )
+        if self.schema_version == "1.0" and (self.calibration_flags or self.source_sha256):
+            raise InvalidProfileError("calibration_flags and source_sha256 need schema_version '2.0'")
+        self._validate_flags()
         if not self.basis_gates:
             raise InvalidProfileError("basis_gates must not be empty.")
         if not self.is_synthetic and (not self.capture_timestamp or not self.provenance_uri):
@@ -495,6 +690,46 @@ class BackendProfile:
                     "which no physical qubit can satisfy"
                 )
 
+    def _validate_flags(self) -> None:
+        flags = self.calibration_flags
+        if not isinstance(flags, dict):
+            raise InvalidProfileError("calibration_flags must be a dict")
+        unknown = set(flags) - {"non_operational", "relaxation_excluded", "not_modelled"}
+        if unknown:
+            raise InvalidProfileError(f"Unknown calibration_flags keys: {sorted(unknown)}")
+        for entry in flags.get("non_operational", []) + flags.get("not_modelled", []):
+            if not isinstance(entry, dict) or "gate" not in entry or "qubits" not in entry:
+                raise InvalidProfileError(f"Flag entries need 'gate' and 'qubits', got {entry!r}")
+            for q in entry["qubits"]:
+                self._qubit(q, f"calibration flag for {entry['gate']!r}")
+        for q in flags.get("relaxation_excluded", {}):
+            self._qubit(q, "relaxation_excluded flag")
+        if self.source_sha256 is not None and not re.fullmatch(r"[0-9a-f]{64}", str(self.source_sha256)):
+            raise InvalidProfileError(f"source_sha256 must be 64 lowercase hex digits, got {self.source_sha256!r}")
+
+    def out_of_model_reason(self, qubits: List[int], relaxation: bool) -> Optional[str]:
+        """
+        Why an operation on ``qubits`` would use calibration the model does not
+        cover, or None. Circuits are not transpiled to the device's basis
+        gates, so any flagged gate on a qubit (or, for two qubits, on that
+        pair in either direction) excludes the qubit or pair.
+        """
+        touched = set(qubits)
+        for entry in self.calibration_flags.get("non_operational", []):
+            flagged = list(entry["qubits"])
+            if (len(flagged) == 1 and flagged[0] in touched) or (
+                len(flagged) == 2 and len(qubits) == 2 and set(flagged) == touched
+            ):
+                return (
+                    f"{entry['gate']} on qubits {flagged} is reported non-operational "
+                    f"(gate_error={entry.get('gate_error')})"
+                )
+        if relaxation:
+            for q, reason in self.calibration_flags.get("relaxation_excluded", {}).items():
+                if int(q) in touched:
+                    return f"qubit {int(q)} has no usable T1/T2: {reason}"
+        return None
+
     def _qubit(self, value: Any, where: str) -> int:
         """Returns ``value`` as an in-range qubit index or raises."""
         if not isinstance(value, (int, np.integer)) or isinstance(value, (bool, np.bool_)):
@@ -548,6 +783,14 @@ class BackendProfile:
             "t1_us": {str(q): val for q, val in self.t1_us.items()},
             "t2_us": {str(q): val for q, val in self.t2_us.items()},
             "dynamic_circuit_features": dict(self.dynamic_circuit_features),
+            "calibration_flags": {
+                "non_operational": [dict(e) for e in self.calibration_flags.get("non_operational", [])],
+                "relaxation_excluded": {
+                    str(q): r for q, r in self.calibration_flags.get("relaxation_excluded", {}).items()
+                },
+                "not_modelled": [dict(e) for e in self.calibration_flags.get("not_modelled", [])],
+            } if self.calibration_flags else {},
+            "source_sha256": self.source_sha256,
         }
 
     @classmethod
@@ -589,35 +832,74 @@ class BackendProfile:
             t1_us=t1_us,
             t2_us=t2_us,
             dynamic_circuit_features=data.get("dynamic_circuit_features", {}),
+            calibration_flags=_flags_from_dict(data.get("calibration_flags") or {}),
+            source_sha256=data.get("source_sha256"),
         )
 
-    def to_noise_model(self) -> NoiseModel:
+    def to_noise_model(self, relaxation: bool = False) -> NoiseModel:
         """
         Derive a NoiseModel from the profile's gate and readout errors.
 
         ``gate_errors`` holds the average gate infidelity ``r = 1 - F_avg``,
         the quantity Qiskit's ``InstructionProperties.error`` (used by
         :meth:`to_target`) and IBM calibration exports report. It is not the
-        depolarizing parameter. Each error becomes the depolarizing channel
+        depolarizing parameter.
+
+        Without ``relaxation`` each error becomes the depolarizing channel
         with that infidelity, ``p = d r / (d - 1)`` (``d = 2**k`` for a
         k-qubit gate; see :func:`depolarizing_parameter_from_infidelity`).
-        Relaxation (T1/T2) is not modelled.
+
+        With ``relaxation`` every gate with a known duration first gets a
+        depolarizing part and then T1/T2 relaxation of each of its qubits for
+        that duration, with ``p`` chosen so that the composition has the
+        reported infidelity (:func:`depolarizing_parameter_with_relaxation`;
+        Qiskit Aer's device-model convention). Gates whose relaxation alone
+        exceeds the reported error get no depolarizing part; they are listed
+        in ``metadata["relaxation_exceeds_gate_error"]``. Qubits flagged in
+        ``calibration_flags["relaxation_excluded"]`` get no channel here; the
+        fake backend refuses circuits on them.
 
         Raises:
-            InvalidNoiseModelError: If an infidelity exceeds the range a
-                depolarizing channel can represent, ``(d - 1) / d``.
+            InvalidNoiseModelError: If an infidelity cannot be represented, or
+                ``relaxation`` is requested for a gate on a qubit without
+                T1/T2 that is not flagged.
         """
         model = NoiseModel(name=f"{self.name}_noise_model")
-        # Readout errors
+        model.metadata = {
+            "gate_error_convention": "average gate infidelity",
+            "relaxation": bool(relaxation),
+            "relaxation_exceeds_gate_error": [],
+        }
+        excluded = {int(q) for q in self.calibration_flags.get("relaxation_excluded", {})}
         for q, (p01, p10) in self.readout_errors.items():
             model.set_readout_error(q, p01, p10)
         for gate, qmap in self.gate_errors.items():
             for qubits, err in qmap.items():
-                p = depolarizing_parameter_from_infidelity(err, len(qubits))
-                if len(qubits) == 1:
-                    model.add_1q_channel(gate, qubits[0], DepolarizingChannel(p))
+                k = len(qubits)
+                duration = self.gate_durations_ns.get(gate, {}).get(qubits)
+                relax = None
+                if relaxation and duration and not excluded.intersection(qubits):
+                    missing = [q for q in qubits if q not in self.t1_us or q not in self.t2_us]
+                    if missing:
+                        raise InvalidNoiseModelError(
+                            f"relaxation requested for {gate} on {qubits}, but qubit(s) "
+                            f"{missing} have no T1/T2 and are not flagged"
+                        )
+                    per_qubit = [ThermalRelaxationChannel(self.t1_us[q], self.t2_us[q], duration) for q in qubits]
+                    relax = per_qubit[0] if k == 1 else TensorChannel(per_qubit[0], per_qubit[1])
+                if relax is None:
+                    p = depolarizing_parameter_from_infidelity(err, k)
                 else:
-                    model.add_2q_channel(gate, (qubits[0], qubits[1]), TwoQubitDepolarizingChannel(p))
+                    fidelity = 1.0 - average_gate_infidelity(relax.kraus_operators)
+                    p, zeroed = depolarizing_parameter_with_relaxation(err, k, fidelity)
+                    if zeroed:
+                        model.metadata["relaxation_exceeds_gate_error"].append([gate, list(qubits)])
+                depol: NoiseChannel = DepolarizingChannel(p) if k == 1 else TwoQubitDepolarizingChannel(p)
+                channel = depol if relax is None else ComposedChannel(depol, relax)
+                if k == 1:
+                    model.add_1q_channel(gate, qubits[0], channel)
+                else:
+                    model.add_2q_channel(gate, (qubits[0], qubits[1]), channel)
         model.validate()
         return model
 
@@ -663,6 +945,18 @@ class BackendProfile:
                     props[edge] = InstructionProperties(error=err, duration=dur_s)
                 target.add_instruction(inst, props)
         return target
+
+
+def _flags_from_dict(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Inverse of the ``calibration_flags`` part of ``BackendProfile.to_dict``."""
+    flags: Dict[str, Any] = {}
+    if data.get("non_operational"):
+        flags["non_operational"] = [dict(e) for e in data["non_operational"]]
+    if data.get("relaxation_excluded"):
+        flags["relaxation_excluded"] = {int(q): r for q, r in data["relaxation_excluded"].items()}
+    if data.get("not_modelled"):
+        flags["not_modelled"] = [dict(e) for e in data["not_modelled"]]
+    return flags
 
 
 # ---------------------------------------------------------------------------
@@ -778,9 +1072,11 @@ class FakeHardwareBackend:
         self,
         profile: BackendProfile,
         noise_model: Optional[NoiseModel] = None,
+        relaxation: bool = False,
     ):
         self.profile = profile
-        self.noise_model = noise_model or profile.to_noise_model()
+        self.relaxation = bool(relaxation)
+        self.noise_model = noise_model or profile.to_noise_model(relaxation=self.relaxation)
         self.name = profile.name
 
     def validate_circuit_topology(self, instructions: List[Tuple[str, List[int], List[float]]]) -> None:
@@ -822,8 +1118,19 @@ class FakeHardwareBackend:
 
         self.validate_circuit_topology(instructions)
 
-        backend = NoisyDensityMatrixBackend()
         effective_noise = self.noise_model if execution_mode == ExecutionMode.NOISY_CLASSICAL else None
+        if effective_noise is not None:
+            for name, qubits, _ in instructions:
+                if name in ("barrier", "id") or not qubits:
+                    continue
+                reason = self.profile.out_of_model_reason(list(qubits), self.relaxation)
+                if reason is not None:
+                    raise OutOfModelError(
+                        f"Refusing {name} on qubits {list(qubits)}: {reason}. The noise "
+                        "model has no calibrated channel for it."
+                    )
+
+        backend = NoisyDensityMatrixBackend()
         res = backend.simulate(
             circuit,
             noise_model=effective_noise,
@@ -837,6 +1144,9 @@ class FakeHardwareBackend:
         res.calibration_timestamp = self.profile.capture_timestamp
         res.metadata["simulated_hardware"] = True
         res.metadata["provider_name"] = self.profile.provider_name
+        res.metadata["profile_is_synthetic"] = self.profile.is_synthetic
+        res.metadata["profile_source_sha256"] = self.profile.source_sha256
+        res.metadata["relaxation_modelled"] = self.relaxation and effective_noise is not None
         return res
 
 

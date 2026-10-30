@@ -27,3 +27,6 @@ dill==0.4.1
 stevedore==5.9.0
 python-dateutil==2.9.0.post0
 typing_extensions==4.15.0
+# Data source and oracle for the real-calibration bridge tests
+# (tests/test_v3_calibration_bridge.py); not a runtime dependency.
+qiskit-ibm-runtime==0.51.0

@@ -8,6 +8,27 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+Work towards v3 (`research/v3/V3_STABLE_PLAN.md`). Not released.
+
+### Added
+
+- `cqhecs.calibration_import`: imports real IBM calibration snapshots
+  (`props_*.json` / `conf_*.json`, e.g. from `qiskit-ibm-runtime`) into
+  non-synthetic `BackendProfile`s with provenance URI, capture timestamp and
+  source SHA-256. Non-operational gates (IBM's `gate_error = 1`), missing or
+  physically inconsistent T1/T2 (`T2 > 2 T1`) and operations without a noise
+  channel are listed in `calibration_flags`, never clipped or dropped.
+- `BackendProfile` schema 2.0 (`calibration_flags`, `source_sha256`); 1.0
+  profiles still load.
+- T1/T2 relaxation: `ThermalRelaxationChannel`, `TensorChannel`,
+  `ComposedChannel`, `depolarizing_parameter_with_relaxation`,
+  `average_gate_infidelity`; `BackendProfile.to_noise_model(relaxation=True)`
+  and `FakeHardwareBackend(..., relaxation=True)` follow Qiskit Aer's device
+  model (depolarizing, then relaxation). Channel-level parity with Aer
+  ≤ 1e-12.
+- `OutOfModelError`: the fake backend refuses circuits on flagged qubits or
+  pairs instead of running them without calibrated noise.
+
 ---
 
 ## [2.5.2] — 2026-10-30

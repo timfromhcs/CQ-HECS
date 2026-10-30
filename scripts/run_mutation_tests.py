@@ -350,6 +350,54 @@ def check_profile_gate_key_width() -> bool:
         return False
 
 
+def check_relaxation_after_depolarizing() -> bool:
+    """Device-model order: depolarizing first, then T1/T2 relaxation (Aer)."""
+    import numpy as np
+    from qiskit.quantum_info import Kraus, SuperOp
+    from qiskit_aer.noise import depolarizing_error, thermal_relaxation_error
+    from cqhecs.hardware_bridge import BackendProfile
+
+    profile = BackendProfile(
+        name="t", num_qubits=1, t1_us={0: 30.0}, t2_us={0: 20.0},
+        gate_errors={"x": {(0,): 0.1}}, gate_durations_ns={"x": {(0,): 200.0}},
+    )
+    # p > 0 here (relaxation alone stays below the error); with p = 0 the
+    # order would not matter and the check could not see the mutant.
+    from qiskit.quantum_info import average_gate_fidelity
+    from cqhecs.hardware_bridge import depolarizing_parameter_with_relaxation
+
+    channel = profile.to_noise_model(relaxation=True).channels_1q["x"][0][0]
+    relax = thermal_relaxation_error(30e3, 20e3, 200.0)
+    p, _ = depolarizing_parameter_with_relaxation(0.1, 1, float(average_gate_fidelity(relax)))
+    expected = SuperOp(depolarizing_error(p, 1)).compose(SuperOp(relax))
+    return float(np.max(np.abs(SuperOp(Kraus(channel.kraus_operators)).data - expected.data))) > 1e-12
+
+
+def check_import_flags_inconsistent_t2() -> bool:
+    """ibm_oslo qubit 6 reports T2 > 2 T1; it must be flagged, not clipped."""
+    from pathlib import Path
+    from cqhecs.calibration_import import load_ibm_snapshot_files
+
+    data = Path(__file__).resolve().parent.parent / "tests" / "data" / "ibm_calibration"
+    profile = load_ibm_snapshot_files(data / "props_oslo.json", data / "conf_oslo.json", provenance_uri="t")
+    return 6 in profile.t2_us or 6 not in profile.calibration_flags.get("relaxation_excluded", {})
+
+
+def check_import_flags_non_operational() -> bool:
+    """ibm_algiers reports cx(15, 18) with gate_error 1; circuits on it are refused."""
+    from pathlib import Path
+    from cqhecs.calibration_import import load_ibm_snapshot_files
+    from cqhecs.hardware_bridge import FakeHardwareBackend, OutOfModelError
+
+    data = Path(__file__).resolve().parent.parent / "tests" / "data" / "ibm_calibration"
+    profile = load_ibm_snapshot_files(data / "props_algiers.json", data / "conf_algiers.json", provenance_uri="t")
+    try:
+        FakeHardwareBackend(profile).run([("cx", [15, 18], []), ("measure", [15], [])], shots=4, seed=1)
+    except OutOfModelError:
+        return False
+    return True
+
+
 CHECKS: Dict[str, Callable[[], bool]] = {
     "qubit_bit_order": check_qubit_bit_order,
     "cz_conjugation": check_cz_conjugation,
@@ -375,6 +423,9 @@ CHECKS: Dict[str, Callable[[], bool]] = {
     "gate_error_is_infidelity": check_gate_error_is_infidelity,
     "profile_t2_bound": check_profile_t2_bound,
     "profile_gate_key_width": check_profile_gate_key_width,
+    "relaxation_after_depolarizing": check_relaxation_after_depolarizing,
+    "import_flags_inconsistent_t2": check_import_flags_inconsistent_t2,
+    "import_flags_non_operational": check_import_flags_non_operational,
 }
 
 
@@ -624,6 +675,30 @@ MUTANTS: List[SourceMutant] = [
         replacement="        if not isinstance(qubits, tuple):\n",
         check="profile_gate_key_width",
         mechanism="accepts gate-error keys the noise model cannot represent",
+    ),
+    SourceMutant(
+        name="Relaxation applied before depolarizing",
+        target="cqhecs/hardware_bridge.py",
+        original="                channel = depol if relax is None else ComposedChannel(depol, relax)\n",
+        replacement="                channel = depol if relax is None else ComposedChannel(relax, depol)\n",
+        check="relaxation_after_depolarizing",
+        mechanism="reverses the depolarizing/relaxation order of the device model",
+    ),
+    SourceMutant(
+        name="Imported T2 clipped to 2 T1 instead of flagged",
+        target="cqhecs/calibration_import.py",
+        original='            relaxation_excluded[q] = {"reason": "T2 > 2*T1 or non-positive", "T1_us": t1, "T2_us": t2}\n',
+        replacement="            t1_us[q], t2_us[q] = t1, min(t2, 2.0 * t1)\n",
+        check="import_flags_inconsistent_t2",
+        mechanism="silently truncates a physically inconsistent T2 (as Aer does)",
+    ),
+    SourceMutant(
+        name="Non-operational gate dropped without a flag",
+        target="cqhecs/calibration_import.py",
+        original='            non_operational.append({"gate": gate, "qubits": list(qubits), "gate_error": error})\n',
+        replacement="            pass\n",
+        check="import_flags_non_operational",
+        mechanism="drops gate_error = 1 entries so circuits on broken pairs run noiseless",
     ),
 ]
 
