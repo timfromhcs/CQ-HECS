@@ -16,10 +16,9 @@ or released**.
 1. `git status` is dirty on `agent/v3.2-pnp-oracles`. Commit or review the v3.2
    work first. PR **#31** is open and mergeable:
    <https://github.com/timfromhcs/CQ-HECS/pull/31>
-2. Run the full test loop for the v3.2 changes. The last full run was **623
-   passed, 1 deselected**, with 3 failures only because the native binary still
-   reported 3.1.0. After rebuilding the native core, those 3 version tests pass
-   (626 expected); re-run the full suite to confirm.
+2. Run the full test loop for the v3.2 changes. The last full run after rebuilding
+   the native core was **676 passed, 3 skipped, 1 deselected** in 179 s. The 3
+   skips are the opt-in exe smoke tests (`CQ_HECS_EXE` not set).
 3. Finish the **standalone executable**. The one-file build exists
    (`dist/cq-hecs.exe`, **518,558,428 bytes**) but fails at runtime with
    `Failed to extract bcrypt\_bcrypt.pyd: decompression resulted in return
@@ -209,8 +208,8 @@ Add tests that are currently missing:
   `cqhecs_hardware` calls.
 - `tests/test_studio.py`: already covers `/api/hardware`; add a test that the
   hardware view includes the IBM and P-vs-NP rows.
-- `tests/test_exe_smoke.py` (optional, opt-in): skip unless
-  `CQ_HECS_EXE` is set; run version/sat/run.
+- `tests/test_exe_smoke.py` (optional, opt-in): already present; set
+  `CQ_HECS_EXE=dist\cq-hecs\cq-hecs.exe` to run it.
 - `tests/test_ibm_10k.py`: after evaluating the 10k runs, verify job IDs,
   digests, bit order and evaluation verdicts.
 
