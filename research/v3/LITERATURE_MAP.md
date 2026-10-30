@@ -39,3 +39,17 @@ tractable *in practice*. W8 implements it with a bound that stays rigorous for
 the given circuit and input (CPTP adjoints are operator-norm contractive), and
 validates it against Qiskit Aer. The complexity results of §1 constrain claims;
 they are not implementable.
+
+## 4. SAT solvers, proof certificates and "workspace" theories (searched 2026-10-30)
+
+| Source | Read | Content used | Classification | Consequence |
+|---|---|---|---|---|
+| SAT Competition 2025 / Kissat, CaDiCaL (DRAT/LRAT proof output) | search abstracts | State-of-the-art solvers emit checkable UNSAT proofs; competitions require them | ADAPTABLE | v3.3.0 `cqhecs.sat` emits a tree-resolution refutation replayed by `check_refutation`; CaDiCaL (python-sat) is the test oracle only. Tree resolution is exponentially weaker than CDCL/LRAT; no speed claim. |
+| Grover/QAOA for SAT | general knowledge | Quadratic query speedup at best; no known polynomial quantum SAT algorithm | NEGATIVE_RESULT | No quantum-SAT claim. |
+| Anthropic, "Verbalizable Representations Form a Global Workspace in Language Models", arXiv:2607.15495; Dehaene–Naccache on global workspace theory | search abstracts | Interpretability/cognitive-science hypothesis about LLM activations | NOT_RELEVANT (to simulation) / RESEARCH_ONLY | No technical bridge to SAT or circuit simulation. The only transferable idea is an engineering pattern: a blackboard where entries are accepted only after independent verification (what `certified` does). No consciousness or cognition claim. |
+| This repo's "J-Space Gamma/Alpha/Delta" (`python_bridge`) | repo | Hash-keyed state table for DPLL | NAMING COLLISION | Unrelated to the "J-space" of the LLM literature. |
+
+Decision: of §4 only certificate checking becomes code (v3.3.0). Real-QPU
+verification stays with the committed R3 evidence (`research/v4/evidence/`);
+public hardware datasets on zenodo/dryad/huggingface were unreachable from this
+build environment, so no new R3 data was added in this release.

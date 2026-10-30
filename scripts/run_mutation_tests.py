@@ -506,6 +506,25 @@ def check_sat_timeout_unknown() -> bool:
     return CQSATSolver().solve(formula, timeout_seconds=-1.0).status != TIMEOUT_UNKNOWN
 
 
+def check_sat_certificate() -> bool:
+    """True if the certificate checker or the certifying search is defective."""
+    from cqhecs.sat import CNF, check_refutation, solve
+
+    clauses = ((1, 2), (-1, 2), (1, -2), (-1, -2))
+    result = solve(CNF(2, clauses))
+    if result.status != "UNSAT" or not result.certified or not check_refutation(clauses, result.certificate):
+        return True
+    if check_refutation(clauses, result.certificate[:-1]):
+        return True  # truncated proof accepted
+    if check_refutation(((1, 2),), (("leaf", ()),)):
+        return True  # no conflict at the leaf
+    # wrong pivot: both branches were derived under 1, not 2
+    if check_refutation(clauses, (("leaf", (1,)), ("leaf", (-1,)), ("resolve", 2))):
+        return True
+    # two empty leaf clauses do not resolve on a variable they never mention
+    return bool(check_refutation(((1,), (-1,)), (("leaf", ()), ("leaf", ()), ("resolve", 1))))
+
+
 def check_sat_exact_memo() -> bool:
     """32 forced variables plus a satisfiable rest must stay SAT."""
     from python_bridge.sat_engine import CNFFormula, CQSATSolver
@@ -612,6 +631,7 @@ CHECKS: Dict[str, Callable[[], bool]] = {
     "selftest_composition_property": check_selftest_composition_property,
     "sat_timeout_unknown": check_sat_timeout_unknown,
     "sat_exact_memo": check_sat_exact_memo,
+    "sat_certificate": check_sat_certificate,
     "dimacs_empty_clause": check_dimacs_empty_clause,
     "fsim_definition": check_fsim_definition,
     "sqrt_w_axis": check_sqrt_w_axis,
@@ -974,6 +994,38 @@ MUTANTS: List[SourceMutant] = [
         replacement="        self._kraus = _prune([a @ b for a in first.kraus_operators for b in second.kraus_operators])\n",
         check="selftest_composition_property",
         mechanism="applies the second channel before the first",
+    ),
+    SourceMutant(
+        name="Refutation leaf accepted without a conflict",
+        target="cqhecs/sat.py",
+        original="            if not _unit_propagation_conflicts(clauses, decisions):\n                return False\n",
+        replacement="            pass\n",
+        check="sat_certificate",
+        mechanism="the checker trusts every leaf, so a satisfiable formula gets a valid-looking proof",
+    ),
+    SourceMutant(
+        name="Refutation pivot check dropped",
+        target="cqhecs/sat.py",
+        original="            if -argument not in true_branch or argument not in false_branch:\n                return False\n",
+        replacement="",
+        check="sat_certificate",
+        mechanism="the checker resolves on a variable that is not in the clauses",
+    ),
+    SourceMutant(
+        name="Refutation requires a single empty clause dropped",
+        target="cqhecs/sat.py",
+        original="    return len(stack) == 1 and not stack[0]\n",
+        replacement="    return True\n",
+        check="sat_certificate",
+        mechanism="the checker accepts a truncated proof",
+    ),
+    SourceMutant(
+        name="Certifying search logs empty decisions",
+        target="cqhecs/sat.py",
+        original='            self._log(("leaf", tuple(self._decisions)))\n',
+        replacement='            self._log(("leaf", ()))\n',
+        check="sat_certificate",
+        mechanism="the recorded leaves no longer match the decisions, so no UNSAT is certified",
     ),
     SourceMutant(
         name="SAT timeout reported as UNSAT",

@@ -8,6 +8,28 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-10-30
+
+Hardening release on v3.2.0: checkable UNSAT certificates for the Python SAT
+surface. No new simulation path, no performance claim.
+
+### Added
+
+- `cqhecs.sat.check_refutation` and `SATResult.certificate` / `certified`:
+  after an UNSAT verdict, `solve` runs a second, unit-propagation-only search,
+  records a tree-resolution refutation and replays it with the independent
+  checker. Disagreement between the searches yields `UNKNOWN`; an over-budget
+  certificate leaves `certified=false` with a note. `sweep` skips
+  certification. `enumerate_models` reports `complete_certified`.
+- `tests/test_sat_certificates.py` (cross-checked with CaDiCaL via python-sat)
+  and four source mutants of the checker and the certifying search.
+
+### Unchanged / limits
+
+- The native C++ solver and `python_bridge.sat_engine` still give no UNSAT
+  proof object. Tree resolution is far weaker than CDCL proofs.
+- No `P = NP` or ETH claim.
+
 ## [3.2.0] - 2026-10-30
 
 Stable feature release. Adds the MCP server, SAT model enumeration/MaxSAT, a
