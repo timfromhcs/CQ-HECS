@@ -8,6 +8,30 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Fixed (v3 correctness audit, `research/v3/DEFECT_REGISTER.md`)
+
+- **CQ-V3-01 (P0)** Python SAT: a timeout was reported as
+  `satisfiable=False, verified=True`. Results now carry `status`
+  (`SAT_VERIFIED`, `UNSAT_PROVEN`, `TIMEOUT_UNKNOWN`); a timeout has
+  `satisfiable=None` and `verified=False`.
+- **CQ-V3-02 (P0)** SAT pruning: Python keyed states by a hash of the first
+  32 variables and could return a verified UNSAT for a satisfiable formula;
+  the native solver pruned on a 64-bit hash match. Both now skip only
+  states identical to an already refuted one (exact keys).
+- **CQ-V3-03** Python DIMACS parser: clauses spanning lines were split and
+  an empty clause `0` was dropped. The parser now follows the native grammar
+  and limits and raises `DIMACSParseError`.
+- **CQ-V3-04** Exact rings: all `int64`/`uint32` arithmetic is checked and
+  throws `std::overflow_error`; equality compares canonical forms.
+- **CQ-V3-05** Four C++ test executables compiled their `assert` checks out
+  in Release builds; a `WILL_FAIL` meta-test now guards this.
+- **CQ-V3-06/08** Both dashboards showed synthetic sine-wave values as live
+  telemetry with stale version strings. They now need `--demo`, label every
+  frame `SIMULATED DATA - NOT A MEASUREMENT` and print the canonical version.
+- **CQ-V3-07** Vulkan device selection is a tested pure policy with an
+  explicit `CQ_HECS_VULKAN_DEVICE` override (no fallback) and reports
+  vendor/device/driver/API identity and the selection reason.
+
 Work towards v3 (`research/v3/V3_STABLE_PLAN.md`). Not released.
 
 ### Added

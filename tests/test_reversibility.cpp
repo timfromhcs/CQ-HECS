@@ -1,3 +1,7 @@
+// Checks must run in Release builds too (CMake Release defines NDEBUG).
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <iostream>
 #include <vector>
 #include <random>

@@ -8,6 +8,7 @@
 #include "cq_hecs/vulkan/vulkan_buffer.hpp"
 #include "cq_hecs/vulkan/vulkan_pipeline.hpp"
 #include "cq_hecs/cordic_engine.hpp"
+#include "cq_hecs/vulkan/device_policy.hpp"
 
 namespace cq_hecs {
 
@@ -23,6 +24,10 @@ public:
     bool is_initialized() const { return m_initialized; }
     bool is_lavapipe_emulation() const { return m_is_lavapipe; }
     const std::string& get_device_name() const { return m_device_name; }
+    /// Vendor/device/driver/API identity of the selected device.
+    const DeviceDescription& get_device_identity() const { return m_device_identity; }
+    /// Why this device was chosen (or why none was).
+    const std::string& get_selection_reason() const { return m_selection_reason; }
 
     VkDevice get_device() const { return m_device; }
     VkPhysicalDevice get_physical_device() const { return m_physical_device; }
@@ -62,6 +67,8 @@ private:
     VkDescriptorPool m_descriptor_pool = VK_NULL_HANDLE;
 
     std::string m_device_name;
+    DeviceDescription m_device_identity;
+    std::string m_selection_reason;
     bool m_is_lavapipe = false;
     bool m_initialized = false;
 

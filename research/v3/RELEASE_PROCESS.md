@@ -72,21 +72,21 @@ or `INCONCLUSIVE`. **Status as of this document** (live audit, 2026-10-30):
 
 | Gate / lead | Status | Notes |
 | :--- | :--- | :--- |
-| 3.1 Python DPLL timeout → `satisfiable=False, verified=True` | **CONFIRMED P0** | `python_bridge/sat_engine.py` reports a timeout as a verified UNSAT |
-| 3.2 hash-based pruning closes branches | **CONFIRMED P0 (Python)**; native hash covers all variables but is still a 64-bit hash | a collision can drop a satisfiable branch |
-| 3.3 DIMACS Python/native parity | to verify | |
-| 3.4 exact-ring `int64` overflow, `noexcept` arithmetic | **CONFIRMED risk** | `include/cq/exact_cyclotomic.hpp` has no checks |
-| 3.5 `assert` in Release test | **CONFIRMED** | `tests/cpp/test_exact_ring.cpp` uses `assert` without `#undef NDEBUG` |
-| 3.6 synthetic telemetry shown as live | **CONFIRMED P1** | `tui_dashboard.py`, `terminal_ui.cpp` use `sin()` values labelled ACTIVE / PHYSICAL HARVEST |
-| 3.7 Vulkan device selection observability | to verify | |
-| 3.8 hard-coded UI versions | **CONFIRMED** | `terminal_ui.cpp` prints `v0.2.0` |
-| Gate A repository truth | PASS for this audit | |
-| Gate B scientific correctness | blocked by 3.1/3.2/3.4 | |
+| 3.1 Python DPLL timeout → `satisfiable=False, verified=True` | **FIXED** (CQ-V3-01) | `research/v3/DEFECT_REGISTER.md` |
+| 3.2 hash-based pruning closes branches | **FIXED** Python + native (CQ-V3-02/02b) | exact memo, brute-force differential |
+| 3.3 DIMACS Python/native parity | **FIXED** (CQ-V3-03) | 13 grammar cases, Python = native |
+| 3.4 exact-ring `int64` overflow | **FIXED** (CQ-V3-04) | checked arithmetic, boundary tests |
+| 3.5 `assert` in Release test | **FIXED** (CQ-V3-05) | 4 files + WILL_FAIL meta-test |
+| 3.6 synthetic telemetry shown as live | **FIXED** (CQ-V3-06) | demo-only, labelled every frame |
+| 3.7 Vulkan device selection observability | **FIXED** (CQ-V3-07) | policy test; physical GPU still unverified |
+| 3.8 hard-coded UI versions | **FIXED** (CQ-V3-08) | canonical version in both UIs |
+| Gate A repository truth | PASS | |
+| Gate B scientific correctness | PASS after CQ-V3-01…04 | |
 | Gate C quantum correctness | PASS within declared scope | existing differential suites |
-| Gate D SAT correctness | **FAIL** until 3.1–3.3 are fixed | |
-| Gate E hardware/GPU truth | PASS (fake ≠ real; R-IO-7 is external data) | |
-| Gate F UX/observability | **FAIL** until 3.6/3.8 are fixed | |
-| Gate G software quality | CI green except the flake8 fix in PR #25 | |
+| Gate D SAT correctness | PASS after CQ-V3-01…03 | brute-force differential, mutants 36–38 |
+| Gate E hardware/GPU truth | PASS (fake ≠ real; R-IO-7 is external data; no physical-GPU claim) | |
+| Gate F UX/observability | PASS after CQ-V3-06/08 | |
+| Gate G software quality | PASS locally; CI on the PR | 38/38 mutants, CTest 21/21 |
 | Gate H performance | PASS by abstention: no performance claim | |
 | Gate I supply chain | PASS at v2.5.2 | re-check at release |
 | Gate J docs/release | NOT RUN | release step |
@@ -141,12 +141,12 @@ Steps:
 
 | # | Step | Gate(s) | Done when |
 | ---: | :--- | :--- | :--- |
-| 1 | Merge PR #25 (M-FIT-2, red-main fix) | G | CI green, merged |
-| 2 | Fix 3.1/3.2: SAT status enum, timeout = `UNKNOWN`, collision-safe pruning, brute-force differential | D, B | adversarial constant-hash test and timeout test pass |
-| 3 | Verify/fix 3.3 DIMACS parity | D | differential parse test |
-| 4 | Fix 3.4/3.5: checked ring arithmetic, Release-safe test checks | B | boundary tests, meta-test that a false check fails in Release |
-| 5 | Fix 3.6/3.8: telemetry labelled `DEMO DATA`/`UNKNOWN`, version from the canonical surface | F | UI tests |
-| 6 | Verify 3.7 Vulkan device observability; document or fix | E | test or documented limitation |
+| 1 | Merge PR #25 (M-FIT-2, red-main fix) | G | **done** (`098d12f`) |
+| 2 | Fix 3.1/3.2: SAT status enum, timeout = `UNKNOWN`, collision-safe pruning, brute-force differential | D, B | **done** — `DEFECT_REGISTER.md` |
+| 3 | Verify/fix 3.3 DIMACS parity | D | **done** — `DEFECT_REGISTER.md` |
+| 4 | Fix 3.4/3.5: checked ring arithmetic, Release-safe test checks | B | **done** — `DEFECT_REGISTER.md` |
+| 5 | Fix 3.6/3.8: telemetry labelled `DEMO DATA`/`UNKNOWN`, version from the canonical surface | F | **done** — `DEFECT_REGISTER.md` |
+| 6 | Verify 3.7 Vulkan device observability; document or fix | E | **done** — `DEFECT_REGISTER.md` |
 | 7 | V3-C Sycamore gates + mutants | V3-C | differential tests vs independent matrices |
 | 8 | V3-E migration guide + migration test | V3-E | test passes |
 | 9 | Release candidate PR → CI → merge → verify assets → RELEASE_AUDIT | V3-F, J, I | §4 complete |

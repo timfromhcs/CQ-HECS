@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <optional>
 #include <chrono>
+#include <set>
 
 namespace cq_hecs {
 
@@ -77,6 +78,7 @@ private:
     uint64_t m_decisions;
     uint64_t m_pruned_cycles;
     bool m_timed_out = false;
+    std::set<std::vector<int8_t>> m_refuted;
 };
 
 } // namespace cq_hecs

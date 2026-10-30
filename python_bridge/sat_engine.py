@@ -1,15 +1,21 @@
 """
-CQ-HECS v3.5 DIMACS CNF SAT Engine & Constraint Solver
-Parses standard DIMACS .cnf benchmark files and maps clauses into:
-  - J-Space Gamma (Bitmask clause validation & Hilbert-Cuckoo O(1) cycle pruning)
-  - J-Space Alpha (ARX Pseudo-Boolean carry-shadow reduction)
+CQ-HECS DIMACS CNF SAT engine (pure-Python DPLL).
+
+Result semantics (GEMINI.md §3.1/§3.2):
+
+* ``SAT_VERIFIED``: a full assignment that an independent clause check accepts;
+* ``UNSAT_PROVEN``: the DPLL search was exhaustive. Branches are skipped only
+  when an *identical* partial assignment (exact key, no hash) was already
+  refuted, which is sound because the residual formula is a function of the
+  assignment;
+* ``TIMEOUT_UNKNOWN``: the wall-clock budget ran out; this is never UNSAT.
 """
 
 from __future__ import annotations
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, FrozenSet, List, Optional, Set, Tuple, Union
 
 from python_bridge.cq_hecs import JSpaceAlpha, JSpaceGamma
 
@@ -22,18 +28,54 @@ class CNFFormula:
     source_file: Optional[str] = None
 
 
+SAT_VERIFIED = "SAT_VERIFIED"
+UNSAT_PROVEN = "UNSAT_PROVEN"
+TIMEOUT_UNKNOWN = "TIMEOUT_UNKNOWN"
+
+
 @dataclass
 class SATSolverResult:
-    satisfiable: bool
+    """
+    ``satisfiable`` is ``True`` (SAT), ``False`` (UNSAT proven) or ``None``
+    (unknown, e.g. timeout). ``verified`` is ``True`` only for a checked SAT
+    witness or an exhaustive UNSAT search.
+    """
+
+    satisfiable: Optional[bool]
     assignment: Optional[Dict[int, bool]]
     num_decisions: int
     num_pruned_cycles: int
     elapsed_ms: float
     verified: bool
+    status: str = UNSAT_PROVEN
+    timed_out: bool = False
+
+
+class _SearchTimeout(Exception):
+    """Raised inside the search when the budget is exhausted."""
+
+
+class DIMACSParseError(ValueError):
+    """Malformed or out-of-limit DIMACS input (never silently repaired)."""
 
 
 class DIMACSParser:
-    """Parses standard DIMACS .cnf format files."""
+    """
+    Strict DIMACS CNF parser with the same grammar and limits as the native
+    parser in ``src/sat_solver.cpp`` (GEMINI.md 3.3):
+
+    * a clause ends at ``0`` and may span lines; ``0`` alone is an empty clause;
+    * an unterminated final clause, a malformed or duplicate header, a negative
+      count and a literal above the declared variable count are errors;
+    * without a header the variable count is the largest literal seen;
+    * the declared clause count is informational, as in the native parser.
+    """
+
+    MAX_VARIABLES = 1_000_000
+    MAX_CLAUSES = 4_000_000
+    MAX_CLAUSE_LITERALS = 1_000_000
+    MAX_INPUT_BYTES = 64 * 1024 * 1024
+
     @staticmethod
     def parse_file(file_path: Union[str, Path]) -> CNFFormula:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -44,49 +86,69 @@ class DIMACSParser:
 
     @staticmethod
     def parse_string(content: str) -> CNFFormula:
+        limits = DIMACSParser
+        if len(content.encode("utf-8")) > limits.MAX_INPUT_BYTES:
+            raise DIMACSParseError(f"DIMACS input exceeds the {limits.MAX_INPUT_BYTES}-byte limit")
         num_vars = 0
+        saw_header = False
         clauses: List[List[int]] = []
+        current: List[int] = []
+        line_number = 0
 
-        for raw_line in content.splitlines():
+        def fail(message: str) -> DIMACSParseError:
+            return DIMACSParseError(f"line {line_number}: {message}")
+
+        for line_number, raw_line in enumerate(content.splitlines(), start=1):
             line = raw_line.strip()
             if not line or line.startswith("c"):
                 continue
             if line.startswith("p"):
-                parts = line.split()
-                if len(parts) >= 4 and parts[1] == "cnf":
-                    num_vars = int(parts[2])
-                    int(parts[3])
+                if saw_header:
+                    raise fail("duplicate 'p cnf' header")
+                tokens = line.split()
+                if len(tokens) != 4 or tokens[0] != "p" or tokens[1] != "cnf":
+                    raise fail("malformed DIMACS header; expected 'p cnf <vars> <clauses>'")
+                if not (tokens[2].isdigit() and tokens[3].isdigit()):
+                    raise fail("DIMACS header counts must be non-negative integers")
+                declared_vars, declared_clauses = int(tokens[2]), int(tokens[3])
+                if declared_vars > limits.MAX_VARIABLES:
+                    raise fail(f"header declares {declared_vars} variables; the ceiling is {limits.MAX_VARIABLES}")
+                if declared_clauses > limits.MAX_CLAUSES:
+                    raise fail(f"header declares {declared_clauses} clauses; the ceiling is {limits.MAX_CLAUSES}")
+                num_vars = declared_vars
+                saw_header = True
                 continue
-
-            # Parse clause integers ending in 0
-            tokens = line.split()
-            current_clause = []
-            for tok in tokens:
-                lit = int(tok)
-                if lit == 0:
-                    if current_clause:
-                        clauses.append(current_clause)
-                        current_clause = []
-                else:
-                    current_clause.append(lit)
-            if current_clause:
-                clauses.append(current_clause)
-
-        return CNFFormula(
-            num_vars=num_vars if num_vars > 0 else max([abs(l) for c in clauses for l in c] or [1]),
-            num_clauses=len(clauses),
-            clauses=clauses
-        )
+            for token in line.split():
+                body = token[1:] if token[:1] in "+-" else token
+                if not body.isdigit():
+                    raise fail(f"invalid DIMACS literal '{token}'")
+                literal = int(token)
+                if literal == 0:
+                    if len(clauses) >= limits.MAX_CLAUSES:
+                        raise fail(f"clause count exceeds the ceiling of {limits.MAX_CLAUSES}")
+                    clauses.append(current)
+                    current = []
+                    continue
+                magnitude = abs(literal)
+                if magnitude > limits.MAX_VARIABLES:
+                    raise fail(f"literal {token} exceeds the variable ceiling {limits.MAX_VARIABLES}")
+                if saw_header and magnitude > num_vars:
+                    raise fail(f"literal {token} exceeds the declared variable count {num_vars}")
+                if len(current) >= limits.MAX_CLAUSE_LITERALS:
+                    raise fail(f"clause exceeds the literal ceiling of {limits.MAX_CLAUSE_LITERALS}")
+                current.append(literal)
+                num_vars = max(num_vars, magnitude)
+        if current:
+            raise fail("final clause is not terminated by 0")
+        return CNFFormula(num_vars=num_vars, num_clauses=len(clauses), clauses=clauses)
 
 
 class CQSATSolver:
     """
-    Hybrid SAT Solver integrating J-Space Gamma and J-Space Alpha.
-    Features:
-      - Bitmask clause propagation (J-Space Gamma)
-      - O(1) Hilbert-Cuckoo cycle & loop pruning
-      - Unit propagation and pure literal elimination
-      - Dual Master & Isolated Non-Master Oracle Validation
+    DPLL with unit propagation and an exact memo of refuted partial
+    assignments. ``num_pruned_cycles`` counts memo hits (identical states).
+    The J-Space Gamma hash table is kept for API compatibility but never
+    decides a branch: a hash match is not proof of identical states.
     """
     def __init__(self, table_capacity: int = 4096):
         self.table_capacity = table_capacity
@@ -100,27 +162,47 @@ class CQSATSolver:
         self.gamma = JSpaceGamma(table_capacity=self.table_capacity)
         self.num_decisions = 0
         self.num_pruned_cycles = 0
+        self._refuted: Set[FrozenSet[Tuple[int, bool]]] = set()
 
-        # Build initial assignment map
         assignment: Dict[int, bool] = {}
-
-        # Run DPLL with Cuckoo cycle pruning
-        sat, final_assignment = self._dpll(formula.clauses, assignment, formula.num_vars, t_start, timeout_seconds)
-
+        try:
+            sat, final_assignment = self._dpll(
+                formula.clauses, assignment, formula.num_vars, t_start, timeout_seconds
+            )
+        except _SearchTimeout:
+            return SATSolverResult(
+                satisfiable=None,
+                assignment=None,
+                num_decisions=self.num_decisions,
+                num_pruned_cycles=self.num_pruned_cycles,
+                elapsed_ms=(time.perf_counter() - t_start) * 1000.0,
+                verified=False,
+                status=TIMEOUT_UNKNOWN,
+                timed_out=True,
+            )
         elapsed_ms = (time.perf_counter() - t_start) * 1000.0
 
-        # Verification through Top Non-Master Isolated Validator
-        verified = False
         if sat and final_assignment is not None:
-            verified = self._verify_solution(formula.clauses, final_assignment)
-
+            # A witness is only reported if an independent check accepts it.
+            if not self._verify_solution(formula.clauses, final_assignment):
+                raise RuntimeError("internal error: DPLL produced an assignment that fails the clause check")
+            return SATSolverResult(
+                satisfiable=True,
+                assignment=final_assignment,
+                num_decisions=self.num_decisions,
+                num_pruned_cycles=self.num_pruned_cycles,
+                elapsed_ms=elapsed_ms,
+                verified=True,
+                status=SAT_VERIFIED,
+            )
         return SATSolverResult(
-            satisfiable=sat,
-            assignment=final_assignment if sat else None,
+            satisfiable=False,
+            assignment=None,
             num_decisions=self.num_decisions,
             num_pruned_cycles=self.num_pruned_cycles,
             elapsed_ms=elapsed_ms,
-            verified=verified if sat else True # UNSAT proof is verified
+            verified=True,  # exhaustive search, exact-key memo only
+            status=UNSAT_PROVEN,
         )
 
     def _dpll(
@@ -128,7 +210,7 @@ class CQSATSolver:
         total_vars: int, t_start: float, timeout_sec: float
     ) -> Tuple[bool, Optional[Dict[int, bool]]]:
         if time.perf_counter() - t_start > timeout_sec:
-            return False, None
+            raise _SearchTimeout()
 
         self.num_decisions += 1
 
@@ -149,11 +231,14 @@ class CQSATSolver:
         if any(len(c) == 0 for c in simplified_clauses):
             return False, None
 
-        # 4. J-Space Gamma Cuckoo Cycle Pruning: hash current partial state
-        state_key = self._compute_state_hash(assignment)
-        if not self.gamma.check_and_insert_cuckoo(state_key):
+        # 4. Exact memo: the residual formula is determined by the original
+        # clauses and the partial assignment, so an identical assignment that
+        # was already refuted is refuted again. The key is the full assignment
+        # (no hash), so distinct states can never be merged.
+        state_key = frozenset(assignment.items())
+        if state_key in self._refuted:
             self.num_pruned_cycles += 1
-            return False, None # Branch already explored or cycling -> Prune!
+            return False, None
 
         # 5. Variable Selection Heuristic (MOM's / Maximum Occurrence in Minimum Clauses)
         chosen_var = self._select_variable(simplified_clauses)
@@ -171,6 +256,8 @@ class CQSATSolver:
             if sat:
                 return True, res_assignment
 
+        # Both branches were searched to completion (a timeout raises).
+        self._refuted.add(state_key)
         return False, None
 
     def _unit_propagate(

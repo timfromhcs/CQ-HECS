@@ -113,7 +113,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -c constraints/ci-py311.txt \
-            numpy qiskit qiskit-aer stim pytest hypothesis psutil coverage flake8 \
+            numpy qiskit qiskit-aer stim pytest hypothesis psutil rich coverage flake8 \
             nanobind setuptools wheel qiskit-ibm-runtime
           pip install -e . --no-deps
 
@@ -197,7 +197,7 @@ jobs:
       - name: Install pinned Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -c constraints/ci-py311.txt numpy qiskit qiskit-aer stim pytest hypothesis psutil coverage flake8 nanobind setuptools wheel
+          pip install -c constraints/ci-py311.txt numpy qiskit qiskit-aer stim pytest hypothesis psutil rich coverage flake8 nanobind setuptools wheel
           pip install -e . --no-deps
 
       - name: Verify shader sources

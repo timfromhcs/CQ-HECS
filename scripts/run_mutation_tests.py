@@ -497,6 +497,39 @@ def check_selftest_composition_property() -> bool:
     return not report.passed
 
 
+def check_sat_timeout_unknown() -> bool:
+    """A timeout must stay UNKNOWN; a mutant that returns UNSAT is caught."""
+    from python_bridge.sat_engine import TIMEOUT_UNKNOWN, CNFFormula, CQSATSolver
+
+    formula = CNFFormula(num_vars=2, num_clauses=2, clauses=[[1, 2], [-1, 2]])
+    return CQSATSolver().solve(formula, timeout_seconds=-1.0).status != TIMEOUT_UNKNOWN
+
+
+def check_sat_exact_memo() -> bool:
+    """32 forced variables plus a satisfiable rest must stay SAT."""
+    from python_bridge.sat_engine import CNFFormula, CQSATSolver
+
+    # Found by a seeded search: the first branch is refuted with branching,
+    # the sibling is satisfiable, and both share the 32 forced variables.
+    clauses = [[v] for v in range(1, 33)]
+    clauses += [
+        [35, -34, 36], [33, -36, -35], [-35, 34, -36], [34, -33, -35], [36, -34, 33],
+        [-33, 36, -35], [33, 34, 36], [-35, 36, -33], [35, -36, -33], [-34, -36, -35],
+        [-33, -34, -35], [-33, -35, -34], [35, -33, -36], [-33, -36, -35], [33, 34, -36],
+        [36, -35, 34],
+    ]
+    formula = CNFFormula(num_vars=36, num_clauses=len(clauses), clauses=clauses)
+    return CQSATSolver().solve(formula).satisfiable is not True
+
+
+def check_dimacs_empty_clause() -> bool:
+    """An empty clause ``0`` must make the formula UNSAT."""
+    from python_bridge.sat_engine import CQSATSolver, DIMACSParser
+
+    formula = DIMACSParser.parse_string("p cnf 1 2\n0\n1 0\n")
+    return CQSATSolver().solve(formula).satisfiable is not False
+
+
 CHECKS: Dict[str, Callable[[], bool]] = {
     "qubit_bit_order": check_qubit_bit_order,
     "cz_conjugation": check_cz_conjugation,
@@ -533,6 +566,9 @@ CHECKS: Dict[str, Callable[[], bool]] = {
     "reference_verdict_suppression": check_reference_verdict_suppression,
     "selftest_inverse_property": check_selftest_inverse_property,
     "selftest_composition_property": check_selftest_composition_property,
+    "sat_timeout_unknown": check_sat_timeout_unknown,
+    "sat_exact_memo": check_sat_exact_memo,
+    "dimacs_empty_clause": check_dimacs_empty_clause,
 }
 
 
@@ -892,6 +928,30 @@ MUTANTS: List[SourceMutant] = [
         replacement="        self._kraus = _prune([a @ b for a in first.kraus_operators for b in second.kraus_operators])\n",
         check="selftest_composition_property",
         mechanism="applies the second channel before the first",
+    ),
+    SourceMutant(
+        name="SAT timeout reported as UNSAT",
+        target="python_bridge/sat_engine.py",
+        original="            raise _SearchTimeout()\n",
+        replacement="            return False, None\n",
+        check="sat_timeout_unknown",
+        mechanism="restores the v2 behaviour: a timeout becomes satisfiable=False, verified=True",
+    ),
+    SourceMutant(
+        name="SAT memo keyed by the first 32 variables",
+        target="python_bridge/sat_engine.py",
+        original="        state_key = frozenset(assignment.items())\n",
+        replacement="        state_key = frozenset(sorted(assignment.items())[:32])\n",
+        check="sat_exact_memo",
+        mechanism="merges states that differ only above variable 32 (the v2 hash collision)",
+    ),
+    SourceMutant(
+        name="DIMACS empty clause dropped",
+        target="python_bridge/sat_engine.py",
+        original="                    clauses.append(current)\n",
+        replacement="                    if current:\n                        clauses.append(current)\n",
+        check="dimacs_empty_clause",
+        mechanism="turns an UNSAT formula with an empty clause into a verified SAT",
     ),
 ]
 

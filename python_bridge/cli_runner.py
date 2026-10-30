@@ -5,7 +5,7 @@ Subcommands:
   - run --qasm <file>
   - run --sat <file>
   - run --arx <blake2b|chacha20|sha256> [--rounds <N>]
-  - dashboard [--cycles <N>]
+  - dashboard --demo [--cycles <N>]  (synthetic values only)
   - stress [--iterations <N>]
   - bench [--qubits <N>] [--chi <N>]
   - solver
@@ -32,7 +32,7 @@ from python_bridge.cq_hecs import (
 from python_bridge.qasm_engine import QASMParser, QASMCircuitSimulator
 from python_bridge.sat_engine import DIMACSParser, CQSATSolver
 from python_bridge.arx_cryptanalysis import ARXCryptanalysisSuite
-from python_bridge.tui_dashboard import run_dashboard_loop
+from python_bridge.tui_dashboard import DemoModeRequired, run_dashboard_loop
 
 
 def cmd_run_qasm(qasm_file: str, max_chi: int = 64):
@@ -59,9 +59,10 @@ def cmd_run_sat(cnf_file: str, timeout: float = 15.0):
     solver = CQSATSolver(table_capacity=8192)
     res = solver.solve(formula, timeout_seconds=timeout)
 
-    print(f"  > Result: {'SATISFIABLE' if res.satisfiable else 'UNSATISFIABLE'}")
-    print(f"  > Decisions: {res.num_decisions} | Cuckoo Pruned Cycles: {res.num_pruned_cycles}")
-    print(f"  > Verification by Top Non-Master Oracle: {'VALIDATED' if res.verified else 'FAILED'}")
+    label = {True: "SATISFIABLE", False: "UNSATISFIABLE", None: "UNKNOWN (timeout, not a proof)"}
+    print(f"  > Result: {label[res.satisfiable]} [{res.status}]")
+    print(f"  > Decisions: {res.num_decisions} | Identical-state memo hits: {res.num_pruned_cycles}")
+    print(f"  > Verified: {'YES' if res.verified else 'NO'}")
     print(f"  > Solve Time: {res.elapsed_ms:.2f} ms")
 
 
@@ -237,7 +238,8 @@ def main():
     parser_run.add_argument("--rounds", type=int, default=None, help="Number of ARX rounds/steps (default: standard rounds ChaCha20:20, SHA256:64, BLAKE2b:12)")
 
     # 2. dashboard subcommand
-    parser_dash = subparsers.add_parser("dashboard", help="Launch interactive Rich TUI dashboard")
+    parser_dash = subparsers.add_parser("dashboard", help="Launch the demo TUI (synthetic values only; needs --demo)")
+    parser_dash.add_argument("--demo", action="store_true", help="Required: acknowledge that all values are synthetic")
     parser_dash.add_argument("--cycles", type=int, default=None, help="Number of cycles to run (default: infinite)")
     parser_dash.add_argument("--rate", type=float, default=0.1, help="Refresh delay in seconds")
 
@@ -263,7 +265,10 @@ def main():
             parser_run.print_help()
 
     elif args.subcommand == "dashboard":
-        run_dashboard_loop(max_cycles=args.cycles, refresh_rate=args.rate)
+        try:
+            run_dashboard_loop(max_cycles=args.cycles, refresh_rate=args.rate, demo=args.demo)
+        except DemoModeRequired as exc:
+            parser_dash.error(str(exc))
 
     elif args.subcommand == "stress":
         cmd_run_stress(iterations=args.iterations)

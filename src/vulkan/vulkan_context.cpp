@@ -1,5 +1,6 @@
 #include "cq_hecs/vulkan/vulkan_context.hpp"
 #include "vulkan/shaders_vrts_embedded.hpp"
+#include <cstdlib>
 #include <iostream>
 #include <vector>
 #include <cstring>
@@ -113,56 +114,43 @@ bool VulkanContext::create_instance() {
 bool VulkanContext::select_physical_device() {
     uint32_t device_count = 0;
     vkEnumeratePhysicalDevices(m_instance, &device_count, nullptr);
-    if (device_count == 0) return false;
-
     std::vector<VkPhysicalDevice> devices(device_count);
-    vkEnumeratePhysicalDevices(m_instance, &device_count, devices.data());
+    if (device_count > 0) {
+        vkEnumeratePhysicalDevices(m_instance, &device_count, devices.data());
+    }
 
-    int best_score = -1;
-    VkPhysicalDevice best_device = VK_NULL_HANDLE;
-    std::string best_name;
-    bool best_is_lavapipe = false;
-
+    std::vector<DeviceDescription> described;
+    described.reserve(devices.size());
     for (const auto& dev : devices) {
         VkPhysicalDeviceProperties props;
         vkGetPhysicalDeviceProperties(dev, &props);
-
-        int score = 0;
-        bool is_lava = false;
-        std::string name(props.deviceName);
-        std::string name_lower = name;
-        std::transform(name_lower.begin(), name_lower.end(), name_lower.begin(),
-                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-
-        if (name_lower.find("lavapipe") != std::string::npos ||
-            name_lower.find("llvmpipe") != std::string::npos ||
-            name_lower.find("swiftshader") != std::string::npos) {
-            is_lava = true;
-            score = 1000;
-        } else if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-            score = 3000;
-        } else if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
-            score = 2000;
-        } else if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) {
-            is_lava = true;
-            score = 500;
-        } else {
-            score = 100;
+        DeviceDescription d;
+        d.name = props.deviceName;
+        switch (props.deviceType) {
+            case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU: d.kind = DeviceKind::Discrete; break;
+            case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: d.kind = DeviceKind::Integrated; break;
+            case VK_PHYSICAL_DEVICE_TYPE_CPU: d.kind = DeviceKind::Software; break;
+            default: d.kind = DeviceKind::Other; break;
         }
-
-        if (score > best_score) {
-            best_score = score;
-            best_device = dev;
-            best_name = name;
-            best_is_lavapipe = is_lava;
-        }
+        d.vendor_id = props.vendorID;
+        d.device_id = props.deviceID;
+        d.driver_version = props.driverVersion;
+        d.api_version = props.apiVersion;
+        described.push_back(d);
     }
 
-    if (best_device == VK_NULL_HANDLE) return false;
+    const char* request = std::getenv("CQ_HECS_VULKAN_DEVICE");
+    const DeviceChoice choice = choose_device(described, request ? std::string(request) : std::string());
+    m_selection_reason = choice.reason;
+    if (choice.index < 0) {
+        std::cerr << "[VulkanContext] " << choice.reason << "\n";
+        return false;
+    }
 
-    m_physical_device = best_device;
-    m_device_name = best_name;
-    m_is_lavapipe = best_is_lavapipe;
+    m_physical_device = devices[static_cast<size_t>(choice.index)];
+    m_device_identity = described[static_cast<size_t>(choice.index)];
+    m_device_name = m_device_identity.name;
+    m_is_lavapipe = m_device_identity.kind == DeviceKind::Software || is_software_name(m_device_name);
     return true;
 }
 
