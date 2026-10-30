@@ -70,7 +70,7 @@ public:
     ExactRingElement operator+(const ExactRingElement& other) const;
     ExactRingElement operator-(const ExactRingElement& other) const;
     ExactRingElement operator*(const ExactRingElement& other) const;
-    ExactRingElement operator-() const noexcept;
+    ExactRingElement operator-() const;
 
     ExactRingElement operator*(int64_t scalar) const;
 
@@ -80,7 +80,7 @@ public:
     }
 
     // Exact complex conjugate
-    ExactRingElement conj() const noexcept;
+    ExactRingElement conj() const;
 
     // Exact squared norm |alpha|^2
     ExactRingElement norm_sq() const;
@@ -130,7 +130,7 @@ struct ExactMatrix2 {
         return res;
     }
 
-    ExactMatrix2 dagger() const noexcept {
+    ExactMatrix2 dagger() const {
         return ExactMatrix2(
             m[0][0].conj(), m[1][0].conj(),
             m[0][1].conj(), m[1][1].conj()

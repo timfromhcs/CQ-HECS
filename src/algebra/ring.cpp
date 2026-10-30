@@ -1,10 +1,13 @@
 #include "cqhecs/algebra/ring.hpp"
+#include "cq/checked_int.hpp"
 #include <sstream>
 #include <limits>
 #include <iomanip>
 
 namespace cqhecs {
 namespace algebra {
+
+using namespace cq::checked;
 
 static constexpr double SQRT2_D = 1.41421356237309504880;
 
@@ -50,8 +53,8 @@ void ExactRingElement::expand_to_k(uint32_t target_k) {
     }
 }
 
-ExactRingElement ExactRingElement::operator-() const noexcept {
-    return ExactRingElement(-a, -b, -c, -d, k);
+ExactRingElement ExactRingElement::operator-() const {
+    return ExactRingElement(neg(a), neg(b), neg(c), neg(d), k);
 }
 
 ExactRingElement ExactRingElement::operator+(const ExactRingElement& other) const {
@@ -63,10 +66,10 @@ ExactRingElement ExactRingElement::operator+(const ExactRingElement& other) cons
     right.expand_to_k(max_k);
 
     ExactRingElement res(
-        left.a + right.a,
-        left.b + right.b,
-        left.c + right.c,
-        left.d + right.d,
+        add(left.a, right.a),
+        add(left.b, right.b),
+        add(left.c, right.c),
+        add(left.d, right.d),
         max_k
     );
     res.reduce();
@@ -82,10 +85,10 @@ ExactRingElement ExactRingElement::operator-(const ExactRingElement& other) cons
     right.expand_to_k(max_k);
 
     ExactRingElement res(
-        left.a - right.a,
-        left.b - right.b,
-        left.c - right.c,
-        left.d - right.d,
+        sub(left.a, right.a),
+        sub(left.b, right.b),
+        sub(left.c, right.c),
+        sub(left.d, right.d),
         max_k
     );
     res.reduce();
@@ -93,7 +96,7 @@ ExactRingElement ExactRingElement::operator-(const ExactRingElement& other) cons
 }
 
 ExactRingElement ExactRingElement::operator*(int64_t scalar) const {
-    ExactRingElement res(a * scalar, b * scalar, c * scalar, d * scalar, k);
+    ExactRingElement res(mul(a, scalar), mul(b, scalar), mul(c, scalar), mul(d, scalar), k);
     res.reduce();
     return res;
 }
@@ -103,13 +106,15 @@ ExactRingElement ExactRingElement::operator*(const ExactRingElement& other) cons
     // Re = (a1*a2 + 2*b1*b2 - c1*c2 - 2*d1*d2) + sqrt(2)*(a1*b2 + b1*a2 - c1*d2 - d1*c2)
     // Im = (a1*c2 + 2*b1*d2 + c1*a2 + 2*d1*b2) + sqrt(2)*(a1*d2 + b1*c2 + c1*b2 + d1*a2)
     
-    int64_t re_rat = a * other.a + 2 * b * other.b - c * other.c - 2 * d * other.d;
-    int64_t re_sq2 = a * other.b + b * other.a - c * other.d - d * other.c;
+    int64_t re_rat = sub(sub(add(mul(a, other.a), mul(2, mul(b, other.b))), mul(c, other.c)),
+                         mul(2, mul(d, other.d)));
+    int64_t re_sq2 = sub(sub(add(mul(a, other.b), mul(b, other.a)), mul(c, other.d)), mul(d, other.c));
 
-    int64_t im_rat = a * other.c + 2 * b * other.d + c * other.a + 2 * d * other.b;
-    int64_t im_sq2 = a * other.d + b * other.c + c * other.b + d * other.a;
+    int64_t im_rat = add(add(add(mul(a, other.c), mul(2, mul(b, other.d))), mul(c, other.a)),
+                         mul(2, mul(d, other.b)));
+    int64_t im_sq2 = add(add(add(mul(a, other.d), mul(b, other.c)), mul(c, other.b)), mul(d, other.a));
 
-    ExactRingElement res(re_rat, re_sq2, im_rat, im_sq2, k + other.k);
+    ExactRingElement res(re_rat, re_sq2, im_rat, im_sq2, add_u32(k, other.k));
     res.reduce();
     return res;
 }
@@ -120,23 +125,15 @@ bool ExactRingElement::operator==(const ExactRingElement& other) const noexcept 
     x.reduce();
     y.reduce();
 
-    if (x.a == 0 && x.b == 0 && x.c == 0 && x.d == 0 &&
-        y.a == 0 && y.b == 0 && y.c == 0 && y.d == 0) {
-        return true;
-    }
-
-    try {
-        uint32_t max_k = std::max(x.k, y.k);
-        x.expand_to_k(max_k);
-        y.expand_to_k(max_k);
-        return x.a == y.a && x.b == y.b && x.c == y.c && x.d == y.d && x.k == y.k;
-    } catch (...) {
-        return false;
-    }
+    // Reduced forms are unique: sqrt(2) divides the numerator exactly when a
+    // and c are both even, so the minimal k is canonical. Comparing reduced
+    // forms needs no rescaling, which previously could overflow and was then
+    // reported as "not equal".
+    return x.a == y.a && x.b == y.b && x.c == y.c && x.d == y.d && x.k == y.k;
 }
 
-ExactRingElement ExactRingElement::conj() const noexcept {
-    return ExactRingElement(a, b, -c, -d, k);
+ExactRingElement ExactRingElement::conj() const {
+    return ExactRingElement(a, b, neg(c), neg(d), k);
 }
 
 ExactRingElement ExactRingElement::norm_sq() const {
@@ -157,14 +154,19 @@ bool ExactRingElement::is_one() const noexcept {
     return tmp.a == 1 && tmp.b == 0 && tmp.c == 0 && tmp.d == 0 && tmp.k == 0;
 }
 
+// Approximate export only; never used for equality. ldexp keeps the scale
+// finite where pow(sqrt2, k) overflows to infinity for large k.
+static double inverse_sqrt2_power(uint32_t k) {
+    const double half = std::ldexp(1.0, -static_cast<int>(k / 2));
+    return (k % 2 == 1) ? half / SQRT2_D : half;
+}
+
 double ExactRingElement::to_double_re() const noexcept {
-    double denom = std::pow(SQRT2_D, static_cast<double>(k));
-    return (static_cast<double>(a) + static_cast<double>(b) * SQRT2_D) / denom;
+    return (static_cast<double>(a) + static_cast<double>(b) * SQRT2_D) * inverse_sqrt2_power(k);
 }
 
 double ExactRingElement::to_double_im() const noexcept {
-    double denom = std::pow(SQRT2_D, static_cast<double>(k));
-    return (static_cast<double>(c) + static_cast<double>(d) * SQRT2_D) / denom;
+    return (static_cast<double>(c) + static_cast<double>(d) * SQRT2_D) * inverse_sqrt2_power(k);
 }
 
 double ExactRingElement::to_probability() const noexcept {

@@ -14,6 +14,10 @@
 #include <unistd.h>
 #endif
 
+#ifndef CQ_HECS_VERSION
+#define CQ_HECS_VERSION "0.0.0-dev"
+#endif
+
 namespace cq_hecs {
 
 TerminalUICPP::TerminalUICPP() = default;
@@ -90,21 +94,21 @@ void TerminalUICPP::render_frame(const TUIStateCPP& state) {
 
     // Header Banner
     ss << "\x1b[1;37;44m===============================================================================\x1b[0m\n";
-    ss << "\x1b[1;37;44m   CQ-HECS v0.2.0 :: Apache License 2.0 (https://github.com/timfromhcs/CQ-HECS) \x1b[0m\n";
+    ss << "\x1b[1;37;41m   CQ-HECS " << CQ_HECS_VERSION << " :: DEMO DASHBOARD :: SIMULATED DATA - NOT A MEASUREMENT \x1b[0m\n";
     ss << "\x1b[1;37;44m===============================================================================\x1b[0m\n";
     ss << " \x1b[90mCycle #" << std::setw(6) << std::setfill('0') << state.cycle_count
-       << " | Target: Win11/MSVC/Vulkan1.3 | Monolithic Engine: ACTIVE (Deterministic)\x1b[0m\n\n";
+       << " | every value below is a preset or a sine curve; no device or run is observed\x1b[0m\n\n";
 
     // Row 1: VRAM & Attention Widgets
-    ss << "\x1b[1;36m+-- Tiered VRAM & Cold Paging Governor --+  +-- Vulkan Workload & Entropy Router --+\x1b[0m\n";
+    ss << "\x1b[1;36m+-- VRAM gauge (SIMULATED) -------------+  +-- Workload weights (SIMULATED) -------+\x1b[0m\n";
     
     // Line 1
-    ss << "| Active VRAM:   \x1b[1;32m" << std::fixed << std::setprecision(3) << std::setw(7) << state.active_vram_mb << " MB\x1b[0m             |  "
+    ss << "| VRAM (demo):   \x1b[1;32m" << std::fixed << std::setprecision(3) << std::setw(7) << state.active_vram_mb << " MB\x1b[0m             |  "
        << "| Alpha (ARX):   " << std::setw(5) << std::setprecision(1) << (state.attn_alpha * 100.0) << "% " 
        << build_bar(state.attn_alpha, 1.0, 10) << "  |\n";
 
     // Line 2
-    ss << "| VRAM Ceiling:  \x1b[1;37m" << std::setw(7) << state.vram_ceiling_mb << " MB\x1b[0m (Hard Budget) |  "
+    ss << "| VRAM Ceiling:  \x1b[1;37m" << std::setw(7) << state.vram_ceiling_mb << " MB\x1b[0m (demo)        |  "
        << "| Beta (Phase):  " << std::setw(5) << std::setprecision(1) << (state.attn_beta * 100.0) << "% " 
        << build_bar(state.attn_beta, 1.0, 10) << "  |\n";
 
@@ -120,30 +124,34 @@ void TerminalUICPP::render_frame(const TUIStateCPP& state) {
        << build_bar(state.attn_delta, 1.0, 10) << "  |\n";
 
     // Line 5
-    ss << "| Memory Status: \x1b[1;32mUNDER CEILING (<120MB)\x1b[0m |  "
+    ss << "| Status:        \x1b[1;33mSIMULATED, NOT READ\x1b[0m    |  "
        << "| Epsilon (Lyap):" << std::setw(5) << std::setprecision(1) << (state.attn_epsilon * 100.0) << "% " 
        << build_bar(state.attn_epsilon, 1.0, 10) << "  |\n";
 
     ss << "\x1b[1;36m+----------------------------------------+  +----------------------------------------+\x1b[0m\n\n";
 
     // Row 2: MPS & Entropy Oscilloscope
-    ss << "\x1b[1;33m+-- J-Space Delta: MPS 300-Qubit Engine -+  +-- Hardware Entropy Oscilloscope -------+\x1b[0m\n";
+    ss << "\x1b[1;33m+-- MPS metrics (SIMULATED) ------------+  +-- Sine trace (SIMULATED) -------------+\x1b[0m\n";
     ss << "| Qubit Count:   " << std::setw(5) << state.num_qubits << " Qubits (1D Lattice)|  "
-       << "| QPC Drift Jitter: " << std::setw(5) << std::setprecision(1) << state.entropy_jitter_ns << " ns            |\n";
+       << "| Trace value:      " << std::setw(5) << std::setprecision(1) << state.entropy_jitter_ns << " (demo)        |\n";
 
     ss << "| Bond Dim (chi):" << std::setw(5) << state.bond_dim_chi << " (Capacity: 64)   |  "
-       << "| Dynamic Nudge:    " << (state.nudge_triggered ? "\x1b[1;31mTRIGGERED (Z_8)\x1b[0m " : "\x1b[1;32mSTABLE         \x1b[0m ") << "   |\n";
+       << "| Nudge (demo):     " << (state.nudge_triggered ? "\x1b[1;31myes            \x1b[0m " : "\x1b[1;32mno             \x1b[0m ") << "   |\n";
 
     ss << "| Residual (L_res):" << std::setw(8) << std::setprecision(6) << state.lambda_res << "              |  "
        << "| Waveform Trace:   " << build_oscilloscope(state.jitter_history, 18) << "   |\n";
 
     ss << "| MPS Throughput:" << std::setw(8) << std::setprecision(0) << state.solved_states_per_sec << " cycles/s         |  "
-       << "| Entropy Status:   \x1b[1;32mPHYSICAL HARVEST\x1b[0m     |\n";
+       << "| Source:           \x1b[1;33mSIMULATED (sin)\x1b[0m      |\n";
 
     ss << "\x1b[1;33m+----------------------------------------+  +----------------------------------------+\x1b[0m\n\n";
 
     // Footer
-    ss << "\x1b[90m  Commands: [Q] Quit  |  [V] Force Vulkan Dispatch  |  [S] SAT Cycle  |  [R] Reset\x1b[0m\n";
+#ifdef _WIN32
+    ss << "\x1b[90m  [Q]/Esc quits  |  SIMULATED DATA - NOT A MEASUREMENT\x1b[0m\n";
+#else
+    ss << "\x1b[90m  Ctrl+C quits  |  SIMULATED DATA - NOT A MEASUREMENT\x1b[0m\n";
+#endif
 
     std::cout << ss.str() << std::flush;
 }

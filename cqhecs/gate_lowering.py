@@ -28,6 +28,18 @@ Every rule below is an *exact* identity of unitaries, not an approximation:
   ``sum_S (-1)^{|S|+1} pi / 2^(m-1) * parity_S`` over non-empty qubit subsets,
   each realised by a CX ladder onto a pivot and one ``p`` rotation
 
+Google Sycamore gates (v3, W5), with Cirq's definitions:
+
+* ``fsim(theta, phi) = rxx(theta) . ryy(theta) . cp(-phi)`` — exact, because
+  ``exp(-i theta (XX+YY)/2)`` is the iSWAP-type rotation on |01>,|10> and
+  commutes with the diagonal ``cp``; ``syc = fsim(pi/2, pi/6)``
+* ``phased_x(theta, phi) = r(theta, phi)`` with angles in radians
+  (Cirq ``PhasedXPowGate(exponent=t, phase_exponent=p)`` is
+  ``phased_x(pi t, pi p)``); ``sqrt_x = sx``, ``sqrt_y = ry(pi/2)``,
+  ``sqrt_w = phased_x(pi/2, pi/4)``. These single-qubit rules match Cirq
+  **up to a global phase** (Cirq's ``X**t`` carries ``exp(i pi t/2)``), which
+  no measurement or expectation value can observe for an uncontrolled gate.
+
 (Products read right to left; the emitted instruction lists read left to
 right.) ``tests/test_gate_lowering.py`` checks each rule against Qiskit's
 reference matrices. Lowering happens once, inside
@@ -225,6 +237,32 @@ def _multi_controlled_z(qubits: Sequence[int]) -> List[Instruction]:
     return out
 
 
+def _fsim(q: Sequence[int], p: Sequence[float]) -> List[Instruction]:
+    theta, phi = p
+    a, b = q
+    return [("rxx", [a, b], [theta]), ("ryy", [a, b], [theta]), ("cp", [a, b], [-phi])]
+
+
+def _syc(q: Sequence[int], _p: Sequence[float]) -> List[Instruction]:
+    return [("fsim", list(q), [_PI / 2.0, _PI / 6.0])]
+
+
+def _phased_x(q: Sequence[int], p: Sequence[float]) -> List[Instruction]:
+    return [("r", [q[0]], [p[0], p[1]])]
+
+
+def _sqrt_x(q: Sequence[int], _p: Sequence[float]) -> List[Instruction]:
+    return [("sx", [q[0]], [])]
+
+
+def _sqrt_y(q: Sequence[int], _p: Sequence[float]) -> List[Instruction]:
+    return [("ry", [q[0]], [_PI / 2.0])]
+
+
+def _sqrt_w(q: Sequence[int], _p: Sequence[float]) -> List[Instruction]:
+    return [("phased_x", [q[0]], [_PI / 2.0, _PI / 4.0])]
+
+
 def _mcx(q: Sequence[int], _p: Sequence[float]) -> List[Instruction]:
     t = q[-1]
     return [("h", [t], [])] + _multi_controlled_z(list(q)) + [("h", [t], [])]
@@ -259,7 +297,17 @@ LOWERING_RULES: Dict[str, Callable[[Sequence[int], Sequence[float]], List[Instru
     "csx": _csx,
     "c3x": _mcx,
     "c4x": _mcx,
+    "fsim": _fsim,
+    "syc": _syc,
+    "phased_x": _phased_x,
+    "sqrt_x": _sqrt_x,
+    "sqrt_y": _sqrt_y,
+    "sqrt_w": _sqrt_w,
 }
+
+#: Lowered gates whose rule matches the reference definition only up to a
+#: global phase (all others are exact including phase).
+GLOBAL_PHASE_ONLY = frozenset({"phased_x", "sqrt_y", "sqrt_w"})
 
 #: Recursion guard. Rules nest at most three deep (cswap -> ccx -> primitives).
 _MAX_DEPTH = 8

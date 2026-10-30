@@ -138,10 +138,21 @@ class TestCLIPowerShell(unittest.TestCase):
         self.assertFalse(data["memory_leaks_detected"])
 
     def test_cli_dashboard_bounded(self):
-        res = self.run_cmd(["dashboard", "--cycles", "2"])
+        from cqhecs import __version__
+
+        res = self.run_cmd(["dashboard", "--demo", "--cycles", "2"])
         self.assertEqual(res.returncode, 0)
-        self.assertIn("CQ-HECS", res.stdout)
+        self.assertIn(f"CQ-HECS {__version__}", res.stdout)
         self.assertIn("Exited cleanly after 2 cycles", res.stdout)
+        # Every frame carries the label (GEMINI.md 3.6); no live-telemetry wording.
+        self.assertEqual(res.stdout.count("SIMULATED DATA - NOT A MEASUREMENT"), 2 * 2)
+        for forbidden in ("PHYSICAL HARVEST", "ACTIVE (Deterministic)", "v0.2.0"):
+            self.assertNotIn(forbidden, res.stdout)
+
+    def test_cli_dashboard_refuses_without_demo(self):
+        res = self.run_cmd(["dashboard", "--cycles", "1"])
+        self.assertEqual(res.returncode, 2)
+        self.assertIn("--demo", res.stderr)
 
 
 if __name__ == "__main__":

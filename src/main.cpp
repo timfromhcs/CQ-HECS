@@ -58,7 +58,7 @@ static void print_usage(const char* prog) {
               << "  qasm <file.qasm|-> [--qubits N] [--chi N] [--json]  Execute OpenQASM simulation\n"
               << "  sat  <file.cnf|->  [--threads N] [--json]          Execute DIMACS SAT solver\n"
               << "  arx  <cipher>      [--rounds N] [--json]           Benchmark ARX Cryptanalysis\n"
-              << "  dashboard          [--cycles N]                    Launch native ANSI/VT100 TUI monitor\n"
+              << "  dashboard          --demo [--cycles N]             Demo TUI with SIMULATED values only\n"
               << "  stress             [--cycles N] [--qubits N] [--json] Run memory leak & stress harness\n"
               << "  test               [--json]                        Execute embedded self-test suite\n\n"
               << "Global Options:\n"
@@ -284,8 +284,17 @@ static int cmd_arx(const std::vector<std::string>& args) {
 // ---------------------------------------------------------------------
 static int cmd_dashboard(const std::vector<std::string>& args) {
     uint32_t cycles = 0;
+    bool demo = false;
     for (size_t i = 0; i < args.size(); ++i) {
         if (args[i] == "--cycles" && i + 1 < args.size()) cycles = std::stoul(args[++i]);
+        else if (args[i] == "--demo") demo = true;
+    }
+    // Every dashboard value is synthetic (GEMINI.md 3.6); refuse to show them
+    // unless the caller explicitly asks for demo data.
+    if (!demo) {
+        std::cerr << "[CQ-HECS] dashboard shows synthetic values only; rerun with --demo "
+                     "to acknowledge that nothing it displays is a measurement.\n";
+        return 2;
     }
 
     TerminalUICPP tui;
@@ -483,7 +492,11 @@ static int cmd_vrts(const std::vector<std::string>& args) {
 
     if (!json_mode) {
         std::cout << "[VRTS-300 Engine] Initialized 3D Lattice 6 x 5 x 10 (300 Qubits)\n";
-        std::cout << "  Device:       " << vulkan->get_device_name() << "\n";
+        const auto& id = vulkan->get_device_identity();
+        std::cout << "  Device:       " << vulkan->get_device_name() << " [" << kind_name(id.kind)
+                  << ", vendor 0x" << std::hex << id.vendor_id << ", device 0x" << id.device_id
+                  << std::dec << ", driver " << id.driver_version << ", api " << id.api_version << "]\n";
+        std::cout << "  Selection:    " << vulkan->get_selection_reason() << "\n";
         std::cout << "  Allocation Ceiling: " << (VulkanMemoryManager::VRAM_HARD_CEILING_BYTES / (1024 * 1024)) << " MB (configured limit, not a device measurement)\n";
         std::cout << "  Ground State: " << (engine.is_bit_exact_ground_state() ? "VERIFIED (|0>^300)" : "DIRTY") << "\n";
     } else {

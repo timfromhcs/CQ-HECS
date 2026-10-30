@@ -836,6 +836,20 @@ class BackendProfile:
             source_sha256=data.get("source_sha256"),
         )
 
+    def migrated_to_v2(self) -> "BackendProfile":
+        """
+        Return a schema-2.0 copy of a 1.0 profile (V3 W6).
+
+        Schema 2.0 only adds ``calibration_flags`` and ``source_sha256``; a
+        1.0 profile has neither, so the physics fields are copied unchanged
+        and the new fields stay empty. Nothing is inferred: a 1.0 profile
+        never gains flags or a digest it did not record. A 2.0 profile is
+        returned as an equal copy; there is no downgrade.
+        """
+        data = self.to_dict()
+        data["schema_version"] = "2.0"
+        return BackendProfile.from_dict(data)
+
     def to_noise_model(self, relaxation: bool = False) -> NoiseModel:
         """
         Derive a NoiseModel from the profile's gate and readout errors.

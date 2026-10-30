@@ -1,11 +1,11 @@
 """
-CQ-HECS 2.4.0 Interactive Terminal UI (Rich TUI Dashboard)
-Real-time monitoring for:
-  - Active VRAM Gauge (0 to 120 MB limit monitor)
-  - 5 J-Spaces Workload Heatmap (Alpha, Beta, Gamma, Delta, Epsilon)
-  - Vulkan Workload & Entropy Jitter Oscilloscope
-  - MPS Tensor Bond Dimension (chi) and Truncation Residual Energy (Lambda_res)
-  - Solved states / candidate throughput metrics
+CQ-HECS Rich TUI dashboard — DEMO ONLY.
+
+No value shown by this dashboard is a measurement. VRAM, bond dimension,
+residual energy, throughput, attention weights and "jitter" are generated
+from presets, sine functions and timer noise. GEMINI.md 3.6 forbids showing
+such values as live telemetry, so the dashboard runs only with ``demo=True``
+(``--demo`` on the command line) and labels every frame ``SIMULATED DATA``.
 """
 
 from __future__ import annotations
@@ -32,9 +32,20 @@ from python_bridge.cq_hecs import (
     VulkanComputeScheduler
 )
 
+try:
+    from cqhecs import __version__ as _VERSION
+except ImportError:  # pragma: no cover - python_bridge used without the package
+    _VERSION = "unknown"
+
+DEMO_BANNER = "SIMULATED DATA - NOT A MEASUREMENT"
+
+
+class DemoModeRequired(RuntimeError):
+    """Raised when the dashboard is started without explicitly asking for demo data."""
+
 
 class TUIRuntimeState:
-    """Stores live telemetry metrics for CQ-HECS dashboard."""
+    """Synthetic demo values; none of them is read from a device or a run."""
     def __init__(self):
         self.active_vram_mb: float = 4.531
         self.vram_ceiling_mb: float = 120.0
@@ -54,6 +65,7 @@ class TUIRuntimeState:
         self.solved_states_per_sec: float = 14520.0
         self.rejected_branches_per_sec: float = 89450.0
         self.jitter_history: List[float] = [30.0 + 20.0 * math.sin(i * 0.3) for i in range(24)]
+        self.qpc_drift_ppm: float = 0.0
         self.cycle_count: int = 0
 
 
@@ -84,8 +96,12 @@ class TUIRenderer:
         return layout
 
     def render_header(self, state: TUIRuntimeState) -> Panel:
-        title = Text(" CQ-HECS 2.4.0 :: CLASSICAL QUANTUM VULKAN COMPUTE SIMULATOR & FOUR-PATH ROUTER ", style="bold white on blue")
-        sub = Text(f" [Cycle #{state.cycle_count:06d}]  Target: Win11/MSVC/Vulkan1.3  |  Engine: ACTIVE (100% Deterministic) ", style="dim cyan")
+        title = Text(f" CQ-HECS {_VERSION} :: DEMO DASHBOARD :: {DEMO_BANNER} ", style="bold white on red")
+        sub = Text(
+            f" [Demo frame #{state.cycle_count:06d}]  All values below are synthetic presets and "
+            "sine/timer noise; no device or simulation is being observed. ",
+            style="dim cyan",
+        )
         grid = Table.grid(expand=True)
         grid.add_column(justify="center")
         grid.add_row(title)
@@ -100,9 +116,9 @@ class TUIRenderer:
         table.add_column(style="bold white", width=18)
         table.add_column()
         
-        table.add_row("Active VRAM:", f"[{color}]{state.active_vram_mb:.3f} MB[/{color}]")
-        table.add_row("VRAM Ceiling:", f"{state.vram_ceiling_mb:.1f} MB (Hard Contract)")
-        table.add_row("Budget Margin:", f"{(state.vram_ceiling_mb - state.active_vram_mb):.2f} MB Remaining")
+        table.add_row("VRAM (demo):", f"[{color}]{state.active_vram_mb:.3f} MB[/{color}]")
+        table.add_row("Ceiling (demo):", f"{state.vram_ceiling_mb:.1f} MB")
+        table.add_row("Margin (demo):", f"{(state.vram_ceiling_mb - state.active_vram_mb):.2f} MB")
         
         pbar = ProgressBar(total=state.vram_ceiling_mb, completed=state.active_vram_mb, width=32, style="blue", complete_style=color)
         
@@ -110,7 +126,7 @@ class TUIRenderer:
         content.add_row(table)
         content.add_row(pbar)
         
-        return Panel(content, title="[bold cyan]Tiered VRAM & Cold Paging Governor[/bold cyan]", border_style=color)
+        return Panel(content, title=f"[bold cyan]VRAM gauge — {DEMO_BANNER}[/bold cyan]", border_style=color)
 
     def render_mps_widget(self, state: TUIRuntimeState) -> Panel:
         table = Table(expand=True, box=None, padding=(0, 1))
@@ -123,7 +139,7 @@ class TUIRenderer:
         table.add_row("Candidate Throughput", f"{state.solved_states_per_sec:,.0f} states/sec")
         table.add_row("Cuckoo Pruning Rate", f"{state.rejected_branches_per_sec:,.0f} rejected/sec")
 
-        return Panel(table, title="[bold yellow]J-Space Delta: MPS 300-Qubit Tensor Engine[/bold yellow]", border_style="yellow")
+        return Panel(table, title=f"[bold yellow]MPS metrics — {DEMO_BANNER}[/bold yellow]", border_style="yellow")
 
     def render_attention_widget(self, state: TUIRuntimeState) -> Panel:
         table = Table(expand=True, box=None, padding=(0, 1))
@@ -137,7 +153,7 @@ class TUIRenderer:
             bar_str = "[" + "#" * bar_len + "-" * (14 - bar_len) + "]"
             table.add_row(space, f"{pct:5.1f}%", f"[magenta]{bar_str}[/magenta]")
 
-        return Panel(table, title="[bold magenta]Vulkan Workload & Entropy Scheduler (Workload Router)[/bold magenta]", border_style="magenta")
+        return Panel(table, title=f"[bold magenta]Workload weights — {DEMO_BANNER}[/bold magenta]", border_style="magenta")
 
     def render_entropy_widget(self, state: TUIRuntimeState) -> Panel:
         # Mini oscilloscope for QPC hardware jitter (ASCII-safe across all Windows terminals)
@@ -157,15 +173,15 @@ class TUIRenderer:
         grid.add_column(style="bold white", width=18)
         grid.add_column()
 
-        grid.add_row("Entropy Jitter:", f"[green]{state.entropy_jitter_ns:.2f} ns[/green]")
-        grid.add_row("Hardware Drift:", f"[yellow]{state.qpc_drift_ppm:+.2f} ppm[/yellow]")
-        grid.add_row("Nudge Active:", "[bold green]YES (+1/7)[/bold green]" if state.nudge_active else "[dim]INACTIVE[/dim]")
-        grid.add_row("Oscilloscope:", f"[cyan]{wave_str}[/cyan]")
+        grid.add_row("Timer noise:", f"[green]{state.entropy_jitter_ns:.2f} (demo units)[/green]")
+        grid.add_row("Drift (demo):", f"[yellow]{state.qpc_drift_ppm:+.2f}[/yellow]")
+        grid.add_row("Nudge (demo):", "[bold green]YES[/bold green]" if state.nudge_active else "[dim]no[/dim]")
+        grid.add_row("Trace:", f"[cyan]{wave_str}[/cyan]")
 
-        return Panel(grid, title="[bold green]Vulkan Workload Nudge & Entropy Jitter Oscilloscope[/bold green]", border_style="green")
+        return Panel(grid, title=f"[bold green]Timer-noise trace — {DEMO_BANNER}[/bold green]", border_style="green")
 
     def render_footer(self) -> Panel:
-        text = Text("  [Q] Exit Dashboard  |  [V] Force Vulkan Dispatch  |  [S] Run SAT  |  [A] Invert ARX  |  [M] Page Cold Memory", style="dim white on grey23")
+        text = Text(f"  Ctrl+C exits  |  {DEMO_BANNER}  |  for real runs use `cq-hecs` (Python package CLI)", style="dim white on grey23")
         return Panel(text, style="grey23")
 
     def update_layout(self, layout: Layout, state: TUIRuntimeState) -> None:
@@ -177,8 +193,13 @@ class TUIRenderer:
         layout["footer"].update(self.render_footer())
 
 
-def run_dashboard_loop(max_cycles: Optional[int] = None, refresh_rate: float = 0.1):
-    """Runs the live terminal UI dashboard."""
+def run_dashboard_loop(max_cycles: Optional[int] = None, refresh_rate: float = 0.1, demo: bool = False):
+    """Run the demo dashboard. Refuses unless ``demo`` is True (GEMINI.md 3.6)."""
+    if not demo:
+        raise DemoModeRequired(
+            "the dashboard shows synthetic values only; start it with --demo to "
+            "acknowledge that nothing it displays is a measurement"
+        )
     if hasattr(sys.stdout, "reconfigure"):
         try:
             sys.stdout.reconfigure(encoding="utf-8")
@@ -198,7 +219,7 @@ def run_dashboard_loop(max_cycles: Optional[int] = None, refresh_rate: float = 0
                 cycle += 1
                 state.cycle_count = cycle
 
-                # Update live metrics with realistic variations
+                # Synthetic demo values (timer noise and sine waves), not telemetry.
                 ent = scheduler.harvest_timing_jitter()
                 jitter = (ent % 100) * 0.8 + 15.0
                 state.entropy_jitter_ns = jitter
@@ -226,7 +247,7 @@ def run_dashboard_loop(max_cycles: Optional[int] = None, refresh_rate: float = 0
                     "Epsilon (Shield)": attn["epsilon_weight"]
                 }
 
-                # VRAM fluctuation strictly within ~4.5 to ~5.5 MB
+                # Synthetic VRAM curve for the demo; no device is queried.
                 state.active_vram_mb = 4.531 + 0.6 * math.sin(cycle * 0.1)
 
                 renderer.update_layout(layout, state)
@@ -239,9 +260,13 @@ def run_dashboard_loop(max_cycles: Optional[int] = None, refresh_rate: float = 0
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="CQ-HECS v3.5 Rich TUI Dashboard")
+    parser = argparse.ArgumentParser(description="CQ-HECS demo dashboard (synthetic data only)")
+    parser.add_argument("--demo", action="store_true", help="Required: acknowledge that all values are synthetic")
     parser.add_argument("--cycles", type=int, default=None, help="Number of cycles to run (default: infinite)")
     parser.add_argument("--rate", type=float, default=0.1, help="Refresh delay in seconds (default: 0.1)")
     args = parser.parse_args()
 
-    run_dashboard_loop(max_cycles=args.cycles, refresh_rate=args.rate)
+    try:
+        run_dashboard_loop(max_cycles=args.cycles, refresh_rate=args.rate, demo=args.demo)
+    except DemoModeRequired as exc:
+        parser.error(str(exc))

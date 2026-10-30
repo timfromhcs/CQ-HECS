@@ -25,6 +25,7 @@ one.
 from __future__ import annotations
 
 import argparse
+import math
 import os
 import subprocess
 import sys
@@ -497,6 +498,82 @@ def check_selftest_composition_property() -> bool:
     return not report.passed
 
 
+def check_sat_timeout_unknown() -> bool:
+    """A timeout must stay UNKNOWN; a mutant that returns UNSAT is caught."""
+    from python_bridge.sat_engine import TIMEOUT_UNKNOWN, CNFFormula, CQSATSolver
+
+    formula = CNFFormula(num_vars=2, num_clauses=2, clauses=[[1, 2], [-1, 2]])
+    return CQSATSolver().solve(formula, timeout_seconds=-1.0).status != TIMEOUT_UNKNOWN
+
+
+def check_sat_exact_memo() -> bool:
+    """32 forced variables plus a satisfiable rest must stay SAT."""
+    from python_bridge.sat_engine import CNFFormula, CQSATSolver
+
+    # Found by a seeded search: the first branch is refuted with branching,
+    # the sibling is satisfiable, and both share the 32 forced variables.
+    clauses = [[v] for v in range(1, 33)]
+    clauses += [
+        [35, -34, 36], [33, -36, -35], [-35, 34, -36], [34, -33, -35], [36, -34, 33],
+        [-33, 36, -35], [33, 34, 36], [-35, 36, -33], [35, -36, -33], [-34, -36, -35],
+        [-33, -34, -35], [-33, -35, -34], [35, -33, -36], [-33, -36, -35], [33, 34, -36],
+        [36, -35, 34],
+    ]
+    formula = CNFFormula(num_vars=36, num_clauses=len(clauses), clauses=clauses)
+    return CQSATSolver().solve(formula).satisfiable is not True
+
+
+def check_dimacs_empty_clause() -> bool:
+    """An empty clause ``0`` must make the formula UNSAT."""
+    from python_bridge.sat_engine import CQSATSolver, DIMACSParser
+
+    formula = DIMACSParser.parse_string("p cnf 1 2\n0\n1 0\n")
+    return CQSATSolver().solve(formula).satisfiable is not False
+
+
+def _fsim_density_probabilities(theta: float, phi: float):
+    from cqhecs.backends.noisy_density_matrix import NoisyDensityMatrixBackend
+
+    circuit = [
+        ("h", [0], []), ("h", [1], []), ("fsim", [0, 1], [theta, phi]),
+        ("h", [0], []), ("h", [1], []), ("measure", [0], []), ("measure", [1], []),
+    ]
+    return NoisyDensityMatrixBackend(max_qubits=4).simulate(circuit, shots=1, seed=0).probabilities
+
+
+def check_fsim_definition() -> bool:
+    """fsim must match Cirq's matrix; an inverted conditional phase is caught."""
+    import numpy as np
+
+    theta, phi = 0.61, -1.27
+    c, s = math.cos(theta), math.sin(theta)
+    u = np.array([[1, 0, 0, 0], [0, c, -1j * s, 0], [0, -1j * s, c, 0], [0, 0, 0, np.exp(-1j * phi)]])
+    h = np.array([[1, 1], [1, -1]]) / math.sqrt(2)
+    hh = np.kron(h, h)
+    state = hh @ u @ hh @ np.array([1, 0, 0, 0], dtype=complex)
+    expected = np.abs(state) ** 2
+    got = _fsim_density_probabilities(theta, phi)
+    return any(abs(got.get(format(i, "02b"), 0.0) - expected[i]) > 1e-9 for i in range(4))
+
+
+def check_sqrt_w_axis() -> bool:
+    """sqrt_w rotates about (X+Y)/sqrt2; a mutant using the X axis is caught."""
+    import numpy as np
+
+    from cqhecs.backends.noisy_density_matrix import NoisyDensityMatrixBackend
+
+    # Independent reference: Cirq W**0.5 = e^{i pi/4} (cos(pi/4) I - i sin(pi/4) W).
+    w = np.array([[0, 1], [1, 0]]) + np.array([[0, -1j], [1j, 0]])
+    w = w / math.sqrt(2)
+    sqrt_w = np.exp(1j * math.pi / 4) * (math.cos(math.pi / 4) * np.eye(2) - 1j * math.sin(math.pi / 4) * w)
+    s_gate = np.diag([1, 1j])
+    h = np.array([[1, 1], [1, -1]]) / math.sqrt(2)
+    expected_p1 = abs((h @ s_gate @ sqrt_w @ np.array([1, 0]))[1]) ** 2
+    circuit = [("sqrt_w", [0], []), ("s", [0], []), ("h", [0], []), ("measure", [0], [])]
+    probabilities = NoisyDensityMatrixBackend(max_qubits=2).simulate(circuit, shots=1, seed=0).probabilities
+    return abs(probabilities.get("1", 0.0) - expected_p1) > 1e-9
+
+
 CHECKS: Dict[str, Callable[[], bool]] = {
     "qubit_bit_order": check_qubit_bit_order,
     "cz_conjugation": check_cz_conjugation,
@@ -533,6 +610,11 @@ CHECKS: Dict[str, Callable[[], bool]] = {
     "reference_verdict_suppression": check_reference_verdict_suppression,
     "selftest_inverse_property": check_selftest_inverse_property,
     "selftest_composition_property": check_selftest_composition_property,
+    "sat_timeout_unknown": check_sat_timeout_unknown,
+    "sat_exact_memo": check_sat_exact_memo,
+    "dimacs_empty_clause": check_dimacs_empty_clause,
+    "fsim_definition": check_fsim_definition,
+    "sqrt_w_axis": check_sqrt_w_axis,
 }
 
 
@@ -892,6 +974,46 @@ MUTANTS: List[SourceMutant] = [
         replacement="        self._kraus = _prune([a @ b for a in first.kraus_operators for b in second.kraus_operators])\n",
         check="selftest_composition_property",
         mechanism="applies the second channel before the first",
+    ),
+    SourceMutant(
+        name="SAT timeout reported as UNSAT",
+        target="python_bridge/sat_engine.py",
+        original="            raise _SearchTimeout()\n",
+        replacement="            return False, None\n",
+        check="sat_timeout_unknown",
+        mechanism="restores the v2 behaviour: a timeout becomes satisfiable=False, verified=True",
+    ),
+    SourceMutant(
+        name="SAT memo keyed by the first 32 variables",
+        target="python_bridge/sat_engine.py",
+        original="        state_key = frozenset(assignment.items())\n",
+        replacement="        state_key = frozenset(sorted(assignment.items())[:32])\n",
+        check="sat_exact_memo",
+        mechanism="merges states that differ only above variable 32 (the v2 hash collision)",
+    ),
+    SourceMutant(
+        name="DIMACS empty clause dropped",
+        target="python_bridge/sat_engine.py",
+        original="                    clauses.append(current)\n",
+        replacement="                    if current:\n                        clauses.append(current)\n",
+        check="dimacs_empty_clause",
+        mechanism="turns an UNSAT formula with an empty clause into a verified SAT",
+    ),
+    SourceMutant(
+        name="fsim conditional phase inverted",
+        target="cqhecs/gate_lowering.py",
+        original='    return [("rxx", [a, b], [theta]), ("ryy", [a, b], [theta]), ("cp", [a, b], [-phi])]\n',
+        replacement='    return [("rxx", [a, b], [theta]), ("ryy", [a, b], [theta]), ("cp", [a, b], [phi])]\n',
+        check="fsim_definition",
+        mechanism="uses e^{+i phi} on |11> instead of Cirq's e^{-i phi}",
+    ),
+    SourceMutant(
+        name="sqrt_w rotates about X",
+        target="cqhecs/gate_lowering.py",
+        original='    return [("phased_x", [q[0]], [_PI / 2.0, _PI / 4.0])]\n',
+        replacement='    return [("phased_x", [q[0]], [_PI / 2.0, 0.0])]\n',
+        check="sqrt_w_axis",
+        mechanism="drops the pi/4 axis phase, turning sqrt(W) into sqrt(X)",
     ),
 ]
 

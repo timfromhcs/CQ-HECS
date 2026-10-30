@@ -1,3 +1,7 @@
+// Checks must run in Release builds too (CMake Release defines NDEBUG).
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include "cqhecs/stabilizer/tableau.hpp"
 #include <iostream>
 #include <cassert>

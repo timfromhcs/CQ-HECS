@@ -280,6 +280,33 @@ def cmd_profile(args: argparse.Namespace) -> int:
                 print(f"  Coupling edges: {len(p.coupling_map)}")
                 print(f"  Basis gates: {', '.join(p.basis_gates)}")
         return EXIT_OK
+    elif args.profile_command == "migrate":
+        from cqhecs.hardware_bridge import BackendProfile, InvalidProfileError
+
+        try:
+            source = json.loads(Path(args.input).read_text("utf-8"))
+            if isinstance(source, dict) and isinstance(source.get("profile"), dict):
+                source = source["profile"]
+            original = BackendProfile.from_dict(source)
+            migrated = original.migrated_to_v2()
+        except (OSError, ValueError, KeyError, TypeError, InvalidProfileError) as exc:
+            LOG.error("cannot migrate %s: %s", args.input, exc)
+            return EXIT_USAGE
+        Path(args.output).write_text(json.dumps(migrated.to_dict(), indent=2) + "\n", "utf-8")
+        payload = {
+            "schema_version": JSON_SCHEMA_VERSION,
+            "input": args.input,
+            "output": args.output,
+            "from_schema": original.schema_version,
+            "to_schema": migrated.schema_version,
+            "profile": migrated.name,
+        }
+        if args.format == "json":
+            _emit_json(payload)
+        else:
+            print(f"Migrated {migrated.name}: schema {original.schema_version} -> {migrated.schema_version}")
+            print(f"Wrote   : {args.output}")
+        return EXIT_OK
     elif args.profile_command == "show":
         try:
             b = provider.get_backend(args.name)
@@ -837,6 +864,9 @@ def build_parser() -> argparse.ArgumentParser:
     prof_sub.add_parser("list", help="List available hardware calibration profiles")
     p_show = prof_sub.add_parser("show", help="Show details of a hardware profile")
     p_show.add_argument("name", help="Profile name (e.g. fake_manila, linear_5q)")
+    p_mig = prof_sub.add_parser("migrate", help="Rewrite a schema 1.0 profile JSON as schema 2.0")
+    p_mig.add_argument("input", help="Profile JSON (bare, or the output of 'profile show --format json')")
+    p_mig.add_argument("output", help="Where to write the schema 2.0 profile JSON")
 
     p_ref = sub.add_parser(
         "reference",

@@ -363,11 +363,14 @@ bool SATSolverCPP::dpll(std::vector<std::vector<int32_t>>& clauses,
         if (c.empty()) return false;
     }
 
-    // 4. J-Space Gamma Cuckoo cycle pruning
-    uint64_t hash_key = compute_state_hash(assignment);
-    if (!check_and_insert_cuckoo(hash_key)) {
+    // 4. Exact memo of refuted states. The residual formula is a function of
+    // the original clauses and this assignment, so an identical assignment
+    // that was already searched to completion is refuted again. The key is
+    // the whole assignment vector: a 64-bit hash match alone could merge two
+    // different states and drop a satisfiable branch (GEMINI.md 3.2).
+    if (m_refuted.count(assignment) != 0) {
         m_pruned_cycles++;
-        return false; // Cycle / redundant branch pruned!
+        return false;
     }
 
     // 5. Select variable
@@ -386,6 +389,12 @@ bool SATSolverCPP::dpll(std::vector<std::vector<int32_t>>& clauses,
         }
     }
 
+    // Record only a completed refutation; a timed-out subtree proves nothing.
+    // The memo is bounded by the table capacity and only ever skips work, so
+    // stopping insertion when it is full cannot change the answer.
+    if (!m_timed_out && m_refuted.size() < m_table_capacity) {
+        m_refuted.insert(assignment);
+    }
     return false;
 }
 
@@ -413,6 +422,7 @@ SATSolverResultCPP SATSolverCPP::solve(const CNFFormulaCPP& formula, double time
     m_pruned_cycles = 0;
     m_timed_out = false;
     std::fill(m_cuckoo_table.begin(), m_cuckoo_table.end(), 0);
+    m_refuted.clear();
 
     // Defensive validation for callers that build a formula directly instead of
     // going through parse_string(). An out-of-range literal would otherwise

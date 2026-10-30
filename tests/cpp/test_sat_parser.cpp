@@ -8,8 +8,11 @@
 //   * a timeout was reported as UNSAT,
 //   * the cycle-pruning hash ignored variables above index 32.
 
+#include <cstdint>
 #include <iostream>
+#include <random>
 #include <string>
+#include <vector>
 
 #include "sat_solver.hpp"
 
@@ -153,6 +156,51 @@ int main() {
         auto res = solver.solve(formula);
         check(!res.input_valid && !res.error.empty(),
               "out-of-range literal is refused before allocation");
+    }
+
+    // --- exhaustive differential against brute force ----------------------
+    // Pruning uses exact assignment keys; a tiny memo capacity (1) and a large
+    // one must both agree with brute force on every instance.
+    {
+        std::mt19937 rng(20261030u);
+        int mismatches = 0;
+        for (int round = 0; round < 400; ++round) {
+            const uint32_t n = 1 + rng() % 9;
+            const uint32_t m = 1 + rng() % (4 * n);
+            CNFFormulaCPP formula;
+            formula.num_vars = n;
+            for (uint32_t c = 0; c < m; ++c) {
+                std::vector<int32_t> clause;
+                const uint32_t width = 1 + rng() % (n < 3 ? n : 3);
+                while (clause.size() < width) {
+                    const int32_t v = static_cast<int32_t>(1 + rng() % n);
+                    bool seen = false;
+                    for (int32_t lit : clause) seen = seen || (lit == v || lit == -v);
+                    if (!seen) clause.push_back((rng() & 1u) ? v : -v);
+                }
+                formula.clauses.push_back(clause);
+            }
+            formula.num_clauses = m;
+            bool expected = false;
+            for (uint32_t bits = 0; bits < (1u << n) && !expected; ++bits) {
+                bool all = true;
+                for (const auto& clause : formula.clauses) {
+                    bool any = false;
+                    for (int32_t lit : clause) {
+                        const bool value = (bits >> (std::abs(lit) - 1)) & 1u;
+                        any = any || (value == (lit > 0));
+                    }
+                    all = all && any;
+                }
+                expected = all;
+            }
+            for (size_t capacity : {static_cast<size_t>(1), static_cast<size_t>(4096)}) {
+                SATSolverCPP solver(capacity);
+                auto res = solver.solve(formula, 30.0);
+                if (res.timed_out || !res.verified || res.satisfiable != expected) ++mismatches;
+            }
+        }
+        check(mismatches == 0, "400 random CNFs agree with brute force (memo capacity 1 and 4096)");
     }
 
     std::cout << "-----------------------------------------------------------------\n";

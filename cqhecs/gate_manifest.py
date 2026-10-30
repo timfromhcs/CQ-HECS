@@ -124,6 +124,9 @@ for _name, _arity, _params in (
     ("r", 1, 2), ("iswap", 2, 0), ("dcx", 2, 0), ("ecr", 2, 0),
     ("cu3", 2, 3), ("cu", 2, 4), ("csx", 2, 0),
     ("c3x", 4, 0), ("c4x", 5, 0),
+    # Google Sycamore gate set (v3 W5); see cqhecs.gate_lowering.
+    ("fsim", 2, 2), ("syc", 2, 0), ("phased_x", 1, 2),
+    ("sqrt_x", 1, 0), ("sqrt_y", 1, 0), ("sqrt_w", 1, 0),
 ):
     _add(GateSpec(name=_name, arity=_arity, min_params=_params,
                   max_params=_params, lowered=True))

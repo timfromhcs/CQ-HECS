@@ -316,6 +316,10 @@ add_executable(test_qasm_contract tests/test_qasm_contract.cpp $<TARGET_OBJECTS:
 target_link_libraries(test_qasm_contract PRIVATE ${Vulkan_LIBRARIES})
 
 add_executable(test_sat_parser tests/cpp/test_sat_parser.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
+# A deliberately false assertion must abort even in Release (GEMINI.md 3.5).
+add_executable(test_release_assert_meta tests/cpp/test_release_assert_meta.cpp)
+add_executable(test_vulkan_device_policy tests/cpp/test_vulkan_device_policy.cpp)
+target_include_directories(test_vulkan_device_policy PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(test_sat_parser PRIVATE ${Vulkan_LIBRARIES})
 
 add_executable(test_statevector_contract tests/cpp/test_statevector_contract.cpp)
@@ -351,6 +355,9 @@ add_test(NAME test_stabilizer_extreme COMMAND test_stabilizer_extreme)
 add_test(NAME test_300q_stress COMMAND test_300q_stress)
 add_test(NAME test_qasm_contract COMMAND test_qasm_contract)
 add_test(NAME test_sat_parser COMMAND test_sat_parser)
+add_test(NAME test_release_assert_meta COMMAND test_release_assert_meta)
+set_tests_properties(test_release_assert_meta PROPERTIES WILL_FAIL TRUE)
+add_test(NAME test_vulkan_device_policy COMMAND test_vulkan_device_policy)
 add_test(NAME test_statevector_contract COMMAND test_statevector_contract)
 add_test(NAME test_mps_contract COMMAND test_mps_contract)
 add_test(NAME test_qpu_facade_contract COMMAND test_qpu_facade_contract)
