@@ -12,13 +12,13 @@ what was actually transferred.
 | *From Ideal to Noisy: Adapting Property-Based Testing for Real Quantum Computers* (2025) | properties that remain meaningful under noise, rather than only ideal-state assertions | ADAPTABLE | Kraus trace/Hermiticity/positivity/unitality and readout column-stochasticity checks in `selftest`; noisy permutation fuzz (not committed as a test, result recorded below) |
 | QuteFuzz, POPL 2025 | structured random circuit generation for compiler/simulator fuzzing | ADAPTABLE | Hypothesis circuit strategy plus the standalone fuzz runs listed below |
 | Long et al., *Testing Quantum Programs with Multiple Subroutines*, arXiv:2208.09206 (2022) | metamorphic relations instead of a full statevector oracle | DIRECT_TRANSFER | inverse composition, qubit relabelling and global-phase metamorphic relations |
-| FuzzQ / QuCheck mutation analysis | mutation score as a test-suite quality metric | ALREADY PRESENT | the repository's `scripts/run_mutation_tests.py` now covers 33 source mutants |
+| FuzzQ / QuCheck mutation analysis | mutation score as a test-suite quality metric | ALREADY PRESENT | the repository's `scripts/run_mutation_tests.py` now covers 35 source mutants |
 
 ## What was applied
 
 ### 1. `cq-hecs selftest`
 
-A deterministic, installation-level suite (`cqhecs/selftest.py`) with eight
+A deterministic, installation-level suite (`cqhecs/selftest.py`) with eleven
 checks:
 
 1. probability normalization and non-negativity;
@@ -32,7 +32,11 @@ checks:
    the failure budget divided across checks (Bonferroni);
 7. Kraus channels preserve trace, Hermiticity and positivity; depolarizing is
    unital; the readout matrix is column-stochastic;
-8. the dense expectation engine agrees with the statevector oracle.
+8. the noisy density matrix is permutation-equivariant under a permuted circuit
+   and permuted noise model;
+9. a zero-error noise model reproduces the ideal distribution;
+10. `ComposedChannel(A, B)` equals `B ∘ A`;
+11. the dense expectation engine agrees with the statevector oracle.
 
 The suite is deliberately *not* a proof of correctness: a wrong but consistent
 gate matrix would pass every check. Qiskit/Aer differential tests remain the

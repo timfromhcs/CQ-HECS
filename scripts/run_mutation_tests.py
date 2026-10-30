@@ -489,6 +489,14 @@ def check_selftest_inverse_property() -> bool:
     return not report.passed
 
 
+def check_selftest_composition_property() -> bool:
+    """A reversed ComposedChannel order must make the self-test fail."""
+    from cqhecs.selftest import run_selftest
+
+    report = run_selftest(cases=2, seed=5)
+    return not report.passed
+
+
 CHECKS: Dict[str, Callable[[], bool]] = {
     "qubit_bit_order": check_qubit_bit_order,
     "cz_conjugation": check_cz_conjugation,
@@ -524,6 +532,7 @@ CHECKS: Dict[str, Callable[[], bool]] = {
     "reference_hash_bypass": check_reference_hash_bypass,
     "reference_verdict_suppression": check_reference_verdict_suppression,
     "selftest_inverse_property": check_selftest_inverse_property,
+    "selftest_composition_property": check_selftest_composition_property,
 }
 
 
@@ -875,6 +884,14 @@ MUTANTS: List[SourceMutant] = [
         replacement="        combined = list(circuit)\n",
         check="selftest_inverse_property",
         mechanism="runs C instead of C†C while the selftest still reports PASS",
+    ),
+    SourceMutant(
+        name="ComposedChannel operands reversed",
+        target="cqhecs/hardware_bridge.py",
+        original="        self._kraus = _prune([b @ a for a in first.kraus_operators for b in second.kraus_operators])\n",
+        replacement="        self._kraus = _prune([a @ b for a in first.kraus_operators for b in second.kraus_operators])\n",
+        check="selftest_composition_property",
+        mechanism="applies the second channel before the first",
     ),
 ]
 

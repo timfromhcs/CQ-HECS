@@ -82,7 +82,7 @@ model is a device-mean model. The preregistered pooled H-V3-1 result on
 
 ### Metamorphic self-test
 
-`selftest` runs eight relations that must hold for any correct engine, without
+`selftest` runs eleven relations that must hold for any correct engine, without
 comparing against a stored expected output:
 
 ```bash
@@ -93,9 +93,10 @@ cq-hecs --format json selftest --cases 8
 It checks normalization, `C†C = I`, qubit-permutation equivariance, the
 `p(θ)`/`rz(θ)` global-phase relation, exact MPS vs dense parity, finite-shot
 sampling within a Bonferroni-corrected Hoeffding bound, Kraus/readout
-invariants, and the dense expectation oracle. It is a fast installation check,
-not a proof of correctness; the Qiskit/Aer differential suite remains the
-independent oracle.
+invariants, noisy-output permutation equivariance, zero-noise identity,
+channel-composition order, and the dense expectation oracle. It is a fast
+installation check, not a proof of correctness; the Qiskit/Aer differential
+suite remains the independent oracle.
 
 ### Circuits
 

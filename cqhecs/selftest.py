@@ -36,11 +36,15 @@ from cqhecs.backends.dense_reference import (
     _single_qubit_matrix,
     _two_qubit_tensor,
 )
+from cqhecs.backends.noisy_density_matrix import NoisyDensityMatrixBackend
 from cqhecs.backends.path_c_mps_exact import ExactMPSTensorChain
 from cqhecs.hardware_bridge import (
     AmplitudeDampingChannel,
+    ComposedChannel,
     DepolarizingChannel,
+    NoiseModel,
     ReadoutErrorChannel,
+    TwoQubitDepolarizingChannel,
 )
 from cqhecs.result import hoeffding_total_variation_bound
 
@@ -333,6 +337,139 @@ def _check_expectation(cases: int, seed: int) -> str:
     return f"{cases} random circuits, dense expectation matches the statevector oracle"
 
 
+def _apply_channel(channel: Any, rho: np.ndarray) -> np.ndarray:
+    return sum(
+        k @ rho @ k.conj().T for k in channel.kraus_operators
+    )
+
+
+def _random_noise_model(circuit, num_qubits: int, rng: random.Random) -> NoiseModel:
+    model = NoiseModel("selftest_random")
+    seen_1q = set()
+    seen_2q = set()
+    for name, qubits, _params in circuit:
+        if len(qubits) == 1 and (name, qubits[0]) not in seen_1q:
+            seen_1q.add((name, qubits[0]))
+            model.add_1q_channel(name, qubits[0], DepolarizingChannel(rng.uniform(0.0, 0.2)))
+        elif len(qubits) == 2 and (name, tuple(qubits)) not in seen_2q:
+            seen_2q.add((name, tuple(qubits)))
+            model.add_2q_channel(
+                name,
+                (qubits[0], qubits[1]),
+                TwoQubitDepolarizingChannel(rng.uniform(0.0, 0.2)),
+            )
+    for qubit in range(num_qubits):
+        model.set_readout_error(qubit, rng.uniform(0.0, 0.1), rng.uniform(0.0, 0.1))
+    model.validate()
+    return model
+
+
+def _permute_model(model: NoiseModel, permutation: Sequence[int]) -> NoiseModel:
+    moved = NoiseModel("selftest_permuted")
+    for gate, by_qubit in model.channels_1q.items():
+        for qubit, channels in by_qubit.items():
+            for channel in channels:
+                moved.add_1q_channel(gate, permutation[qubit], channel)
+    for gate, by_pair in model.channels_2q.items():
+        for (left, right), channels in by_pair.items():
+            for channel in channels:
+                moved.add_2q_channel(
+                    gate, (permutation[left], permutation[right]), channel
+                )
+    for qubit, channel in model.readout_errors.items():
+        moved.readout_errors[permutation[qubit]] = channel
+    moved.validate()
+    return moved
+
+
+def _noisy_probabilities(circuit, model: NoiseModel, num_qubits: int) -> np.ndarray:
+    result = NoisyDensityMatrixBackend(max_qubits=10).simulate(
+        circuit, noise_model=model, shots=4, seed=1
+    )
+    if not result.probabilities:
+        raise AssertionError(f"noisy simulation returned no probabilities: {result.state}")
+    return _probabilities_from_dict(result.probabilities, num_qubits)
+
+
+def _probabilities_from_dict(probabilities: Dict[str, float], num_qubits: int) -> np.ndarray:
+    vector = np.zeros(1 << num_qubits, dtype=float)
+    for bitstring, value in probabilities.items():
+        vector[int(bitstring, 2)] = float(value)
+    return vector
+
+
+def _check_noise_permutation(cases: int, seed: int) -> str:
+    for case in range(cases):
+        rng = random.Random(seed + 7000 + case)
+        n = rng.randint(2, 5)
+        circuit = _random_circuit(rng, n, rng.randint(2, 8))
+        permutation = list(range(n))
+        rng.shuffle(permutation)
+        moved = [
+            (name, [permutation[q] for q in qubits], params)
+            for name, qubits, params in circuit
+        ]
+        model = _random_noise_model(circuit, n, rng)
+        moved_model = _permute_model(model, permutation)
+        original = _noisy_probabilities(circuit, model, n)
+        permuted = _noisy_probabilities(moved, moved_model, n)
+        remapped = np.zeros_like(permuted)
+        for index, value in enumerate(permuted):
+            target = 0
+            for old_q in range(n):
+                if (index >> permutation[old_q]) & 1:
+                    target |= 1 << old_q
+            remapped[target] = value
+        distance = 0.5 * float(np.abs(remapped - original).sum())
+        if distance > 1e-10:
+            raise AssertionError(f"case {case}: noisy permutation TV={distance!r}")
+    return f"{cases} random noisy circuits, permutation-equivariant"
+
+
+def _check_zero_noise(cases: int, seed: int) -> str:
+    for case in range(cases):
+        rng = random.Random(seed + 8000 + case)
+        n = rng.randint(2, 5)
+        circuit = _random_circuit(rng, n, rng.randint(2, 8))
+        model = NoiseModel("zero")
+        seen_1q = set()
+        seen_2q = set()
+        for name, qubits, _params in circuit:
+            if len(qubits) == 1 and (name, qubits[0]) not in seen_1q:
+                seen_1q.add((name, qubits[0]))
+                model.add_1q_channel(name, qubits[0], DepolarizingChannel(0.0))
+            elif len(qubits) == 2 and (name, tuple(qubits)) not in seen_2q:
+                seen_2q.add((name, tuple(qubits)))
+                model.add_2q_channel(
+                    name, (qubits[0], qubits[1]), TwoQubitDepolarizingChannel(0.0)
+                )
+        for qubit in range(n):
+            model.set_readout_error(qubit, 0.0, 0.0)
+        model.validate()
+        ideal = _probabilities(_dense_statevector(circuit, n))
+        zero_noise = _noisy_probabilities(circuit, model, n)
+        distance = 0.5 * float(np.abs(zero_noise - ideal).sum())
+        if distance > 1e-12:
+            raise AssertionError(f"case {case}: zero-noise TV={distance!r}")
+    return f"{cases} circuits, zero-error noise model equals the ideal distribution"
+
+
+def _check_composition_order(cases: int, seed: int) -> str:  # noqa: ARG001
+    rng = np.random.default_rng(seed)
+    first = AmplitudeDampingChannel(0.2)
+    second = DepolarizingChannel(0.25)
+    composed = ComposedChannel(first, second)
+    for case in range(cases):
+        matrix = rng.normal(size=(2, 2)) + 1j * rng.normal(size=(2, 2))
+        rho = matrix @ matrix.conj().T
+        rho /= np.trace(rho)
+        expected = _apply_channel(second, _apply_channel(first, rho))
+        got = _apply_channel(composed, rho)
+        if np.max(np.abs(got - expected)) > 1e-12:
+            raise AssertionError(f"case {case}: ComposedChannel is not second o first")
+    return f"{cases} states, ComposedChannel(A,B) equals B after A"
+
+
 _CHECK_TABLE: Sequence[Tuple[str, Callable[[int, int], str]]] = (
     ("normalization", _check_normalization),
     ("inverse_identity", _check_inverse_identity),
@@ -341,6 +478,9 @@ _CHECK_TABLE: Sequence[Tuple[str, Callable[[int, int], str]]] = (
     ("mps_dense_parity", _check_mps_dense_parity),
     ("sampling", _check_sampling),
     ("noise_invariants", _check_noise_invariants),
+    ("noise_permutation_equivariance", _check_noise_permutation),
+    ("zero_noise_identity", _check_zero_noise),
+    ("channel_composition_order", _check_composition_order),
     ("expectation_oracle", _check_expectation),
 )
 
