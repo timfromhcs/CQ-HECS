@@ -89,7 +89,7 @@ path and no performance claim.
 
 ### Tests
 
-- 584 Python tests (4 skipped, 1 opt-in `slow` gate) in ~100 s.
+- 584 Python tests (4 skipped, 1 opt-in `slow` gate) in ~110 s.
 - New: brute-force SAT agreement, pigeonhole UNSAT, node-budget `UNKNOWN`,
   malformed DIMACS, `M-FIT-2` regression against the measured artifact, Studio
   state/HTTP tests, and the independent-oracle evidence test.

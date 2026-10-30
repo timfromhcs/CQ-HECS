@@ -48,7 +48,7 @@ Four classical simulation paths · one result contract · fail-closed by design
 > classical simulator, not a QPU.
 >
 > The current tree passes **584 Python tests** (4 skipped, 1 opt-in slow gate)
-> in **~100 s**, **19/19 CTest**, **35/35 source mutants**, and a **12-check
+> in **~110 s**, **19/19 CTest**, **35/35 source mutants**, and a **12-check
 > metamorphic self-test**.
 >
 > **First measured QPU data (complete):** all 25 preregistered `r-io-7` jobs
@@ -130,7 +130,7 @@ That rule is enforced in code, not only in documentation:
 | **Public surfaces** | `cq-hecs` CLI, `cq-hecs studio` web UI, Qiskit `BackendV2`, Python API, C ABI, SAT engine |
 | **Simulation paths** | A: stabilizer tableau · B: stabilizer rank · C: untruncated MPS · D: sparse Pauli |
 | **Noise** | Typed profiles, Kraus channels, exact float64 density matrix up to 10 qubits, measured `M-FIT-2` |
-| **Verification** | 584 Python tests (~100 s), 19 CTest, 35 mutants, 12-check selftest, 12 SPIR-V shaders, 21/21 independent oracle |
+| **Verification** | 584 Python tests (~110 s), 19 CTest, 35 mutants, 12-check selftest, 12 SPIR-V shaders, 21/21 independent oracle |
 | **Platforms** | Linux x64, Windows 10/11; Python 3.11–3.14 |
 | **License** | Apache-2.0 |
 
@@ -552,7 +552,7 @@ not performance claims. CI evidence for the exact pushed SHA is recorded in
 
 | Gate | Result |
 | :--- | :--- |
-| Python suite | **584 passed**, 4 skipped, 1 opt-in `slow` gate (**~100 s**) |
+| Python suite | **584 passed**, 4 skipped, 1 opt-in `slow` gate (**~110 s**) |
 | Branch coverage | **83 %** (CI threshold 70 %) on the `cqhecs` package |
 | CTest (native) | **19/19** |
 | Source mutation | **35/35** killed |

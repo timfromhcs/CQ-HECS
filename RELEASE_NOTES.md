@@ -85,7 +85,7 @@ its branch hash covers only the first 32 variables and it reported a timeout as
 
 | Gate | Result |
 | :--- | :--- |
-| Python suite | **584 passed**, 4 skipped, 1 opt-in `slow` gate (~100 s) |
+| Python suite | **584 passed**, 4 skipped, 1 opt-in `slow` gate (~110 s) |
 | CTest | 19/19 |
 | Source mutation | 35/35 |
 | Metamorphic selftest | 12/12 |
