@@ -1,6 +1,7 @@
 // Visual circuit composer: a qubit × time grid rendered as SVG.
 
 import { GATES, type Circuit, type Gate, type GateName, type GateSpec } from "./circuit";
+import { t } from "./i18n";
 
 interface Placed { col: number; gate: Gate }
 
@@ -61,7 +62,7 @@ export class Composer {
       group = g.group;
       add(g.label, g.name, g.group, g.info);
     }
-    add("⌫", "erase", "meta", "Radierer: Gatter löschen");
+    add("⌫", "erase", "meta", t("lab.erase"));
   }
 
   setTool(tool: GateName | "erase") {
@@ -121,7 +122,7 @@ export class Composer {
   private askParams(spec: GateSpec): number[] | null {
     if (spec.params === 0) return [];
     const defaults = spec.params === 3 ? "pi/2, 0, pi" : "pi/2";
-    const answer = prompt(`${spec.label}: ${spec.params} Parameter (z. B. pi/4, 0.3)`, defaults);
+    const answer = prompt(t("lab.paramPrompt", { gate: spec.label, n: spec.params }), defaults);
     if (answer === null) return null;
     try {
       const values = answer.split(",").map((s) => {
@@ -132,7 +133,7 @@ export class Composer {
       if (values.length !== spec.params || values.some((v) => !Number.isFinite(v))) throw new Error();
       return values;
     } catch {
-      alert("Ungültiger Parameter");
+      alert(t("lab.paramBad"));
       return null;
     }
   }
@@ -177,7 +178,7 @@ export class Composer {
     const cols = Math.max(8, ...this.placed.map((p) => p.col + 3));
     const n = this.numQubits;
     const width = LEFT + cols * CELL + 16, height = TOP * 2 + n * CELL - 10;
-    const svg = el("svg", { width, height, viewBox: `0 0 ${width} ${height}`, role: "img", "aria-label": `Schaltung mit ${n} Qubits` });
+    const svg = el("svg", { width, height, viewBox: `0 0 ${width} ${height}`, role: "img", "aria-label": t("lab.aria", { n }) });
     const y = (q: number) => TOP + q * CELL + CELL / 2 - 5;
     const x = (c: number) => LEFT + c * CELL + CELL / 2;
     for (let q = 0; q < n; q++) {

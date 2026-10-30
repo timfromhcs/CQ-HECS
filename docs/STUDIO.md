@@ -85,7 +85,9 @@ credentials.
 | `GET` | `/api/noise` | — | fitted model + evaluation |
 | `GET` | `/api/preset` | `?name=bell` | QASM for a builtin |
 | `GET` | `/api/research` | — | sourced research payload |
-| `POST` | `/api/simulate` | `{source, shots, seed, path, noise}` | circuit result |
+| `GET` | `/api/hardware` | — | every committed QPU evaluation (shots, verdict, ΔTV) |
+| `GET` | `/api/devices` | — | measured M-FIT-2 device profiles |
+| `POST` | `/api/simulate` | `{source, shots, seed, path, noise}` (`noise`: `ideal`, `mfit`, `mfit2`, `custom`, `device:<id>`) | circuit result |
 | `POST` | `/api/noise/compare` | `{job_id, overrides?}` | measured vs models |
 | `POST` | `/api/sat/solve` | `{cnf}` or `{random:{...}}` | sound SAT result |
 | `POST` | `/api/sat/sweep` | `{sizes, ratios, trials, timeout}` | empirical sweep |

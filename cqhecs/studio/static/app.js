@@ -711,6 +711,21 @@ function renderResearch() {
   for (const citation of data.citations) list.append(el("li", "", citation));
 }
 
+/** Add every measured device profile to the noise selector. */
+async function fillDevices() {
+  try {
+    const { devices } = await api("/api/devices");
+    const select = $("#noise");
+    for (const d of devices) {
+      const option = el("option", "", `${d.label} (measured)`);
+      option.value = `device:${d.id}`;
+      select.append(option);
+    }
+  } catch (error) {
+    toast(`device profiles unavailable: ${error.message}`);
+  }
+}
+
 /* -------------------------------------------------------------------- boot */
 
 async function init() {
@@ -734,6 +749,7 @@ async function init() {
     renderResearch();
     renderHardware();
     fillPresets();
+    await fillDevices();
     await loadPreset("bell");
     fillJobs();
   } catch (error) {

@@ -163,3 +163,14 @@ def test_hardware_view_lists_ibm_10k_and_pnp_rows(state):
     assert hardware["pnp"]["verdict"]
     assert hardware["sat_oracle_runs"]
     assert "P = NP" in hardware["note"]
+
+
+def test_devices_endpoint_and_device_noise(state, server):
+    status, body = _get(server, "/api/devices")
+    assert status == 200
+    ids = {d["id"] for d in json.loads(body)["devices"]}
+    assert "ibm_kingston" in ids
+    result = state.simulate({"source": "preset:bell", "shots": 2000, "seed": 3, "noise": "device:rigetti_cepheus"})
+    assert result["noise"]["model"] == "device:rigetti_cepheus (M-FIT-2)"
+    status, payload = _post(server, "/api/simulate", {"source": "preset:bell", "noise": "device:nope"})
+    assert status == 400 and payload["error"]["code"] == "unknown_device"

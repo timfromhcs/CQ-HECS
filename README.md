@@ -26,8 +26,28 @@ Four classical simulation paths · one result contract · fail-closed by design
 
 ---
 
-> **Status: `v3.3.0` (2026-10-30).** A feature release on the v3.0.0 Stable
-> base. It adds:
+> **Status: `v3.4.0` (2026-10-30).** Measured noise from three QPU vendors,
+> usable everywhere:
+>
+> - **Third vendor.** The pinned 25-circuit suite ran on **IQM Garnet**. The run
+>   was preregistered and used 500 shots per circuit. H-V3-8 is **SUPPORTED**:
+>   median ΔTV −0.0390, CI [−0.0526, −0.0132], 16/20. H-V3-8 now holds on
+>   Rigetti, IBM (3 backends) and IQM.
+> - **Measured device profiles.** `scripts/export_device_profiles.py` extracts
+>   per-qubit readout, X anomalies and CX depolarizing from the real runs. Use
+>   them with `cq-hecs devices` / `cq-hecs run … --device ibm_kingston`, in the
+>   Studio noise menu, as MCP `noise: device:<id>`, and in the web emulator. On
+>   the suite circuits a profile reproduces the evaluated M-FIT-2 model
+>   (TV < 1e-4).
+> - **CQ-HECS Web** (https://cq-hecs-web.vercel.app). A landing page, a
+>   10-chapter beginner-to-advanced guide, and English/German/French with
+>   auto-detection. Modes: lab, code, SAT lab and device comparison. The web
+>   noise follows the same Kraus channels as Python and reproduces the exact
+>   density-matrix distributions within shot noise (30 cases, 5 devices).
+>
+> **v3.3.0** added replay-checked UNSAT certificates: `cqhecs.sat` records a
+> tree-resolution refutation and replays it independently. Earlier releases
+> added:
 >
 > 1. **CQ-HECS Studio** — `cq-hecs studio`, a loopback-only UI for circuits,
 >    measured noise, the SAT lab, the evidence ledger and a new **Hardware**
@@ -52,14 +72,14 @@ Four classical simulation paths · one result contract · fail-closed by design
 > 6. **A standalone Windows build** — `scripts/build_exe.ps1` builds
 >    `dist/cq-hecs/cq-hecs.exe` (PyInstaller onedir) with the CLI, Studio
 >    assets, MCP server and Qiskit backend, smoke-tests it, and zips it as the
->    release asset `cqhecs-3.3.0-windows-x64.zip`. Wheel and exe come from the
+>    release asset `cqhecs-<version>-windows-x64.zip`. Wheel and exe come from the
 >    same tree.
 > 7. **Finite P-vs-NP probes** — 8 universal circuits match Qiskit Statevector
 >    at TV ≤ 5e-15; 3–4 variable SAT oracles on IBM return a valid DPLL model
 >    as the top outcome on every run. This is not a complexity result.
 >
-> The release tree passes **676 Python tests** (3 opt-in exe-skip, 1 opt-in slow
-> gate), **21/21 CTest**, **40/40 source mutants**, a **12-check metamorphic
+> The release tree passes **698 Python tests** on the Linux CI lane (4 opt-in exe
+> tests skipped, 1 opt-in slow gate), **21/21 CTest**, **44/44 source mutants**, a **12-check metamorphic
 > self-test**, and the independent oracle **21/21**.
 >
 > **First measured QPU data (complete):** all 25 preregistered `r-io-7` jobs
@@ -160,7 +180,7 @@ That rule is enforced in code, not only in documentation:
 | **Public surfaces** | `cq-hecs` CLI, `cq-hecs studio`, Qiskit `BackendV2`, Python API, C ABI, SAT engine |
 | **Simulation paths** | A: stabilizer tableau · B: stabilizer rank · C: untruncated MPS · D: sparse Pauli |
 | **Noise** | Typed profiles, Kraus channels, exact float64 density matrix up to 10 qubits |
-| **Verification** | 676 Python tests, 21 CTest, 40 mutants, 12-check selftest, 12 SPIR-V shaders, 21/21 independent oracle |
+| **Verification** | 698 Python tests, 21 CTest, 44 mutants, 12-check selftest, 12 SPIR-V shaders, 21/21 independent oracle |
 | **Platforms** | Linux x64, Windows 10/11; Python 3.11–3.14 |
 | **License** | Apache-2.0 |
 
@@ -263,7 +283,7 @@ equivariance, zero-noise identity, and channel composition order.
   live at https://cq-hecs-web.vercel.app; source in [`web/`](web/).
 - **MCP:** `cq-hecs mcp`, a stdio JSON-RPC server for agents (run, analyze,
   SAT solve/models, hardware evidence).
-- **Standalone:** `cqhecs-3.3.0-windows-x64.zip` on the release page; unzip
+- **Standalone:** `cqhecs-3.4.0-windows-x64.zip` on the release page; unzip
   and run `cq-hecs\cq-hecs.exe`. `scripts/build_exe.ps1` rebuilds it.
 
 ### CQ-HECS Studio
@@ -407,13 +427,13 @@ choco install vulkan-sdk cmake ninja -y --no-progress
 
 ```bash
 python -m build
-# dist/cqhecs-3.3.0-py3-none-any.whl
-# dist/cqhecs-3.3.0.tar.gz
+# dist/cqhecs-3.4.0-py3-none-any.whl
+# dist/cqhecs-3.4.0.tar.gz
 ```
 
 Published wheels, sdists, SHA-256 checksums, and the SPDX SBOM are attached to
 [GitHub Releases](https://github.com/timfromhcs/CQ-HECS/releases). The latest
-release is `v3.3.0`.
+release is `v3.4.0`.
 
 ---
 
@@ -592,18 +612,18 @@ A deeper component matrix is in [`ARCHITECTURE.md`](ARCHITECTURE.md) and
 ## Verification
 
 The numbers below are from the Linux CI lane with the native build required
-(`CQ_HECS_REQUIRE_NATIVE=1`) on the `v3.3.0` tree. They are measurements, not
+(`CQ_HECS_REQUIRE_NATIVE=1`) on the `v3.4.0` tree. They are measurements, not
 performance claims. The release audit records the exact SHA and CI runs.
 
 | Gate | Result |
 | :--- | :--- |
-| Python suite | **676 passed**, 3 opt-in exe skips, 1 opt-in `slow` gate |
+| Python suite | **698 passed**, 4 opt-in exe skips, 1 opt-in `slow` gate |
 | Branch coverage | **83 %** on the Linux CI lane (v3.0.0 release audit: 86 %) |
 | CTest (native) | **21/21**, including a `WILL_FAIL` meta-test proving checks run in Release builds |
-| Source mutation | **40/40** killed |
+| Source mutation | **44/44** killed |
 | Metamorphic selftest | **12/12** |
 | SPIR-V shaders | **12/12** verified |
-| Version consistency | all surfaces report `3.3.0` |
+| Version consistency | all surfaces report `3.4.0` |
 | Lint | `flake8 --select=E9,F` clean on `cqhecs`, `python_bridge`, `scripts`, `tests` |
 | Silent-truncation audit | no patterns found |
 | Latest CI matrix | 7/7 jobs: Linux, Windows, ASan/UBSan, Python 3.12–3.14, static/package |
@@ -949,7 +969,7 @@ exposes a “Cite this repository” entry from [`CITATION.cff`](CITATION.cff).
 @software{cqhecs2026,
   author  = {Stark, Tim Johann},
   title   = {CQ-HECS: Classical Quantum High-Efficiency Compute Simulator},
-  version = {3.3.0},
+  version = {3.4.0},
   year    = {2026},
   url     = {https://github.com/timfromhcs/CQ-HECS},
   license = {Apache-2.0}

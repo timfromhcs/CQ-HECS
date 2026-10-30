@@ -8,6 +8,45 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-10-30
+
+Measured QPU noise from three vendors, available in every surface, and a new
+web emulator.
+
+### Added
+
+- **r-iqm-1:** the pinned r-io-7 suite on IQM Garnet (25 jobs × 500 shots,
+  preregistered in `research/v4/PREREG_IQM_GARNET.md` before submission).
+  H-V3-8 `SUPPORTED` (median ΔTV −0.039004, CI [−0.052574, −0.013175], 16/20).
+  M-FIT-2 vs M-FIT inconclusive; no X anomaly.
+- `scripts/export_device_profiles.py` and `cqhecs.device_profiles`: measured
+  M-FIT-2 profiles for Rigetti Cepheus, IBM fez/kingston/marrakesh and IQM
+  Garnet. Each profile holds per-qubit readout, X bit-flip, CX depolarizing and
+  its validation numbers. Unmeasured qubits reuse the mean readout, and that
+  extrapolation is reported.
+- `cq-hecs devices`, `cq-hecs run --device <id>`, the Studio `/api/devices` and
+  noise menu entry `device:<id>`, and the MCP `cqhecs_devices` tool plus
+  `noise: device:<id>`.
+- CQ-HECS Web: landing page, 10-chapter guide (beginner → advanced),
+  EN/DE/FR with browser detection and a selector, measured device profiles as
+  the noise model, a SAT lab (sound DPLL, random 3-SAT, pigeonhole,
+  phase-transition sweep), device comparison, adaptive noise trajectories
+  (one per shot when cheap), and per-qubit asymmetric readout in the WebGPU
+  path.
+- `research/v4/ROADMAP_V4.md`: the milestones and release criteria for v4.0.0.
+- `scripts/run_openquantum_suite.py quote --shots`, a shot override that is
+  recorded in the run state.
+
+### Tests
+
+- `tests/test_iqm_garnet.py` (digests, budget, bit order, verdict
+  reproduction, no signed URLs or credentials) and
+  `tests/test_device_profiles.py`. The second checks that a profile reproduces
+  the scored M-FIT-2 distribution and covers the CLI, Studio and MCP.
+- Web: the profile noise matches the exact Python density-matrix distributions
+  (30 cases, 60k shots, TV < 0.02); the SAT solver agrees with brute force on
+  300 formulas; every key exists in all three languages.
+
 ## [3.3.0] - 2026-10-30
 
 Hardening release on v3.2.0: checkable UNSAT certificates for the Python SAT

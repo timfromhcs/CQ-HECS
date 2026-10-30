@@ -36,3 +36,10 @@ def test_exe_sat_unsat(tmp_path):
 def test_exe_runs_bell(tmp_path):
     payload = json.loads(_run("--format", "json", "run", "name:bell", "--shots", "64", cwd=tmp_path).stdout)
     assert sum(payload["result"]["counts"].values()) == 64
+
+
+def test_exe_device_profiles(tmp_path):
+    payload = json.loads(_run("--format", "json", "devices", cwd=tmp_path).stdout)
+    assert {"iqm_garnet", "ibm_kingston", "rigetti_cepheus"} <= {d["id"] for d in payload["devices"]}
+    run = json.loads(_run("--format", "json", "run", "name:bell", "--device", "iqm_garnet", "--shots", "500", cwd=tmp_path).stdout)
+    assert sum(run["result"]["counts"].values()) == 500

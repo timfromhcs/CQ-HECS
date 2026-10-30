@@ -89,6 +89,24 @@ anomaly, consistent with the 1k `ibm_fez` run. H-V3-9 remains not supported.
 Reproduce with `python scripts/evaluate_ibm_10k.py`; evidence and the
 cross-backend `summary_evaluation.json` are in `research/v4/evidence/ibm_10k/`.
 
+## 2.1.2 Third vendor: IQM Garnet (preregistered)
+
+The same 25 circuits ran on IQM Garnet at 500 shots each. The run was
+preregistered before submission in `PREREG_IQM_GARNET.md`; the shot count is the
+only deviation, and it biases toward `INCONCLUSIVE`.
+
+- H-V3-8: **`SUPPORTED`**, median ΔTV −0.039004, 95 % CI [−0.052574, −0.013175],
+  16/20 EVAL jobs closer than ideal.
+- M-FIT-2 vs M-FIT: −0.000657, CI [−0.001611, +0.004864]: inconclusive, as on
+  all three IBM backends. No X anomaly was found; the Rigetti flip remains
+  device-specific.
+- Fitted profile: CX depolarizing 0.004. Readout P(0|1) is 0.012–0.038 (highest
+  on qubit 0) and P(1|0) is 0.002–0.006.
+
+H-V3-8 now holds on Rigetti, IBM (3 backends) and IQM. M-FIT-2 has not beaten
+M-FIT on any fresh backend, so H-V3-9 stays unsupported. Evidence:
+`research/v3/evidence/openquantum/iqm_garnet/`.
+
 ## 2.2 Finite SAT and universal-oracle probes
 
 Eight 2–5 qubit universal probes ran on IBM `ibm_fez` and `ibm_marrakesh`:

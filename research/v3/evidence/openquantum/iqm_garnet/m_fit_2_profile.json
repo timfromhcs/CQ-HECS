@@ -1,0 +1,127 @@
+{
+  "anomalies": [],
+  "cx_depolarizing": {
+    "assumption": "the corrected value uses the fitted per-qubit readout matrices; the uncorrected value fits the gate term with no readout model and therefore absorbs readout error",
+    "readout_corrected": 0.004,
+    "readout_corrected_fit_tv": 0.06128028287278863,
+    "uncorrected": 0.00475,
+    "uncorrected_fit_tv": 0.056484777000780056
+  },
+  "identifiability": {
+    "anomalous_qubits": [],
+    "assumption": "qubits without an anomaly are assumed to have no X-gate error; the X bit-flip is therefore a lower bound there",
+    "statement": "OQ-02's marginal on an anomalous qubit is not a readout probability: OQ-03 reproduces the flip with a single X and OQ-09 (no X) does not."
+  },
+  "model": "M-FIT-2",
+  "one_qubit_gate_error": "x bit-flip fitted for anomalous qubits; other 1q gates not modelled",
+  "provenance": {
+    "backend": "iqm:garnet",
+    "bit_order": {
+      "expected": "00001",
+      "job_id": "OQ-03",
+      "little_endian": true,
+      "mode": "00001"
+    },
+    "calibration": {
+      "files": {},
+      "status": "absent"
+    },
+    "dataset_id": "r-io-7",
+    "dataset_sha256": "2b02df32b57aee0426cdb390bbd9ecada246edae0e1c2c4126ed3740a7253bea",
+    "fit_jobs": [
+      {
+        "job_id": "OQ-01",
+        "name": "readout_zero_5",
+        "provider_job_id": "8bb568cc-9c59-4f21-bb97-f04c700f65d8",
+        "qasm_sha256": "b65b54d3a7031b353a041788273202baa8e80c27df294de13b685228af9e4d84",
+        "shots": 500
+      },
+      {
+        "job_id": "OQ-02",
+        "name": "readout_one_5",
+        "provider_job_id": "518d4823-7cc3-4d6d-bfe4-3b237e24013b",
+        "qasm_sha256": "ad5800f335c3c1b22ba199e42727ecdbbdbcd5103b9d848f223e79fa1506080b",
+        "shots": 500
+      },
+      {
+        "job_id": "OQ-03",
+        "name": "bitorder_q0_5",
+        "provider_job_id": "442ddad1-c342-4392-9b23-9512cf91ba52",
+        "qasm_sha256": "ddd4df5a558580621105ccf817bbd4cb8f3f3ef656828af82ac559ad301b8f50",
+        "shots": 500
+      },
+      {
+        "job_id": "OQ-04",
+        "name": "ghz5_pad2",
+        "provider_job_id": "35931f08-fe79-483f-84b3-d8785bf9c568",
+        "qasm_sha256": "d27474c78eb8ba2f89acf94e221328e1f58022031046295ce6dd23786f5e1b88",
+        "shots": 500
+      },
+      {
+        "job_id": "OQ-05",
+        "name": "ghz5_pad4",
+        "provider_job_id": "d2437059-3ff9-4a28-92d6-dabdd3246c65",
+        "qasm_sha256": "493ca804ad5d6e6e7bca54b9162fb1d03fb3e35e8cce8fb3af60c537bd4188cc",
+        "shots": 500
+      }
+    ],
+    "layout_assumption": "logical qubit q of every job is read with the readout matrix measured on logical qubit q of the 5-qubit probes; the provider's physical layout is not published and may differ between jobs",
+    "objective": "mean total variation over OQ-04/OQ-05; anomalous p10 on a coarse grid over [0, 0.3], CX on a coarse-then-fine grid",
+    "suite_seed": 20261030
+  },
+  "readout": [
+    {
+      "p01": 0.002,
+      "p01_se": 0.0019979989989987483,
+      "p10": 0.038,
+      "p10_observed": 0.038,
+      "p10_se": 0.00855055553750749,
+      "p10_source": "OQ-02",
+      "qubit": 0,
+      "x_bitflip": 0.0
+    },
+    {
+      "p01": 0.002,
+      "p01_se": 0.0019979989989987483,
+      "p10": 0.012,
+      "p10_observed": 0.012,
+      "p10_se": 0.004869496893930624,
+      "p10_source": "OQ-02",
+      "qubit": 1,
+      "x_bitflip": 0.0
+    },
+    {
+      "p01": 0.006,
+      "p01_se": 0.0034536936748935914,
+      "p10": 0.012,
+      "p10_observed": 0.012,
+      "p10_se": 0.004869496893930624,
+      "p10_source": "OQ-02",
+      "qubit": 2,
+      "x_bitflip": 0.0
+    },
+    {
+      "p01": 0.006,
+      "p01_se": 0.0034536936748935914,
+      "p10": 0.022,
+      "p10_observed": 0.022,
+      "p10_se": 0.006559878047646922,
+      "p10_source": "OQ-02",
+      "qubit": 3,
+      "x_bitflip": 0.0
+    },
+    {
+      "p01": 0.006,
+      "p01_se": 0.0034536936748935914,
+      "p10": 0.012,
+      "p10_observed": 0.012,
+      "p10_se": 0.004869496893930624,
+      "p10_source": "OQ-02",
+      "qubit": 4,
+      "x_bitflip": 0.0
+    }
+  ],
+  "relaxation": "not modelled (no calibration snapshot)",
+  "schema": "cqhecs.fitted_noise_profile/2.0",
+  "status": "EXPLORATORY_POST_HOC"
+}

@@ -136,6 +136,20 @@ better than ideal. Reproduced offline with
 `cq-hecs reference run --dataset r-io-7` (aggregate equal up to the last
 floating-point digit of the bootstrap).
 
+**Replications (same circuits, split, fit and bootstrap):**
+
+| run | backend | shots | median ΔTV | 95 % CI | closer | verdict |
+| :--- | :--- | ---: | ---: | :--- | ---: | :--- |
+| r-io-7 | Rigetti Cepheus-1-108Q | 1000 | −0.071905 | [−0.135899, −0.006703] | 14/20 | SUPPORTED |
+| r-ibm-1 | IBM `ibm_fez` | 1000 | −0.036642 | [−0.045217, −0.027301] | 20/20 | SUPPORTED |
+| r-ibm-1 10k | IBM `ibm_fez` | 10000 | −0.032936 | [−0.038172, −0.023337] | 20/20 | SUPPORTED |
+| r-ibm-1 10k | IBM `ibm_kingston` | 10000 | −0.027127 | [−0.031653, −0.019508] | 20/20 | SUPPORTED |
+| r-ibm-1 10k | IBM `ibm_marrakesh` | 10000 | −0.027340 | [−0.041416, −0.021543] | 20/20 | SUPPORTED |
+| **r-iqm-1** | **IQM Garnet** | **500** | **−0.039004** | **[−0.052574, −0.013175]** | **16/20** | **SUPPORTED** |
+
+r-iqm-1 was preregistered before submission (`research/v4/PREREG_IQM_GARNET.md`;
+500 shots is the only deviation from the plan). With it, H-V3-8 holds on three vendors.
+
 * **Claim:** on the 20 held-out EVAL jobs of the `r-io-7` suite, `M-FIT`
   (mean readout + one CX depolarizing parameter, fitted on the 5 FIT jobs only)
   has a smaller TV to the measured counts than the ideal distribution.

@@ -1,0 +1,260 @@
+{
+  "schema": "cqhecs.device_profiles/1.0",
+  "model": "M-FIT-2 (per-qubit readout, X bit-flip, 2-qubit depolarizing after CX)",
+  "note": "Fitted from external QPU measurements of the pinned r-io-7 suite. Qubits beyond the measured ones reuse the mean measured readout; that extrapolation is an assumption, not a measurement. M-FIT-2 is post-hoc.",
+  "profiles": [
+    {
+      "id": "rigetti_cepheus",
+      "vendor": "Rigetti",
+      "label": "Rigetti Cepheus-1-108Q",
+      "backend": "rigetti:cepheus-1-108q",
+      "dataset_id": "r-io-7",
+      "dataset_sha256": "ee11d81750d6f38a292ef08a1ded44fb1d6b86dd1764a01f6cb28961b1331e0e",
+      "shots_per_circuit": 1000,
+      "measured_qubits": 5,
+      "p01": [
+        0.07,
+        0.039,
+        0.003,
+        0.042,
+        0.011
+      ],
+      "p10": [
+        0.03,
+        0.06,
+        0.059,
+        0.093,
+        0.077
+      ],
+      "x_bitflip": [
+        0.535556,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cx_depolarizing": 0.005,
+      "anomalies": [
+        {
+          "evidence": "OQ-03 reproduces the flip with a single X on qubit 0; OQ-09 (GHZ-5, no X) does not show it",
+          "fitted_p10": 0.03,
+          "observed_p10_from_OQ02": 0.531,
+          "qubit": 0,
+          "x_bitflip": 0.5355555555555556
+        }
+      ],
+      "validation": {
+        "h_v3_8": "SUPPORTED",
+        "median_delta_tv_m_fit": -0.07190526314122046,
+        "ci95": [
+          -0.13589945722292343,
+          -0.006702914503097776
+        ],
+        "m_fit_2_vs_ideal_median": -0.10535983323093087,
+        "m_fit_2_vs_ideal_ci95": [
+          -0.13264410349860978,
+          -0.042472456258891546
+        ],
+        "n_eval": 20,
+        "status": "EXPLORATORY_POST_HOC"
+      },
+      "evidence": "research/v3/evidence/openquantum/rigetti_cepheus-1-108q"
+    },
+    {
+      "id": "ibm_fez",
+      "vendor": "IBM",
+      "label": "IBM ibm_fez (Heron)",
+      "backend": "ibm_fez",
+      "dataset_id": "r-io-7",
+      "dataset_sha256": "98b5350794cdfc0cb9783c6e26924063ed725de63a99856ebe65f3de0d04a414",
+      "shots_per_circuit": 10000,
+      "measured_qubits": 5,
+      "p01": [
+        0.0028,
+        0.0057,
+        0.0004,
+        0.0066,
+        0.0034
+      ],
+      "p10": [
+        0.0089,
+        0.0134,
+        0.0062,
+        0.0094,
+        0.0057
+      ],
+      "x_bitflip": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cx_depolarizing": 0.002,
+      "anomalies": [],
+      "validation": {
+        "h_v3_8": "SUPPORTED",
+        "median_delta_tv_m_fit": -0.03293552583117235,
+        "ci95": [
+          -0.038171688957593486,
+          -0.0233374606565473
+        ],
+        "m_fit_2_vs_ideal_median": -0.033695037064149835,
+        "m_fit_2_vs_ideal_ci95": [
+          -0.03828135914883089,
+          -0.026519233162554626
+        ],
+        "n_eval": 20,
+        "status": "EXPLORATORY_POST_HOC"
+      },
+      "evidence": "research/v4/evidence/ibm_10k/ibm_fez"
+    },
+    {
+      "id": "ibm_kingston",
+      "vendor": "IBM",
+      "label": "IBM ibm_kingston (Heron)",
+      "backend": "ibm_kingston",
+      "dataset_id": "r-io-7",
+      "dataset_sha256": "057e7d41442ee64fd2d10ebfd3b5b2ac5e205b6b0fa28cbf8825cd44f3b59510",
+      "shots_per_circuit": 10000,
+      "measured_qubits": 5,
+      "p01": [
+        0.0021,
+        0.0021,
+        0.0021,
+        0.0015,
+        0.0017
+      ],
+      "p10": [
+        0.0097,
+        0.0057,
+        0.0066,
+        0.0101,
+        0.0057
+      ],
+      "x_bitflip": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cx_depolarizing": 0.002,
+      "anomalies": [],
+      "validation": {
+        "h_v3_8": "SUPPORTED",
+        "median_delta_tv_m_fit": -0.027127461143211955,
+        "ci95": [
+          -0.03165307720563916,
+          -0.019508070304638903
+        ],
+        "m_fit_2_vs_ideal_median": -0.026882669956937458,
+        "m_fit_2_vs_ideal_ci95": [
+          -0.03226663527883386,
+          -0.0190068455203269
+        ],
+        "n_eval": 20,
+        "status": "EXPLORATORY_POST_HOC"
+      },
+      "evidence": "research/v4/evidence/ibm_10k/ibm_kingston"
+    },
+    {
+      "id": "ibm_marrakesh",
+      "vendor": "IBM",
+      "label": "IBM ibm_marrakesh (Heron)",
+      "backend": "ibm_marrakesh",
+      "dataset_id": "r-io-7",
+      "dataset_sha256": "b6e2ae15d1c4cc1bbcc185d10a401469a07e8e0a40746a8ab9ee2344afb6df05",
+      "shots_per_circuit": 10000,
+      "measured_qubits": 5,
+      "p01": [
+        0.002,
+        0.0019,
+        0.0012,
+        0.0014,
+        0.0001
+      ],
+      "p10": [
+        0.0091,
+        0.0108,
+        0.0139,
+        0.0097,
+        0.0177
+      ],
+      "x_bitflip": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cx_depolarizing": 0.002,
+      "anomalies": [],
+      "validation": {
+        "h_v3_8": "SUPPORTED",
+        "median_delta_tv_m_fit": -0.027339642381873468,
+        "ci95": [
+          -0.04141607691435321,
+          -0.021543086660163593
+        ],
+        "m_fit_2_vs_ideal_median": -0.029839464300878964,
+        "m_fit_2_vs_ideal_ci95": [
+          -0.03721378009754561,
+          -0.02456062050129766
+        ],
+        "n_eval": 20,
+        "status": "EXPLORATORY_POST_HOC"
+      },
+      "evidence": "research/v4/evidence/ibm_10k/ibm_marrakesh"
+    },
+    {
+      "id": "iqm_garnet",
+      "vendor": "IQM",
+      "label": "IQM Garnet",
+      "backend": "iqm:garnet",
+      "dataset_id": "r-io-7",
+      "dataset_sha256": "2b02df32b57aee0426cdb390bbd9ecada246edae0e1c2c4126ed3740a7253bea",
+      "shots_per_circuit": 500,
+      "measured_qubits": 5,
+      "p01": [
+        0.002,
+        0.002,
+        0.006,
+        0.006,
+        0.006
+      ],
+      "p10": [
+        0.038,
+        0.012,
+        0.012,
+        0.022,
+        0.012
+      ],
+      "x_bitflip": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cx_depolarizing": 0.004,
+      "anomalies": [],
+      "validation": {
+        "h_v3_8": "SUPPORTED",
+        "median_delta_tv_m_fit": -0.03900435963519097,
+        "ci95": [
+          -0.05257362949029343,
+          -0.013174529461440009
+        ],
+        "m_fit_2_vs_ideal_median": -0.03814767816528789,
+        "m_fit_2_vs_ideal_ci95": [
+          -0.047703875043791276,
+          -0.00691791128143999
+        ],
+        "n_eval": 20,
+        "status": "EXPLORATORY_POST_HOC"
+      },
+      "evidence": "research/v3/evidence/openquantum/iqm_garnet"
+    }
+  ]
+}

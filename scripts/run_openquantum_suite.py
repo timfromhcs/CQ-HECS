@@ -79,7 +79,10 @@ def cmd_quote(args: argparse.Namespace) -> int:
     rows: List[str] = []
     for entry in manifest["jobs"]:
         qasm = Path(args.suite_dir) / entry["qasm_file"]
-        quote = _oq(args, "quote", str(qasm), "-b", args.backend, "-s", str(entry["shots"]),
+        # The circuits are fixed; only the shot count may be overridden, and the
+        # override is recorded in the state so the run documents it.
+        shots = args.shots or entry["shots"]
+        quote = _oq(args, "quote", str(qasm), "-b", args.backend, "-s", str(shots),
                     "-c", args.subcategory, "--plan", args.plan, "--priority", args.priority)
         if quote["_exit_code"] != 0 or "preparation_id" not in quote:
             print(f"{entry['job_id']}: quote failed: {quote}", file=sys.stderr)
@@ -93,8 +96,9 @@ def cmd_quote(args: argparse.Namespace) -> int:
             "preparation_id": quote["preparation_id"],
             "quoted_credits": cost,
             "plan": quote["selected"]["plan"],
+            "shots": shots,
         }
-        rows.append(f"{entry['job_id']} {entry['name']:<18} {entry['shots']:>5} shots  {cost:>8.3f} credits")
+        rows.append(f"{entry['job_id']} {entry['name']:<18} {shots:>5} shots  {cost:>8.3f} credits")
     state["quoted_total"] = total
     _save_state(args, state)
     print("\n".join(rows))
@@ -196,6 +200,8 @@ def main(argv: List[str] | None = None) -> int:
             p.add_argument("-c", "--subcategory", default="phys:oth")
             p.add_argument("--plan", default="public")
             p.add_argument("--priority", default="standard")
+            p.add_argument("--shots", type=int, default=None,
+                           help="override the manifest's shots (document it in a preregistration first)")
         if name == "submit":
             p.add_argument("--budget", type=float, required=True, help="approved total credits")
             p.add_argument("--yes", action="store_true")

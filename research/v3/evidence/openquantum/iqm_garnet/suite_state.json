@@ -4,178 +4,253 @@
     "OQ-01": {
       "name": "readout_zero_5",
       "qasm_sha256": "b65b54d3a7031b353a041788273202baa8e80c27df294de13b685228af9e4d84",
-      "preparation_id": "398aff57-b357-40fe-8ede-c9636f2cb08a",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "de26d2d1-e062-483b-b70c-b928d034507a",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "8bb568cc-9c59-4f21-bb97-f04c700f65d8",
+      "status": "Completed"
     },
     "OQ-02": {
       "name": "readout_one_5",
       "qasm_sha256": "ad5800f335c3c1b22ba199e42727ecdbbdbcd5103b9d848f223e79fa1506080b",
-      "preparation_id": "a72801c9-fd46-46c3-a15c-3088e6d5e0b2",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "89fa6964-6afd-4ca9-8f19-b388e474b563",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "518d4823-7cc3-4d6d-bfe4-3b237e24013b",
+      "status": "Completed"
     },
     "OQ-03": {
       "name": "bitorder_q0_5",
       "qasm_sha256": "ddd4df5a558580621105ccf817bbd4cb8f3f3ef656828af82ac559ad301b8f50",
-      "preparation_id": "bf28aca9-c32b-47ee-ad90-0e88addfa0bd",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "96901d0f-9560-46f6-84eb-a331a5b8caea",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "442ddad1-c342-4392-9b23-9512cf91ba52",
+      "status": "Completed"
     },
     "OQ-04": {
       "name": "ghz5_pad2",
       "qasm_sha256": "d27474c78eb8ba2f89acf94e221328e1f58022031046295ce6dd23786f5e1b88",
-      "preparation_id": "85c7f2ac-fb42-414a-a0de-b60e8bfa9432",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "f2bff274-a30a-4d19-baf1-e00ba6067c6d",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "35931f08-fe79-483f-84b3-d8785bf9c568",
+      "status": "Completed"
     },
     "OQ-05": {
       "name": "ghz5_pad4",
       "qasm_sha256": "493ca804ad5d6e6e7bca54b9162fb1d03fb3e35e8cce8fb3af60c537bd4188cc",
-      "preparation_id": "57273a5f-37ab-4f5d-b812-380f3bb9eec1",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "0f79f829-58f4-4b3d-aaad-a891aff68b08",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "d2437059-3ff9-4a28-92d6-dabdd3246c65",
+      "status": "Completed"
     },
     "OQ-06": {
       "name": "bell",
       "qasm_sha256": "ae0cd142574796138ef95bd28378ae0a56b611999e3e31369cdacefe51a7b825",
-      "preparation_id": "7d259a1a-173b-4eb9-b704-4e2f03a880a1",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "51a6d40f-75c9-4a48-b75a-724e463f8721",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "b99a450d-bb97-4b38-b30a-a2318940018a",
+      "status": "Completed"
     },
     "OQ-07": {
       "name": "ghz3",
       "qasm_sha256": "ad6de3bf6c92ab4c70ced19bee2b03a09148c60bbaa45d4bf7dc7290d917e16a",
-      "preparation_id": "bba77386-b24f-4c3a-95a1-42163a3d9b1e",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "8836772c-8636-49d8-9dcd-bc6095a1cc25",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "b479b57c-8c13-42d4-a7f1-4eb172a680e5",
+      "status": "Completed"
     },
     "OQ-08": {
       "name": "ghz4",
       "qasm_sha256": "ba8be1dbde0e504e23dfdadfe64590d5950d231ab6076e5b413183fbbbc076c2",
-      "preparation_id": "0d0fc6f4-c9f7-4a3e-8c2d-d8807aaba9e0",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "d721591a-b744-44e9-961d-dce16e4a484c",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "d1e9c8a5-f18c-460d-9e9b-afe6a26ffbe2",
+      "status": "Completed"
     },
     "OQ-09": {
       "name": "ghz5",
       "qasm_sha256": "1b3fe915e5bc20df69da445ce63878f08cd4479da656d743a5838f229753135e",
-      "preparation_id": "fab95ae2-8ce1-4f48-bd21-d4c28ca9866d",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "0bd6d68b-acb2-45e5-aed6-f2d640be0bc4",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "617085fe-8638-476f-827a-02a6dfa65942",
+      "status": "Completed"
     },
     "OQ-10": {
       "name": "qpe3_t",
       "qasm_sha256": "d9f87104cb3c042d0f672563e04083e323ad1149302284519a15cd9aa3e5c074",
-      "preparation_id": "54985de6-e0dd-4741-a44c-52bcfab81d18",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "3b358ce4-6970-4460-8cab-e78a4867457c",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "91f72799-d549-4d1b-9801-7b076a2b62d0",
+      "status": "Completed"
     },
     "OQ-11": {
       "name": "qpe3_s",
       "qasm_sha256": "943abe986cec69fdc810f6a4aa4522adf067b1cdcebf2705a7d077a89aaafc66",
-      "preparation_id": "10b23347-9227-4ea1-8f56-3e32b055c11a",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "1190dbcb-e918-4a10-ad63-1154793cae0c",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "0db44897-14c6-4c54-985c-79ab98a77d0b",
+      "status": "Completed"
     },
     "OQ-12": {
       "name": "qft4_roundtrip",
       "qasm_sha256": "5efb9ffcf8c14afd3de38f26bd18e3e62a2fd0b2c12484fdad5815d7b0488b8d",
-      "preparation_id": "db936ff5-5b32-4858-9d8c-40166157927c",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "8105c986-fb7b-465a-a8d5-24d8230b46ce",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "c108519d-fe33-463b-be65-91b41525efa9",
+      "status": "Completed"
     },
     "OQ-13": {
       "name": "mirror4_d10",
       "qasm_sha256": "6488fa46da340c7c5f99db876625825feef2926c6af15bf9746bc53822099967",
-      "preparation_id": "b4acca70-6976-4669-87e3-15e9395e38d3",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "a65ed6f0-fb60-4323-9176-2b15bfc26236",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "b6bea705-e5a2-4a98-a8a6-add87f877329",
+      "status": "Completed"
     },
     "OQ-14": {
       "name": "mirror4_d20",
       "qasm_sha256": "9e210333734de5a09d6eb92b66f6db484a683a90685a71e7c9aefa78ceba34b9",
-      "preparation_id": "6a59d094-db73-425b-bcd1-671cda0be8fd",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "16ebd775-b331-476d-9779-ca99bafa0de2",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "a1eec648-1457-46ff-b3d3-1b56f74ec3b9",
+      "status": "Completed"
     },
     "OQ-15": {
       "name": "mirror4_d40",
       "qasm_sha256": "d1b08f8d205d925402ddaa9b0da0a4b3f28654d2db40c1fb79af92f962a31631",
-      "preparation_id": "f8d9f937-508e-4523-8740-9b6aa6707d7d",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "678575ec-171a-4848-ab59-3df0f4be134f",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "0ba7dfad-10a6-42d3-b23c-e7b052953308",
+      "status": "Completed"
     },
     "OQ-16": {
       "name": "clifford_t3_d12",
       "qasm_sha256": "369ceefe6606a60f8a95995bfcf9c0e74dec8acb00c6514375336d430c05d130",
-      "preparation_id": "7ad37008-05c8-4370-8788-c8bd02af4a0d",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "982b2ddd-221f-4ecf-bcce-5656e141f5d1",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "a4425f4e-a63d-45be-9ea3-ee29dda7a5b9",
+      "status": "Completed"
     },
     "OQ-17": {
       "name": "clifford_t4_d16",
       "qasm_sha256": "4240b74cb9620c5b687686c66c3174189a9d0b9b7723d09b2e7e0fb8c4a75092",
-      "preparation_id": "7d0128ff-e070-4162-9568-0cadf39f33e3",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "0f33e8c7-2aff-4b71-8277-1dfe433345f2",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "6904091e-e91d-4c23-8ce1-f3c5c61d0001",
+      "status": "Completed"
     },
     "OQ-18": {
       "name": "clifford_t5_d20",
       "qasm_sha256": "43718ce80206f1c846e5665e3b2d099c471b241d64948fec16acab46f6558517",
-      "preparation_id": "f78bad37-241b-4c70-8c68-5ae5352e8283",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "c295bd7f-a7ae-450f-8aff-0222120ce223",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "edc24e0f-76bb-44d4-91ba-b72199c133cd",
+      "status": "Completed"
     },
     "OQ-19": {
       "name": "clifford_t5_d30",
       "qasm_sha256": "a374f4e41917a4323b3c2e2a6237277463e66c59511bab878448ccc338a571ff",
-      "preparation_id": "d10e30cd-20c4-4c4e-9921-5862a8b1e23b",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "742807f5-ce06-4e80-8fe0-41e417d9839b",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "68a87f45-0259-4a8e-8751-2816409a714a",
+      "status": "Completed"
     },
     "OQ-20": {
       "name": "brickwork4_l3",
       "qasm_sha256": "374810731e0332bf632c3631f7c8b7659543f54123a97708a743f8d454b6332f",
-      "preparation_id": "1cc9eb02-79f2-47e3-ae3b-c21bdaff1e36",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "e87c3c4c-6b82-47e2-8539-6af992e889f2",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "60e68e02-2593-4630-bee5-16539060bee1",
+      "status": "Completed"
     },
     "OQ-21": {
       "name": "brickwork5_l4",
       "qasm_sha256": "ab7a4dfa2d86b6ed607afe9d32699398895694d51daedd28f64b99a492f38ec4",
-      "preparation_id": "6ea286c4-f515-4956-a23d-99e4d2b60252",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "a310917a-b02b-4f50-9a5b-925678dee105",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "23f08dd4-9770-4084-9811-baef6b1bf741",
+      "status": "Completed"
     },
     "OQ-22": {
       "name": "grover2_mark11",
       "qasm_sha256": "1d3cd2a57c41f565a2fa1f8a461c053eded1ca7344635baa965b641ae8453a2e",
-      "preparation_id": "f99ae184-8cd2-4491-8d7d-3c7cfdec0cbd",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "74958284-f138-4a61-8e44-8b64a04a0954",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "81530227-fa72-4913-94a5-2646f0d395d6",
+      "status": "Completed"
     },
     "OQ-23": {
       "name": "bv4_1011",
       "qasm_sha256": "58266bb5658ed3e5eaf336b70ae49582891ec3105dda18d3149688f3f10e0b5d",
-      "preparation_id": "92f0417d-bd27-4e85-b98a-f385b1dc7a87",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "a325e1ff-a82f-4a4c-a4d3-62a5606370d0",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "c3892506-220f-48b3-89bc-f11261279820",
+      "status": "Completed"
     },
     "OQ-24": {
       "name": "dj3_balanced",
       "qasm_sha256": "470e5399a1a7ac5d6cbb3257bbdf6a827b52961b93d952de1ea064cc25c000d7",
-      "preparation_id": "d0b291fd-ed64-475c-8afc-c63f7985df81",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "1672c841-52c0-4bc4-b705-bfe6146ede2c",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "effca3f2-2123-4d7b-8c04-5634c3afa733",
+      "status": "Completed"
     },
     "OQ-25": {
       "name": "ghz5_repeat",
       "qasm_sha256": "1b3fe915e5bc20df69da445ce63878f08cd4479da656d743a5838f229753135e",
-      "preparation_id": "01896b36-31b2-481e-93da-b96212a98ed0",
-      "quoted_credits": 2.0,
-      "plan": "Public Plan"
+      "preparation_id": "9900451a-3332-4187-b12a-fb994bbbf12e",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "shots": 500,
+      "provider_job_id": "54596a56-4642-4cf2-b79c-06596b16e623",
+      "status": "Completed"
     }
   },
-  "quoted_total": 50.0
+  "quoted_total": 25.0
 }
