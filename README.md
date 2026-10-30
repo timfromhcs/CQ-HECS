@@ -598,7 +598,7 @@ tied to a source SHA and records `PASS`, `FAIL`, `SKIP`, `BLOCKED`, and
 | [`research/v3/V3_STABLE_PLAN.md`](research/v3/V3_STABLE_PLAN.md) | v3 plan, workstreams, gates |
 | [`research/v3/DATASETS.md`](research/v3/DATASETS.md) | real-data registry, licences, SHA-256 pins, reachability |
 | [`research/v3/HYPOTHESES.md`](research/v3/HYPOTHESES.md) | preregistered hypotheses and outcomes |
-| [`research/v3/OPENQUANTUM_RUN_PLAN.md`](research/v3/OPENQUANTUM_RUN_PLAN.md) | preregistered 25-job real-QPU suite via Open Quantum (`r-io-7`); **13/25 executed, 2026-10-30** |
+| [`research/v3/OPENQUANTUM_RUN_PLAN.md`](research/v3/OPENQUANTUM_RUN_PLAN.md) | preregistered 25-job real-QPU suite via Open Quantum (`r-io-7`); **25/25 executed, 2026-10-30** |
 | [`research/v3/EMULATOR_BUILD_PLAN.md`](research/v3/EMULATOR_BUILD_PLAN.md) | emulator work packages derived from the measured `r-io-7` data; not implemented |
 | [`research/v3/TESTING_TECHNIQUES.md`](research/v3/TESTING_TECHNIQUES.md) | property-based, metamorphic, noise-aware, and fuzzing methods |
 | [`research/v3/COMPLEXITY_BOUNDARY.md`](research/v3/COMPLEXITY_BOUNDARY.md) | P vs NP status and claim boundaries |
@@ -666,10 +666,15 @@ Two measured facts carry beyond the verdict:
    share when the CX count goes from 20 to 36 (`OQ-04` → `OQ-05`), while going
    from 2 to 5 qubits costs 0.197 (`OQ-06` → `OQ-09`). The fitted CX
    depolarizing parameter lands at 0.00125, near the bottom of its grid.
-2. **The device mean is the wrong shape.** The model loses on Bell and GHZ-3
-   (ΔTV +0.042) and wins on the 4–5-qubit circuits (−0.04 … −0.20). It is
-   right on average and wrong per qubit — and `fit_model()` already computes
-   the per-qubit values before `noise_model()` replaces them with the mean.
+2. **The per-qubit readout does not transfer between jobs.** The device-mean
+   model loses on Bell and GHZ-3 (ΔTV +0.042) and wins on the 4–5-qubit
+   circuits. A per-qubit model (`M-FIT-2`, `cq-hecs noise-fit`, written after
+   the data was known) does **worse**, not better: median ΔTV versus `M-FIT`
+   +0.055, 95 % CI [−0.007, +0.092], Bell TV 0.115 → 0.243. The 0.531 defect
+   on qubit 0 shows up only in the gate-free probes (404/1000 shots read
+   `11110` in `OQ-02`); in the GHZ jobs qubit 0 is unremarkable. The provider
+   evidently placed those jobs on different physical qubits, and no layout was
+   published. This is hypothesis H-V3-9, recorded as **rejected** (post-hoc).
 
 No calibration snapshot was delivered for any job (`calibration_data_url` was
 null), so nothing here constrains T1/T2. What to build from this is in

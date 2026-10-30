@@ -26,7 +26,6 @@ Usage::
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import sys
 import time
@@ -268,7 +267,6 @@ def main(argv: Optional[List[str]] = None) -> int:
     state_path = run_dir / "suite_state.json"
     log = Log(run_dir / "run_log.jsonl")
 
-    circuits = {job.name: job for job in build_suite()}
     ordered = build_suite()
     state = load_state(state_path, args.backend)
 

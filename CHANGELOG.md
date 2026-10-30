@@ -12,6 +12,13 @@ Work towards v3 (`research/v3/V3_STABLE_PLAN.md`). Not released.
 
 ### Added
 
+- `cqhecs.noise_fit` and `cq-hecs noise-fit`: a per-qubit, per-direction
+  readout profile with binomial standard errors and a CX term fitted both with
+  and without the readout model (`M-FIT-2`, labelled `EXPLORATORY_POST_HOC`).
+  On `r-io-7` it does not beat the frozen device-mean model; the measured
+  reason (no shared layout between jobs) is recorded as H-V3-9, rejected.
+- `calibration_status` (`present`/`absent`) in the `r-io-7` evaluation output.
+
 - `cqhecs.openquantum_suite` and `scripts/run_openquantum_suite.py`: a
   preregistered 25-job real-QPU suite (`r-io-7`) for Open Quantum. Circuits
   (2–5 qubits, 5 FIT + 20 EVAL) are SHA-256-pinned in

@@ -408,6 +408,53 @@ def cmd_reference(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def cmd_noise_fit(args: argparse.Namespace) -> int:
+    from cqhecs.noise_fit import dump_profile, evaluate_exploratory, fit_profile
+    from cqhecs.openquantum_suite import SUITE_ID
+    from cqhecs.reference import ReferenceDataError
+
+    if args.dataset != SUITE_ID:
+        LOG.error("noise-fit supports only %s, got %r", SUITE_ID, args.dataset)
+        return EXIT_USAGE
+    try:
+        if args.evaluate:
+            payload = evaluate_exploratory(Path(args.data_dir), bootstrap_samples=args.bootstrap)
+            document = payload["profile"]
+        else:
+            payload = None
+            _model, document = fit_profile(Path(args.data_dir))
+    except ReferenceDataError as exc:
+        LOG.error("%s", exc)
+        return EXIT_USAGE
+    if args.out:
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.out).write_text(dump_profile(document), "utf-8")
+    if args.format == "json":
+        _emit_json(payload if payload is not None else document)
+        return EXIT_OK
+    cx = document["cx_depolarizing"]
+    print(f"Model   : {document['model']} ({document['status']})")
+    print(f"Backend : {document['provenance']['backend']}")
+    print(f"Calib.  : {document['provenance']['calibration']['status']}")
+    for row in document["readout"]:
+        print(
+            f"  q{row['qubit']}: P(1|0)={row['p01']:.3f}+-{row['p01_se']:.3f} "
+            f"P(0|1)={row['p10']:.3f}+-{row['p10_se']:.3f}"
+        )
+    print(f"CX p    : {cx['readout_corrected']:.5f} readout-corrected, {cx['uncorrected']:.5f} uncorrected")
+    if payload is not None:
+        for key in ("vs_ideal", "vs_m_fit"):
+            item = payload[key]
+            print(
+                f"{key:8s}: median dTV={item['median']:+.6f} "
+                f"CI=[{item['ci95_low']:+.6f}, {item['ci95_high']:+.6f}] {item['direction']}"
+            )
+        print("Note    : post-hoc and exploratory; not a confirmation")
+    if args.out:
+        print(f"Wrote   : {args.out}")
+    return EXIT_OK
+
+
 def cmd_selftest(args: argparse.Namespace) -> int:
     from cqhecs.selftest import run_selftest
 
@@ -813,6 +860,22 @@ def build_parser() -> argparse.ArgumentParser:
     p_ref_run.add_argument("--seed", type=int, default=20261030, help="Bootstrap seed")
     p_ref_run.add_argument("--json-out", default=None, help="Write the full result JSON here")
 
+    p_fit = sub.add_parser(
+        "noise-fit",
+        help="Fit a per-qubit noise profile (M-FIT-2, exploratory) from measured counts",
+    )
+    p_fit.add_argument("--dataset", default="r-io-7", help="Dataset ID (only r-io-7)")
+    p_fit.add_argument(
+        "--data-dir", default="research/v3/evidence/openquantum/rigetti_cepheus-1-108q",
+        help="Directory with OQ-xx result folders",
+    )
+    p_fit.add_argument("--out", default=None, help="Write the profile JSON here")
+    p_fit.add_argument(
+        "--evaluate", action="store_true",
+        help="Also score M-FIT-2 against ideal and M-FIT on the EVAL split (post-hoc)",
+    )
+    p_fit.add_argument("--bootstrap", type=int, default=5000, help="Bootstrap resamples")
+
     p_selftest = sub.add_parser(
         "selftest",
         help="Run metamorphic and property-based installation checks",
@@ -923,6 +986,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "backend": cmd_backend,
         "profile": cmd_profile,
         "reference": cmd_reference,
+        "noise-fit": cmd_noise_fit,
         "selftest": cmd_selftest,
         "analyze": cmd_analyze,
         "run": cmd_run,

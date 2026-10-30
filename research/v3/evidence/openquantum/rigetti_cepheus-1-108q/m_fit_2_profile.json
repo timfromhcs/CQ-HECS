@@ -1,0 +1,99 @@
+{
+  "cx_depolarizing": {
+    "assumption": "the corrected value assumes the per-qubit readout matrices from OQ-01/OQ-02 act after the circuit and independently per qubit; the uncorrected value fits the gate term with no readout model and therefore absorbs readout error",
+    "readout_corrected": 0.00125,
+    "readout_corrected_fit_tv": 0.2970668101089172,
+    "uncorrected": 0.018000000000000002,
+    "uncorrected_fit_tv": 0.13525027802276413
+  },
+  "model": "M-FIT-2",
+  "one_qubit_gate_error": "not modelled (0)",
+  "provenance": {
+    "backend": "rigetti:cepheus-1-108q",
+    "bit_order": {
+      "expected": "00001",
+      "job_id": "OQ-03",
+      "little_endian": true,
+      "mode": "00001"
+    },
+    "calibration": {
+      "files": {},
+      "status": "absent"
+    },
+    "dataset_id": "r-io-7",
+    "dataset_sha256": "ee11d81750d6f38a292ef08a1ded44fb1d6b86dd1764a01f6cb28961b1331e0e",
+    "fit_jobs": [
+      {
+        "job_id": "OQ-01",
+        "name": "readout_zero_5",
+        "provider_job_id": "0c8e84ec-4959-4cd0-8417-be9d4038d016",
+        "qasm_sha256": "b65b54d3a7031b353a041788273202baa8e80c27df294de13b685228af9e4d84",
+        "shots": 1000
+      },
+      {
+        "job_id": "OQ-02",
+        "name": "readout_one_5",
+        "provider_job_id": "e352b1a5-3e14-48ea-ba58-6d471770b7df",
+        "qasm_sha256": "ad5800f335c3c1b22ba199e42727ecdbbdbcd5103b9d848f223e79fa1506080b",
+        "shots": 1000
+      },
+      {
+        "job_id": "OQ-04",
+        "name": "ghz5_pad2",
+        "provider_job_id": "f13f23c6-03cf-46db-8486-fb328f3bf7cb",
+        "qasm_sha256": "d27474c78eb8ba2f89acf94e221328e1f58022031046295ce6dd23786f5e1b88",
+        "shots": 1000
+      },
+      {
+        "job_id": "OQ-05",
+        "name": "ghz5_pad4",
+        "provider_job_id": "548fbde6-ece1-4a83-a14f-4fc2542f1b5f",
+        "qasm_sha256": "493ca804ad5d6e6e7bca54b9162fb1d03fb3e35e8cce8fb3af60c537bd4188cc",
+        "shots": 1000
+      }
+    ],
+    "layout_assumption": "logical qubit q of every job is read with the readout matrix measured on logical qubit q of the 5-qubit probes; the provider's physical layout is not published and may differ between jobs",
+    "objective": "mean total variation over OQ-04/OQ-05, coarse-then-fine grid on [0, 0.3]",
+    "suite_seed": 20261030
+  },
+  "readout": [
+    {
+      "p01": 0.07,
+      "p01_se": 0.008068457101577725,
+      "p10": 0.531,
+      "p10_se": 0.01578096955196353,
+      "qubit": 0
+    },
+    {
+      "p01": 0.039,
+      "p01_se": 0.006122009474020765,
+      "p10": 0.06,
+      "p10_se": 0.007509993342207435,
+      "qubit": 1
+    },
+    {
+      "p01": 0.003,
+      "p01_se": 0.001729450779872038,
+      "p10": 0.059,
+      "p10_se": 0.007451107300260815,
+      "qubit": 2
+    },
+    {
+      "p01": 0.042,
+      "p01_se": 0.0063431853196954605,
+      "p10": 0.093,
+      "p10_se": 0.009184280047995052,
+      "qubit": 3
+    },
+    {
+      "p01": 0.011,
+      "p01_se": 0.003298332912245215,
+      "p10": 0.077,
+      "p10_se": 0.00843036179532053,
+      "qubit": 4
+    }
+  ],
+  "relaxation": "not modelled (no calibration snapshot)",
+  "schema": "cqhecs.fitted_noise_profile/1.0",
+  "status": "EXPLORATORY_POST_HOC"
+}

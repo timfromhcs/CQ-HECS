@@ -38,6 +38,13 @@
 >   ΔTV from −0.0442 to −0.0321, which is inside shot noise, not a drift
 >   measurement.
 >
+> **Follow-up, same day:** the per-qubit model (`M-FIT-2`, `cq-hecs
+> noise-fit`) was built and scored post-hoc. It does **not** beat the frozen
+> device mean (median ΔTV +0.055, CI [−0.007, +0.092]); the qubit-0 readout
+> defect exists only in the gate-free probes, so readout does not transfer
+> between jobs without a layout (H-V3-9, rejected). See
+> `research/v3/EMULATOR_BUILD_PLAN.md` §7.
+>
 > Treat every "no real hardware" statement below as scoped to *this package's
 > execution modes*, not to the existence of measured QPU data in `research/`.
 
