@@ -53,13 +53,20 @@ try {
   }
   if (-not $ok) { throw "standalone binary failed its Studio smoke test" }
 } finally {
-  Stop-Process -Id $Studio.Id -Force -ErrorAction SilentlyContinue
+  # The PyInstaller bootloader runs the app in a child process; end the whole
+  # tree, or the child keeps cq-hecs.exe locked and the zip step fails.
+  cmd.exe /c "taskkill /PID $($Studio.Id) /T /F >nul 2>&1"
+  $Studio.WaitForExit(30000) | Out-Null
+  Start-Sleep -Seconds 2
 }
 
 $Version = (& $Python scripts\version.py).Trim()
 $Zip = ".\dist\cqhecs-$Version-windows-x64.zip"
 if (Test-Path $Zip) { Remove-Item $Zip }
-Compress-Archive -Path ".\dist\cq-hecs" -DestinationPath $Zip
+# Python's zipfile writes portable forward-slash entry names; Windows
+# PowerShell 5.1 Compress-Archive writes backslashes.
+& $Python -c "import shutil; shutil.make_archive(r'$($Zip -replace '\.zip$','')', 'zip', 'dist', 'cq-hecs')"
+if ($LASTEXITCODE -ne 0) { throw "zipping dist\cq-hecs failed" }
 Write-Host "Built $Exe"
 Write-Host "Release asset: $Zip"
 Write-Host ("SHA-256: " + (Get-FileHash $Zip -Algorithm SHA256).Hash.ToLower())

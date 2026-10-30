@@ -24,7 +24,8 @@ def _run(*args, cwd=None):
 
 
 def test_exe_version(tmp_path):
-    assert _run("version", cwd=tmp_path).stdout.strip().endswith(__version__)
+    first_line = _run("version", cwd=tmp_path).stdout.splitlines()[0]
+    assert first_line == f"cq-hecs {__version__}"
 
 
 def test_exe_sat_unsat(tmp_path):
