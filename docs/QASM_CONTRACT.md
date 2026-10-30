@@ -131,6 +131,12 @@ analyzer, router and backends. Since v2.3.0 it accepts three groups:
   ch, cs, csdg, csx, cu, cu3, rzz, rxx, ryy, iswap, dcx, ecr, ccx, toffoli,
   ccz, cswap, fredkin, c3x, c4x` (Qiskit `mcx` with 3 or 4 controls maps to
   `c3x`/`c4x`; wider `mcx` is refused)
+- **Sycamore set** (v3, lowered the same way): `fsim(theta, phi)` and
+  `syc` (= `fsim(pi/2, pi/6)`) exactly as Cirq's `FSimGate`;
+  `phased_x(theta, phi)` with angles in radians (Cirq exponents times pi),
+  `sqrt_x`, `sqrt_y`, `sqrt_w`. The four single-qubit gates equal Cirq's
+  matrices **up to a global phase**, which is unobservable for an uncontrolled
+  gate; `tests/test_sycamore_gates.py` checks both statements
 - **known but implemented by no path**: `reset` (refused at the capability
   layer)
 

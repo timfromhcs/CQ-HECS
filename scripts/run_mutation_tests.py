@@ -25,6 +25,7 @@ one.
 from __future__ import annotations
 
 import argparse
+import math
 import os
 import subprocess
 import sys
@@ -530,6 +531,49 @@ def check_dimacs_empty_clause() -> bool:
     return CQSATSolver().solve(formula).satisfiable is not False
 
 
+def _fsim_density_probabilities(theta: float, phi: float):
+    from cqhecs.backends.noisy_density_matrix import NoisyDensityMatrixBackend
+
+    circuit = [
+        ("h", [0], []), ("h", [1], []), ("fsim", [0, 1], [theta, phi]),
+        ("h", [0], []), ("h", [1], []), ("measure", [0], []), ("measure", [1], []),
+    ]
+    return NoisyDensityMatrixBackend(max_qubits=4).simulate(circuit, shots=1, seed=0).probabilities
+
+
+def check_fsim_definition() -> bool:
+    """fsim must match Cirq's matrix; an inverted conditional phase is caught."""
+    import numpy as np
+
+    theta, phi = 0.61, -1.27
+    c, s = math.cos(theta), math.sin(theta)
+    u = np.array([[1, 0, 0, 0], [0, c, -1j * s, 0], [0, -1j * s, c, 0], [0, 0, 0, np.exp(-1j * phi)]])
+    h = np.array([[1, 1], [1, -1]]) / math.sqrt(2)
+    hh = np.kron(h, h)
+    state = hh @ u @ hh @ np.array([1, 0, 0, 0], dtype=complex)
+    expected = np.abs(state) ** 2
+    got = _fsim_density_probabilities(theta, phi)
+    return any(abs(got.get(format(i, "02b"), 0.0) - expected[i]) > 1e-9 for i in range(4))
+
+
+def check_sqrt_w_axis() -> bool:
+    """sqrt_w rotates about (X+Y)/sqrt2; a mutant using the X axis is caught."""
+    import numpy as np
+
+    from cqhecs.backends.noisy_density_matrix import NoisyDensityMatrixBackend
+
+    # Independent reference: Cirq W**0.5 = e^{i pi/4} (cos(pi/4) I - i sin(pi/4) W).
+    w = np.array([[0, 1], [1, 0]]) + np.array([[0, -1j], [1j, 0]])
+    w = w / math.sqrt(2)
+    sqrt_w = np.exp(1j * math.pi / 4) * (math.cos(math.pi / 4) * np.eye(2) - 1j * math.sin(math.pi / 4) * w)
+    s_gate = np.diag([1, 1j])
+    h = np.array([[1, 1], [1, -1]]) / math.sqrt(2)
+    expected_p1 = abs((h @ s_gate @ sqrt_w @ np.array([1, 0]))[1]) ** 2
+    circuit = [("sqrt_w", [0], []), ("s", [0], []), ("h", [0], []), ("measure", [0], [])]
+    probabilities = NoisyDensityMatrixBackend(max_qubits=2).simulate(circuit, shots=1, seed=0).probabilities
+    return abs(probabilities.get("1", 0.0) - expected_p1) > 1e-9
+
+
 CHECKS: Dict[str, Callable[[], bool]] = {
     "qubit_bit_order": check_qubit_bit_order,
     "cz_conjugation": check_cz_conjugation,
@@ -569,6 +613,8 @@ CHECKS: Dict[str, Callable[[], bool]] = {
     "sat_timeout_unknown": check_sat_timeout_unknown,
     "sat_exact_memo": check_sat_exact_memo,
     "dimacs_empty_clause": check_dimacs_empty_clause,
+    "fsim_definition": check_fsim_definition,
+    "sqrt_w_axis": check_sqrt_w_axis,
 }
 
 
@@ -952,6 +998,22 @@ MUTANTS: List[SourceMutant] = [
         replacement="                    if current:\n                        clauses.append(current)\n",
         check="dimacs_empty_clause",
         mechanism="turns an UNSAT formula with an empty clause into a verified SAT",
+    ),
+    SourceMutant(
+        name="fsim conditional phase inverted",
+        target="cqhecs/gate_lowering.py",
+        original='    return [("rxx", [a, b], [theta]), ("ryy", [a, b], [theta]), ("cp", [a, b], [-phi])]\n',
+        replacement='    return [("rxx", [a, b], [theta]), ("ryy", [a, b], [theta]), ("cp", [a, b], [phi])]\n',
+        check="fsim_definition",
+        mechanism="uses e^{+i phi} on |11> instead of Cirq's e^{-i phi}",
+    ),
+    SourceMutant(
+        name="sqrt_w rotates about X",
+        target="cqhecs/gate_lowering.py",
+        original='    return [("phased_x", [q[0]], [_PI / 2.0, _PI / 4.0])]\n',
+        replacement='    return [("phased_x", [q[0]], [_PI / 2.0, 0.0])]\n',
+        check="sqrt_w_axis",
+        mechanism="drops the pi/4 axis phase, turning sqrt(W) into sqrt(X)",
     ),
 ]
 

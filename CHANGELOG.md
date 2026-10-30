@@ -36,6 +36,15 @@ Work towards v3 (`research/v3/V3_STABLE_PLAN.md`). Not released.
 
 ### Added
 
+- Profile schema migration: `BackendProfile.migrated_to_v2()` and
+  `cq-hecs profile migrate IN OUT`; `docs/MIGRATION_V3.md` lists every
+  caller-visible change in 3.0.
+
+- Sycamore gate set (v3 W5): `fsim(theta, phi)`, `syc`, `phased_x(theta, phi)`,
+  `sqrt_x`, `sqrt_y`, `sqrt_w`, lowered exactly onto native gates (single-qubit
+  ones up to global phase) and checked against Cirq's matrices; usable from
+  OpenQASM and instruction lists.
+
 - `cqhecs.noise_fit` and `cq-hecs noise-fit`: a per-qubit, per-direction
   readout profile with binomial standard errors and a CX term fitted both with
   and without the readout model (`M-FIT-2`, labelled `EXPLORATORY_POST_HOC`).

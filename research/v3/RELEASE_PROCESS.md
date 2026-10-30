@@ -63,9 +63,9 @@ or `INCONCLUSIVE`. **Status as of this document** (live audit, 2026-10-30):
 | :--- | :--- | :--- | :--- |
 | V3-A | all R-CAL snapshots import or are refused with a typed reason | PASS | `tests/test_v3_calibration_bridge.py` |
 | V3-B | Aer parity on preregistered families | PASS (amended criterion E-V3-02; original 1e-9 recorded as not met on manila) | `V3_STABLE_PLAN.md` W2 |
-| V3-C | Sycamore gates (`fsim`, `√X`, `√Y`, `√W`, `phased_x`) differential-tested; mutation harness extended | **FAIL — not started** | W5 |
+| V3-C | Sycamore gates (`fsim`, `√X`, `√Y`, `√W`, `phased_x`) differential-tested; mutation harness extended | PASS | `tests/test_sycamore_gates.py`; mutants 39–40 (40/40 killed) |
 | V3-D | ≥ 1 real I/O dataset with complete circuits, pinned, hypothesis outcome recorded | PASS — R-IO-7, H-V3-8 `SUPPORTED` (one backend, one day) | `evidence/openquantum/` |
-| V3-E | schema 2.0 documented, migration tested, CLI/JSON contract tests | **PARTIAL** — migration guide and migration test missing | W6 |
+| V3-E | schema 2.0 documented, migration tested, CLI/JSON contract tests | PASS | `docs/MIGRATION_V3.md`, `tests/test_schema_migration.py` |
 | V3-F | CI 7/7 on the release SHA, release assets re-hashed, RELEASE_AUDIT | NOT RUN | release step |
 
 ### 2.2 Mission gates (`GEMINI.md` §16) and the §3 audit leads
@@ -147,8 +147,8 @@ Steps:
 | 4 | Fix 3.4/3.5: checked ring arithmetic, Release-safe test checks | B | **done** — `DEFECT_REGISTER.md` |
 | 5 | Fix 3.6/3.8: telemetry labelled `DEMO DATA`/`UNKNOWN`, version from the canonical surface | F | **done** — `DEFECT_REGISTER.md` |
 | 6 | Verify 3.7 Vulkan device observability; document or fix | E | **done** — `DEFECT_REGISTER.md` |
-| 7 | V3-C Sycamore gates + mutants | V3-C | differential tests vs independent matrices |
-| 8 | V3-E migration guide + migration test | V3-E | test passes |
+| 7 | V3-C Sycamore gates + mutants | V3-C | **done** |
+| 8 | V3-E migration guide + migration test | V3-E | **done** |
 | 9 | Release candidate PR → CI → merge → verify assets → RELEASE_AUDIT | V3-F, J, I | §4 complete |
 
 Each step is its own PR, merged before the next starts, so `main` stays

@@ -228,8 +228,8 @@ claim.
 | W2 relaxation + Aer parity | DONE (local), amended criterion | channel parity ≤ 1.6e-15 (manila); circuit parity ≤ 1e-12 + Aer trace loss on manila/quito/lagos; preregistered 1e-9 not met on manila (Aer trace loss) |
 | W3 basis translation | NOT STARTED | — |
 | W4 real I/O | **PARTIAL** (R-IO-5 evaluated; R-IO-1/2/3 blocked) | `cqhecs/reference.py`, `scripts/run_reference_evaluation.py`, `tests/test_reference.py`; 14 unique circuits, median ΔTV −0.015660, 95 % CI [−0.032546, 0.000000], pooled `INCONCLUSIVE`; Bell+GHZ exploratory `SUPPORTED`; `research/v3/evidence/r_io_5_evaluation.json` |
-| W5 Sycamore gates | NOT STARTED | — |
-| W6 contract/CLI | PARTIAL | schema 2.0 profile fields; `reference list/run` CLI and JSON contract added; migration guide still missing |
+| W5 Sycamore gates | DONE | `fsim`, `syc`, `phased_x`, `sqrt_x/y/w` lowered in `cqhecs/gate_lowering.py`; `tests/test_sycamore_gates.py` against independent Cirq-definition matrices (exact, or up to global phase where stated), random Sycamore layers vs numpy on the density matrix (1e-10) and the router (TVD < 0.03); mutants 39–40 |
+| W6 contract/CLI | DONE | schema 2.0 profile fields; `BackendProfile.migrated_to_v2()` and `cq-hecs profile migrate`; `docs/MIGRATION_V3.md`; `tests/test_schema_migration.py` (migration keeps every physics field and the noise model; JSON contracts for `profile migrate`, `reference run r-io-7`, `noise-fit`) |
 | W8 noisy expectation values | DONE (local) | both engines = Aer to ≤ 1e-12 + trace loss (channels from Aer constructors; Aer `from_backend` on manila/lagos); truncated bound never violated (25 circuits); 127-qubit ibm_brisbane calibration, ~4000 gates: < 1.2 s, bound ≈ 1e-4 (functional check, not a benchmark); mutants 28–31 killed |
 | Datasets | R-IO-5 admitted; R-IO-6 registered; R-IO-1/2/3 blocked | `research/v3/DATASETS.md` |
 | W4 own QPU suite (R-IO-7) | **RUN, H-V3-8 SUPPORTED** (2026-10-30) | 25/25 jobs on `rigetti:cepheus-1-108q`; median ΔTV −0.071905, CI [−0.135899, −0.006703]; `research/v3/evidence/openquantum/` |
