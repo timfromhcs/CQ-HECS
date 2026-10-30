@@ -46,9 +46,10 @@ Four classical simulation paths · one result contract · fail-closed by design
 >    comparison with `M-FIT` is −0.0265, CI [−0.0413, +0.0207], so H-V3-9
 >    remains not supported.
 >
-> The tree passes **611 Python tests** (4 skipped, 1 opt-in slow gate),
-> **21/21 CTest**, **40/40 source mutants**, a **12-check metamorphic
-> self-test**, and the independent oracle **21/21**.
+> The release tree passes **615 Python tests** in the Linux native CI lane
+> (611 locally on Windows with four optional skips), **21/21 CTest**,
+> **40/40 source mutants**, a **12-check metamorphic self-test**, and the
+> independent oracle **21/21**.
 >
 > **First measured QPU data (complete):** all 25 preregistered `r-io-7` jobs
 > ran on `rigetti:cepheus-1-108q` on 2026-10-30. H-V3-8 returns
@@ -132,7 +133,7 @@ That rule is enforced in code, not only in documentation:
 | **Public surfaces** | `cq-hecs` CLI, `cq-hecs studio`, Qiskit `BackendV2`, Python API, C ABI, SAT engine |
 | **Simulation paths** | A: stabilizer tableau · B: stabilizer rank · C: untruncated MPS · D: sparse Pauli |
 | **Noise** | Typed profiles, Kraus channels, exact float64 density matrix up to 10 qubits |
-| **Verification** | 611 Python tests, 21 CTest, 40 mutants, 12-check selftest, 12 SPIR-V shaders, 21/21 independent oracle |
+| **Verification** | 615 Python tests (Linux native CI), 21 CTest, 40 mutants, 12-check selftest, 12 SPIR-V shaders, 21/21 independent oracle |
 | **Platforms** | Linux x64, Windows 10/11; Python 3.11–3.14 |
 | **License** | Apache-2.0 |
 
@@ -556,7 +557,7 @@ performance claims. The release audit records the exact SHA and CI runs.
 
 | Gate | Result |
 | :--- | :--- |
-| Python suite | **611 passed**, 4 skipped, 1 opt-in `slow` gate (~155 s locally) |
+| Python suite | **615 passed**, 0 skipped, 1 opt-in `slow` gate (Linux native CI; 611 passed + 4 optional skips locally) |
 | Branch coverage | **84 %** measured locally on this tree (v3.0.0 release audit: 86 %) |
 | CTest (native) | **21/21**, including a `WILL_FAIL` meta-test proving checks run in Release builds |
 | Source mutation | **40/40** killed |
