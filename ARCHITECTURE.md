@@ -168,9 +168,10 @@ mapping, so `measure_all()` circuits produce the same keys as Aer.
 5. **Version consistency** across every public surface:
    [scripts/check_version.py](scripts/check_version.py).
 6. **Mutation testing:** [scripts/run_mutation_tests.py](scripts/run_mutation_tests.py)
-   injects eleven defects drawn from the classes found in this audit and checks
-   that an independent behavioural probe detects each one. Current result:
-   11/11 killed. A mutant counts as killed only when wrong behaviour is
+   injects source-level defects drawn from the classes found in the audits and
+   checks that an independent behavioural probe detects each one. Current
+   result (v2.5.2): 24/24 killed; the harness patches Python sources only, so
+   native C++ defects are covered by CTest instead. A mutant counts as killed only when wrong behaviour is
    observed, not when the mutated code happens to raise.
 7. **Reproducible releases:** checksums and SBOM tracked in
    [audit/release_tracking.json](audit/release_tracking.json).

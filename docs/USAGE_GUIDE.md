@@ -186,6 +186,13 @@ convention as `run` without a profile: qubit 0 rightmost, measured qubits only.
   names. The circuit is not transpiled to the profile's basis gates, so a gate
   the profile does not calibrate (for example `h` on `fake_manila`) stays
   noiseless.
+* `gate_errors` in a profile are average gate infidelities `r = 1 - F_avg`
+  (the value Qiskit's `InstructionProperties.error` and IBM calibration data
+  report). Each becomes the depolarizing channel with that infidelity,
+  `p = d r / (d - 1)` for a gate on `d = 2^k` levels
+  (`cqhecs.depolarizing_parameter_from_infidelity`); an `r` above
+  `(d - 1)/d` is refused. T1/T2 relaxation is validated (`T2 <= 2 T1`) but not
+  modelled. Before v2.5.2 `r` was used as `p`, which halved one-qubit noise.
 * `fake_manila` and `linear_5q` are **synthetic**: `fake_manila` copies only
   the Manila coupling topology, not IBM's calibration values. A
   `BackendProfile` that claims real data (`is_synthetic=False`) must carry

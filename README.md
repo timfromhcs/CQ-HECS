@@ -41,7 +41,7 @@ Schaltungsklasse den passenden Pfad wählt — und an der Grenze lieber
 | **Fail-closed statt fail-open** | Ungültiges OpenQASM, unbekannte Gates und Ressourcenüberschreitungen führen zu strukturierten Fehlern — nie zu einer Teilausführung. |
 | **Ehrliche Hardware-Aussagen** | Alle vier Python-Pfade rechnen auf der CPU. Vulkan-Compute-Dispatch wurde auf einer AMD-Radeon-iGPU verifiziert; eine herstellerübergreifende oder End-to-End-GPU-Beschleunigung wird **nicht** behauptet. |
 
-> **Status:** `v2.5.1` ist ein Korrektur-Release auf `v2.5.0`: Der Dichtematrix-Rauschpfad gab Bitstrings gespiegelt aus (Qubit 0 links statt rechts), ignorierte Teilmessungen und hängte auf `sx` kalibriertes Rauschen nie an; das Profil `fake_manila` war fälschlich als echte IBM-Kalibrierung ausgewiesen. Details: [Release Notes](RELEASE_NOTES.md). `v2.5.0` brachte die **Hardware-Aware Quantum Bridge** (`cqhecs.hardware_bridge`: typisierte Backend-Profile, verifiziert vollständige Kraus-Rauschkanäle, exakter float64-Dichtematrix-Simulator bis 10 Qubits, offline Fake-Hardware mit Topologie-Prüfung und Fail-Closed-Schutz für echte QPU-Provider). Es gibt **keine universelle Beschleunigungsbehauptung und keine heimlichen Fallbacks**. Details: [Release Notes](RELEASE_NOTES.md) · [Changelog](CHANGELOG.md).
+> **Status:** `v2.5.2` ist ein Korrektur-Release: Pfad B vertauschte `t` und `tdg` (z. B. `h t s h` lieferte als `EXACT` P(0)=0.854 statt 0.146), `swap` war im nativen Tableau wirkungslos, und Backend-Profile nutzten die gemeldete Gate-Infidelität direkt als Depolarisationsparameter (Rauschen zu schwach). Details: [Release Notes](RELEASE_NOTES.md). `v2.5.1` korrigierte den Dichtematrix-Rauschpfad: Er gab Bitstrings gespiegelt aus (Qubit 0 links statt rechts), ignorierte Teilmessungen und hängte auf `sx` kalibriertes Rauschen nie an; das Profil `fake_manila` war fälschlich als echte IBM-Kalibrierung ausgewiesen. `v2.5.0` brachte die **Hardware-Aware Quantum Bridge** (`cqhecs.hardware_bridge`: typisierte Backend-Profile, verifiziert vollständige Kraus-Rauschkanäle, exakter float64-Dichtematrix-Simulator bis 10 Qubits, offline Fake-Hardware mit Topologie-Prüfung und Fail-Closed-Schutz für echte QPU-Provider). Es gibt **keine universelle Beschleunigungsbehauptung und keine heimlichen Fallbacks**. Details: [Release Notes](RELEASE_NOTES.md) · [Changelog](CHANGELOG.md).
 
 ---
 
@@ -327,12 +327,12 @@ pip install -e .
 
 ```bash
 python -m build
-# dist/cqhecs-2.5.1-py3-none-any.whl
-# dist/cqhecs-2.5.1.tar.gz
+# dist/cqhecs-2.5.2-py3-none-any.whl
+# dist/cqhecs-2.5.2.tar.gz
 ```
 
 Die veröffentlichten Artefakte, Checksums und die SPDX-SBOM stehen unter
-[GitHub-Releases](https://github.com/timfromhcs/CQ-HECS/releases) (zuletzt veröffentlicht: `v2.5.0`; `v2.5.1` erst nach Merge und Tag).
+[GitHub-Releases](https://github.com/timfromhcs/CQ-HECS/releases) (zuletzt veröffentlicht: `v2.5.1`; `v2.5.2` erst nach Merge und grünem CI auf `main`).
 
 ---
 
@@ -482,25 +482,25 @@ erfundenen 50/50-Counts.
 
 ## ✅ Verifikation
 
-Die folgenden Zahlen sind lokale Messungen für den `v2.5.1`-Kandidaten
-(Linux x64, GCC 13.3, CPython 3.13, gepinnte Abhängigkeiten), keine
+Die folgenden Zahlen sind lokale Messungen für den `v2.5.2`-Kandidaten
+(Linux x64, GCC 13.3, CPython 3.13, Vulkan über Mesa llvmpipe), keine
 Leistungsbenchmarks. CI-Ergebnisse für den exakt gepushten SHA stehen in
-[`research/v2_5_1/TEST_MATRIX.md`](research/v2_5_1/TEST_MATRIX.md);
+[`research/v2_5_2/TEST_MATRIX.md`](research/v2_5_2/TEST_MATRIX.md);
 frühere Release-Audit-Pfade bleiben als historische Nachweise erhalten.
 
 | Gate | Ergebnis |
 | :--- | :--- |
 | CTest (GCC Release, Linux) | **19/19 bestanden** |
-| Python-Suite (CPython 3.13 + Nativkern, `CQ_HECS_REQUIRE_NATIVE=1`) | **470 bestanden** (0 übersprungen) |
+| Python-Suite (CPython 3.13 + Nativkern, `CQ_HECS_REQUIRE_NATIVE=1`) | **483 bestanden** (0 übersprungen) |
 | Python-Suite (CPython 3.11, gepinnte Abhängigkeiten, ohne Nativkern) | im CI-Matrixjob; native Tests skippen dort sichtbar |
-| Mutation-Harness | **20/20 Mutanten erkannt**, Baseline sauber |
-| Branch-Coverage | **85 %** lokal; CI-Schwelle **70 %** |
+| Mutation-Harness | **24/24 Mutanten erkannt**, Baseline sauber |
+| Branch-Coverage | **86 %** lokal; CI-Schwelle **70 %** |
 | Shader-Verifikation | **12/12** SPIR-V-Shader |
-| Version-Konsistenz | alle Flächen melden `2.5.1` |
+| Version-Konsistenz | alle Flächen melden `2.5.2` |
 | Lint | `flake8 --select=E9,F` sauber auf `cqhecs`, `python_bridge`, `scripts`, `tests` |
 | Silent-Truncation-Audit | keine Muster gefunden |
 | GitHub Actions | Linux/Windows nativ, ASan/UBSan, Python 3.12–3.14, Package-Smoke |
-| Physische GPU | **Dispatch auf AMD-Radeon-iGPU verifiziert**; keine herstellerübergreifende Garantie |
+| Physische GPU | historisch: Primitive-Dispatch auf einer AMD-Radeon-iGPU verifiziert (nicht in diesem Audit wiederholt; hier nur Software-ICD); keine herstellerübergreifende Garantie |
 | Google Cloud Build | **nicht verifiziert** (keine Projekt-/Credential-Verifikation in der Audit-Umgebung) |
 
 ### Selbst prüfen
@@ -522,7 +522,7 @@ python scripts/run_mutation_tests.py
 
 > Ein grüner Lauf auf einem älteren Commit ist kein Beweis für einen späteren
 > Commit. Die vollständige Evidenz steht in
-> [`research/v2_5_1/TEST_MATRIX.md`](research/v2_5_1/TEST_MATRIX.md).
+> [`research/v2_5_2/TEST_MATRIX.md`](research/v2_5_2/TEST_MATRIX.md).
 
 ---
 
@@ -620,8 +620,10 @@ CQ-HECS/
 | [`docs/EMBEDDING_GUIDE.md`](docs/EMBEDDING_GUIDE.md) | C-ABI-Einbettung in C++, Python, C#, Rust |
 | [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) | aktuelle und historische Benchmarks |
 | [`docs/V2_IMPLEMENTATION_MATRIX.md`](docs/V2_IMPLEMENTATION_MATRIX.md) | Implementierungsstatus mit Test-Ankern |
-| [`research/v2_2/BASELINE.md`](research/v2_2/BASELINE.md) | Audit-Ausgangslage und behobene Befunde |
-| [`research/v2_2/TEST_MATRIX.md`](research/v2_2/TEST_MATRIX.md) | lokale Gates, CI-Matrix und offene Punkte |
+| [`research/v2_5_2/FINDINGS.md`](research/v2_5_2/FINDINGS.md) | aktuelle Befunde (v2.5.2) mit Reproduktion und Regressionstest |
+| [`research/v2_5_2/TEST_MATRIX.md`](research/v2_5_2/TEST_MATRIX.md) | aktuelle lokale Gates und CI-Läufe |
+| [`research/v2_2/BASELINE.md`](research/v2_2/BASELINE.md) | historisch: Audit-Ausgangslage v2.2 |
+| [`research/v2_2/TEST_MATRIX.md`](research/v2_2/TEST_MATRIX.md) | historisch: Gates und CI-Matrix v2.2 |
 | [`CHANGELOG.md`](CHANGELOG.md) · [`RELEASE_NOTES.md`](RELEASE_NOTES.md) | Versionsgeschichte und Release-Details |
 
 ---

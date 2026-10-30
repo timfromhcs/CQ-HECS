@@ -9,7 +9,7 @@ mathematical claims are itemised in `research/v2/FORMALIZATION_STATUS.md`.
 | Method | Path / module | Status | Correctness class | Evidence (tests) |
 | :--- | :--- | :--- | :--- | :--- |
 | Stabilizer tableau (Gottesman–Knill) | A · `cqhecs/backends/path_a_stabilizer.py` | **implemented** | exact (GF(2) symplectic algebra, no approximation) | `TestBitstringOrdering`, native-python parity tests, native `test_stabilizer` |
-| Stabilizer-rank decomposition (Clifford + T/RX/RY/RZ) | B · `cqhecs/backends/path_b_stabilizer_rank.py` | **implemented** | algebraically exact decomposition, float64 arithmetic, finite-shot sampling reported separately | `TestPathBContract` incl. orientation/aliasing regressions; 22-qubit GHZ+T vs `Statevector` |
+| Stabilizer-rank decomposition (Clifford + T/RX/RY/RZ) | B · `cqhecs/backends/path_b_stabilizer_rank.py` | **implemented** | algebraically exact decomposition, float64 arithmetic, finite-shot sampling reported separately | `TestPathBContract` incl. orientation/aliasing regressions; 22-qubit GHZ+T vs `Statevector`; `TestPathBTGateSign` (v2.5.2: `t`/`tdg` were swapped before) |
 | MPS (1D chain, untruncated bond dimension) | C · `cqhecs/backends/path_c_mps_exact.py` | **implemented** | exact up to floating-point; discards only values below a relative roundoff floor; no certified roundoff bound reported | `TestSvdPrecision`-family, MPS paging/concurrency tests, wide-sampling refusal tests |
 | Sparse-Pauli dynamics (Heisenberg propagation) | D · `cqhecs/backends/path_d_sparse_pauli.py` | **implemented** | certified bound on requested observables (⟨Z_q⟩, ⟨Z_q Z_r⟩); joint counts opt-in and labelled | `TestTwoQubitConjugationRules`, `TestPathDPerformanceAndContract`, statevector differential tests, bound-dominance test |
 | Dense statevector | inside B's statevector evaluation | **implemented** (as Path B's ≤ 22 qubit evaluation) | exact algebra, float64 | same as B |
@@ -52,7 +52,7 @@ not claimed. Shader compilation is checked separately by
 | Symmetry/subspace reduction | deferred | requires sound invariant detection |
 | ZX-calculus / graph-state rewrites | deferred | no workload where it beats A/B/C |
 | Exact ring arithmetic (`Z[1/√2, i]`) backend | deferred | algebra known; separate backend not justified yet; float64 declared explicitly |
-| Noise trajectories / density matrix / MPO | rejected for v2 | changes result contract semantics, not just adds a method |
+| Noise trajectories / density matrix / MPO | density matrix **implemented in v2.5.0** as a separate `NOISY_CLASSICAL` backend (`cqhecs/backends/noisy_density_matrix.py`, ≤ 10 qubits, exact float64); trajectories and MPO still rejected | the result contract gained `execution_mode`, so noisy output cannot be confused with ideal output (`tests/test_noisy_density_matrix*.py`, `tests/test_v252_regressions.py`) |
 | Monte Carlo stabilizer / quasiprobability | deferred | sampling complexity analysis required; not a current need |
 | GPU compute via Vulkan | primitive dispatch verified | state reset, CORDIC phase gate and Q30 tensor contraction dispatched on an AMD iGPU; end-to-end simulator acceleration remains deferred |
 | Cache/gate-fusion/SIMD (performance work) | deferred | correctness-first; no optimization without differential baselines |
@@ -91,6 +91,8 @@ and the router contract tests.
 
 - No end-to-end GPU acceleration claim; only primitive Vulkan dispatch is
   verified (see METHOD_CATALOG §3).
-- No mixed-state / noise-channel backend.
+- No mixed-state / noise-channel backend in the four ideal paths. Since v2.5.0
+  noise is modelled only by the separate density-matrix backend
+  (`NOISY_CLASSICAL`, ≤ 10 qubits); see `docs/USAGE_GUIDE.md`.
 - No joint bitstring counts from Path D by default.
 - No performance claims from a single circuit family.

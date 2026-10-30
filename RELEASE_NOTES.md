@@ -1,12 +1,12 @@
 # CQ-HECS Release Notes
 
-**Version:** 2.5.1
+**Version:** 2.5.2
 **Release date:** 2026-10-30
 **License:** Apache 2.0
 **Repository:** [https://github.com/timfromhcs/CQ-HECS](https://github.com/timfromhcs/CQ-HECS)
 
 > The release workflow copies this file to
-> `dist/RELEASE_NOTES_v2.5.1.md`, prepends the exact source commit and required
+> `dist/RELEASE_NOTES_v2.5.2.md`, prepends the exact source commit and required
 > CI run, and appends the SHA256 values of the final assets. The content
 > describes the code in this tree.
 
@@ -14,90 +14,97 @@
 
 ## 1. What this release is
 
-`v2.5.1` is a **correction release** for the Hardware-Aware Quantum Bridge that
-`v2.5.0` introduced. It changes no public signature and adds no new capability.
-It fixes wrong outputs of the noisy density-matrix path and a false provenance
-label on a built-in profile. Anyone who used `--profile` or
-`NoisyDensityMatrixBackend` with v2.5.0 should re-run: results on circuits that
-are not mirror-symmetric were wrong.
+`v2.5.2` is a **correction release**. It adds one helper function and changes
+no existing signature. It fixes two wrong-result defects in exact simulation
+paths, a noise-model parameter convention and missing validation in backend
+profiles. No new simulation path, no performance claim.
 
-| Surface | Status in 2.5.1 |
+**Re-run anything that used:**
+
+- **Path B** (`preferred_path="B"`, or the router on low-T-count circuits) with
+  `t`/`tdg` together with other phase gates — `t` and `tdg` were swapped there;
+- **`--profile` / `BackendProfile.to_noise_model()`** — the modelled noise was
+  too weak (one-qubit gate noise by a factor of 2, two-qubit by 4/3);
+- **Path A with the native module built from source**, or `cq_apply_swap` in
+  the C API — `swap` did nothing on Clifford circuits. The published
+  pure-Python wheel was not affected by this one.
+
+| Surface | Status in 2.5.2 |
 | :--- | :--- |
-| `cqhecs` four-path router/backends | supported; unchanged |
-| `cqhecs.expectation` (Pauli expectation values) | supported; unchanged |
-| `cqhecs.hardware_bridge` profiles and Kraus channels | supported; both built-in profiles are synthetic |
-| `NoisyDensityMatrixBackend` (`NOISY_CLASSICAL`) | supported up to 10 qubits; output convention now matches the router |
+| `cqhecs` four-path router/backends | supported; Path B `t`/`tdg` fixed |
+| `cqhecs.expectation` (Pauli expectation values) | supported; unchanged (did not use Path B) |
+| `cqhecs.hardware_bridge` profiles and Kraus channels | supported; gate errors are infidelities; stricter validation |
+| `NoisyDensityMatrixBackend` (`NOISY_CLASSICAL`) | supported up to 10 qubits; all manifest gates incl. `cu1`/`crx`/`cry`/`crz` |
 | `FakeHardwareProvider` | offline emulation only; never `REAL_HARDWARE` |
 | `RealHardwareProvider` | fail-closed boundary; no provider is connected |
-| Vulkan compute primitives | dispatch verified on one AMD iGPU; no end-to-end GPU acceleration |
+| Native C++ core / C API | SWAP fixed in the hybrid engine |
+| Vulkan compute primitives | software-ICD dispatch verified in this audit; no end-to-end GPU acceleration |
 
 ## 2. Fixed
 
-- **CQ-V251-01 (P0) — mirrored bitstrings.** The density matrix was flattened
-  with qubit 0 as the most-significant bit. The same circuit (`x q[0]`) gave
-  `01` on the router and `10` with `--profile`, and readout errors hit the
-  mirrored qubit. Qubit 0 is now rendered rightmost, as everywhere else.
-- **CQ-V251-02 (P1) — measurements.** Terminal measurements were ignored and
-  every qubit was reported; a mid-circuit measurement in an instruction list
-  was dropped. Only measured qubits are reported now, and mid-circuit
-  measurement is refused (as the router does).
-- **CQ-V251-03 (P0) — provenance.** `fake_manila` claimed to be an IBM
-  calibration snapshot (`is_synthetic=False`, timestamp, URI). Its numbers do
-  not match IBM's `FakeManila` data; only the topology does. It is now marked
-  synthetic, and `BackendProfile` refuses a non-synthetic profile that lacks
-  `capture_timestamp` and `provenance_uri`.
-- **CQ-V251-04 (P1) — noise on the wrong gate.** Composite gates were lowered
-  before the noise lookup, so the `sx` error in `fake_manila` never applied and
-  `h` noise applied twice per `sx`. Noise now attaches to each gate as written.
-- **CQ-V251-05 (P2) — validation.** Invalid `shots`/`seed` are rejected before
-  parsing; a gate with a missing or extra angle is refused instead of acting as
-  the identity; all operations are checked before the density matrix is
-  allocated.
-- **CLI:** unknown `--profile` and topology violations exit with `2` and a JSON
-  `error`, not a traceback.
+- **CQ-V252-01 (P0) — Path B: `t` and `tdg` swapped.** `T = c0 I + c1 Z` used
+  `c1 = (e^{i pi/4} - 1)/2`, i.e. `diag(e^{i pi/4}, 1)` = `T†` up to a global
+  phase. `h t h` is symmetric and came out right; `h t s h` gave `P(0) = 0.854`
+  instead of `(1 + cos 3pi/4)/2 = 0.146`, labelled `EXACT`. Found by a seeded
+  differential fuzz against Qiskit `Statevector`; earlier tests only used
+  circuits whose probabilities are invariant under `T ↔ T†`.
+- **CQ-V252-02 (P1) — gate error vs. depolarizing parameter.** A profile's
+  `gate_errors` value goes to Qiskit as `InstructionProperties.error` (average
+  gate infidelity `r`), but the noise model used it as the depolarizing `p`.
+  For `E(ρ) = (1 − p) ρ + p I/d` the infidelity is `p (d − 1)/d`, so the
+  model's noise was `r/2` (1q) or `3r/4` (2q). Now `p = d r/(d − 1)`, the same
+  conversion Qiskit Aer applies when relaxation is ignored; values above
+  `(d − 1)/d` are refused rather than clipped.
+- **CQ-V252-03 (P0 for native builds) — SWAP on the native tableau.**
+  `HybridEngine::apply_swap` swapped the tableau and then applied three more
+  CX to it through `HybridEngine::apply_cx`. In tableau mode the SWAP was the
+  identity.
+- **CQ-V252-04 (P2) — profile validation.** `BackendProfile` refuses float or
+  bool qubit indices, T1/T2/readout entries for absent qubits, `T2 > 2 T1`,
+  non-finite times, invalid gate durations, repeated qubits in a key, keys
+  whose width does not match the gate, and gate errors on more than two qubits
+  (previously dropped silently by the noise model).
+- **CQ-V252-05 (P3) — noisy DM gate set.** `cu1`, `crx`, `cry`, `crz` run
+  instead of being refused.
 
 ## 3. Tests
 
-- `tests/test_noisy_density_matrix_contract.py` (18 tests). The oracle is
-  independent of the code under test: `qiskit.quantum_info.DensityMatrix`
-  evolves the gates, `qiskit_aer.noise` builds the channels, and readout is
-  computed from its definition. 25 random noisy 3-qubit circuits (asymmetric
-  per-qubit noise, full and partial measurement) and 10 ideal 4-qubit circuits
-  agree to `1e-10`. The same file fails 60 checks on the v2.5.0 code.
-- Mutation harness: 20/20 mutants killed (4 new).
-- Local Linux run: 470 Python tests with the native core required, 19/19
-  CTest, 85 % branch coverage. Exact-SHA CI results are recorded in the pull
-  request and in `research/v2_5_1/TEST_MATRIX.md`.
+- `tests/test_v252_regressions.py` (13 tests). Oracles: closed forms,
+  `qiskit.quantum_info.Statevector`/`DensityMatrix` and
+  `average_gate_fidelity` on the produced Kraus operators. On the v2.5.1
+  source 62 sub-cases and 3 tests fail; the Path A SWAP cases fail as well
+  when the native module is loaded.
+- `tests/test_hybrid_mps.cpp`: native SWAP in tableau and statevector mode;
+  fails on the v2.5.1 source.
+- Mutation harness: 24/24 mutants killed (4 new).
+- Local Linux results and exact-SHA CI runs: `research/v2_5_2/TEST_MATRIX.md`.
 
 ## 4. Limits and non-claims
 
-- `NOISY_CLASSICAL` output is a modelled distribution, not a measurement. The
-  density matrix is exact float64 up to 10 qubits; `error_bound = 0.0` means
-  no deliberate approximation, and `sampling_error_bound` covers the sampled
-  counts only.
-- Noise applies to the gates and qubits a model names. Circuits are not
-  transpiled to a profile's basis gates, so uncalibrated gates stay noiseless.
-- Both built-in profiles are synthetic. No provider calibration data ships
-  with CQ-HECS and no real quantum hardware was used.
+- `NOISY_CLASSICAL` output is a modelled distribution, not a measurement.
+  `error_bound = 0.0` means no deliberate approximation of the model; it is not
+  a bound on model-vs-hardware error.
+- Gate errors are modelled as depolarizing noise only. T1/T2 are validated but
+  not turned into relaxation channels. Circuits are not transpiled to a
+  profile's basis gates, so uncalibrated gates stay noiseless.
+- Both built-in profiles are synthetic. No real quantum hardware was used.
 - No mid-circuit measurement, reset or classical control.
-- No new performance claim. No benchmark was run for this release.
+- No performance claim; no benchmark was run for this release.
 
 ## 5. Installation and smoke test
 
 ```bash
-python -m pip install cqhecs-2.5.1-py3-none-any.whl
+python -m pip install cqhecs-2.5.2-py3-none-any.whl
 cq-hecs version
 cq-hecs profile list
 cq-hecs --format json run name:bell --profile fake_manila --shots 1000
 ```
 
 The pure-Python wheel does not contain the native C++/Vulkan binaries. Build
-those from source with CMake and a C++20 toolchain if you need the native
-reference paths.
+those from source with CMake and a C++20 toolchain if you need them.
 
 ## 6. Evidence
 
-- `CHANGELOG.md` — `[2.5.1]` section.
-- `research/v2_5_1/` — baseline, findings, test matrix, execution log.
-- `tests/test_noisy_density_matrix_contract.py`, `scripts/run_mutation_tests.py`.
+- `CHANGELOG.md` — `[2.5.2]` section.
+- `research/v2_5_2/` — baseline, findings, test matrix, execution log.
 - The published release body records the exact source SHA and required CI run.
