@@ -25,7 +25,7 @@ class TestSelftest(unittest.TestCase):
 
     def test_all_checks_pass(self):
         self.assertTrue(self.report.passed)
-        self.assertEqual(len(self.report.checks), 11)
+        self.assertEqual(len(self.report.checks), 12)
         self.assertTrue(all(check.passed for check in self.report.checks))
 
     def test_expected_check_names(self):
@@ -44,6 +44,7 @@ class TestSelftest(unittest.TestCase):
                 "zero_noise_identity",
                 "channel_composition_order",
                 "expectation_oracle",
+                "unitary_consistency",
             ],
         )
 

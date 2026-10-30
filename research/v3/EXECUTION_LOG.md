@@ -130,7 +130,7 @@ was found that commits real raw counts.
     depolarizing and asymmetric readout, 0 mismatches;
   - MPS finite-shot marginals: 30 circuits x 200k shots, ordered and permuted
     measurement order, all within the Hoeffding bound.
-- Implemented `cqhecs/selftest.py` (11 metamorphic checks, deterministic seed,
+- Implemented `cqhecs/selftest.py` (12 metamorphic checks, deterministic seed,
   Bonferroni-corrected Hoeffding bound) and `cq-hecs selftest`. The noise checks
   cover permutation equivariance of the noisy density matrix, zero-noise
   identity, and `ComposedChannel(A,B) = B o A`.

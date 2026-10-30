@@ -470,6 +470,29 @@ def _check_composition_order(cases: int, seed: int) -> str:  # noqa: ARG001
     return f"{cases} states, ComposedChannel(A,B) equals B after A"
 
 
+def _check_unitary_consistency(cases: int, seed: int) -> str:
+    """Full unitary, not just the |0...0> column, modulo one global phase."""
+    for case in range(cases):
+        rng = random.Random(seed + 9000 + case)
+        n = rng.randint(2, 3)
+        circuit = _random_circuit(rng, n, rng.randint(2, 6))
+        dimension = 1 << n
+        dense = np.zeros((dimension, dimension), dtype=np.complex128)
+        mps = np.zeros((dimension, dimension), dtype=np.complex128)
+        for column in range(dimension):
+            preparation = [("x", [q], []) for q in range(n) if (column >> q) & 1]
+            prepared = preparation + circuit
+            dense[:, column] = _dense_statevector(prepared, n)
+            mps[:, column] = _mps_statevector(prepared, n)
+        phase = np.vdot(dense[:, 0], mps[:, 0])
+        if abs(phase) > 0.0:
+            phase /= abs(phase)
+        difference = float(np.max(np.abs(mps - phase * dense)))
+        if difference > 1e-9:
+            raise AssertionError(f"case {case}: unitary difference {difference!r}")
+    return f"{cases} circuits, full MPS unitary equals dense modulo one global phase"
+
+
 _CHECK_TABLE: Sequence[Tuple[str, Callable[[int, int], str]]] = (
     ("normalization", _check_normalization),
     ("inverse_identity", _check_inverse_identity),
@@ -482,6 +505,7 @@ _CHECK_TABLE: Sequence[Tuple[str, Callable[[int, int], str]]] = (
     ("zero_noise_identity", _check_zero_noise),
     ("channel_composition_order", _check_composition_order),
     ("expectation_oracle", _check_expectation),
+    ("unitary_consistency", _check_unitary_consistency),
 )
 
 

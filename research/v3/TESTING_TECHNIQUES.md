@@ -18,7 +18,7 @@ what was actually transferred.
 
 ### 1. `cq-hecs selftest`
 
-A deterministic, installation-level suite (`cqhecs/selftest.py`) with eleven
+A deterministic, installation-level suite (`cqhecs/selftest.py`) with twelve
 checks:
 
 1. probability normalization and non-negativity;
@@ -36,7 +36,9 @@ checks:
    and permuted noise model;
 9. a zero-error noise model reproduces the ideal distribution;
 10. `ComposedChannel(A, B)` equals `B ∘ A`;
-11. the dense expectation engine agrees with the statevector oracle.
+11. the dense expectation engine agrees with the statevector oracle;
+12. the full MPS unitary equals the dense unitary modulo a single global phase
+    (all input basis states, not only `|0…0⟩`).
 
 The suite is deliberately *not* a proof of correctness: a wrong but consistent
 gate matrix would pass every check. Qiskit/Aer differential tests remain the

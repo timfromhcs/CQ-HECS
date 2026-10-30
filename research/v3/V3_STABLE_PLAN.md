@@ -232,5 +232,5 @@ claim.
 | W6 contract/CLI | PARTIAL | schema 2.0 profile fields; `reference list/run` CLI and JSON contract added; migration guide still missing |
 | W8 noisy expectation values | DONE (local) | both engines = Aer to ≤ 1e-12 + trace loss (channels from Aer constructors; Aer `from_backend` on manila/lagos); truncated bound never violated (25 circuits); 127-qubit ibm_brisbane calibration, ~4000 gates: < 1.2 s, bound ≈ 1e-4 (functional check, not a benchmark); mutants 28–31 killed |
 | Datasets | R-IO-5 admitted; R-IO-6 registered; R-IO-1/2/3 blocked | `research/v3/DATASETS.md` |
-| Testing techniques | DONE (selftest + property tests) | `research/v3/TESTING_TECHNIQUES.md`; `cqhecs/selftest.py`; `tests/test_property_circuits.py`; 11/11 selftest checks |
+| Testing techniques | DONE (selftest + property tests) | `research/v3/TESTING_TECHNIQUES.md`; `cqhecs/selftest.py`; `tests/test_property_circuits.py`; 12/12 selftest checks |
 | Research: P vs NP / complexity | DONE (boundary only) | `LITERATURE_MAP.md` §1, `COMPLEXITY_BOUNDARY.md`: no proof; the item is `BLOCKED — open problem` |

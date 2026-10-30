@@ -27,6 +27,6 @@ Base: `main` = `a65c35b` (v2.5.2). Environment as in
 | Coverage | `python -m coverage run --branch -m pytest tests/` + `coverage report` | 88 % total; `reference.py` 81 % |
 | Mutation | `python scripts/run_mutation_tests.py` | 35/35 killed (mutants 34–35 cover the selftest inverse relation and channel composition order) |
 | Native | `ctest --test-dir build -C Release` | 19/19 passed |
-| Selftest | `cq-hecs selftest --cases 8` | 11/11 checks PASS |
+| Selftest | `cq-hecs selftest --cases 8` | 12/12 checks PASS |
 | Property-based circuits | `python -m pytest tests/test_property_circuits.py -q` | 4 passed (Hypothesis shrinking) |
 | Selftest contract | `python -m pytest tests/test_selftest.py -q` | 8 passed |
