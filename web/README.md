@@ -3,6 +3,8 @@
 An exact quantum-circuit emulator that runs in the browser. Made with ♥ by
 timfromhcs & hcsmedia.
 
+**Live:** https://cq-hecs-web.vercel.app
+
 - **WebAssembly f64 (exact):** a Rust state-vector core (`wasm/src/lib.rs`)
   compiled with SIMD128. It runs in a Web Worker. Every one of the 2^n
   amplitudes is kept in double precision; nothing is truncated or compressed.
@@ -39,4 +41,6 @@ global-phase allowance.
 
 ## Deploy
 
-Vercel, with `web/` as the project root (`vercel.json`: Vite, `dist/`).
+Vercel project `cq-hecs-web` (team hcsmediagroup), linked to this repository with
+`web/` as the root directory (`vercel.json`: Vite, `dist/`). Every push to `main`
+deploys to production; pull requests get preview deployments.

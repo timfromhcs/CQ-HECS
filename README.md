@@ -259,6 +259,8 @@ equivariance, zero-noise identity, and channel composition order.
   tested).
 - **Studio:** a local browser UI for circuits, noise, SAT and the measured
   evidence (`cq-hecs studio`).
+- **Web:** an exact emulator in the browser (WebAssembly f64 + WebGPU),
+  live at https://cq-hecs-web.vercel.app; source in [`web/`](web/).
 - **MCP:** `cq-hecs mcp`, a stdio JSON-RPC server for agents (run, analyze,
   SAT solve/models, hardware evidence).
 - **Standalone:** `cqhecs-3.2.0-windows-x64.zip` on the release page; unzip
