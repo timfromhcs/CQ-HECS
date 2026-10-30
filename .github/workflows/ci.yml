@@ -361,3 +361,36 @@ jobs:
             build-asan/Testing/
             build-asan/compile_commands.json
           if-no-files-found: warn
+
+  web-emulator:
+    name: Web emulator (WASM core, tests, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Rebuild the WebAssembly core from source
+        run: |
+          set -euo pipefail
+          rustup target add wasm32-unknown-unknown
+          committed="$(sha256sum public/cqhecs_core.wasm | cut -d' ' -f1)"
+          RUSTFLAGS="-C target-feature=+simd128,+bulk-memory" \
+            cargo build --manifest-path wasm/Cargo.toml --release --target wasm32-unknown-unknown
+          node scripts/copy-wasm.mjs
+          rebuilt="$(sha256sum public/cqhecs_core.wasm | cut -d' ' -f1)"
+          # A different rustc may emit different bytes; the tests below run on
+          # the rebuilt core either way, so behaviour is checked from source.
+          echo "committed=$committed rebuilt=$rebuilt"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Correctness tests (Qiskit fixtures, independent reference)
+        run: npm test
+
+      - name: Type check and production build
+        run: npm run build
