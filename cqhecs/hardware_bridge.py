@@ -387,12 +387,24 @@ class BackendProfile:
 
     def validate(self) -> None:
         """Validate all numeric ranges, qubit indices, and topology consistency."""
-        if not isinstance(self.num_qubits, int) or self.num_qubits < 1:
+        if (
+            not isinstance(self.num_qubits, int)
+            or isinstance(self.num_qubits, bool)
+            or self.num_qubits < 1
+        ):
             raise InvalidProfileError(f"num_qubits must be a positive integer >= 1, got {self.num_qubits}")
         if self.schema_version != "1.0":
             raise InvalidProfileError(f"Unsupported schema_version: {self.schema_version!r} (expected '1.0')")
         if not self.basis_gates:
             raise InvalidProfileError("basis_gates must not be empty.")
+        if not self.is_synthetic and (not self.capture_timestamp or not self.provenance_uri):
+            # A profile that claims to be real calibration data must say where
+            # and when it was captured; otherwise it is indistinguishable from
+            # invented numbers.
+            raise InvalidProfileError(
+                "A non-synthetic profile requires capture_timestamp and "
+                "provenance_uri; mark example or derived values is_synthetic=True."
+            )
 
         # Topology validation
         for edge in self.coupling_map:
@@ -562,7 +574,13 @@ class BackendProfile:
 
 def create_fake_manila_profile() -> BackendProfile:
     """
-    Standard 5-qubit linear hardware calibration snapshot based on IBM Manila topology (0-1-2-3-4).
+    Synthetic 5-qubit profile on the IBM Manila coupling topology (0-1-2-3-4).
+
+    Only the topology mirrors the Manila device. The error rates, readout
+    errors and T1/T2 values are illustrative synthetic numbers; they are not a
+    provider calibration export and do not match the ``FakeManila`` snapshot
+    shipped by qiskit-ibm-runtime. The profile is therefore marked synthetic
+    and carries no capture timestamp or provenance URI.
     """
     coupling = [(0, 1), (1, 0), (1, 2), (2, 1), (2, 3), (3, 2), (3, 4), (4, 3)]
     gate_errors = {
@@ -592,10 +610,10 @@ def create_fake_manila_profile() -> BackendProfile:
     return BackendProfile(
         name="fake_manila",
         num_qubits=5,
-        provider_name="IBM_Quantum_Snapshot",
-        capture_timestamp="2026-10-29T12:00:00Z",
-        provenance_uri="https://github.com/qiskit-community/qiskit-ibm-runtime/fake_manila",
-        is_synthetic=False,
+        provider_name="CQ-HECS-Synthetic",
+        capture_timestamp=None,
+        provenance_uri=None,
+        is_synthetic=True,
         basis_gates=["cx", "id", "rz", "sx", "x", "measure"],
         coupling_map=coupling,
         gate_errors=gate_errors,

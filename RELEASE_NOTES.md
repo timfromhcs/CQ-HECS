@@ -1,12 +1,12 @@
 # CQ-HECS Release Notes
 
-**Version:** 2.5.0
+**Version:** 2.5.1
 **Release date:** 2026-10-30
 **License:** Apache 2.0
 **Repository:** [https://github.com/timfromhcs/CQ-HECS](https://github.com/timfromhcs/CQ-HECS)
 
 > The release workflow copies this file to
-> `dist/RELEASE_NOTES_v2.5.0.md`, prepends the exact source commit and required
+> `dist/RELEASE_NOTES_v2.5.1.md`, prepends the exact source commit and required
 > CI run, and appends the SHA256 values of the final assets. The content
 > describes the code in this tree.
 
@@ -14,123 +14,90 @@
 
 ## 1. What this release is
 
-`v2.4.0` is a **feature release** on top of `v2.3.0`. It adds exact Pauli
-expectation values (CLI and Python), nine more exact gate lowerings and a
-small independent dense reference simulator, and it closes three result-contract
-findings from the v2.4 audit. It adds **no new simulation path, no new exactness
-claim and no GPU acceleration**.
+`v2.5.1` is a **correction release** for the Hardware-Aware Quantum Bridge that
+`v2.5.0` introduced. It changes no public signature and adds no new capability.
+It fixes wrong outputs of the noisy density-matrix path and a false provenance
+label on a built-in profile. Anyone who used `--profile` or
+`NoisyDensityMatrixBackend` with v2.5.0 should re-run: results on circuits that
+are not mirror-symmetric were wrong.
 
-Existing `2.x` result metadata stays compatible; the only behavioural changes
-are that `SimulationResult.total_error_bound` is `None` in cases where it used to
-print a misleading number, and that circuits using the newly lowered gates now run
-instead of being refused.
-
-| Surface | Status in 2.5.0 |
+| Surface | Status in 2.5.1 |
 | :--- | :--- |
-| `cqhecs` four-path router/backends | supported; composite gates lowered exactly |
-| `cqhecs.expectation` (Pauli expectation values) | supported; exact on Clifford and dense registers, certified beyond |
-| `cqhecs.backends.dense_reference` | supported reference / oracle, up to 26 qubits (22 by default) |
-| `cq_hecs::core::StateVectorSimulator` | supported dense reference, <= 28 qubits |
-| `cq_hecs::core::MPSSimulator` | experimental CPU reference |
+| `cqhecs` four-path router/backends | supported; unchanged |
+| `cqhecs.expectation` (Pauli expectation values) | supported; unchanged |
+| `cqhecs.hardware_bridge` profiles and Kraus channels | supported; both built-in profiles are synthetic |
+| `NoisyDensityMatrixBackend` (`NOISY_CLASSICAL`) | supported up to 10 qubits; output convention now matches the router |
+| `FakeHardwareProvider` | offline emulation only; never `REAL_HARDWARE` |
+| `RealHardwareProvider` | fail-closed boundary; no provider is connected |
 | Vulkan compute primitives | dispatch verified on one AMD iGPU; no end-to-end GPU acceleration |
-| `cqhecs::vulkan::VulkanEngine` | planner-only memory allocator |
-| Legacy native QASM executor | legacy phase ledger; keeps its smaller gate set |
 
-## 2. Added
+## 2. Fixed
 
-### Pauli expectation values
+- **CQ-V251-01 (P0) — mirrored bitstrings.** The density matrix was flattened
+  with qubit 0 as the most-significant bit. The same circuit (`x q[0]`) gave
+  `01` on the router and `10` with `--profile`, and readout errors hit the
+  mirrored qubit. Qubit 0 is now rendered rightmost, as everywhere else.
+- **CQ-V251-02 (P1) — measurements.** Terminal measurements were ignored and
+  every qubit was reported; a mid-circuit measurement in an instruction list
+  was dropped. Only measured qubits are reported now, and mid-circuit
+  measurement is refused (as the router does).
+- **CQ-V251-03 (P0) — provenance.** `fake_manila` claimed to be an IBM
+  calibration snapshot (`is_synthetic=False`, timestamp, URI). Its numbers do
+  not match IBM's `FakeManila` data; only the topology does. It is now marked
+  synthetic, and `BackendProfile` refuses a non-synthetic profile that lacks
+  `capture_timestamp` and `provenance_uri`.
+- **CQ-V251-04 (P1) — noise on the wrong gate.** Composite gates were lowered
+  before the noise lookup, so the `sx` error in `fake_manila` never applied and
+  `h` noise applied twice per `sx`. Noise now attaches to each gate as written.
+- **CQ-V251-05 (P2) — validation.** Invalid `shots`/`seed` are rejected before
+  parsing; a gate with a missing or extra angle is refused instead of acting as
+  the identity; all operations are checked before the density matrix is
+  allocated.
+- **CLI:** unknown `--profile` and topology violations exit with `2` and a JSON
+  `error`, not a traceback.
 
-```bash
-cq-hecs expect name:bell -o ZZ -o XX -o YY
-cq-hecs --format json expect name:ising6 -o "X0 X1" -o Z0
-```
+## 3. Tests
 
-```python
-from cqhecs import expectation_values
-res = expectation_values(circuit, {"H": [(0.5, "ZZ"), (-1.25, "XX")]})
-res.values, res.method, res.exact, res.error_bound
-```
+- `tests/test_noisy_density_matrix_contract.py` (18 tests). The oracle is
+  independent of the code under test: `qiskit.quantum_info.DensityMatrix`
+  evolves the gates, `qiskit_aer.noise` builds the channels, and readout is
+  computed from its definition. 25 random noisy 3-qubit circuits (asymmetric
+  per-qubit noise, full and partial measurement) and 10 ideal 4-qubit circuits
+  agree to `1e-10`. The same file fails 60 checks on the v2.5.0 code.
+- Mutation harness: 20/20 mutants killed (4 new).
+- Local Linux run: 470 Python tests with the native core required, 19/19
+  CTest, 85 % branch coverage. Exact-SHA CI results are recorded in the pull
+  request and in `research/v2_5_1/TEST_MATRIX.md`.
 
-| Engine | When | Result |
-| :--- | :--- | :--- |
-| `stabilizer` | Clifford circuit, <= 4096 qubits | exact `-1, 0, +1` read from the tableau, no sampling |
-| `dense` | up to 22 qubits (ceiling 26) | exact float64 statevector; no deliberate approximation |
-| `sparse_pauli` | wider non-Clifford circuits | Path D, certified bound; `None` + `unresolved` if the bound exceeds the tolerance |
+## 4. Limits and non-claims
 
-`method="auto"` takes the first row that applies. Pauli strings are dense Qiskit
-labels (`IZX`, rightmost = qubit 0) or sparse (`X0 Z2`). Mid-circuit measurement
-and `reset` are refused; terminal measurements are ignored. Path D keeps its
-gate set, so a wide circuit with `cp`/`crx`/... is refused with an explicit
-message rather than approximated.
+- `NOISY_CLASSICAL` output is a modelled distribution, not a measurement. The
+  density matrix is exact float64 up to 10 qubits; `error_bound = 0.0` means
+  no deliberate approximation, and `sampling_error_bound` covers the sampled
+  counts only.
+- Noise applies to the gates and qubits a model names. Circuits are not
+  transpiled to a profile's basis gates, so uncalibrated gates stay noiseless.
+- Both built-in profiles are synthetic. No provider calibration data ships
+  with CQ-HECS and no real quantum hardware was used.
+- No mid-circuit measurement, reset or classical control.
+- No new performance claim. No benchmark was run for this release.
 
-### More exact gate lowerings
-
-`r`, `iswap`, `dcx`, `ecr`, `cu3`, `cu`, `csx`, `c3x`, `c4x` (Qiskit `mcx`
-with 3 or 4 controls). Each is checked as a unitary identity against Qiskit,
-global phase included. Wider `mcx` stays refused.
-
-## 3. Fixed
-
-- **CQ-NEXT-H0:** `total_error_bound` is `None` for unresolved or failed
-  results, for independent-marginal counts and whenever `error_bound_covers`
-  is not a distribution metric. Path D's observable bound is never composed
-  into a total-variation number for sampled counts.
-- **CQ-NEXT-H1:** Path C's numerical-rank floor can drop a nonzero Schmidt
-  coefficient; results report `numerical_rank_truncation_applied`,
-  `discarded_singular_value_sum` and `numerical_status`, separate from
-  `bond_dimension_truncation_applied`. Wording of `exact` now matches.
-- **H8:** documented the simultaneous (union-bound) meaning of
-  `hoeffding_proportion_bound` and the conservative `K ln 2` replacement; both
-  bounds are pinned by exact-formula tests.
-- Qiskit `ExperimentResult.header` forwards the above contract fields.
-- Width of an instruction list with an idle top qubit no longer shrinks inside
-  Path D when called through the expectation API.
-
-## 4. Tests
-
-- New: `tests/test_expectation.py` (20), `tests/test_cli_expect.py` (7),
-  `tests/test_confidence_bounds.py` (8); lowering tests extended to 12.
-- Oracles: Qiskit `Statevector`/`SparsePauliOp`, closed-form stabilizer
-  states, and exhaustive comparison of all `4^n` Pauli strings between the
-  stabilizer and dense engines on random Clifford circuits.
-- Mutation gate: 14 mutants (new: stabilizer-expectation sign, dense Pauli-Y
-  orientation).
-- Random differential fuzzing (not committed, run during the audit): 500 mixed
-  circuits on Path C and 300 on Paths A/B against `Statevector`, all agreeing.
-- Exact-SHA Linux/Windows CI results are recorded in the pull request and the
-  published release, not inferred from local runs.
-
-## 5. Limits and non-claims
-
-- The dense engine is float64 without a roundoff bound; its `error_bound` of
-  `0.0` means "no deliberate approximation".
-- `sparse_pauli` certifies expectation values only, never a sampled
-  distribution, and supports Path D's gate set.
-- Expectation values for non-Clifford circuits above 22 qubits depend on the
-  Pauli-term budget; unresolved is a normal outcome.
-- No noise models, density matrices, mid-circuit measurement or reset.
-- Vulkan evidence covers primitive dispatch only; there is no end-to-end GPU
-  acceleration claim. No real quantum hardware was used.
-- Web search was unavailable while this release was prepared, so the SOTA
-  comparison relies on repository metadata (GitHub API) and the earlier
-  OpenAI Math audit, not on fresh papers. See `research/v2_4/`.
-
-## 6. Installation and smoke test
+## 5. Installation and smoke test
 
 ```bash
-python -m pip install cqhecs-2.4.0-py3-none-any.whl
+python -m pip install cqhecs-2.5.1-py3-none-any.whl
 cq-hecs version
-cq-hecs doctor
-cq-hecs --format json expect name:bell -o ZZ -o XX
+cq-hecs profile list
+cq-hecs --format json run name:bell --profile fake_manila --shots 1000
 ```
 
 The pure-Python wheel does not contain the native C++/Vulkan binaries. Build
 those from source with CMake and a C++20 toolchain if you need the native
 reference paths.
 
-## 7. Evidence
+## 6. Evidence
 
-- `CHANGELOG.md` - `[2.4.0]` section.
-- `research/v2_4/` - baseline, hypotheses, findings, test matrix, literature map.
-- `tests/test_expectation.py`, `tests/test_confidence_bounds.py`.
+- `CHANGELOG.md` — `[2.5.1]` section.
+- `research/v2_5_1/` — baseline, findings, test matrix, execution log.
+- `tests/test_noisy_density_matrix_contract.py`, `scripts/run_mutation_tests.py`.
 - The published release body records the exact source SHA and required CI run.

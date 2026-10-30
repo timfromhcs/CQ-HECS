@@ -17,8 +17,8 @@ A clean baseline is a prerequisite: every check must report "not detected" on
 unmutated code. Surviving mutants, harness errors, timeouts and missing anchors
 all fail the gate with a non-zero exit code.
 
-Mutation score is scoped: 11 source mutants covering the historically observed
-defect classes. It is not a proof of correctness and must not be reported as
+Mutation score is scoped: the source mutants listed in ``MUTANTS`` cover the
+historically observed defect classes. It is not a proof of correctness and must not be reported as
 one.
 """
 
@@ -259,6 +259,45 @@ def check_profile_self_loop() -> bool:
     except InvalidProfileError:
         return False
 
+def check_noisy_dm_bit_order() -> bool:
+    """Noisy density-matrix output must render qubit 0 rightmost."""
+    from cqhecs.backends.noisy_density_matrix import NoisyDensityMatrixBackend
+    res = NoisyDensityMatrixBackend().simulate([("x", [0], []), ("id", [1], [])])
+    return res.probabilities != {"01": 1.0}
+
+
+def check_noisy_dm_measured_marginal() -> bool:
+    """Only the measured qubit may be reported, with its own value."""
+    from cqhecs.backends.noisy_density_matrix import NoisyDensityMatrixBackend
+    res = NoisyDensityMatrixBackend().simulate(
+        [("x", [2], []), ("id", [0], []), ("measure", [2], [])]
+    )
+    return res.probabilities != {"1": 1.0}
+
+
+def check_noise_on_source_gate() -> bool:
+    """A channel calibrated on sx must fire after every sx as written."""
+    from cqhecs.backends.noisy_density_matrix import NoisyDensityMatrixBackend
+    from cqhecs.hardware_bridge import AmplitudeDampingChannel, NoiseModel
+    noise = NoiseModel()
+    # gamma = 1 resets to |0> after each sx, so sx.sx (= X) must read "0".
+    noise.add_1q_channel("sx", 0, AmplitudeDampingChannel(1.0))
+    res = NoisyDensityMatrixBackend().simulate(
+        [("sx", [0], []), ("sx", [0], [])], noise_model=noise
+    )
+    return abs(res.probabilities.get("0", 0.0) - 1.0) > 1e-12
+
+
+def check_profile_provenance_required() -> bool:
+    """A profile claiming real calibration must carry its provenance."""
+    from cqhecs.hardware_bridge import BackendProfile, InvalidProfileError
+    try:
+        BackendProfile(name="claims_real", num_qubits=2, is_synthetic=False)
+        return True  # defect observed: unprovenanced "real" profile accepted
+    except InvalidProfileError:
+        return False
+
+
 CHECKS: Dict[str, Callable[[], bool]] = {
     "qubit_bit_order": check_qubit_bit_order,
     "cz_conjugation": check_cz_conjugation,
@@ -276,6 +315,10 @@ CHECKS: Dict[str, Callable[[], bool]] = {
     "dense_y_orientation": check_dense_y_orientation,
     "hardware_authorization": check_hardware_authorization,
     "profile_self_loop": check_profile_self_loop,
+    "noisy_dm_bit_order": check_noisy_dm_bit_order,
+    "noisy_dm_measured_marginal": check_noisy_dm_measured_marginal,
+    "noise_on_source_gate": check_noise_on_source_gate,
+    "profile_provenance_required": check_profile_provenance_required,
 }
 
 
@@ -461,6 +504,38 @@ MUTANTS: List[SourceMutant] = [
         replacement="            if False and u == v:\n",
         check="profile_self_loop",
         mechanism="allows self-loops in backend coupling map",
+    ),
+    SourceMutant(
+        name="Noisy density-matrix bit order mirrored",
+        target="cqhecs/backends/noisy_density_matrix.py",
+        original="        rho_mat = np.transpose(rho, row_axes + col_axes).reshape((dim, dim))\n",
+        replacement="        rho_mat = rho.reshape((dim, dim))\n",
+        check="noisy_dm_bit_order",
+        mechanism="flattens with qubit 0 as the most-significant bit",
+    ),
+    SourceMutant(
+        name="Noisy density-matrix marginal ignores measured qubit",
+        target="cqhecs/backends/noisy_density_matrix.py",
+        original="                    out_idx |= ((idx >> q) & 1) << j\n",
+        replacement="                    out_idx |= ((idx >> j) & 1) << j\n",
+        check="noisy_dm_measured_marginal",
+        mechanism="reads output bit j from qubit j instead of the j-th measured qubit",
+    ),
+    SourceMutant(
+        name="Noise attached to lowered gate instead of source gate",
+        target="cqhecs/backends/noisy_density_matrix.py",
+        original="            gate = source_name.lower()\n",
+        replacement="            gate = ops[-1][0].lower() if ops else source_name.lower()\n",
+        check="noise_on_source_gate",
+        mechanism="looks noise up by the last lowered gate (sx -> h) as v2.5.0 did",
+    ),
+    SourceMutant(
+        name="Non-synthetic profile provenance not required",
+        target="cqhecs/hardware_bridge.py",
+        original="        if not self.is_synthetic and (not self.capture_timestamp or not self.provenance_uri):\n",
+        replacement="        if False:\n",
+        check="profile_provenance_required",
+        mechanism="accepts a profile that claims real calibration without provenance",
     ),
 ]
 

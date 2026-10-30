@@ -51,3 +51,23 @@
   - Flake8: 0 errors.
   - Vulkan Shaders: 12/12 verified SPIR-V 1.3 shaders.
   - Version Consistency: All 15 surfaces report `2.5.0`.
+
+## Erratum (added 2026-10-30 during the v2.5.1 audit)
+
+The original text above is kept unchanged as historical record. Corrections:
+
+- **Candidate commit SHA.** `f97249a888c3a504ef51590fcbf61f3640b39678` does not
+  exist in the repository. The PR #14 head commit is
+  `f97249a1c4ad5c5abfc70985fb6b6833072c0365` (`git rev-parse f97249a`).
+- **Release notes asset.** `RELEASE_NOTES_v2.5.0.md` carries a 2.5.0 header but
+  its body describes v2.4.0. The asset's hash above is correct; its content is
+  not a description of v2.5.0.
+- **Scope statements.** The shipped `NoisyDensityMatrixBackend` rendered
+  bitstrings mirrored (qubit 0 leftmost), ignored terminal-measurement subsets,
+  and never applied noise calibrated on `sx`; `fake_manila` was labelled as a
+  non-synthetic IBM snapshot although its values are invented. The
+  "verified against Qiskit Aer" claim rested on a mirror-symmetric Bell circuit
+  that cannot detect these defects. See `research/v2_5_1/FINDINGS.md`
+  (CQ-V251-01 … 07); fixed in v2.5.1.
+- Asset SHA-256 values above were re-verified by download on 2026-10-30 and
+  match.

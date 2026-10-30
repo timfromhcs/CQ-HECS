@@ -10,6 +10,62 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [2.5.1] — 2026-10-30
+
+Correction release for the v2.5.0 Hardware-Aware Quantum Bridge. Findings are
+recorded in `research/v2_5_1/FINDINGS.md`.
+
+### Fixed
+
+- **CQ-V251-01 (P0) — mirrored bitstrings in `NoisyDensityMatrixBackend`.**
+  The density matrix was flattened with qubit 0 as the most-significant bit, so
+  every outcome was rendered mirrored relative to the router and to Qiskit
+  (`x q[0]` gave `10` on `--profile`, `01` on the router), and per-qubit
+  readout errors were applied to the mirrored bit. Qubit 0 is now the
+  least-significant bit and is rendered rightmost.
+- **CQ-V251-02 (P1) — measurement semantics.** Terminal measurements were
+  ignored (all qubits were always reported) and a mid-circuit measurement in an
+  instruction list was silently dropped. The backend now reports only the
+  measured qubits, like the router, and refuses mid-circuit measurement.
+- **CQ-V251-03 (P0) — false calibration provenance.** `fake_manila` was marked
+  `is_synthetic=False` with provider `IBM_Quantum_Snapshot`, a capture
+  timestamp and a provenance URI, but its numbers do not match IBM's
+  `FakeManila` snapshot. It is now `is_synthetic=True` with no timestamp or
+  URI, and `BackendProfile` refuses a non-synthetic profile without
+  `capture_timestamp` and `provenance_uri`.
+- **CQ-V251-04 (P1) — noise attached to the wrong gate.** Gates were lowered
+  before noise lookup, so a channel calibrated on `sx` (as in `fake_manila`)
+  never fired and `h` noise fired twice per `sx`. Channels now attach to each
+  gate as written in the source circuit (new `parse_source_circuit()`), which
+  is also Qiskit Aer's semantics.
+- **CQ-V251-05 (P2) — input validation.** `shots`/`seed` follow the router
+  contract (bool, float and non-positive shots, negative or non-int seeds are
+  rejected before parsing); gates with a missing or extra angle (`rx` without
+  a parameter) are refused instead of being evaluated as the identity; every
+  operation is validated before the density matrix is allocated.
+- **CLI:** an unknown `--profile` name and a topology violation are usage
+  errors (exit `2`, JSON `error` field) instead of a traceback with exit `1`.
+
+### Tests
+
+- `tests/test_noisy_density_matrix_contract.py` (18 tests): exact differential
+  comparison on random asymmetric 3- and 4-qubit circuits against
+  `qiskit.quantum_info.DensityMatrix` with channels built by `qiskit_aer.noise`
+  and readout computed from its definition; partial measurement, refusal and
+  argument-validation cases; a CLI test that router and `--profile` agree.
+  Against the v2.5.0 code this file fails 60 checks.
+- Mutation harness: 20 mutants (new: noisy-DM bit order, measured-qubit
+  marginal, noise on source gate, profile provenance).
+
+### Documentation
+
+- `RELEASE_NOTES.md` for v2.5.0 still described v2.4.0 under a 2.5.0 header;
+  it now describes this release. `research/v2_5/RELEASE_AUDIT.md` recorded a
+  candidate SHA that does not exist (`f97249a888c3…`); an erratum gives the
+  real one (`f97249a1c4ad…`).
+
+---
+
 ## [2.5.0] — 2026-10-30
 
 ### Added — Hardware-Aware Quantum Bridge
