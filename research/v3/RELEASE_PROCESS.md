@@ -1,6 +1,7 @@
 # CQ-HECS v3 — how hypotheses are tested, which gates exist, and when a PR or a release happens
 
-**Status:** process document, 2026-10-30. Binding together with
+**Status:** process document, 2026-10-30. **v3.0.0 released** the same day;
+all gates PASS (`research/v3_0_0/RELEASE_AUDIT.md`). Binding together with
 `research/v3/V3_STABLE_PLAN.md` (gates V3-A…F) and `GEMINI.md` §16
 (gates A…J). Where the two overlap, the stricter rule applies.
 
@@ -66,7 +67,7 @@ or `INCONCLUSIVE`. **Status as of this document** (live audit, 2026-10-30):
 | V3-C | Sycamore gates (`fsim`, `√X`, `√Y`, `√W`, `phased_x`) differential-tested; mutation harness extended | PASS | `tests/test_sycamore_gates.py`; mutants 39–40 (40/40 killed) |
 | V3-D | ≥ 1 real I/O dataset with complete circuits, pinned, hypothesis outcome recorded | PASS — R-IO-7, H-V3-8 `SUPPORTED` (one backend, one day) | `evidence/openquantum/` |
 | V3-E | schema 2.0 documented, migration tested, CLI/JSON contract tests | PASS | `docs/MIGRATION_V3.md`, `tests/test_schema_migration.py` |
-| V3-F | CI 7/7 on the release SHA, release assets re-hashed, RELEASE_AUDIT | IN PROGRESS | release-candidate PR; final status in `research/v3_0_0/RELEASE_AUDIT.md` |
+| V3-F | CI 7/7 on the release SHA, release assets re-hashed, RELEASE_AUDIT | PASS | `research/v3_0_0/RELEASE_AUDIT.md` |
 
 ### 2.2 Mission gates (`GEMINI.md` §16) and the §3 audit leads
 
@@ -88,8 +89,8 @@ or `INCONCLUSIVE`. **Status as of this document** (live audit, 2026-10-30):
 | Gate F UX/observability | PASS after CQ-V3-06/08 | |
 | Gate G software quality | PASS locally; CI on the PR | 38/38 mutants, CTest 21/21 |
 | Gate H performance | PASS by abstention: no performance claim | |
-| Gate I supply chain | IN PROGRESS | pinned actions unchanged; SBOM and checksums re-verified in the release audit |
-| Gate J docs/release | IN PROGRESS | README, CHANGELOG, RELEASE_NOTES, CITATION and all version surfaces on 3.0.0; wheel smoke-tested in a clean venv |
+| Gate I supply chain | PASS | SBOM and checksums independently verified; no credentials in assets |
+| Gate J docs/release | PASS | `v3.0.0` published from `86784b4`; downloaded wheel smoke-tested |
 
 **Hard stop:** any unresolved P0, false UNSAT, false hardware provenance,
 fake live telemetry, unguarded exact-arithmetic overflow, hidden
@@ -149,7 +150,7 @@ Steps:
 | 6 | Verify 3.7 Vulkan device observability; document or fix | E | **done** — `DEFECT_REGISTER.md` |
 | 7 | V3-C Sycamore gates + mutants | V3-C | **done** |
 | 8 | V3-E migration guide + migration test | V3-E | **done** |
-| 9 | Release candidate PR → CI → merge → verify assets → RELEASE_AUDIT | V3-F, J, I | §4 complete |
+| 9 | Release candidate PR → CI → merge → verify assets → RELEASE_AUDIT | V3-F, J, I | **done** — `v3.0.0` released 2026-10-30 |
 
 Each step is its own PR, merged before the next starts, so `main` stays
 releasable and every gate change has its own CI evidence.
