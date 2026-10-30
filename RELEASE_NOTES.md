@@ -1,11 +1,11 @@
 # CQ-HECS Release Notes
 
-**Version:** 3.2.0
+**Version:** 3.3.0
 **Release date:** 2026-10-30
 **License:** Apache 2.0
 **Repository:** [https://github.com/timfromhcs/CQ-HECS](https://github.com/timfromhcs/CQ-HECS)
 
-> The release workflow copies this file to `dist/RELEASE_NOTES_v3.2.0.md`,
+> The release workflow copies this file to `dist/RELEASE_NOTES_v3.3.0.md`,
 > prepends the exact source commit and required CI run, and appends the SHA256
 > values of the final assets.
 
@@ -13,22 +13,46 @@
 
 ## 1. What this release is
 
-`v3.2.0` is a stable feature release on the v3.1.0 base. It adds:
+`v3.3.0` adds measured noise from three QPU vendors and makes it usable in
+every surface: CLI, Studio, MCP, the Windows build and the new web emulator.
 
-1. **An MCP server** — `cq-hecs mcp`, newline-delimited JSON-RPC over stdio,
-   no network listener, tools for run/analyze/SAT/models/hardware.
-2. **SAT model enumeration and exact MaxSAT** — `cq-hecs sat models|maxsat`.
-3. **A Studio Hardware lab** — every committed real-QPU evaluation and the
-   finite P-vs-NP probes in one view (`/api/hardware`).
-4. **A multi-backend 10,000-shot replication** — the pinned 25-circuit suite on
-   three IBM backends, all `H-V3-8 SUPPORTED`.
-5. **A standalone Windows build** — `cqhecs-3.2.0-windows-x64.zip`
-   (PyInstaller onedir), smoke-tested outside the repository.
+1. **A third vendor.** The pinned 25-circuit suite ran on IQM Garnet
+   (`r-iqm-1`, preregistered before submission, 500 shots per circuit).
+2. **Measured device profiles.** Per-qubit readout, X anomaly and CX
+   depolarizing are extracted from the real runs of five backends.
+3. **CQ-HECS Web.** A landing page, a beginner-to-advanced guide in
+   EN/DE/FR, a SAT lab, device comparison and the measured profiles as noise
+   models: https://cq-hecs-web.vercel.app
 
-No new simulation path and no performance claim. The frozen `M-FIT` verdicts
-are unchanged.
+## 1.1 IQM Garnet (r-iqm-1)
 
-## 2. Multi-backend 10,000-shot replication
+| | value |
+| :--- | :--- |
+| H-V3-8 | **SUPPORTED** |
+| median ΔTV (M-FIT − ideal) | −0.039004 |
+| 95 % CI | [−0.052574, −0.013175] |
+| EVAL jobs closer than ideal | 16/20 |
+| M-FIT-2 vs M-FIT | −0.000657, CI [−0.001611, +0.004864]: inconclusive |
+| bit-order probe | `00001` |
+| budget | 25 jobs × 1 Spark credit |
+
+H-V3-8 now holds on Rigetti, IBM (fez, kingston, marrakesh) and IQM.
+M-FIT-2 has not beaten M-FIT on any fresh backend, so H-V3-9 stays unsupported.
+
+## 1.2 Device profiles
+
+```bash
+cq-hecs devices
+cq-hecs run name:bell --device iqm_garnet --shots 4000
+```
+
+On the suite circuits a profile reproduces the evaluated M-FIT-2 distribution
+(TV < 1e-4). Qubits beyond the five measured ones reuse the mean measured
+readout. That extrapolation is an assumption, and every surface reports it.
+The web emulator applies the same Kraus channels and reproduces the exact
+Python distributions within shot noise.
+
+## 2. Multi-backend 10,000-shot replication (from v3.2.0)
 
 The same 25 pinned `r-io-7` circuits ran externally on three IBM Quantum
 backends at 10,000 shots per circuit, on a fixed physical chain per backend.
@@ -62,7 +86,7 @@ Evidence: `research/v4/evidence/ibm_10k/`.
 
 ## 4. Standalone executable
 
-`cqhecs-3.2.0-windows-x64.zip` contains `cq-hecs/cq-hecs.exe` and its
+`cqhecs-3.3.0-windows-x64.zip` contains `cq-hecs/cq-hecs.exe` and its
 `_internal/` runtime (Python, NumPy, Qiskit, Qiskit Aer, Studio assets and the
 packaged `r-io-7` snapshot). It is a convenience build of the same package,
 not a second implementation. `scripts/build_exe.ps1` builds it and fails
@@ -103,6 +127,8 @@ metamorphic self-test, static/package smoke, ASan/UBSan and the Python
   Heron backends only.
 - Exact MaxSAT refuses above 20 variables; `UNSAT` has no proof object.
 - The Windows build is x64 only and unsigned.
+- Device profiles cover 5 measured qubits per backend; wider circuits use an
+  extrapolated mean readout. Profiles are post-hoc fits from one day per backend.
 - QuantumRings is a classical simulator, not a QPU.
 - The IonQ pilot is 100–200 shots and cannot evaluate H-V3-8.
 - No `P = NP` or ETH claim. A finite SAT sweep is not a lower bound.
@@ -111,15 +137,17 @@ metamorphic self-test, static/package smoke, ASan/UBSan and the Python
 ## 8. Install
 
 ```bash
-python -m pip install cqhecs-3.2.0-py3-none-any.whl
+python -m pip install cqhecs-3.3.0-py3-none-any.whl
 cq-hecs doctor
 cq-hecs studio
 cq-hecs mcp      # stdio MCP server
+cq-hecs devices  # measured QPU noise profiles
 ```
 
 ## 9. Documentation
 
-- `CHANGELOG.md` — `[3.2.0]` section.
+- `CHANGELOG.md` — `[3.3.0]` section.
+- `research/v4/ROADMAP_V4.md` — the path to v4.0.0.
 - `research/v4/FINDINGS.md` — corrected finding and reproductions.
 - `research/v4/COMPLEXITY_AND_ETH.md` — complexity boundaries.
 - `docs/STUDIO.md` — UI and HTTP API.

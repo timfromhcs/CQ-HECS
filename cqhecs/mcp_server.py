@@ -31,7 +31,11 @@ TOOLS: List[Dict[str, Any]] = [
                 "shots": {"type": "integer", "minimum": 1, "maximum": 20000, "default": 1024},
                 "seed": {"type": "integer", "default": 42},
                 "path": {"type": "string", "enum": ["auto", "A", "B", "C", "D"], "default": "auto"},
-                "noise": {"type": "string", "enum": ["ideal", "mfit", "mfit2"], "default": "ideal"},
+                "noise": {
+                    "type": "string",
+                    "default": "ideal",
+                    "description": "ideal, mfit, mfit2, or device:<id> from cqhecs_devices",
+                },
             },
             "required": ["circuit"],
         },
@@ -70,6 +74,11 @@ TOOLS: List[Dict[str, Any]] = [
             },
             "required": ["cnf"],
         },
+    },
+    {
+        "name": "cqhecs_devices",
+        "description": "List measured QPU noise profiles (M-FIT-2) usable as cqhecs_run device.",
+        "inputSchema": {"type": "object", "properties": {}},
     },
     {
         "name": "cqhecs_hardware",
@@ -185,6 +194,10 @@ def _call(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         return _text(_tool_sat(arguments))
     if name == "cqhecs_sat_models":
         return _text(_tool_models(arguments))
+    if name == "cqhecs_devices":
+        from cqhecs.device_profiles import list_profiles, summary
+
+        return _text({"devices": [summary(p) for p in list_profiles()]})
     if name == "cqhecs_hardware":
         return _text(_tool_hardware(arguments))
     raise ValueError(f"unknown tool {name!r}")

@@ -29,7 +29,7 @@ export type Mat2 = [number, number, number, number, number, number, number, numb
 
 /** One engine operation. */
 export type Op =
-  | { kind: "u"; target: number; ctrl: number; m: Mat2; arity: number }
+  | { kind: "u"; target: number; ctrl: number; m: Mat2; arity: number; gate?: string }
   | { kind: "measure"; qubit: number; clbit: number }
   | { kind: "reset"; qubit: number };
 
@@ -184,7 +184,7 @@ export function compile(c: Circuit): Op[] {
         break;
       default:
         bit(q[0]);
-        ops.push({ kind: "u", target: q[0], ctrl: 0, m: matrix(g.name, g.params), arity: 1 });
+        ops.push({ kind: "u", target: q[0], ctrl: 0, m: matrix(g.name, g.params), arity: 1, gate: g.name });
     }
   }
   return ops;

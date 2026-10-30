@@ -80,3 +80,16 @@ def test_sat_models_and_hardware_tools():
         row = by_id[f"r-ibm-1 / {backend} 10k"]
         assert row["shots"] == 10000
         assert row["verdict"] == "SUPPORTED"
+
+
+def test_devices_tool_and_device_noise_run():
+    devices, run = _session([
+        {"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "cqhecs_devices", "arguments": {}}},
+        {"jsonrpc": "2.0", "id": 9, "method": "tools/call",
+         "params": {"name": "cqhecs_run",
+                    "arguments": {"circuit": "preset:bell", "shots": 2000, "noise": "device:ibm_fez"}}},
+    ])
+    ids = {d["id"] for d in json.loads(devices["result"]["content"][0]["text"])["devices"]}
+    assert "ibm_fez" in ids
+    payload = json.loads(run["result"]["content"][0]["text"])
+    assert sum(payload["result"]["counts"].values()) == 2000

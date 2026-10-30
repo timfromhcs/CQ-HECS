@@ -134,7 +134,7 @@ CQ_API double cq_get_active_vram_mb(cq_context_t* ctx);
 CQ_API const char* cq_get_version(void);
 ```
 - **Description**: Queries semantic version string.
-- **Return Value**: Constant string `"3.2.0"`, derived from the package
+- **Return Value**: Constant string `"3.3.0"`, derived from the package
   version (`scripts/version.py`); it must not drift.
 
 ---

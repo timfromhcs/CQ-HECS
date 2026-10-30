@@ -1,0 +1,303 @@
+{
+  "aggregate": {
+    "bootstrap_samples": 5000,
+    "bootstrap_seed": 20261030,
+    "ci95_high": -0.013174529461440009,
+    "ci95_low": -0.05257362949029343,
+    "complete": true,
+    "median_delta_tv": -0.03900435963519097,
+    "n_eval": 20,
+    "n_eval_preregistered": 20,
+    "n_noisy_better": 16,
+    "verdict": "SUPPORTED"
+  },
+  "backend": "iqm:garnet",
+  "bit_order": {
+    "expected": "00001",
+    "job_id": "OQ-03",
+    "little_endian": true,
+    "mode": "00001"
+  },
+  "calibration_files": {},
+  "calibration_status": "absent",
+  "circuits": [
+    {
+      "cx_count": 1,
+      "delta_tv": -0.011159356960000012,
+      "family": "ghz",
+      "job_id": "OQ-06",
+      "name": "bell",
+      "num_qubits": 2,
+      "provider_job_id": "b99a450d-bb97-4b38-b30a-a2318940018a",
+      "shots": 500,
+      "tv_ideal": 0.032000000000000015,
+      "tv_noisy": 0.020840643040000002
+    },
+    {
+      "cx_count": 2,
+      "delta_tv": -0.015549543532159982,
+      "family": "ghz",
+      "job_id": "OQ-07",
+      "name": "ghz3",
+      "num_qubits": 3,
+      "provider_job_id": "b479b57c-8c13-42d4-a7f1-4eb172a680e5",
+      "shots": 500,
+      "tv_ideal": 0.03800000000000002,
+      "tv_noisy": 0.022450456467840038
+    },
+    {
+      "cx_count": 3,
+      "delta_tv": -0.04592611560494401,
+      "family": "ghz",
+      "job_id": "OQ-08",
+      "name": "ghz4",
+      "num_qubits": 4,
+      "provider_job_id": "d1e9c8a5-f18c-460d-9e9b-afe6a26ffbe2",
+      "shots": 500,
+      "tv_ideal": 0.08599999999999998,
+      "tv_noisy": 0.04007388439505597
+    },
+    {
+      "cx_count": 4,
+      "delta_tv": -0.04196340997573304,
+      "family": "ghz",
+      "job_id": "OQ-09",
+      "name": "ghz5",
+      "num_qubits": 5,
+      "provider_job_id": "617085fe-8638-476f-827a-02a6dfa65942",
+      "shots": 500,
+      "tv_ideal": 0.11800000000000001,
+      "tv_noisy": 0.07603659002426696
+    },
+    {
+      "cx_count": 15,
+      "delta_tv": -0.0881313574958274,
+      "family": "qpe",
+      "job_id": "OQ-10",
+      "name": "qpe3_t",
+      "num_qubits": 4,
+      "provider_job_id": "91f72799-d549-4d1b-9801-7b076a2b62d0",
+      "shots": 500,
+      "tv_ideal": 0.2119999999999999,
+      "tv_noisy": 0.12386864250417251
+    },
+    {
+      "cx_count": 15,
+      "delta_tv": -0.08078039436041864,
+      "family": "qpe",
+      "job_id": "OQ-11",
+      "name": "qpe3_s",
+      "num_qubits": 4,
+      "provider_job_id": "0db44897-14c6-4c54-985c-79ab98a77d0b",
+      "shots": 500,
+      "tv_ideal": 0.20999999999999994,
+      "tv_noisy": 0.1292196056395813
+    },
+    {
+      "cx_count": 24,
+      "delta_tv": -0.06520863622675666,
+      "family": "qft_mirror",
+      "job_id": "OQ-12",
+      "name": "qft4_roundtrip",
+      "num_qubits": 4,
+      "provider_job_id": "c108519d-fe33-463b-be65-91b41525efa9",
+      "shots": 500,
+      "tv_ideal": 0.21599999999999975,
+      "tv_noisy": 0.1507913637732431
+    },
+    {
+      "cx_count": 14,
+      "delta_tv": 0.011370951646640811,
+      "family": "mirror",
+      "job_id": "OQ-13",
+      "name": "mirror4_d10",
+      "num_qubits": 4,
+      "provider_job_id": "b6bea705-e5a2-4a98-a8a6-add87f877329",
+      "shots": 500,
+      "tv_ideal": 0.026000000000000013,
+      "tv_noisy": 0.037370951646640824
+    },
+    {
+      "cx_count": 16,
+      "delta_tv": 0.022998323862105433,
+      "family": "mirror",
+      "job_id": "OQ-14",
+      "name": "mirror4_d20",
+      "num_qubits": 4,
+      "provider_job_id": "a1eec648-1457-46ff-b3d3-1b56f74ec3b9",
+      "shots": 500,
+      "tv_ideal": 0.020000000000000007,
+      "tv_noisy": 0.04299832386210544
+    },
+    {
+      "cx_count": 32,
+      "delta_tv": 0.1079865864025087,
+      "family": "mirror",
+      "job_id": "OQ-15",
+      "name": "mirror4_d40",
+      "num_qubits": 4,
+      "provider_job_id": "0ba7dfad-10a6-42d3-b23c-e7b052953308",
+      "shots": 500,
+      "tv_ideal": 0.006000000000000003,
+      "tv_noisy": 0.11398658640250871
+    },
+    {
+      "cx_count": 3,
+      "delta_tv": -0.015189701962880005,
+      "family": "clifford_t",
+      "job_id": "OQ-16",
+      "name": "clifford_t3_d12",
+      "num_qubits": 3,
+      "provider_job_id": "a4425f4e-a63d-45be-9ea3-ee29dda7a5b9",
+      "shots": 500,
+      "tv_ideal": 0.04200000000000008,
+      "tv_noisy": 0.026810298037120074
+    },
+    {
+      "cx_count": 10,
+      "delta_tv": -0.04535135996772446,
+      "family": "clifford_t",
+      "job_id": "OQ-17",
+      "name": "clifford_t4_d16",
+      "num_qubits": 4,
+      "provider_job_id": "6904091e-e91d-4c23-8ce1-f3c5c61d0001",
+      "shots": 500,
+      "tv_ideal": 0.10399999999999998,
+      "tv_noisy": 0.058648640032275524
+    },
+    {
+      "cx_count": 10,
+      "delta_tv": -0.059221143375642854,
+      "family": "clifford_t",
+      "job_id": "OQ-18",
+      "name": "clifford_t5_d20",
+      "num_qubits": 5,
+      "provider_job_id": "edc24e0f-76bb-44d4-91ba-b72199c133cd",
+      "shots": 500,
+      "tv_ideal": 0.134,
+      "tv_noisy": 0.07477885662435715
+    },
+    {
+      "cx_count": 9,
+      "delta_tv": -0.029543076573527255,
+      "family": "clifford_t",
+      "job_id": "OQ-19",
+      "name": "clifford_t5_d30",
+      "num_qubits": 5,
+      "provider_job_id": "68a87f45-0259-4a8e-8751-2816409a714a",
+      "shots": 500,
+      "tv_ideal": 0.11399999999999999,
+      "tv_noisy": 0.08445692342647274
+    },
+    {
+      "cx_count": 5,
+      "delta_tv": -0.0027688214399625988,
+      "family": "brickwork",
+      "job_id": "OQ-20",
+      "name": "brickwork4_l3",
+      "num_qubits": 4,
+      "provider_job_id": "60e68e02-2593-4630-bee5-16539060bee1",
+      "shots": 500,
+      "tv_ideal": 0.07566174692498448,
+      "tv_noisy": 0.07289292548502188
+    },
+    {
+      "cx_count": 8,
+      "delta_tv": 0.0031162308828945606,
+      "family": "brickwork",
+      "job_id": "OQ-21",
+      "name": "brickwork5_l4",
+      "num_qubits": 5,
+      "provider_job_id": "23f08dd4-9770-4084-9811-baef6b1bf741",
+      "shots": 500,
+      "tv_ideal": 0.07205759776261586,
+      "tv_noisy": 0.07517382864551042
+    },
+    {
+      "cx_count": 2,
+      "delta_tv": -0.039097788799999804,
+      "family": "algorithm",
+      "job_id": "OQ-22",
+      "name": "grover2_mark11",
+      "num_qubits": 2,
+      "provider_job_id": "81530227-fa72-4913-94a5-2646f0d395d6",
+      "shots": 500,
+      "tv_ideal": 0.052000000000000025,
+      "tv_noisy": 0.012902211200000221
+    },
+    {
+      "cx_count": 3,
+      "delta_tv": -0.06711044713410527,
+      "family": "algorithm",
+      "job_id": "OQ-23",
+      "name": "bv4_1011",
+      "num_qubits": 5,
+      "provider_job_id": "c3892506-220f-48b3-89bc-f11261279820",
+      "shots": 500,
+      "tv_ideal": 0.12,
+      "tv_noisy": 0.052889552865894716
+    },
+    {
+      "cx_count": 3,
+      "delta_tv": -0.06409973646247139,
+      "family": "algorithm",
+      "job_id": "OQ-24",
+      "name": "dj3_balanced",
+      "num_qubits": 4,
+      "provider_job_id": "effca3f2-2123-4d7b-8c04-5634c3afa733",
+      "shots": 500,
+      "tv_ideal": 0.102,
+      "tv_noisy": 0.03790026353752861
+    },
+    {
+      "cx_count": 4,
+      "delta_tv": -0.038910930470382146,
+      "family": "ghz",
+      "job_id": "OQ-25",
+      "name": "ghz5_repeat",
+      "num_qubits": 5,
+      "provider_job_id": "54596a56-4642-4cf2-b79c-06596b16e623",
+      "shots": 500,
+      "tv_ideal": 0.112,
+      "tv_noisy": 0.07308906952961786
+    }
+  ],
+  "dataset_id": "r-io-7",
+  "dataset_sha256": "2b02df32b57aee0426cdb390bbd9ecada246edae0e1c2c4126ed3740a7253bea",
+  "hypothesis": {
+    "id": "H-V3-8",
+    "statement": "On the 20 held-out EVAL jobs, the M-FIT prediction has a smaller total-variation distance to the measured counts than the ideal distribution: median paired difference below 0 with a 95% bootstrap interval excluding 0."
+  },
+  "model": {
+    "cx_depolarizing": 0.004,
+    "fit_jobs": [
+      "OQ-01",
+      "OQ-02",
+      "OQ-04",
+      "OQ-05"
+    ],
+    "fit_mean_tv": 0.05860460247508621,
+    "name": "M-FIT",
+    "one_qubit_gate_error": "not modelled (0)",
+    "p01_mean": 0.004399999999999999,
+    "p10_mean": 0.0192,
+    "per_qubit_p01": [
+      0.002,
+      0.002,
+      0.006,
+      0.006,
+      0.006
+    ],
+    "per_qubit_p10": [
+      0.038,
+      0.012,
+      0.012,
+      0.022,
+      0.012
+    ],
+    "relaxation": false
+  },
+  "schema_version": "1.0",
+  "suite_seed": 20261030,
+  "suite_version": "1.0"
+}

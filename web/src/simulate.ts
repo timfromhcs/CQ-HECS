@@ -7,7 +7,17 @@ import type { Noise, RunResult } from "./protocol";
 
 const PAULI = [matrix("x"), matrix("y"), matrix("z")];
 const EXACT_LIMIT = 22; // above this the 2^n probability table is not built
-const MAX_TRAJECTORIES = 256;
+/** Amplitude updates allowed for noise trajectories (keeps runs in seconds). */
+const TRAJECTORY_BUDGET = 4e8;
+
+/**
+ * Trajectories for a noisy run: one per shot (statistically exact) when that is
+ * cheap, otherwise as many as the budget allows, never fewer than 256.
+ */
+export function trajectoryCount(shots: number, gateOps: number, numQubits: number): number {
+  const perTrajectory = Math.max(1, gateOps + 1) * 2 ** numQubits;
+  return Math.min(shots, Math.max(256, Math.floor(TRAJECTORY_BUDGET / perTrajectory)));
+}
 
 export interface RunInput {
   numQubits: number;
@@ -32,18 +42,46 @@ export function measurementMap(input: RunInput): { pairs: [number, number][]; wi
   return { pairs, width };
 }
 
-function noisy(noise: Noise) {
-  return noise.p1 > 0 || noise.p2 > 0;
+function gateNoise(noise: Noise) {
+  return noise.p1 > 0 || noise.p2 > 0 || (noise.xflip ?? []).some((v) => v > 0);
+}
+
+/** Readout error for qubit q: [P(read 1 | 0), P(read 0 | 1)]. */
+export function readoutPair(noise: Noise, q: number): [number, number] {
+  const p01 = noise.p01?.[q] ?? noise.readout;
+  const p10 = noise.p10?.[q] ?? noise.readout;
+  return [p01, p10];
 }
 
 function applyWithNoise(core: Core, op: Extract<Op, { kind: "u" }>, noise: Noise, r: () => number) {
   core.apply(op.target, op.ctrl, op.m);
-  const p = op.arity === 1 ? noise.p1 : noise.p2;
-  if (p <= 0) return;
-  const qubits = [op.target];
-  for (let q = 0; q < 31; q++) if (op.ctrl & (1 << q)) qubits.push(q);
-  for (const q of qubits) {
-    if (r() < p) core.apply(q, 0, PAULI[Math.floor(r() * 3)]);
+  const controls: number[] = [];
+  for (let q = 0; q < 31; q++) if (op.ctrl & (1 << q)) controls.push(q);
+  if (op.arity === 1) {
+    // Single-qubit depolarizing: with probability p the state is replaced by I/2,
+    // i.e. one of I, X, Y, Z uniformly.
+    if (noise.p1 > 0 && r() < noise.p1) {
+      const k = Math.floor(r() * 4);
+      if (k > 0) core.apply(op.target, 0, PAULI[k - 1]);
+    }
+    const flip = op.gate === "x" ? noise.xflip?.[op.target] ?? 0 : 0;
+    if (flip > 0 && r() < flip) core.apply(op.target, 0, PAULI[0]);
+  } else if (op.arity === 2) {
+    // Two-qubit depolarizing (1-p) rho + p I/4: with probability p apply a uniformly
+    // random two-qubit Pauli (16 including identity), exactly as the Python channel.
+    if (noise.p2 > 0 && r() < noise.p2) {
+      const k = Math.floor(r() * 16);
+      const a = k >> 2, b = k & 3;
+      if (a > 0) core.apply(controls[0], 0, PAULI[a - 1]);
+      if (b > 0) core.apply(op.target, 0, PAULI[b - 1]);
+    }
+  } else if (noise.p2 > 0) {
+    for (const q of [...controls, op.target]) {
+      if (r() < noise.p2) {
+        const k = Math.floor(r() * 4);
+        if (k > 0) core.apply(q, 0, PAULI[k - 1]);
+      }
+    }
   }
 }
 
@@ -54,11 +92,12 @@ export function run(core: Core, input: RunInput, progress: Progress = () => {}):
   const r = rng(input.seed);
   const counts: Record<string, number> = {};
   const add = (bits: string, k = 1) => { counts[bits] = (counts[bits] ?? 0) + k; };
-  const readout = (value: number) => {
-    if (input.noise.readout <= 0) return value;
-    let v = value;
-    for (let b = 0; b < width; b++) if (r() < input.noise.readout) v ^= 1 << b;
-    return v;
+  const hasReadout = input.noise.readout > 0 || (input.noise.p01 ?? []).some((v) => v > 0) || (input.noise.p10 ?? []).some((v) => v > 0);
+  /** Apply the measured qubit's readout error to one classical bit value. */
+  const misread = (bit: number, qubit: number) => {
+    if (!hasReadout) return bit;
+    const [p01, p10] = readoutPair(input.noise, qubit);
+    return r() < (bit ? p10 : p01) ? bit ^ 1 : bit;
   };
   const terminal = isTerminalOnly(input.ops);
   const unitary = input.ops.filter((o) => o.kind === "u") as Extract<Op, { kind: "u" }>[];
@@ -92,15 +131,17 @@ export function run(core: Core, input: RunInput, progress: Progress = () => {}):
   let trajectories = 1;
   const toClassical = (index: number) => {
     let v = 0;
-    for (const [q, c] of pairs) if ((index >>> q) & 1) v |= 1 << c; else v &= ~(1 << c);
+    for (const [q, c] of pairs) {
+      if (misread((index >>> q) & 1, q)) v |= 1 << c; else v &= ~(1 << c);
+    }
     return v;
   };
-  if (terminal && !noisy(input.noise)) {
+  if (terminal && !gateNoise(input.noise)) {
     progress(0.7, "Shots ziehen");
     const samples = core.sample(input.shots, input.seed);
     const tally = new Map<number, number>();
     for (const s of samples) {
-      const v = readout(toClassical(s));
+      const v = toClassical(s);
       tally.set(v, (tally.get(v) ?? 0) + 1);
     }
     for (const [v, k] of tally) add(bitsOf(v, width), k);
@@ -109,7 +150,7 @@ export function run(core: Core, input: RunInput, progress: Progress = () => {}):
     // random Pauli errors and mid-circuit outcomes; the shot mixture is unbiased.
     mode = "trajectories";
     const perShot = !terminal;
-    trajectories = perShot ? input.shots : Math.min(input.shots, MAX_TRAJECTORIES);
+    trajectories = perShot ? input.shots : trajectoryCount(input.shots, unitary.length, n);
     const base = Math.floor(input.shots / trajectories);
     let extra = input.shots - base * trajectories;
     for (let t = 0; t < trajectories; t++) {
@@ -121,16 +162,16 @@ export function run(core: Core, input: RunInput, progress: Progress = () => {}):
         else if (op.kind === "reset") {
           if (core.measure(op.qubit, r()) === 1) core.apply(op.qubit, 0, PAULI[0]);
         } else if (perShot) {
-          const bit = core.measure(op.qubit, r());
+          const bit = misread(core.measure(op.qubit, r()), op.qubit);
           classical = bit ? classical | (1 << op.clbit) : classical & ~(1 << op.clbit);
         }
       }
       if (perShot) {
         // Qubits never measured are reported through the default map only when
         // the circuit has no measurement at all, which is the terminal case.
-        add(bitsOf(readout(classical), width), shotsHere);
+        add(bitsOf(classical, width), shotsHere);
       } else {
-        for (const s of core.sample(shotsHere, input.seed + t + 1)) add(bitsOf(readout(toClassical(s)), width));
+        for (const s of core.sample(shotsHere, input.seed + t + 1)) add(bitsOf(toClassical(s), width));
       }
       if (t % Math.max(1, Math.floor(trajectories / 50)) === 0) {
         progress(0.7 + (0.3 * t) / trajectories, `Trajektorie ${t + 1}/${trajectories}`);

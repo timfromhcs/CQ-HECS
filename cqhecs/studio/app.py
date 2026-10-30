@@ -47,6 +47,7 @@ HARDWARE_EVALUATIONS = (
     ("r-ibm-1 / ibm_fez 10k", 10000, Path("research/v4/evidence/ibm_10k/ibm_fez/h_v3_8_evaluation.json")),
     ("r-ibm-1 / ibm_kingston 10k", 10000, Path("research/v4/evidence/ibm_10k/ibm_kingston/h_v3_8_evaluation.json")),
     ("r-ibm-1 / ibm_marrakesh 10k", 10000, Path("research/v4/evidence/ibm_10k/ibm_marrakesh/h_v3_8_evaluation.json")),
+    ("r-iqm-1 / iqm garnet", 500, Path("research/v3/evidence/openquantum/iqm_garnet/h_v3_8_evaluation.json")),
 )
 
 _STATIC_FILES = {
@@ -395,8 +396,8 @@ class StudioState:
         if path != "AUTO" and path not in ("A", "B", "C", "D"):
             raise StudioError("path must be auto, A, B, C or D", code="invalid_path")
         noise = str(request.get("noise", "ideal"))
-        if noise not in ("ideal", "mfit", "mfit2", "custom"):
-            raise StudioError("noise must be ideal, mfit, mfit2 or custom", code="invalid_noise")
+        if noise not in ("ideal", "mfit", "mfit2", "custom") and not noise.startswith("device:"):
+            raise StudioError("noise must be ideal, mfit, mfit2, custom or device:<id>", code="invalid_noise")
 
         instructions, num_qubits = parse_circuit(circuit)
         if noise == "ideal":
@@ -415,7 +416,15 @@ class StudioState:
                     status=422,
                     code="noise_width_limit",
                 )
-            model = self._build_noise_model(instructions, num_qubits, noise, request.get("overrides") or {})
+            if noise.startswith("device:"):
+                from cqhecs.device_profiles import UnknownDeviceProfileError, noise_model as device_noise_model
+
+                try:
+                    model = device_noise_model(noise[len("device:"):], instructions, num_qubits)
+                except UnknownDeviceProfileError as exc:
+                    raise StudioError(exc.args[0], code="unknown_device") from exc
+            else:
+                model = self._build_noise_model(instructions, num_qubits, noise, request.get("overrides") or {})
             from cqhecs.backends.noisy_density_matrix import NoisyDensityMatrixBackend
 
             result = NoisyDensityMatrixBackend(max_qubits=10).simulate(
@@ -915,6 +924,10 @@ class StudioHandler(BaseHTTPRequestHandler):
                 return self._json(HTTPStatus.OK, self.server.state.noise())
             if path == "/api/research":
                 return self._json(HTTPStatus.OK, self.server.state.research())
+            if path == "/api/devices":
+                from cqhecs.device_profiles import list_profiles, summary
+
+                return self._json(HTTPStatus.OK, {"devices": [summary(p) for p in list_profiles()]})
             if path == "/api/hardware":
                 return self._json(HTTPStatus.OK, self.server.state.hardware())
             if path == "/api/reference":

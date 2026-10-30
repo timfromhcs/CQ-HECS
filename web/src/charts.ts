@@ -1,5 +1,6 @@
 // Result views: histogram, table, Bloch spheres and amplitudes.
 
+import { t } from "./i18n";
 import type { RunResult } from "./protocol";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -37,7 +38,7 @@ export function renderHistogram(host: HTMLElement, r: RunResult) {
   host.className = "res hist";
   const w = 480, h = 300, padL = 44, padB = Math.min(110, 16 + 8 * Math.max(...data.map((d) => d.bits.length))), padT = 12;
   const max = Math.max(...data.map((d) => Math.max(d.freq, d.ideal ?? 0)), 1e-9);
-  const svg = svgEl("svg", { viewBox: `0 0 ${w} ${h}`, role: "img", "aria-label": "Histogramm der Messergebnisse" }, host);
+  const svg = svgEl("svg", { viewBox: `0 0 ${w} ${h}`, role: "img", "aria-label": t("res.hist") }, host);
   const defs = svgEl("defs", {}, svg);
   const grad = svgEl("linearGradient", { id: "bargrad", x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
   svgEl("stop", { offset: 0, "stop-color": "var(--accent)" }, grad);
@@ -53,7 +54,7 @@ export function renderHistogram(host: HTMLElement, r: RunResult) {
     const x = padL + i * bw;
     const bh = (d.freq / max) * plotH;
     const bar = svgEl("rect", { x: x + bw * 0.12, y: padT + plotH - bh, width: bw * 0.76, height: Math.max(bh, 0.5), rx: Math.min(4, bw * 0.2), class: "bar" }, svg);
-    svgEl("title", {}, bar).textContent = `${d.bits}: ${d.count} Shots (${(d.freq * 100).toFixed(2)} %)${d.ideal !== undefined ? ` · ideal ${(d.ideal * 100).toFixed(3)} %` : ""}`;
+    svgEl("title", {}, bar).textContent = `${d.bits}: ${d.count} (${(d.freq * 100).toFixed(2)} %)${d.ideal !== undefined ? ` · ${t("res.idealCol")} ${(d.ideal * 100).toFixed(3)} %` : ""}`;
     if (d.ideal !== undefined) {
       const iy = padT + plotH - (d.ideal / max) * plotH;
       svgEl("line", { x1: x + bw * 0.05, x2: x + bw * 0.95, y1: iy, y2: iy, class: "exact" }, svg);
@@ -64,18 +65,18 @@ export function renderHistogram(host: HTMLElement, r: RunResult) {
   const legend = document.createElement("div");
   legend.className = "legend";
   const total = Object.keys(r.counts).length;
-  legend.innerHTML = `<span><i style="background:linear-gradient(90deg,var(--accent),var(--accent-2))"></i>gemessen (${r.shots} Shots)</span>` +
-    (data.some((d) => d.ideal !== undefined) ? `<span><i style="background:var(--warn)"></i>ideale Wahrscheinlichkeit (exakt)</span>` : "") +
-    (total > MAX_BARS ? `<span>${MAX_BARS} von ${total} Ausgängen gezeigt</span>` : "");
+  legend.innerHTML = `<span><i style="background:linear-gradient(90deg,var(--accent),var(--accent-2))"></i>${esc(t("res.measured", { n: r.shots }))}</span>` +
+    (data.some((d) => d.ideal !== undefined) ? `<span><i style="background:var(--warn)"></i>${esc(t("res.ideal"))}</span>` : "") +
+    (total > MAX_BARS ? `<span>${esc(t("res.shown", { a: MAX_BARS, b: total }))}</span>` : "");
   host.appendChild(legend);
 }
 
 export function renderTable(host: HTMLElement, r: RunResult) {
   const data = rows(r).slice(0, 512);
   const hasIdeal = data.some((d) => d.ideal !== undefined);
-  host.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Ausgang</th><th class="num">Shots</th><th class="num">Häufigkeit</th>${hasIdeal ? '<th class="num">ideal</th>' : ""}</tr></thead><tbody>${
+  host.innerHTML = `<div class="table-wrap"><table><thead><tr><th>${t("res.outcome")}</th><th class="num">${t("res.count")}</th><th class="num">${t("res.freq")}</th>${hasIdeal ? `<th class="num">${t("res.idealCol")}</th>` : ""}</tr></thead><tbody>${
     data.map((d) => `<tr><td><code>${esc(d.bits)}</code></td><td class="num">${d.count}</td><td class="num">${(d.freq * 100).toFixed(3)} %</td>${hasIdeal ? `<td class="num">${((d.ideal ?? 0) * 100).toFixed(4)} %</td>` : ""}</tr>`).join("")
-  }</tbody></table></div><p class="muted small">Bitreihenfolge: rechts steht Bit 0 (wie Qiskit).</p>`;
+  }</tbody></table></div><p class="muted small">${t("res.bitorder")}</p>`;
 }
 
 function drawBloch(canvas: HTMLCanvasElement, v: [number, number, number]) {
@@ -124,7 +125,7 @@ function drawBloch(canvas: HTMLCanvasElement, v: [number, number, number]) {
 
 export function renderBloch(host: HTMLElement, r: RunResult) {
   if (!r.bloch.length) {
-    host.innerHTML = `<p class="muted pad">Bloch-Vektoren gibt es im exakten WebAssembly-Modus (bis 16 Qubits angezeigt).</p>`;
+    host.innerHTML = `<p class="muted pad">${t("res.blochNone")}</p>`;
     return;
   }
   const grid = document.createElement("div");
@@ -135,7 +136,7 @@ export function renderBloch(host: HTMLElement, r: RunResult) {
     const canvas = document.createElement("canvas");
     const purity = Math.hypot(...v);
     const cap = document.createElement("figcaption");
-    cap.textContent = `q${q} · |r|=${purity.toFixed(3)}${purity < 0.99 ? " (verschränkt/gemischt)" : ""}`;
+    cap.textContent = `q${q} · |r|=${purity.toFixed(3)}${purity < 0.99 ? ` (${t("res.blochMixed")})` : ""}`;
     fig.append(canvas, cap);
     grid.appendChild(fig);
     requestAnimationFrame(() => drawBloch(canvas, v));
@@ -143,7 +144,7 @@ export function renderBloch(host: HTMLElement, r: RunResult) {
   if (r.numQubits > r.bloch.length) {
     const note = document.createElement("p");
     note.className = "muted small";
-    note.textContent = `Gezeigt: ${r.bloch.length} von ${r.numQubits} Qubits.`;
+    note.textContent = t("res.blochShown", { a: r.bloch.length, b: r.numQubits });
     host.appendChild(note);
   }
 }
@@ -152,8 +153,8 @@ export function renderState(host: HTMLElement, r: RunResult) {
   if (!r.amplitudes.length) {
     const top = r.exact.slice(0, 64);
     host.innerHTML = top.length
-      ? `<p class="muted small">Bei ${r.numQubits} Qubits gibt es 2^${r.numQubits} Amplituden; gezeigt sind die ${top.length} wahrscheinlichsten Basiszustände (exakt).</p><div class="table-wrap"><table><thead><tr><th>Basis</th><th class="num">|a|²</th></tr></thead><tbody>${top.map((e) => `<tr><td><code>|${e.bits}⟩</code></td><td class="num">${e.p.toExponential(6)}</td></tr>`).join("")}</tbody></table></div>`
-      : `<p class="muted pad">Bei dieser Größe wird keine Wahrscheinlichkeitstabelle gebaut (nur Shots).</p>`;
+      ? `<p class="muted small">${t("res.stateTop", { n: r.numQubits, k: top.length })}</p><div class="table-wrap"><table><thead><tr><th>Basis</th><th class="num">|a|²</th></tr></thead><tbody>${top.map((e) => `<tr><td><code>|${e.bits}⟩</code></td><td class="num">${e.p.toExponential(6)}</td></tr>`).join("")}</tbody></table></div>`
+      : `<p class="muted pad">${t("res.stateNone")}</p>`;
     return;
   }
   host.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Basis</th><th class="num">Re</th><th class="num">Im</th><th class="num">|a|²</th><th class="num">Phase</th></tr></thead><tbody>${

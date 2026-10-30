@@ -6,7 +6,8 @@ import { matrix } from "./circuit";
 import { Core, bitsOf } from "./core";
 import { GpuEngine } from "./gpu";
 import type { EngineInfo, RunRequest, RunResult, WorkerRequest, WorkerResponse } from "./protocol";
-import { measurementMap, run } from "./simulate";
+import { measurementMap, readoutPair, run } from "./simulate";
+import { parseDimacs, solve, sweep } from "./sat";
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -86,8 +87,12 @@ async function runGpu(req: RunRequest): Promise<RunResult> {
   for (const u of draws) {
     while (k + 1 < dim && acc + probs[k] <= u) acc += probs[k++];
     let v = 0;
-    for (const [q, c] of pairs) if ((k >>> q) & 1) v |= 1 << c;
-    for (let b = 0; b < width; b++) if (uniform() < req.noise.readout) v ^= 1 << b;
+    for (const [q, c] of pairs) {
+      let bit = (k >>> q) & 1;
+      const [p01, p10] = readoutPair(req.noise, q);
+      if (uniform() < (bit ? p10 : p01)) bit ^= 1;
+      if (bit) v |= 1 << c;
+    }
     const bits = bitsOf(v, width);
     counts[bits] = (counts[bits] ?? 0) + 1;
   }
@@ -116,6 +121,15 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   const msg = event.data;
   if (msg.type === "init") {
     post({ type: "init", info: await init() });
+  } else if (msg.type === "sat") {
+    try {
+      const f = parseDimacs(msg.dimacs);
+      post({ type: "sat", id: msg.id, result: solve(f, msg.timeoutMs), numVars: f.numVars, numClauses: f.clauses.length });
+    } catch (e) {
+      post({ type: "error", id: msg.id, message: String((e as Error).message ?? e) });
+    }
+  } else if (msg.type === "sweep") {
+    post({ type: "sweep", id: msg.id, points: sweep(msg.numVars, msg.ratios, msg.trials, msg.timeoutMs) });
   } else if (msg.type === "probe") {
     const ok = !!core && core.init(msg.numQubits);
     core?.free();

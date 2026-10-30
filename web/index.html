@@ -1,23 +1,26 @@
 <!doctype html>
-<html lang="de" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>CQ-HECS Web · Exakter Quanten-Emulator im Browser</title>
-  <meta name="description" content="Exakter Quantenschaltungs-Emulator im Browser: WebAssembly f64 Zustandsvektor und WebGPU, mit Geräte-Check und sicheren Qubit-Limits. Made with love by timfromhcs & hcsmedia." />
+  <title>CQ-HECS Web · Exact quantum emulator in your browser</title>
+  <meta name="description" content="Exact quantum circuit emulator in the browser: WebAssembly f64 and WebGPU, device check, safe qubit limits, measured IBM/Rigetti/IQM noise. Made with love by timfromhcs & hcsmedia." />
   <meta name="theme-color" content="#0b0d14" />
-  <meta property="og:title" content="CQ-HECS Web · Quanten-Emulator" />
-  <meta property="og:description" content="So viele Qubits, wie dein Gerät exakt rechnen kann. WebAssembly + WebGPU, direkt im Browser." />
+  <meta property="og:title" content="CQ-HECS Web · Quantum emulator" />
+  <meta property="og:description" content="As many qubits as your device can compute exactly, with measured noise of real quantum processors." />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="alternate" hreflang="en" href="/?lang=en" />
+  <link rel="alternate" hreflang="de" href="/?lang=de" />
+  <link rel="alternate" hreflang="fr" href="/?lang=fr" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
 </head>
 <body>
-  <a class="skip" href="#app">Zum Inhalt springen</a>
+  <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
 
   <header class="topbar">
-    <a class="brand" href="#" aria-label="CQ-HECS Web Startseite">
+    <a class="brand" href="#/" aria-label="CQ-HECS Web">
       <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
         <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent-2)"/></linearGradient></defs>
         <circle cx="16" cy="16" r="13" fill="none" stroke="url(#lg)" stroke-width="2.4"/>
@@ -27,155 +30,230 @@
       </svg>
       <span>CQ-HECS <b>Web</b></span>
     </a>
-    <nav class="tabs" role="tablist" aria-label="Ansicht">
-      <button role="tab" data-view="lab" aria-selected="true">Labor</button>
-      <button role="tab" data-view="code" aria-selected="false">Code</button>
-      <button role="tab" data-view="device" aria-selected="false">Gerät</button>
-      <button role="tab" data-view="about" aria-selected="false">Über</button>
+    <nav class="tabs" aria-label="Views">
+      <a href="#/" data-route="home" data-i18n="nav.home">Home</a>
+      <a href="#/guide" data-route="guide" data-i18n="nav.guide">Guide</a>
+      <a href="#/lab" data-route="lab" data-i18n="nav.lab">Lab</a>
+      <a href="#/code" data-route="code" data-i18n="nav.code">Code</a>
+      <a href="#/sat" data-route="sat" data-i18n="nav.sat">SAT</a>
+      <a href="#/compare" data-route="compare" data-i18n="nav.compare">Devices</a>
+      <a href="#/device" data-route="device" data-i18n="nav.device">My device</a>
     </nav>
     <div class="top-actions">
-      <span id="limit-chip" class="chip muted" title="Sicheres exaktes Limit auf diesem Gerät">prüfe Gerät …</span>
-      <button id="theme" class="icon-btn" aria-label="Farbschema umschalten" title="Hell/Dunkel">◐</button>
+      <span id="limit-chip" class="chip muted" data-i18n="chip.checking">checking device …</span>
+      <label class="lang-select"><span class="sr" data-i18n="lang">Language</span>
+        <select id="lang" data-i18n-attr="aria-label:lang"></select>
+      </label>
+      <button id="theme" class="icon-btn" data-i18n-attr="aria-label:theme;title:theme">◐</button>
     </div>
   </header>
 
-  <div id="boot" class="boot" role="status" aria-live="polite">
-    <div class="boot-card">
-      <h1>Gerät wird geprüft</h1>
-      <p class="muted">Bevor etwas läuft, misst CQ-HECS, was dein Gerät exakt rechnen kann.</p>
-      <ol id="boot-steps" class="steps"></ol>
-    </div>
-  </div>
-
-  <main id="app" hidden>
-    <section class="view" data-view="lab">
-      <div class="toolbar card">
-        <label class="field">Qubits
-          <span class="stepper">
-            <button id="q-dec" aria-label="Qubit entfernen">−</button>
-            <input id="qubits" type="number" min="1" value="2" inputmode="numeric" />
-            <button id="q-inc" aria-label="Qubit hinzufügen">+</button>
-          </span>
-        </label>
-        <label class="field">Beispiel
-          <select id="preset"><option value="">— leer —</option></select>
-        </label>
-        <button id="clear" class="ghost">Leeren</button>
-        <span class="grow"></span>
-        <span id="preset-blurb" class="muted small"></span>
+  <main id="main">
+    <!-- ============================================================ home -->
+    <section class="page" data-page="home">
+      <div class="hero">
+        <div class="hero-text">
+          <p class="kicker" data-i18n="hero.kicker"></p>
+          <h1 data-i18n="hero.title"></h1>
+          <p class="lead" data-i18n="hero.sub"></p>
+          <div class="cta">
+            <a class="btn primary" href="#/lab" data-i18n="hero.start"></a>
+            <a class="btn ghost" href="#/guide" data-i18n="hero.guide"></a>
+          </div>
+        </div>
+        <div class="hero-card card" aria-live="polite">
+          <div class="orbit" aria-hidden="true"><span></span><span></span><span></span></div>
+          <h2 data-i18n="hero.device"></h2>
+          <p id="hero-device" class="muted" data-i18n="hero.deviceWait"></p>
+          <p id="hero-limit" class="hero-limit"></p>
+          <ol id="boot-steps" class="steps"></ol>
+        </div>
       </div>
 
-      <div class="card composer-card">
-        <div id="palette" class="palette" role="toolbar" aria-label="Gatter"></div>
-        <div id="composer" class="composer" tabindex="0" aria-label="Schaltungs-Editor"></div>
-        <p class="hint muted small">Gatter wählen, dann auf eine Zelle tippen. Mehr-Qubit-Gatter: zuerst Kontrolle(n), dann Ziel. Rechtsklick oder Radierer löscht.</p>
+      <h2 class="section-title" data-i18n="feat.title"></h2>
+      <div class="features">
+        <article class="card feature"><span class="ico">∑</span><h3 data-i18n="feat.exact.t"></h3><p data-i18n="feat.exact.d"></p></article>
+        <article class="card feature"><span class="ico">⛨</span><h3 data-i18n="feat.safe.t"></h3><p data-i18n="feat.safe.d"></p></article>
+        <article class="card feature"><span class="ico">▦</span><h3 data-i18n="feat.gpu.t"></h3><p data-i18n="feat.gpu.d"></p></article>
+        <article class="card feature"><span class="ico">≈</span><h3 data-i18n="feat.noise.t"></h3><p data-i18n="feat.noise.d"></p></article>
+        <article class="card feature"><span class="ico">{ }</span><h3 data-i18n="feat.code.t"></h3><p data-i18n="feat.code.d"></p></article>
+        <article class="card feature"><span class="ico">⊨</span><h3 data-i18n="feat.sat.t"></h3><p data-i18n="feat.sat.d"></p></article>
+      </div>
+
+      <h2 class="section-title" data-i18n="modes.title"></h2>
+      <div class="modes">
+        <a class="card mode" href="#/guide"><span class="badge b-beginner" data-i18n="modes.beginner"></span><h3 data-i18n="nav.guide"></h3><p data-i18n="modes.guide"></p></a>
+        <a class="card mode" href="#/lab"><span class="badge b-beginner" data-i18n="modes.beginner"></span><h3 data-i18n="nav.lab"></h3><p data-i18n="modes.lab"></p></a>
+        <a class="card mode" href="#/compare"><span class="badge b-inter" data-i18n="modes.inter"></span><h3 data-i18n="nav.compare"></h3><p data-i18n="modes.compare"></p></a>
+        <a class="card mode" href="#/code"><span class="badge b-adv" data-i18n="modes.adv"></span><h3 data-i18n="nav.code"></h3><p data-i18n="modes.code"></p></a>
+        <a class="card mode" href="#/sat"><span class="badge b-adv" data-i18n="modes.adv"></span><h3 data-i18n="nav.sat"></h3><p data-i18n="modes.sat"></p></a>
+      </div>
+
+      <div class="card honest">
+        <h2 data-i18n="honest.title"></h2>
+        <p data-i18n="honest.body"></p>
+        <div id="vendor-strip" class="vendor-strip"></div>
       </div>
     </section>
 
-    <section class="view" data-view="code" hidden>
-      <div class="card code-card">
-        <div class="code-head">
-          <div class="seg" role="tablist" aria-label="Sprache">
-            <button data-lang="qasm" aria-selected="true">OpenQASM 2.0</button>
-            <button data-lang="js" aria-selected="false">JavaScript-API</button>
+    <!-- ============================================================ guide -->
+    <section class="page" data-page="guide" hidden>
+      <div class="guide">
+        <aside class="toc card"><h2 id="guide-toc-title"></h2><ol id="guide-toc"></ol></aside>
+        <article class="guide-body"><h1 id="guide-title"></h1><p id="guide-intro" class="lead"></p><div id="guide-sections"></div></article>
+      </div>
+    </section>
+
+    <!-- ============================================================ workbench (lab + code share run/results) -->
+    <section class="page workbench" data-page="lab code" hidden>
+      <div class="bench-left">
+        <div class="view-lab">
+          <div class="toolbar card">
+            <label class="field"><span data-i18n="lab.qubits"></span>
+              <span class="stepper">
+                <button id="q-dec" aria-label="−">−</button>
+                <input id="qubits" type="number" min="1" value="2" inputmode="numeric" />
+                <button id="q-inc" aria-label="+">+</button>
+              </span>
+            </label>
+            <label class="field"><span data-i18n="lab.preset"></span><select id="preset"></select></label>
+            <button id="clear" class="btn ghost" data-i18n="lab.clear"></button>
+            <span class="grow"></span>
+            <span id="preset-blurb" class="muted small"></span>
           </div>
-          <span class="grow"></span>
-          <button id="to-lab" class="ghost small-btn">Ins Labor laden</button>
-          <button id="share" class="ghost small-btn">Link teilen</button>
-          <button id="download" class="ghost small-btn">.qasm laden</button>
+          <div class="card composer-card">
+            <div id="palette" class="palette" role="toolbar"></div>
+            <div id="composer" class="composer" tabindex="0"></div>
+            <p class="hint muted small" data-i18n="lab.hint"></p>
+          </div>
         </div>
-        <div id="editor" class="editor"><div class="muted pad">Editor wird geladen …</div></div>
-        <p id="code-error" class="error" role="alert" hidden></p>
-        <details class="api-help">
-          <summary>API-Referenz</summary>
-          <pre><code>// JavaScript: gib eine Schaltung zurück
-const qc = circuit(5);           // 5 Qubits
+        <div class="view-code card">
+          <div class="code-head">
+            <div class="seg" role="tablist">
+              <button data-lang="qasm" aria-selected="true">OpenQASM 2.0</button>
+              <button data-lang="js" aria-selected="false">JavaScript</button>
+            </div>
+            <span class="grow"></span>
+            <button id="to-lab" class="btn ghost small-btn" data-i18n="code.toLab"></button>
+            <button id="share" class="btn ghost small-btn" data-i18n="code.share"></button>
+            <button id="download" class="btn ghost small-btn" data-i18n="code.download"></button>
+          </div>
+          <div id="editor" class="editor"><div class="muted pad" data-i18n="code.loading"></div></div>
+          <p id="code-error" class="error" role="alert" hidden></p>
+          <details class="api-help">
+            <summary data-i18n="code.api"></summary>
+            <pre><code>const qc = circuit(5);
 qc.h(0);
 for (let q = 1; q &lt; 5; q++) qc.cx(q - 1, q);
-qc.rz(PI / 8, 2).mcz(0, 1, 2);    // Multi-Control
+qc.rz(PI / 8, 2).mcz(0, 1, 2);
 return qc.measureAll();
 
-// Gatter: h x y z s sdg t tdg sx rx ry rz p u
-//         cx cy cz ch cp crz swap ccx cswap mcx mcz
-//         measure(q, c) measureAll() reset(q)
-// Konstanten: PI, Math. Strg/⌘ + Enter startet.</code></pre>
-        </details>
-      </div>
-    </section>
-
-    <section class="view" data-view="device" hidden>
-      <div class="card">
-        <h2>Dein Gerät</h2>
-        <dl id="device-list" class="kv"></dl>
-      </div>
-      <div class="card">
-        <h2>Sichere Limits</h2>
-        <dl id="limit-list" class="kv"></dl>
-        <p class="muted small">Ein exakter Zustandsvektor mit n Qubits braucht 16 · 2ⁿ Byte (f64). Erlaubt ist höchstens ein Viertel des gemeldeten Arbeitsspeichers und maximal 2 GiB im WebAssembly-Heap. Das Limit wird durch eine echte Speicher-Reservierung bestätigt. Läufe mit über 90 s geschätzter Laufzeit werden abgelehnt.</p>
-        <button id="reprobe" class="ghost">Limit erneut prüfen</button>
-      </div>
-    </section>
-
-    <section class="view" data-view="about" hidden>
-      <div class="card prose">
-        <h2>Was das ist – und was nicht</h2>
-        <p><b>CQ-HECS Web</b> simuliert Quantenschaltungen <b>exakt</b>: Jeder der 2ⁿ komplexen Amplituden wird in doppelter Genauigkeit gespeichert. Es wird nichts abgeschnitten oder komprimiert. Die einzige Abweichung ist die normale f64-Rundung (≈10⁻¹⁵).</p>
-        <p>Mit Shots, Messungen mitten in der Schaltung, Reset und einem optionalen Rauschmodell (Depolarisierung und Auslesefehler über Monte-Carlo-Trajektorien) verhält sich ein Lauf <b>statistisch</b> wie auf echter Hardware. Es bleibt aber eine klassische Simulation, <b>kein Quantencomputer</b>.</p>
-        <h3>Engines</h3>
-        <ul>
-          <li><b>WebAssembly f64 (exakt):</b> ein Rust-Kern, der mit SIMD128 kompiliert ist und in einem Web Worker läuft, damit die Oberfläche nie blockiert.</li>
-          <li><b>WebGPU f32 (schnell):</b> ein Compute-Shader auf deiner GPU. Der Browser übersetzt WebGPU auf Vulkan, Direct3D 12 oder Metal; Vulkan direkt gibt es im Browser nicht. WGSL kennt kein f64, deshalb ist dieser Pfad einfach genau. Er wird automatisch gegen den exakten Kern gegengeprüft (TV-Abstand).</li>
-        </ul>
-        <h3>Warum es ein Limit gibt</h3>
-        <p>Jedes zusätzliche Qubit verdoppelt den Speicher. 27 Qubits sind 2 GiB, 30 wären 16 GiB. Kein Browser-Trick umgeht das, ohne Genauigkeit zu verlieren. Deshalb zeigt die Seite das exakte Maximum deines Geräts, statt verlustbehaftet „mehr“ zu versprechen.</p>
-        <p>Teil des Open-Source-Projekts <a href="https://github.com/timfromhcs/CQ-HECS" rel="noopener">CQ-HECS</a> (Apache-2.0).</p>
-      </div>
-    </section>
-
-    <section class="run-panel card" aria-label="Ausführung">
-      <div class="run-controls">
-        <label class="field">Shots <input id="shots" type="number" min="1" max="1000000" value="1024" inputmode="numeric" /></label>
-        <label class="field">Engine
-          <select id="engine">
-            <option value="wasm">WebAssembly f64 · exakt</option>
-            <option value="webgpu">WebGPU f32 · schnell</option>
-          </select>
-        </label>
-        <label class="switch"><input id="noise-on" type="checkbox" /> <span>Hardware-Rauschen</span></label>
-        <span class="grow"></span>
-        <span id="estimate" class="muted small"></span>
-        <button id="stop" class="ghost" hidden>Stopp</button>
-        <button id="run" class="primary">▶ Ausführen <kbd>Strg+Enter</kbd></button>
-      </div>
-      <div id="noise-panel" class="noise" hidden>
-        <label>1-Qubit-Fehler <input id="p1" type="range" min="0" max="0.02" step="0.0005" value="0.001" /><output id="p1o"></output></label>
-        <label>2-Qubit-Fehler <input id="p2" type="range" min="0" max="0.1" step="0.001" value="0.01" /><output id="p2o"></output></label>
-        <label>Auslesefehler <input id="ro" type="range" min="0" max="0.1" step="0.001" value="0.02" /><output id="roo"></output></label>
-      </div>
-      <div id="progress" class="progress" hidden><div class="bar"></div><span class="label small"></span></div>
-    </section>
-
-    <section class="results card" aria-label="Ergebnisse" aria-live="polite">
-      <div class="results-head">
-        <div class="seg" role="tablist" aria-label="Ergebnisansicht">
-          <button data-res="hist" aria-selected="true">Histogramm</button>
-          <button data-res="table" aria-selected="false">Tabelle</button>
-          <button data-res="bloch" aria-selected="false">Bloch</button>
-          <button data-res="state" aria-selected="false">Zustand</button>
+// h x y z s sdg t tdg sx rx ry rz p u
+// cx cy cz ch cp crz swap ccx cswap mcx mcz
+// measure(q, c) measureAll() reset(q) · PI, Math</code></pre>
+          </details>
         </div>
-        <span class="grow"></span>
-        <div id="stats" class="stats"></div>
+
+        <section class="run-panel card">
+          <div class="run-controls">
+            <label class="field"><span data-i18n="run.shots"></span><input id="shots" type="number" min="1" max="1000000" value="1024" inputmode="numeric" /></label>
+            <label class="field"><span data-i18n="run.engine"></span>
+              <select id="engine"><option value="wasm" data-i18n="run.wasm"></option><option value="webgpu" data-i18n="run.gpu"></option></select>
+            </label>
+            <label class="field"><span data-i18n="run.noise"></span><select id="noise"></select></label>
+            <span class="grow"></span>
+            <button id="stop" class="btn ghost" data-i18n="run.stop" hidden></button>
+            <button id="run" class="btn primary"><span data-i18n="run.run"></span> <kbd>Ctrl+↵</kbd></button>
+          </div>
+          <p id="noise-info" class="muted small noise-info" hidden></p>
+          <div id="noise-panel" class="noise" hidden>
+            <label><span data-i18n="run.p1"></span> <input id="p1" type="range" min="0" max="0.02" step="0.0005" value="0.001" /><output id="p1o"></output></label>
+            <label><span data-i18n="run.p2"></span> <input id="p2" type="range" min="0" max="0.1" step="0.001" value="0.01" /><output id="p2o"></output></label>
+            <label><span data-i18n="run.ro"></span> <input id="ro" type="range" min="0" max="0.1" step="0.001" value="0.02" /><output id="roo"></output></label>
+          </div>
+          <p id="estimate" class="muted small estimate"></p>
+          <div id="progress" class="progress" hidden><div class="bar"></div><span class="label small"></span></div>
+        </section>
       </div>
-      <div id="res-hist" class="res"><p class="muted pad">Noch kein Lauf. Wähle ein Beispiel oder baue eine Schaltung und drücke ▶.</p></div>
-      <div id="res-table" class="res" hidden></div>
-      <div id="res-bloch" class="res" hidden></div>
-      <div id="res-state" class="res" hidden></div>
+
+      <section class="results card" aria-live="polite">
+        <div class="results-head">
+          <div class="seg" role="tablist">
+            <button data-res="hist" aria-selected="true" data-i18n="res.hist"></button>
+            <button data-res="table" aria-selected="false" data-i18n="res.table"></button>
+            <button data-res="bloch" aria-selected="false" data-i18n="res.bloch"></button>
+            <button data-res="state" aria-selected="false" data-i18n="res.state"></button>
+          </div>
+          <div id="stats" class="stats"></div>
+        </div>
+        <div id="res-hist" class="res"><p class="muted pad" data-i18n="res.empty"></p></div>
+        <div id="res-table" class="res" hidden></div>
+        <div id="res-bloch" class="res" hidden></div>
+        <div id="res-state" class="res" hidden></div>
+      </section>
+    </section>
+
+    <!-- ============================================================ SAT -->
+    <section class="page" data-page="sat" hidden>
+      <div class="sat-grid">
+        <div class="card">
+          <h1 data-i18n="sat.title"></h1>
+          <p class="muted" data-i18n="sat.intro"></p>
+          <div class="toolbar">
+            <label class="field"><span data-i18n="sat.vars"></span><input id="sat-vars" type="number" min="3" max="200" value="40" /></label>
+            <label class="field"><span data-i18n="sat.ratio"></span><input id="sat-ratio" type="number" min="1" max="10" step="0.01" value="4.26" /></label>
+            <label class="field"><span data-i18n="sat.timeout"></span><input id="sat-timeout" type="number" min="100" max="60000" value="5000" /></label>
+            <button id="sat-random" class="btn ghost" data-i18n="sat.random"></button>
+            <button id="sat-php" class="btn ghost" data-i18n="sat.php"></button>
+          </div>
+          <textarea id="sat-input" class="sat-input" spellcheck="false" aria-label="DIMACS CNF">p cnf 3 4
+1 2 0
+-1 3 0
+-2 -3 0
+1 -3 0
+</textarea>
+          <button id="sat-solve" class="btn primary" data-i18n="sat.solve"></button>
+          <div id="sat-result" class="sat-result" aria-live="polite"></div>
+        </div>
+        <div class="card">
+          <h2 data-i18n="sat.sweep"></h2>
+          <p class="muted small" data-i18n="sat.sweepNote"></p>
+          <button id="sat-sweep" class="btn ghost" data-i18n="sat.sweep"></button>
+          <div id="sat-chart" class="sat-chart"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ compare -->
+    <section class="page" data-page="compare" hidden>
+      <div class="card">
+        <h1 data-i18n="cmp.title"></h1>
+        <p class="muted" data-i18n="cmp.intro"></p>
+        <div class="toolbar"><button id="cmp-run" class="btn primary" data-i18n="cmp.run"></button><span id="cmp-circuit" class="muted small"></span></div>
+        <div id="cmp-result"></div>
+      </div>
+      <div class="card">
+        <h2 data-i18n="dev.profiles"></h2>
+        <p class="muted small" data-i18n="dev.profilesNote"></p>
+        <div id="profile-cards" class="profile-cards"></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ device -->
+    <section class="page" data-page="device" hidden>
+      <div class="two">
+        <div class="card"><h2 data-i18n="dev.title"></h2><dl id="device-list" class="kv"></dl></div>
+        <div class="card"><h2 data-i18n="dev.limits"></h2><dl id="limit-list" class="kv"></dl>
+          <p class="muted small" data-i18n="dev.limitsNote"></p>
+          <button id="reprobe" class="btn ghost" data-i18n="dev.reprobe"></button>
+        </div>
+      </div>
     </section>
   </main>
 
   <footer class="footer">
-    <p>Made with <span class="heart" aria-label="Liebe">♥</span> by <b>timfromhcs</b> &amp; <b>hcsmedia</b></p>
-    <p class="muted small">Exakte klassische Simulation · kein Quantencomputer · <a href="https://github.com/timfromhcs/CQ-HECS" rel="noopener">CQ-HECS auf GitHub</a> · Apache-2.0</p>
+    <p id="foot-love"></p>
+    <p class="muted small"><span data-i18n="foot.sub"></span> · <a href="https://github.com/timfromhcs/CQ-HECS" rel="noopener">CQ-HECS on GitHub</a> · Apache-2.0</p>
   </footer>
 
   <script type="module" src="/src/main.ts"></script>

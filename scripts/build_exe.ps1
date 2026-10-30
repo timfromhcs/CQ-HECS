@@ -37,6 +37,8 @@ if ($LASTEXITCODE -ne 0) { throw "standalone binary failed its version smoke tes
 if ($LASTEXITCODE -ne 0) { throw "standalone binary failed its SAT smoke test" }
 & $Exe --format json run name:bell --shots 64 | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "standalone binary failed its circuit smoke test" }
+& $Exe --format json run name:bell --device iqm_garnet --shots 64 | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "standalone binary failed its device-profile smoke test" }
 
 # The Studio must start from outside the repository on the packaged snapshot.
 $Port = 8765

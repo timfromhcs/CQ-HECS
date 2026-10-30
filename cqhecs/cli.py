@@ -623,6 +623,22 @@ def cmd_sat(args: argparse.Namespace) -> int:
     return EXIT_USAGE
 
 
+def cmd_devices(args: argparse.Namespace) -> int:
+    """List the measured device noise profiles."""
+    from cqhecs.device_profiles import list_profiles, summary
+
+    rows = [summary(profile) for profile in list_profiles()]
+    if args.format == "json":
+        _emit_json({"schema_version": JSON_SCHEMA_VERSION, "version": __version__, "devices": rows})
+        return EXIT_OK
+    print(f"{'id':16s} {'vendor':8s} {'qubits':>6s} {'shots':>6s} {'cx dep':>8s} {'p01':>7s} {'p10':>7s}  H-V3-8")
+    for r in rows:
+        print(f"{r['id']:16s} {r['vendor']:8s} {r['measured_qubits']:>6d} {r['shots_per_circuit']:>6d} "
+              f"{r['cx_depolarizing']:>8.4f} {r['mean_p01']:>7.4f} {r['mean_p10']:>7.4f}  {r['h_v3_8']}")
+    print("Measured M-FIT-2 profiles (post-hoc). Use: cq-hecs run <circuit> --device <id>")
+    return EXIT_OK
+
+
 def cmd_mcp(args: argparse.Namespace) -> int:
     """Start the stdio MCP server."""
     from cqhecs.mcp_server import main as mcp_main
@@ -695,7 +711,26 @@ def cmd_run(args: argparse.Namespace) -> int:
     circuit = _load_circuit(args.circuit)
     backend = args.backend.upper()
 
-    if getattr(args, "profile", None):
+    if getattr(args, "device", None):
+        from cqhecs.backends.noisy_density_matrix import NoisyDensityMatrixBackend
+        from cqhecs.circuit_parsing import parse_circuit
+        from cqhecs.device_profiles import UnknownDeviceProfileError, noise_model
+
+        instructions, num_qubits = parse_circuit(circuit)
+        if num_qubits > 10:
+            raise ValueError(
+                f"--device uses the exact density-matrix path (<= 10 qubits); this circuit has {num_qubits}"
+            )
+        try:
+            model = noise_model(args.device, instructions, num_qubits)
+        except UnknownDeviceProfileError as exc:
+            raise ValueError(exc.args[0]) from exc
+        LOG.info("executing %s with measured device profile %s", args.circuit, args.device)
+        result = NoisyDensityMatrixBackend(max_qubits=10).simulate(
+            instructions, noise_model=model, shots=args.shots, seed=args.seed
+        )
+        result.backend_profile_id = f"device:{args.device}"
+    elif getattr(args, "profile", None):
         from cqhecs.hardware_bridge import FakeHardwareProvider, ExecutionMode
         provider = FakeHardwareProvider()
         try:
@@ -1110,6 +1145,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Hardware profile to emulate (e.g. fake_manila, linear_5q)",
     )
     p_run.add_argument(
+        "--device", default=None,
+        help="Measured QPU noise profile (see `cq-hecs devices`), e.g. ibm_kingston",
+    )
+    p_run.add_argument(
         "--noisy", action=argparse.BooleanOptionalAction, default=True,
         help="Enable/disable noise model when running with --profile",
     )
@@ -1196,6 +1235,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_sat_sweep.add_argument("--seed", type=int, default=20261030, help="Random seed")
     p_sat_sweep.add_argument("--json-out", default=None, help="Write the full result JSON here")
 
+    sub.add_parser("devices", help="List measured QPU noise profiles")
     sub.add_parser("mcp", help="Start the stdio MCP server")
 
     p_studio = sub.add_parser("studio", help="Start the local CQ-HECS experiment UI")
@@ -1235,6 +1275,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "reference": cmd_reference,
         "noise-fit": cmd_noise_fit,
         "sat": cmd_sat,
+        "devices": cmd_devices,
         "mcp": cmd_mcp,
         "studio": cmd_studio,
         "selftest": cmd_selftest,

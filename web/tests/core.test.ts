@@ -200,3 +200,64 @@ test("parser rejects malformed input", () => {
   assert.throws(() => parseQasm("qreg q[2]; rx(this.x) q[0];"), /invalid parameter/);
   assert.throws(() => compile({ numQubits: 2, numClbits: 0, gates: [{ name: "cx", qubits: [0, 0] }] }), /repeated/);
 });
+
+test("device-profile noise reproduces the exact Python M-FIT-2 distributions", async () => {
+  const { profileNoise } = await import("../src/profiles");
+  const doc = JSON.parse(readFileSync(new URL("../public/device_profiles.json", import.meta.url), "utf-8"));
+  const noisy = JSON.parse(readFileSync(new URL("./fixtures/device_noise.json", import.meta.url), "utf-8"));
+  const core = await Core.load(wasm);
+  let worst = 0;
+  for (const [k, cs] of noisy.cases.entries()) {
+    const profile = doc.profiles.find((p: { id: string }) => p.id === cs.profile);
+    const c = parseQasm(cs.qasm);
+    const shots = 60000;
+    const res = run(core, { ...c, ops: compile(c), shots, seed: 1000 + k, noise: profileNoise(profile, c.numQubits) });
+    let tv = 0;
+    cs.probabilities.forEach((p: number, i: number) => {
+      const bits = i.toString(2).padStart(cs.num_qubits, "0");
+      tv += Math.abs((res.counts[bits] ?? 0) / shots - p);
+    });
+    tv /= 2;
+    worst = Math.max(worst, tv);
+    // 60k shots over <= 32 outcomes: the finite-shot TV is ~0.01; 0.02 leaves room
+    // for sampling noise but catches any wrong channel (those give TV >= 0.05).
+    assert.ok(tv < 0.02, `${cs.profile} ${cs.job}: TV ${tv.toFixed(4)}`);
+  }
+  assert.ok(worst > 0, "sanity: sampling noise is present");
+});
+
+test("trajectory count is one per shot for small circuits and bounded for large ones", async () => {
+  const { trajectoryCount } = await import("../src/simulate");
+  assert.equal(trajectoryCount(1000, 30, 5), 1000);
+  assert.equal(trajectoryCount(100000, 500, 20), 256);
+});
+
+test("SAT solver: sound verdicts, brute-force agreement, budgets", async () => {
+  const { solve, parseDimacs, random3Sat, pigeonhole, satisfies } = await import("../src/sat");
+  for (let seed = 0; seed < 300; seed++) {
+    const f = random3Sat(8, 20 + (seed % 25), seed);
+    let any = false;
+    for (let bits = 0; bits < 256 && !any; bits++) {
+      const m = [false, ...Array.from({ length: 8 }, (_, i) => ((bits >> i) & 1) === 1)];
+      any = satisfies(f, m);
+    }
+    const r = solve(f, 5000);
+    assert.equal(r.status, any ? "SAT" : "UNSAT", `seed ${seed}`);
+    if (r.status === "SAT") assert.ok(r.verified && satisfies(f, r.model!));
+  }
+  assert.equal(solve(pigeonhole(5)).status, "UNSAT");
+  assert.equal(solve(pigeonhole(9), 1).status, "UNKNOWN"); // never a fake UNSAT
+  assert.equal(solve(parseDimacs("p cnf 2 2\n1 0\n-1 2 0\n")).status, "SAT");
+  assert.throws(() => parseDimacs("p cnf 1 1\n2 0\n"), /exceeds/);
+});
+
+test("i18n: every UI key and guide section exists in EN, DE and FR", async () => {
+  const { missingKeys } = await import("../src/i18n");
+  assert.deepEqual(missingKeys(), []);
+  const { GUIDE, GUIDE_UI } = await import("../src/guide");
+  for (const s of GUIDE) for (const l of ["en", "de", "fr"] as const) {
+    assert.ok(s.title[l] && s.body[l].length > 200, `${s.id}:${l}`);
+  }
+  assert.deepEqual(Object.keys(GUIDE_UI).sort(), ["de", "en", "fr"]);
+  for (const p of PRESETS) for (const l of ["en", "de", "fr"] as const) assert.ok(p.title[l] && p.blurb[l], `${p.id}:${l}`);
+});

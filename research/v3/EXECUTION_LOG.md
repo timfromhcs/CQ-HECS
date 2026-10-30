@@ -178,3 +178,19 @@ was found that commits real raw counts.
   ΔTV +0.055345, CI [−0.006595, +0.091789]). Root cause from the raw counts:
   the qubit-0 readout defect (OQ-02: 404/1000 `11110`) is absent in the GHZ
   jobs (15–24/1000), i.e. a different physical layout. H-V3-9 rejected.
+
+## E-V3-08 r-iqm-1: the r-io-7 suite on IQM Garnet (2026-10-30)
+
+- Preregistered and pushed before submission: `research/v4/PREREG_IQM_GARNET.md`
+  (commit `67b4032`). Circuits regenerated; `git diff` on the suite was empty.
+- 25 jobs × 500 shots on `iqm:garnet` via Open Quantum, Public plan, 25 Spark
+  credits (whole balance, no Full credits). 25/25 completed; bit-order probe
+  OQ-03 returned `00001`.
+- H-V3-8: **SUPPORTED**, median ΔTV −0.039004, 95 % CI [−0.052574, −0.013175],
+  16/20 EVAL jobs closer than ideal. M-FIT-2 vs M-FIT: −0.000657, CI
+  [−0.001611, +0.004864]: inconclusive. No X anomaly detected.
+- Evidence: `research/v3/evidence/openquantum/iqm_garnet/`; test
+  `tests/test_iqm_garnet.py`. The fitted profile is exported to
+  `cqhecs/studio/data/device_profiles.json` (CLI `--device iqm_garnet`, Studio,
+  MCP, web emulator).
+
