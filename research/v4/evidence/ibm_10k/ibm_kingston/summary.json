@@ -1,0 +1,274 @@
+{
+  "backend": "ibm_kingston",
+  "circuits": [
+    {
+      "job_id": "OQ-01",
+      "name": "readout_zero_5",
+      "num_qubits": 5,
+      "qasm_sha256": "b65b54d3a7031b353a041788273202baa8e80c27df294de13b685228af9e4d84",
+      "transpiled_depth": 1,
+      "transpiled_qasm_sha256": "00808edee9e860e51b85faf2b71a721244878d025097c80cf2a54ce275a09e81",
+      "transpiled_size": 5
+    },
+    {
+      "job_id": "OQ-02",
+      "name": "readout_one_5",
+      "num_qubits": 5,
+      "qasm_sha256": "ad5800f335c3c1b22ba199e42727ecdbbdbcd5103b9d848f223e79fa1506080b",
+      "transpiled_depth": 2,
+      "transpiled_qasm_sha256": "4ca91ec07bd738abd423a55638d204e43b93a081645ac6c3da2476a9434877aa",
+      "transpiled_size": 10
+    },
+    {
+      "job_id": "OQ-03",
+      "name": "bitorder_q0_5",
+      "num_qubits": 5,
+      "qasm_sha256": "ddd4df5a558580621105ccf817bbd4cb8f3f3ef656828af82ac559ad301b8f50",
+      "transpiled_depth": 2,
+      "transpiled_qasm_sha256": "3ebc70c7d37b416481d334e07ab3ed863af9264f19b738658204e82f0849cdc6",
+      "transpiled_size": 6
+    },
+    {
+      "job_id": "OQ-04",
+      "name": "ghz5_pad2",
+      "num_qubits": 5,
+      "qasm_sha256": "d27474c78eb8ba2f89acf94e221328e1f58022031046295ce6dd23786f5e1b88",
+      "transpiled_depth": 20,
+      "transpiled_qasm_sha256": "a936b86263815a0e9677fedc4eda12a293f18ac51841ea56f09a9d108ff2f607",
+      "transpiled_size": 36
+    },
+    {
+      "job_id": "OQ-05",
+      "name": "ghz5_pad4",
+      "num_qubits": 5,
+      "qasm_sha256": "493ca804ad5d6e6e7bca54b9162fb1d03fb3e35e8cce8fb3af60c537bd4188cc",
+      "transpiled_depth": 20,
+      "transpiled_qasm_sha256": "a936b86263815a0e9677fedc4eda12a293f18ac51841ea56f09a9d108ff2f607",
+      "transpiled_size": 36
+    },
+    {
+      "job_id": "OQ-06",
+      "name": "bell",
+      "num_qubits": 2,
+      "qasm_sha256": "ae0cd142574796138ef95bd28378ae0a56b611999e3e31369cdacefe51a7b825",
+      "transpiled_depth": 8,
+      "transpiled_qasm_sha256": "c9b79bd981c49b5516f2cc9df7280c1dba978ad72958dd93f33d3376711bc26b",
+      "transpiled_size": 12
+    },
+    {
+      "job_id": "OQ-07",
+      "name": "ghz3",
+      "num_qubits": 3,
+      "qasm_sha256": "ad6de3bf6c92ab4c70ced19bee2b03a09148c60bbaa45d4bf7dc7290d917e16a",
+      "transpiled_depth": 12,
+      "transpiled_qasm_sha256": "dc74decca60ebe4cb4ec6b4017f8b2471ae43947b3ec46a5bb865485c6260adb",
+      "transpiled_size": 20
+    },
+    {
+      "job_id": "OQ-08",
+      "name": "ghz4",
+      "num_qubits": 4,
+      "qasm_sha256": "ba8be1dbde0e504e23dfdadfe64590d5950d231ab6076e5b413183fbbbc076c2",
+      "transpiled_depth": 16,
+      "transpiled_qasm_sha256": "523630c781222fb285d9f615bf2b6a38fe690bfa71923359594ffefa19265cc7",
+      "transpiled_size": 28
+    },
+    {
+      "job_id": "OQ-09",
+      "name": "ghz5",
+      "num_qubits": 5,
+      "qasm_sha256": "1b3fe915e5bc20df69da445ce63878f08cd4479da656d743a5838f229753135e",
+      "transpiled_depth": 20,
+      "transpiled_qasm_sha256": "a936b86263815a0e9677fedc4eda12a293f18ac51841ea56f09a9d108ff2f607",
+      "transpiled_size": 36
+    },
+    {
+      "job_id": "OQ-10",
+      "name": "qpe3_t",
+      "num_qubits": 4,
+      "qasm_sha256": "d9f87104cb3c042d0f672563e04083e323ad1149302284519a15cd9aa3e5c074",
+      "transpiled_depth": 110,
+      "transpiled_qasm_sha256": "1ffe61808e7582f2030439744e7f076f7471b9f26a251b706f7582dd9211f432",
+      "transpiled_size": 159
+    },
+    {
+      "job_id": "OQ-11",
+      "name": "qpe3_s",
+      "num_qubits": 4,
+      "qasm_sha256": "943abe986cec69fdc810f6a4aa4522adf067b1cdcebf2705a7d077a89aaafc66",
+      "transpiled_depth": 107,
+      "transpiled_qasm_sha256": "cd7cb15de6f23b65fd3981c0af559c759c4458cdc957de4fb2794af35c4440a1",
+      "transpiled_size": 150
+    },
+    {
+      "job_id": "OQ-12",
+      "name": "qft4_roundtrip",
+      "num_qubits": 4,
+      "qasm_sha256": "5efb9ffcf8c14afd3de38f26bd18e3e62a2fd0b2c12484fdad5815d7b0488b8d",
+      "transpiled_depth": 113,
+      "transpiled_qasm_sha256": "0d4940647003fe97d7d273d845ab92c0a1880182a7ff6a741c086d4db5fdea78",
+      "transpiled_size": 176
+    },
+    {
+      "job_id": "OQ-13",
+      "name": "mirror4_d10",
+      "num_qubits": 4,
+      "qasm_sha256": "6488fa46da340c7c5f99db876625825feef2926c6af15bf9746bc53822099967",
+      "transpiled_depth": 72,
+      "transpiled_qasm_sha256": "0bbfc6335c94fc7ee22594d2472024a88694bb01b18de0746aa49669cf5c2c7b",
+      "transpiled_size": 102
+    },
+    {
+      "job_id": "OQ-14",
+      "name": "mirror4_d20",
+      "num_qubits": 4,
+      "qasm_sha256": "9e210333734de5a09d6eb92b66f6db484a683a90685a71e7c9aefa78ceba34b9",
+      "transpiled_depth": 77,
+      "transpiled_qasm_sha256": "a8931b7578d62dbb8eca3231d3158163372aa4d92882e850cd3ae8c2f2322ea5",
+      "transpiled_size": 158
+    },
+    {
+      "job_id": "OQ-15",
+      "name": "mirror4_d40",
+      "num_qubits": 4,
+      "qasm_sha256": "d1b08f8d205d925402ddaa9b0da0a4b3f28654d2db40c1fb79af92f962a31631",
+      "transpiled_depth": 150,
+      "transpiled_qasm_sha256": "e7ded24d3eb5c119b940c130b4af4a2f262cab32eb6d611fcd59b00635e3e8a7",
+      "transpiled_size": 255
+    },
+    {
+      "job_id": "OQ-16",
+      "name": "clifford_t3_d12",
+      "num_qubits": 3,
+      "qasm_sha256": "369ceefe6606a60f8a95995bfcf9c0e74dec8acb00c6514375336d430c05d130",
+      "transpiled_depth": 18,
+      "transpiled_qasm_sha256": "352be0aabe540c31ddf16dc70e56f740a3e3429ce3204a03611c7bdaebac4b6f",
+      "transpiled_size": 24
+    },
+    {
+      "job_id": "OQ-17",
+      "name": "clifford_t4_d16",
+      "num_qubits": 4,
+      "qasm_sha256": "4240b74cb9620c5b687686c66c3174189a9d0b9b7723d09b2e7e0fb8c4a75092",
+      "transpiled_depth": 55,
+      "transpiled_qasm_sha256": "82b3146663715a74fffc8f9ba1dffce8f1171eb8feb338a819cc90dd781f6ce6",
+      "transpiled_size": 87
+    },
+    {
+      "job_id": "OQ-18",
+      "name": "clifford_t5_d20",
+      "num_qubits": 5,
+      "qasm_sha256": "43718ce80206f1c846e5665e3b2d099c471b241d64948fec16acab46f6558517",
+      "transpiled_depth": 60,
+      "transpiled_qasm_sha256": "b19312380b76bb8f2cbe4aea1c232b54153ab514faeb3a74105b8cbaca522420",
+      "transpiled_size": 114
+    },
+    {
+      "job_id": "OQ-19",
+      "name": "clifford_t5_d30",
+      "num_qubits": 5,
+      "qasm_sha256": "a374f4e41917a4323b3c2e2a6237277463e66c59511bab878448ccc338a571ff",
+      "transpiled_depth": 52,
+      "transpiled_qasm_sha256": "2073476b9cd7047fa5db8ef795e249776ed7bc18456ebe0a6bd3d27cb312c93f",
+      "transpiled_size": 96
+    },
+    {
+      "job_id": "OQ-20",
+      "name": "brickwork4_l3",
+      "num_qubits": 4,
+      "qasm_sha256": "374810731e0332bf632c3631f7c8b7659543f54123a97708a743f8d454b6332f",
+      "transpiled_depth": 22,
+      "transpiled_qasm_sha256": "be035b52a1b987485c1e4a8e9c6f4415ccc2c9101cbc9df033cee0f976f9d00d",
+      "transpiled_size": 65
+    },
+    {
+      "job_id": "OQ-21",
+      "name": "brickwork5_l4",
+      "num_qubits": 5,
+      "qasm_sha256": "ab7a4dfa2d86b6ed607afe9d32699398895694d51daedd28f64b99a492f38ec4",
+      "transpiled_depth": 28,
+      "transpiled_qasm_sha256": "79243f0c1612efda46c0d44114e4ca74633e362913a79d5726858ab82ee37bce",
+      "transpiled_size": 104
+    },
+    {
+      "job_id": "OQ-22",
+      "name": "grover2_mark11",
+      "num_qubits": 2,
+      "qasm_sha256": "1d3cd2a57c41f565a2fa1f8a461c053eded1ca7344635baa965b641ae8453a2e",
+      "transpiled_depth": 12,
+      "transpiled_qasm_sha256": "69aa0e46efcfc611a05603093bfb7771c3dadef779a628ca3e2a000127897ed7",
+      "transpiled_size": 22
+    },
+    {
+      "job_id": "OQ-23",
+      "name": "bv4_1011",
+      "num_qubits": 5,
+      "qasm_sha256": "58266bb5658ed3e5eaf336b70ae49582891ec3105dda18d3149688f3f10e0b5d",
+      "transpiled_depth": 41,
+      "transpiled_qasm_sha256": "c74398769772a80a9ef9e530daedd290ed2cffe6c50fa5b01cb5a0c70f9ed379",
+      "transpiled_size": 78
+    },
+    {
+      "job_id": "OQ-24",
+      "name": "dj3_balanced",
+      "num_qubits": 4,
+      "qasm_sha256": "470e5399a1a7ac5d6cbb3257bbdf6a827b52961b93d952de1ea064cc25c000d7",
+      "transpiled_depth": 35,
+      "transpiled_qasm_sha256": "385fd2f958f5359397677c24c8efffce25009cd20b881d36391c7fa8a7cbba16",
+      "transpiled_size": 59
+    },
+    {
+      "job_id": "OQ-25",
+      "name": "ghz5_repeat",
+      "num_qubits": 5,
+      "qasm_sha256": "1b3fe915e5bc20df69da445ce63878f08cd4479da656d743a5838f229753135e",
+      "transpiled_depth": 20,
+      "transpiled_qasm_sha256": "a936b86263815a0e9677fedc4eda12a293f18ac51841ea56f09a9d108ff2f607",
+      "transpiled_size": 36
+    }
+  ],
+  "dataset_id": "r-ibm-1",
+  "fixed_chain": [
+    110,
+    109,
+    118,
+    129,
+    128
+  ],
+  "generated_utc": "2026-10-30T18:42:29Z",
+  "job_id": "dbie9go1h92s73839i8g",
+  "mode": "full",
+  "note": "External IBM Quantum run, not an execution by the cqhecs package. The 25 circuits are the SHA-256-pinned r-io-7 circuits; the fixed physical chain makes logical qubit q map to the same physical qubit in every job. Calibration is stored when the backend exposes it.",
+  "num_qubits_backend": 156,
+  "schema_version": "1.0",
+  "shots": 10000,
+  "usage_after": {
+    "instance_id": "crn:v1:bluemix:public:quantum-computing:us-east:a/2572464dc3cb461b9f4af9a375cdb5af:cc2dcabc-6799-4671-9a98-f04dc20da287::",
+    "plan_id": "850b21a7-71de-4e53-9441-1abdd202f35d",
+    "usage_consumed_ru": 3.69076,
+    "usage_consumed_seconds": 225,
+    "usage_limit_reached": false,
+    "usage_limit_ru": 10.0002,
+    "usage_limit_seconds": 600,
+    "usage_period": {
+      "end_time": "2026-10-30T18:42:27.930Z",
+      "start_time": "2026-10-02T18:42:27.930Z"
+    },
+    "usage_remaining_seconds": 375
+  },
+  "usage_before": {
+    "instance_id": "crn:v1:bluemix:public:quantum-computing:us-east:a/2572464dc3cb461b9f4af9a375cdb5af:cc2dcabc-6799-4671-9a98-f04dc20da287::",
+    "plan_id": "850b21a7-71de-4e53-9441-1abdd202f35d",
+    "usage_consumed_ru": 2.567927,
+    "usage_consumed_seconds": 157,
+    "usage_limit_reached": false,
+    "usage_limit_ru": 10.0002,
+    "usage_limit_seconds": 600,
+    "usage_period": {
+      "end_time": "2026-10-30T18:41:03.882Z",
+      "start_time": "2026-10-02T18:41:03.882Z"
+    },
+    "usage_remaining_seconds": 443
+  },
+  "wall_seconds": 81.80668473243713
+}

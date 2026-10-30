@@ -1,0 +1,156 @@
+{
+  "backend": "ibm_fez",
+  "dataset_id": "r-ibm-sat-oracles-1",
+  "fixed_chain": [
+    121,
+    122,
+    123,
+    124
+  ],
+  "generated_utc": "2026-10-30T19:07:13Z",
+  "job_id": "dbiel76ne4hc73beefr0",
+  "non_claim": "Finite 3-4 variable SAT instances. A QPU run cannot decide P versus NP; the Grover oracle is not a polynomial-time SAT algorithm. The MPS lossless field is a numerical-rank check for these small circuits only.",
+  "oracles": [
+    {
+      "cnf": "p cnf 3 7\n3 2 1 0\n3 2 -1 0\n3 -2 1 0\n3 -2 -1 0\n-3 2 -1 0\n-3 -2 1 0\n-3 -2 -1 0\n",
+      "counts": {
+        "000": 405,
+        "001": 324,
+        "010": 379,
+        "011": 297,
+        "100": 7246,
+        "101": 530,
+        "110": 442,
+        "111": 377
+      },
+      "dpll_models": [
+        "100"
+      ],
+      "dpll_status": "SAT",
+      "job_id": "dbiel76ne4hc73beefr0",
+      "model_mass": 0.7246,
+      "mps": {
+        "bond_dimension_truncation_applied": false,
+        "discarded_singular_value_sum": 0.0,
+        "lossless": true,
+        "max_observed_chi": 2,
+        "numerical_rank_truncation_applied": false,
+        "state": "EXACT"
+      },
+      "num_qubits": 3,
+      "probe_family": "sat",
+      "probe_id": "sat3_unique_100",
+      "shots": 10000,
+      "top_is_model": true,
+      "top_outcome": "100",
+      "tv_ideal": 0.2207125000000002
+    },
+    {
+      "cnf": "p cnf 3 6\n3 2 1 0\n3 2 -1 0\n3 -2 1 0\n-3 2 -1 0\n-3 -2 1 0\n-3 -2 -1 0\n",
+      "counts": {
+        "000": 261,
+        "001": 313,
+        "010": 353,
+        "011": 4427,
+        "100": 3980,
+        "101": 248,
+        "110": 206,
+        "111": 212
+      },
+      "dpll_models": [
+        "100",
+        "011"
+      ],
+      "dpll_status": "SAT",
+      "job_id": "dbiel76ne4hc73beefr0",
+      "model_mass": 0.8407,
+      "mps": {
+        "bond_dimension_truncation_applied": false,
+        "discarded_singular_value_sum": 1.5915464601731718e-15,
+        "lossless": false,
+        "max_observed_chi": 2,
+        "numerical_rank_truncation_applied": true,
+        "state": "EXACT"
+      },
+      "num_qubits": 3,
+      "probe_family": "sat",
+      "probe_id": "sat3_two_100_011",
+      "shots": 10000,
+      "top_is_model": true,
+      "top_outcome": "011",
+      "tv_ideal": 0.15930000000000005
+    },
+    {
+      "cnf": "p cnf 4 15\n4 3 2 1 0\n4 3 2 -1 0\n4 3 -2 1 0\n4 3 -2 -1 0\n4 -3 2 1 0\n4 -3 2 -1 0\n4 -3 -2 1 0\n4 -3 -2 -1 0\n-4 3 2 1 0\n-4 3 2 -1 0\n-4 3 -2 1 0\n-4 -3 2 1 0\n-4 -3 2 -1 0\n-4 -3 -2 1 0\n-4 -3 -2 -1 0\n",
+      "counts": {
+        "0000": 362,
+        "0001": 436,
+        "0010": 458,
+        "0011": 480,
+        "0100": 387,
+        "0101": 366,
+        "0110": 432,
+        "0111": 447,
+        "1000": 378,
+        "1001": 432,
+        "1010": 556,
+        "1011": 3613,
+        "1100": 331,
+        "1101": 396,
+        "1110": 416,
+        "1111": 510
+      },
+      "dpll_models": [
+        "1011"
+      ],
+      "dpll_status": "SAT",
+      "job_id": "dbiel76ne4hc73beefr0",
+      "model_mass": 0.3613,
+      "mps": {
+        "bond_dimension_truncation_applied": false,
+        "discarded_singular_value_sum": 1.6129189828185605e-13,
+        "lossless": false,
+        "max_observed_chi": 3,
+        "numerical_rank_truncation_applied": true,
+        "state": "EXACT"
+      },
+      "num_qubits": 4,
+      "probe_family": "sat",
+      "probe_id": "sat4_unique_1011",
+      "shots": 10000,
+      "top_is_model": true,
+      "top_outcome": "1011",
+      "tv_ideal": 0.6000189697265601
+    }
+  ],
+  "schema_version": "1.0",
+  "shots": 10000,
+  "usage_after": {
+    "instance_id": "crn:v1:bluemix:public:quantum-computing:us-east:a/2572464dc3cb461b9f4af9a375cdb5af:cc2dcabc-6799-4671-9a98-f04dc20da287::",
+    "plan_id": "850b21a7-71de-4e53-9441-1abdd202f35d",
+    "usage_consumed_ru": 9.684106,
+    "usage_consumed_seconds": 589,
+    "usage_limit_reached": false,
+    "usage_limit_ru": 10.0002,
+    "usage_limit_seconds": 600,
+    "usage_period": {
+      "end_time": "2026-10-30T19:07:12.654Z",
+      "start_time": "2026-10-02T19:07:12.654Z"
+    },
+    "usage_remaining_seconds": 11
+  },
+  "usage_before": {
+    "instance_id": "crn:v1:bluemix:public:quantum-computing:us-east:a/2572464dc3cb461b9f4af9a375cdb5af:cc2dcabc-6799-4671-9a98-f04dc20da287::",
+    "plan_id": "850b21a7-71de-4e53-9441-1abdd202f35d",
+    "usage_consumed_ru": 9.521942,
+    "usage_consumed_seconds": 579,
+    "usage_limit_reached": false,
+    "usage_limit_ru": 10.0002,
+    "usage_limit_seconds": 600,
+    "usage_period": {
+      "end_time": "2026-10-30T19:06:01.331Z",
+      "start_time": "2026-10-02T19:06:01.331Z"
+    },
+    "usage_remaining_seconds": 21
+  }
+}

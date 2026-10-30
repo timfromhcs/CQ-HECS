@@ -1,0 +1,26 @@
+{
+  "dataset_id": "r-ibm-1",
+  "fixed_chain": [
+    98,
+    111,
+    110,
+    109,
+    118
+  ],
+  "job": {
+    "backend": "ibm_fez",
+    "id": "dbiea98hoj4c73b61i70",
+    "status": "Completed"
+  },
+  "metadata": {
+    "job_id": "OQ-02",
+    "name": "readout_one_5",
+    "num_qubits": 5,
+    "qasm_sha256": "ad5800f335c3c1b22ba199e42727ecdbbdbcd5103b9d848f223e79fa1506080b",
+    "transpiled_depth": 2,
+    "transpiled_qasm_sha256": "29134b484b1b7bede0086e4c5910f05561693789774b38a284194a36f275f284",
+    "transpiled_size": 10
+  },
+  "shots": 50000,
+  "transpiled_qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[156];\ncreg c[5];\nx q[98];\nx q[109];\nx q[110];\nx q[111];\nx q[118];\nmeasure q[98] -> c[0];\nmeasure q[111] -> c[1];\nmeasure q[110] -> c[2];\nmeasure q[109] -> c[3];\nmeasure q[118] -> c[4];"
+}

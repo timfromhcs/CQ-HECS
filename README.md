@@ -26,27 +26,39 @@ Four classical simulation paths · one result contract · fail-closed by design
 
 ---
 
-> **Status: `v3.1.0` (2026-10-30).** A feature release on the v3.0.0 Stable
+> **Status: `v3.2.0` (2026-10-30).** A feature release on the v3.0.0 Stable
 > base. It adds:
 >
-> 1. **CQ-HECS Studio** — a local `cq-hecs studio` UI for circuits, the measured
->    noise comparison, a sound SAT lab and the evidence ledger. Standard-library
->    HTTP server, no new runtime dependency, loopback only.
-> 2. **A standalone sound SAT surface** — `cq-hecs sat solve|sweep`. `SAT`
->    carries a verified model; `UNSAT` only after exhaustive search and without
->    a proof object; a timeout or node budget is `UNKNOWN`.
-> 3. **An independent-engine cross-check** — 21 noiseless circuits (GHZ widths
+> 1. **CQ-HECS Studio** — `cq-hecs studio`, a loopback-only UI for circuits,
+>    measured noise, the SAT lab, the evidence ledger and a new **Hardware**
+>    lab comparing Rigetti, IBM `ibm_fez`, QuantumRings and the finite P-vs-NP
+>    probes.
+> 2. **MCP server** — `cq-hecs mcp`, a stdio JSON-RPC server exposing circuit
+>    execution, analysis, SAT solving/model enumeration and hardware evidence.
+> 3. **A standalone sound SAT surface** — `cq-hecs sat solve|models|maxsat|sweep`.
+>    `SAT` carries a verified model; `UNSAT` only after exhaustive search and
+>    without a proof object; a timeout or node budget is `UNKNOWN`. Exact MaxSAT
+>    is capped at 20 variables and refuses above that.
+> 4. **An independent-engine cross-check** — 21 noiseless circuits (GHZ widths
 >    2–128, QFT, Clifford+T, brickwork, Grover, BV, DJ, mirror) agree with the
 >    QuantumRings simulator within finite-shot noise: **21/21 PASS**.
-> 4. **A corrected `M-FIT-2` identification.** v3.0.0 installed `OQ-02`'s 0.531
+> 5. **A corrected `M-FIT-2` identification.** v3.0.0 installed `OQ-02`'s 0.531
 >    qubit-0 marginal as readout error. `OQ-03` reproduces the flip with one `X`
 >    and `OQ-09` (no `X`) does not, so it is an `X`-gate anomaly. The corrected
 >    fit uses `p10[0] = 0.03` and an `X` bit-flip of 0.536: FIT TV 0.2286 →
 >    0.1209, held-out ΔTV vs ideal −0.0719 → −0.1054 (16/20). The paired
 >    comparison with `M-FIT` is −0.0265, CI [−0.0413, +0.0207], so H-V3-9
 >    remains not supported.
+> 6. **A standalone Windows build** — `scripts/build_exe.ps1` builds
+>    `dist/cq-hecs/cq-hecs.exe` (PyInstaller onedir) with the CLI, Studio
+>    assets, MCP server and Qiskit backend, smoke-tests it, and zips it as the
+>    release asset `cqhecs-3.2.0-windows-x64.zip`. Wheel and exe come from the
+>    same tree.
+> 7. **Finite P-vs-NP probes** — 8 universal circuits match Qiskit Statevector
+>    at TV ≤ 5e-15; 3–4 variable SAT oracles on IBM return a valid DPLL model
+>    as the top outcome on every run. This is not a complexity result.
 >
-> The release tree passes **618 Python tests** (0 skipped, 1 opt-in slow
+> The release tree passes **676 Python tests** (3 opt-in exe-skip, 1 opt-in slow
 > gate), **21/21 CTest**, **40/40 source mutants**, a **12-check metamorphic
 > self-test**, and the independent oracle **21/21**.
 >
@@ -64,6 +76,14 @@ Four classical simulation paths · one result contract · fail-closed by design
 > qubit 0 — so the 0.531 flip is Rigetti-specific. On IBM it is slightly worse
 > than `M-FIT` (+0.001688, CI [+0.000327, +0.004045]); H-V3-9 remains not
 > supported.
+>
+> **10k-shot rerun (3 backends):** `ibm_fez`, `ibm_kingston` and
+> `ibm_marrakesh` each ran the same 25 circuits at 10,000 shots. H-V3-8 is
+> **`SUPPORTED` on all three** (median ΔTV −0.0329 / −0.0271 / −0.0273,
+> 20/20 each). No backend shows the qubit-0 anomaly, and corrected `M-FIT-2`
+> is statistically indistinguishable from `M-FIT` on the paired comparison
+> (CI includes 0 on all three). Evidence:
+> `research/v4/evidence/ibm_10k/summary_evaluation.json`.
 >
 > **Not claimed:** universal quantum simulation, real-QPU execution *by this
 > package*, cross-vendor GPU acceleration, SOTA performance, a proof of
@@ -140,7 +160,7 @@ That rule is enforced in code, not only in documentation:
 | **Public surfaces** | `cq-hecs` CLI, `cq-hecs studio`, Qiskit `BackendV2`, Python API, C ABI, SAT engine |
 | **Simulation paths** | A: stabilizer tableau · B: stabilizer rank · C: untruncated MPS · D: sparse Pauli |
 | **Noise** | Typed profiles, Kraus channels, exact float64 density matrix up to 10 qubits |
-| **Verification** | 618 Python tests, 21 CTest, 40 mutants, 12-check selftest, 12 SPIR-V shaders, 21/21 independent oracle |
+| **Verification** | 676 Python tests, 21 CTest, 40 mutants, 12-check selftest, 12 SPIR-V shaders, 21/21 independent oracle |
 | **Platforms** | Linux x64, Windows 10/11; Python 3.11–3.14 |
 | **License** | Apache-2.0 |
 
@@ -239,6 +259,10 @@ equivariance, zero-noise identity, and channel composition order.
   tested).
 - **Studio:** a local browser UI for circuits, noise, SAT and the measured
   evidence (`cq-hecs studio`).
+- **MCP:** `cq-hecs mcp`, a stdio JSON-RPC server for agents (run, analyze,
+  SAT solve/models, hardware evidence).
+- **Standalone:** `cqhecs-3.2.0-windows-x64.zip` on the release page; unzip
+  and run `cq-hecs\cq-hecs.exe`. `scripts/build_exe.ps1` rebuilds it.
 
 ### CQ-HECS Studio
 
@@ -268,6 +292,9 @@ The supported standalone surface is `cqhecs/sat.py` and `cq-hecs sat`:
 cq-hecs sat solve benchmarks/sat/pigeonhole_6_5.cnf
 cq-hecs sat solve --random 30 --ratio 4.26 --timeout 5
 cq-hecs sat sweep --sizes 10,15,20,25 --ratios 3.0,4.26,6.0 --trials 5
+cq-hecs sat models --cnf "p cnf 3 2\n1 2 0\n-1 3 0\n" --limit 5
+cq-hecs sat maxsat --cnf "p cnf 2 2\n1 0\n-1 0\n" --weights 1,2
+cq-hecs mcp
 ```
 
 `SAT` means a model was found and verified clause by clause. `UNSAT` means the
@@ -374,13 +401,13 @@ choco install vulkan-sdk cmake ninja -y --no-progress
 
 ```bash
 python -m build
-# dist/cqhecs-3.1.0-py3-none-any.whl
-# dist/cqhecs-3.1.0.tar.gz
+# dist/cqhecs-3.2.0-py3-none-any.whl
+# dist/cqhecs-3.2.0.tar.gz
 ```
 
 Published wheels, sdists, SHA-256 checksums, and the SPDX SBOM are attached to
 [GitHub Releases](https://github.com/timfromhcs/CQ-HECS/releases). The latest
-release is `v3.1.0`.
+release is `v3.2.0`.
 
 ---
 
@@ -559,18 +586,18 @@ A deeper component matrix is in [`ARCHITECTURE.md`](ARCHITECTURE.md) and
 ## Verification
 
 The numbers below are from the Linux CI lane with the native build required
-(`CQ_HECS_REQUIRE_NATIVE=1`) on the `v3.1.0` tree. They are measurements, not
+(`CQ_HECS_REQUIRE_NATIVE=1`) on the `v3.2.0` tree. They are measurements, not
 performance claims. The release audit records the exact SHA and CI runs.
 
 | Gate | Result |
 | :--- | :--- |
-| Python suite | **618 passed**, 0 skipped, 1 opt-in `slow` gate |
-| Branch coverage | **84 %** measured locally on this tree (v3.0.0 release audit: 86 %) |
+| Python suite | **676 passed**, 3 opt-in exe skips, 1 opt-in `slow` gate |
+| Branch coverage | **83 %** on the Linux CI lane (v3.0.0 release audit: 86 %) |
 | CTest (native) | **21/21**, including a `WILL_FAIL` meta-test proving checks run in Release builds |
 | Source mutation | **40/40** killed |
 | Metamorphic selftest | **12/12** |
 | SPIR-V shaders | **12/12** verified |
-| Version consistency | all surfaces report `3.1.0` |
+| Version consistency | all surfaces report `3.2.0` |
 | Lint | `flake8 --select=E9,F` clean on `cqhecs`, `python_bridge`, `scripts`, `tests` |
 | Silent-truncation audit | no patterns found |
 | Latest CI matrix | 7/7 jobs: Linux, Windows, ASan/UBSan, Python 3.12–3.14, static/package |
@@ -669,6 +696,9 @@ tied to a source SHA and records `PASS`, `FAIL`, `SKIP`, `BLOCKED`, and
 | [`research/v4/COMPLEXITY_AND_ETH.md`](research/v4/COMPLEXITY_AND_ETH.md) | `P` vs `NP`, ETH/SETH, OpenAI math corpus, non-claims |
 | [`research/v4/evidence/quantumrings/`](research/v4/evidence/quantumrings/) | `r-qr-1`: 21/21 independent-engine cross-check |
 | [`research/v4/evidence/ibm/`](research/v4/evidence/ibm/) | the same 25 circuits on IBM `ibm_fez`; H-V3-8 SUPPORTED on a fresh backend |
+| [`research/v4/evidence/ibm_10k/`](research/v4/evidence/ibm_10k/) | 10k-shot reruns on three IBM backends; H-V3-8 SUPPORTED on all three |
+| [`research/v4/evidence/pnp_emulability/`](research/v4/evidence/pnp_emulability/) | exact CQ-HECS vs Qiskit Statevector on 8 universal probes; QPU comparison |
+| [`research/v4/evidence/pnp_sat_oracles/`](research/v4/evidence/pnp_sat_oracles/) | 3–4 variable SAT oracles on IBM; transfer and MPS losslessness |
 | [`research/v4/evidence/openquantum_pilot/`](research/v4/evidence/openquantum_pilot/) | `r-qpu-pilot-1`: IonQ probe batches and collection status |
 | [`research/v2_5_2/RELEASE_AUDIT.md`](research/v2_5_2/RELEASE_AUDIT.md) | v2.5.2 release audit and artifact hashes |
 | [`research/v3/V3_STABLE_PLAN.md`](research/v3/V3_STABLE_PLAN.md) | v3 plan, workstreams, gates |
@@ -788,6 +818,33 @@ remains not supported. Unlike the Rigetti run, IBM exposed backend properties;
 they are stored as `calibration.json`. Evidence:
 [`research/v4/evidence/ibm/`](research/v4/evidence/ibm/).
 
+### P versus NP: finite SAT and universal-oracle probes
+
+This is a **finite boundary check**, not a complexity result. Eight 2–5 qubit
+universal/algorithmic probes (random Clifford+T, IQP, Grover-4, Simon-2, QFT-5,
+GHZ-5, a depth-30 mirror, and a 3-variable SAT oracle) were run on IBM
+`ibm_fez` and `ibm_marrakesh` (10k shots; 50k on `ibm_marrakesh`).
+
+- CQ-HECS's exact density-matrix distribution matches Qiskit `Statevector`
+  for every probe at TV ≤ **5e-15**; these small circuits are exactly
+  classically emulable at `O(4^n)` cost.
+- The QPU median TV against ideal is 0.1275/0.1367/0.1399; the fitted M-FIT
+  and M-FIT-2 distributions are closer (≈0.096–0.105).
+- Three SAT oracles (3-variable unique `100`, 3-variable two-model
+  `100`/`011`, 4-variable unique `1011`) were run on both backends. The QPU's
+  most frequent outcome is a valid CNF model on **every** run; the model mass
+  ranges from 0.098 to 0.841 depending on backend and depth.
+- Exact classical emulation is possible; **strict MPS bit-losslessness is
+  not** for the two-model and four-variable circuits. The Path C state is
+  `EXACT`, but its numerical-rank floor discards ~1e-15 / ~1e-13 of
+  singular-value mass. That is reported, not hidden.
+
+Evidence:
+[`research/v4/evidence/pnp_emulability/`](research/v4/evidence/pnp_emulability/)
+and [`research/v4/evidence/pnp_sat_oracles/`](research/v4/evidence/pnp_sat_oracles/).
+The SAT probe is 3–4 variables; a Grover run is not a polynomial-time SAT
+algorithm and decides nothing about `P = NP`.
+
 A five-job, 100-shot IonQ pilot (`r-qpu-pilot-1`) spent the remaining 25 Spark
 credits on the qubit-0 question; a second batch (`OQ-01`/`OQ-03` at 200 shots,
 `OQ-02` at 100) spent another 25. Both batches were **queued** as of
@@ -886,7 +943,7 @@ exposes a “Cite this repository” entry from [`CITATION.cff`](CITATION.cff).
 @software{cqhecs2026,
   author  = {Stark, Tim Johann},
   title   = {CQ-HECS: Classical Quantum High-Efficiency Compute Simulator},
-  version = {3.1.0},
+  version = {3.2.0},
   year    = {2026},
   url     = {https://github.com/timfromhcs/CQ-HECS},
   license = {Apache-2.0}

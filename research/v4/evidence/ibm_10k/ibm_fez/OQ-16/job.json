@@ -1,0 +1,26 @@
+{
+  "dataset_id": "r-ibm-1",
+  "fixed_chain": [
+    98,
+    111,
+    110,
+    109,
+    118
+  ],
+  "job": {
+    "backend": "ibm_fez",
+    "id": "dbie7sg1h92s73839ekg",
+    "status": "Completed"
+  },
+  "metadata": {
+    "job_id": "OQ-16",
+    "name": "clifford_t3_d12",
+    "num_qubits": 3,
+    "qasm_sha256": "369ceefe6606a60f8a95995bfcf9c0e74dec8acb00c6514375336d430c05d130",
+    "transpiled_depth": 18,
+    "transpiled_qasm_sha256": "bfe80a11ba1e0931026294ee7dc304df06f9f5e1961b43eb36f78f2501872b5f",
+    "transpiled_size": 24
+  },
+  "shots": 10000,
+  "transpiled_qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[156];\ncreg c[3];\nrz(-pi/2) q[98];\nsx q[110];\nrz(-pi/2) q[111];\nsx q[111];\nrz(pi/2) q[111];\ncz q[111],q[110];\nsx q[110];\nsx q[111];\ncz q[111],q[110];\nsx q[110];\nsx q[111];\ncz q[111],q[110];\nrz(pi/2) q[111];\nsx q[111];\nrz(pi/2) q[111];\ncz q[98],q[111];\nrz(-pi/4) q[98];\ncz q[98],q[111];\ncz q[110],q[111];\nrz(pi/2) q[111];\nsx q[111];\nmeasure q[98] -> c[0];\nmeasure q[110] -> c[1];\nmeasure q[111] -> c[2];"
+}

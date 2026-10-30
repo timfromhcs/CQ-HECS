@@ -1,0 +1,26 @@
+{
+  "dataset_id": "r-ibm-1",
+  "fixed_chain": [
+    44,
+    45,
+    46,
+    47,
+    57
+  ],
+  "job": {
+    "backend": "ibm_marrakesh",
+    "id": "dbie8l6ne4hc73bedhl0",
+    "status": "Completed"
+  },
+  "metadata": {
+    "job_id": "OQ-13",
+    "name": "mirror4_d10",
+    "num_qubits": 4,
+    "qasm_sha256": "6488fa46da340c7c5f99db876625825feef2926c6af15bf9746bc53822099967",
+    "transpiled_depth": 72,
+    "transpiled_qasm_sha256": "fcf062d50adbb5fcba8857bab56c80ebae2ccef4c3a33df4ee09eb1edf2b9e20",
+    "transpiled_size": 102
+  },
+  "shots": 10000,
+  "transpiled_qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[156];\ncreg c[4];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[44],q[45];\nsx q[44];\nrz(-pi) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nrz(pi/2) q[44];\nsx q[44];\nrz(pi/2) q[44];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[46],q[45];\nrz(-pi) q[45];\ncz q[46],q[45];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[45],q[44];\nrz(pi/2) q[44];\nsx q[44];\nrz(pi/2) q[44];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[44],q[45];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[45],q[46];\nsx q[45];\nrz(-pi) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[45],q[46];\nsx q[45];\nsx q[46];\ncz q[45],q[46];\nsx q[45];\nsx q[46];\ncz q[45],q[46];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[46],q[45];\nrz(-pi) q[45];\nsx q[45];\nrz(pi/2) q[45];\nsx q[46];\ncz q[45],q[46];\nsx q[45];\nsx q[46];\ncz q[45],q[46];\nsx q[45];\nsx q[46];\ncz q[45],q[46];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[44],q[45];\nrz(pi/2) q[44];\nsx q[44];\nrz(pi/2) q[44];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[45],q[44];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[46],q[45];\nrz(-pi) q[45];\ncz q[46],q[45];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[45],q[44];\nrz(pi/2) q[44];\nsx q[44];\nrz(pi/2) q[44];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\nmeasure q[45] -> c[0];\nmeasure q[44] -> c[1];\nmeasure q[46] -> c[2];\nmeasure q[47] -> c[3];"
+}

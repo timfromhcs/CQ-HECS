@@ -1,0 +1,274 @@
+{
+  "backend": "ibm_marrakesh",
+  "circuits": [
+    {
+      "job_id": "OQ-01",
+      "name": "readout_zero_5",
+      "num_qubits": 5,
+      "qasm_sha256": "b65b54d3a7031b353a041788273202baa8e80c27df294de13b685228af9e4d84",
+      "transpiled_depth": 1,
+      "transpiled_qasm_sha256": "cdcf1d0efa3290852407bc850f39a1953df8489a1f2c93ec97f35dde7000107d",
+      "transpiled_size": 5
+    },
+    {
+      "job_id": "OQ-02",
+      "name": "readout_one_5",
+      "num_qubits": 5,
+      "qasm_sha256": "ad5800f335c3c1b22ba199e42727ecdbbdbcd5103b9d848f223e79fa1506080b",
+      "transpiled_depth": 2,
+      "transpiled_qasm_sha256": "3f7873b7a5e38226156a35396f04ea9fd46c760f49101ecb3804633b6730c710",
+      "transpiled_size": 10
+    },
+    {
+      "job_id": "OQ-03",
+      "name": "bitorder_q0_5",
+      "num_qubits": 5,
+      "qasm_sha256": "ddd4df5a558580621105ccf817bbd4cb8f3f3ef656828af82ac559ad301b8f50",
+      "transpiled_depth": 2,
+      "transpiled_qasm_sha256": "83ec882ee00b2a8b6189635172155b78139f8b14a1eb14cb3169066268a29d6f",
+      "transpiled_size": 6
+    },
+    {
+      "job_id": "OQ-04",
+      "name": "ghz5_pad2",
+      "num_qubits": 5,
+      "qasm_sha256": "d27474c78eb8ba2f89acf94e221328e1f58022031046295ce6dd23786f5e1b88",
+      "transpiled_depth": 20,
+      "transpiled_qasm_sha256": "04dc20d1570a271ee21700d6c5557bd77290353fc0dec70f5db56a76850d258a",
+      "transpiled_size": 36
+    },
+    {
+      "job_id": "OQ-05",
+      "name": "ghz5_pad4",
+      "num_qubits": 5,
+      "qasm_sha256": "493ca804ad5d6e6e7bca54b9162fb1d03fb3e35e8cce8fb3af60c537bd4188cc",
+      "transpiled_depth": 20,
+      "transpiled_qasm_sha256": "04dc20d1570a271ee21700d6c5557bd77290353fc0dec70f5db56a76850d258a",
+      "transpiled_size": 36
+    },
+    {
+      "job_id": "OQ-06",
+      "name": "bell",
+      "num_qubits": 2,
+      "qasm_sha256": "ae0cd142574796138ef95bd28378ae0a56b611999e3e31369cdacefe51a7b825",
+      "transpiled_depth": 8,
+      "transpiled_qasm_sha256": "260ba1f937908031f51c59c36910e07b36d2e6dec8ab1513e684aa3fb1c00431",
+      "transpiled_size": 12
+    },
+    {
+      "job_id": "OQ-07",
+      "name": "ghz3",
+      "num_qubits": 3,
+      "qasm_sha256": "ad6de3bf6c92ab4c70ced19bee2b03a09148c60bbaa45d4bf7dc7290d917e16a",
+      "transpiled_depth": 12,
+      "transpiled_qasm_sha256": "6626396d57c80b54969eaf7b13789cf9e978e2638df3698efd333345960201e6",
+      "transpiled_size": 20
+    },
+    {
+      "job_id": "OQ-08",
+      "name": "ghz4",
+      "num_qubits": 4,
+      "qasm_sha256": "ba8be1dbde0e504e23dfdadfe64590d5950d231ab6076e5b413183fbbbc076c2",
+      "transpiled_depth": 16,
+      "transpiled_qasm_sha256": "449f0a43c6738a63d3055a9264a62f334590c85a7529f06b0ce7d12950a1b855",
+      "transpiled_size": 28
+    },
+    {
+      "job_id": "OQ-09",
+      "name": "ghz5",
+      "num_qubits": 5,
+      "qasm_sha256": "1b3fe915e5bc20df69da445ce63878f08cd4479da656d743a5838f229753135e",
+      "transpiled_depth": 20,
+      "transpiled_qasm_sha256": "04dc20d1570a271ee21700d6c5557bd77290353fc0dec70f5db56a76850d258a",
+      "transpiled_size": 36
+    },
+    {
+      "job_id": "OQ-10",
+      "name": "qpe3_t",
+      "num_qubits": 4,
+      "qasm_sha256": "d9f87104cb3c042d0f672563e04083e323ad1149302284519a15cd9aa3e5c074",
+      "transpiled_depth": 110,
+      "transpiled_qasm_sha256": "e6549d92a0ac5efd8b69f300ab2a6e36d1a8cb5b34742e088d28614a686c1dbe",
+      "transpiled_size": 159
+    },
+    {
+      "job_id": "OQ-11",
+      "name": "qpe3_s",
+      "num_qubits": 4,
+      "qasm_sha256": "943abe986cec69fdc810f6a4aa4522adf067b1cdcebf2705a7d077a89aaafc66",
+      "transpiled_depth": 107,
+      "transpiled_qasm_sha256": "1593c064d447dd181b32751a5f226ed3e050513d47af99e5e6795a7f4755d11a",
+      "transpiled_size": 150
+    },
+    {
+      "job_id": "OQ-12",
+      "name": "qft4_roundtrip",
+      "num_qubits": 4,
+      "qasm_sha256": "5efb9ffcf8c14afd3de38f26bd18e3e62a2fd0b2c12484fdad5815d7b0488b8d",
+      "transpiled_depth": 113,
+      "transpiled_qasm_sha256": "ac2e3a5ba160ace8a547b948425a0c1c127c19de069205179147c58d992ab1c9",
+      "transpiled_size": 176
+    },
+    {
+      "job_id": "OQ-13",
+      "name": "mirror4_d10",
+      "num_qubits": 4,
+      "qasm_sha256": "6488fa46da340c7c5f99db876625825feef2926c6af15bf9746bc53822099967",
+      "transpiled_depth": 72,
+      "transpiled_qasm_sha256": "fcf062d50adbb5fcba8857bab56c80ebae2ccef4c3a33df4ee09eb1edf2b9e20",
+      "transpiled_size": 102
+    },
+    {
+      "job_id": "OQ-14",
+      "name": "mirror4_d20",
+      "num_qubits": 4,
+      "qasm_sha256": "9e210333734de5a09d6eb92b66f6db484a683a90685a71e7c9aefa78ceba34b9",
+      "transpiled_depth": 77,
+      "transpiled_qasm_sha256": "5d31adafd891d6f6327495f8ef948050e9e22f575955cc0bd0beb836a980b37b",
+      "transpiled_size": 158
+    },
+    {
+      "job_id": "OQ-15",
+      "name": "mirror4_d40",
+      "num_qubits": 4,
+      "qasm_sha256": "d1b08f8d205d925402ddaa9b0da0a4b3f28654d2db40c1fb79af92f962a31631",
+      "transpiled_depth": 150,
+      "transpiled_qasm_sha256": "194945b49b459707b6f640fa333196a20446c2c5f85b5dc18fdeba69ee5e4d52",
+      "transpiled_size": 255
+    },
+    {
+      "job_id": "OQ-16",
+      "name": "clifford_t3_d12",
+      "num_qubits": 3,
+      "qasm_sha256": "369ceefe6606a60f8a95995bfcf9c0e74dec8acb00c6514375336d430c05d130",
+      "transpiled_depth": 18,
+      "transpiled_qasm_sha256": "4adebd07dee30ae19434f25aac610ef6e99e363fb65915f92d3da142b98d5357",
+      "transpiled_size": 24
+    },
+    {
+      "job_id": "OQ-17",
+      "name": "clifford_t4_d16",
+      "num_qubits": 4,
+      "qasm_sha256": "4240b74cb9620c5b687686c66c3174189a9d0b9b7723d09b2e7e0fb8c4a75092",
+      "transpiled_depth": 55,
+      "transpiled_qasm_sha256": "e898cd42fbd3f33341c4db0bf1e32174b126dfdfd540436e6e118743ded8bcc4",
+      "transpiled_size": 87
+    },
+    {
+      "job_id": "OQ-18",
+      "name": "clifford_t5_d20",
+      "num_qubits": 5,
+      "qasm_sha256": "43718ce80206f1c846e5665e3b2d099c471b241d64948fec16acab46f6558517",
+      "transpiled_depth": 60,
+      "transpiled_qasm_sha256": "3c53abff747580182f2a5f8ec2f4072b4f9ea2105f2b3d957c77b00af394e72f",
+      "transpiled_size": 114
+    },
+    {
+      "job_id": "OQ-19",
+      "name": "clifford_t5_d30",
+      "num_qubits": 5,
+      "qasm_sha256": "a374f4e41917a4323b3c2e2a6237277463e66c59511bab878448ccc338a571ff",
+      "transpiled_depth": 52,
+      "transpiled_qasm_sha256": "f1db0eb929096c68c56d20149bedd4a6afbc35a1d1cf07e09b68d2f278440876",
+      "transpiled_size": 96
+    },
+    {
+      "job_id": "OQ-20",
+      "name": "brickwork4_l3",
+      "num_qubits": 4,
+      "qasm_sha256": "374810731e0332bf632c3631f7c8b7659543f54123a97708a743f8d454b6332f",
+      "transpiled_depth": 22,
+      "transpiled_qasm_sha256": "c6690f48bdd761dd0c88cffe4908dbc93e0eee6ed14f684c2094077dbf94b9be",
+      "transpiled_size": 65
+    },
+    {
+      "job_id": "OQ-21",
+      "name": "brickwork5_l4",
+      "num_qubits": 5,
+      "qasm_sha256": "ab7a4dfa2d86b6ed607afe9d32699398895694d51daedd28f64b99a492f38ec4",
+      "transpiled_depth": 28,
+      "transpiled_qasm_sha256": "be5a7721e892ad5c943f6625d2a93622488718e0f0ab91a0115f684038d5b4b6",
+      "transpiled_size": 104
+    },
+    {
+      "job_id": "OQ-22",
+      "name": "grover2_mark11",
+      "num_qubits": 2,
+      "qasm_sha256": "1d3cd2a57c41f565a2fa1f8a461c053eded1ca7344635baa965b641ae8453a2e",
+      "transpiled_depth": 12,
+      "transpiled_qasm_sha256": "9a6f79c37590774206f1a8ea54508c6b82a05d1b94fa2c04b8ed3d0f0961988d",
+      "transpiled_size": 22
+    },
+    {
+      "job_id": "OQ-23",
+      "name": "bv4_1011",
+      "num_qubits": 5,
+      "qasm_sha256": "58266bb5658ed3e5eaf336b70ae49582891ec3105dda18d3149688f3f10e0b5d",
+      "transpiled_depth": 41,
+      "transpiled_qasm_sha256": "3e6651e53abf10e597215535e7f2b4e08385dd4cf0f334c62995040fe918ae5b",
+      "transpiled_size": 78
+    },
+    {
+      "job_id": "OQ-24",
+      "name": "dj3_balanced",
+      "num_qubits": 4,
+      "qasm_sha256": "470e5399a1a7ac5d6cbb3257bbdf6a827b52961b93d952de1ea064cc25c000d7",
+      "transpiled_depth": 35,
+      "transpiled_qasm_sha256": "1dfcc238abc05e06e5ffe1742fdc70114281118cbc7d922f8b9dbafabf7d5078",
+      "transpiled_size": 59
+    },
+    {
+      "job_id": "OQ-25",
+      "name": "ghz5_repeat",
+      "num_qubits": 5,
+      "qasm_sha256": "1b3fe915e5bc20df69da445ce63878f08cd4479da656d743a5838f229753135e",
+      "transpiled_depth": 20,
+      "transpiled_qasm_sha256": "04dc20d1570a271ee21700d6c5557bd77290353fc0dec70f5db56a76850d258a",
+      "transpiled_size": 36
+    }
+  ],
+  "dataset_id": "r-ibm-1",
+  "fixed_chain": [
+    44,
+    45,
+    46,
+    47,
+    57
+  ],
+  "generated_utc": "2026-10-30T18:37:15Z",
+  "job_id": "dbie73ohoj4c73b61a9g",
+  "mode": "full",
+  "note": "External IBM Quantum run, not an execution by the cqhecs package. The 25 circuits are the SHA-256-pinned r-io-7 circuits; the fixed physical chain makes logical qubit q map to the same physical qubit in every job. Calibration is stored when the backend exposes it.",
+  "num_qubits_backend": 156,
+  "schema_version": "1.0",
+  "shots": 1000,
+  "usage_after": {
+    "instance_id": "crn:v1:bluemix:public:quantum-computing:us-east:a/2572464dc3cb461b9f4af9a375cdb5af:cc2dcabc-6799-4671-9a98-f04dc20da287::",
+    "plan_id": "850b21a7-71de-4e53-9441-1abdd202f35d",
+    "usage_consumed_ru": 0.322882,
+    "usage_consumed_seconds": 21,
+    "usage_limit_reached": false,
+    "usage_limit_ru": 10.0002,
+    "usage_limit_seconds": 600,
+    "usage_period": {
+      "end_time": "2026-10-30T18:37:14.585Z",
+      "start_time": "2026-10-02T18:37:14.585Z"
+    },
+    "usage_remaining_seconds": 579
+  },
+  "usage_before": {
+    "instance_id": "crn:v1:bluemix:public:quantum-computing:us-east:a/2572464dc3cb461b9f4af9a375cdb5af:cc2dcabc-6799-4671-9a98-f04dc20da287::",
+    "plan_id": "850b21a7-71de-4e53-9441-1abdd202f35d",
+    "usage_consumed_ru": 0.183272,
+    "usage_consumed_seconds": 12,
+    "usage_limit_reached": false,
+    "usage_limit_ru": 10.0002,
+    "usage_limit_seconds": 600,
+    "usage_period": {
+      "end_time": "2026-10-30T18:35:55.845Z",
+      "start_time": "2026-10-02T18:35:55.845Z"
+    },
+    "usage_remaining_seconds": 588
+  },
+  "wall_seconds": 76.28901886940002
+}

@@ -39,6 +39,16 @@ DATASET_RELATIVE = Path("research/v3/evidence/openquantum/rigetti_cepheus-1-108q
 FIT_RELATIVE = Path("research/v4/evidence/r-io-7")
 EVALUATION_RELATIVE = Path("research/v3/evidence/openquantum/rigetti_cepheus-1-108q/h_v3_8_evaluation.json")
 
+# Every committed H-V3-8 evaluation of the pinned 25-circuit suite, as
+# (dataset id, shots per circuit, path relative to the repository root).
+HARDWARE_EVALUATIONS = (
+    ("r-io-7 / rigetti", 1000, EVALUATION_RELATIVE),
+    ("r-ibm-1 / ibm_fez", 1000, Path("research/v4/evidence/ibm/ibm_fez/h_v3_8_evaluation.json")),
+    ("r-ibm-1 / ibm_fez 10k", 10000, Path("research/v4/evidence/ibm_10k/ibm_fez/h_v3_8_evaluation.json")),
+    ("r-ibm-1 / ibm_kingston 10k", 10000, Path("research/v4/evidence/ibm_10k/ibm_kingston/h_v3_8_evaluation.json")),
+    ("r-ibm-1 / ibm_marrakesh 10k", 10000, Path("research/v4/evidence/ibm_10k/ibm_marrakesh/h_v3_8_evaluation.json")),
+)
+
 _STATIC_FILES = {
     "index.html": "text/html; charset=utf-8",
     "app.js": "application/javascript; charset=utf-8",
@@ -675,6 +685,57 @@ class StudioState:
         return sweep(sizes=sizes, ratios=ratios, trials=trials, timeout_seconds=timeout)
 
     # -- research -------------------------------------------------------
+    def hardware(self) -> Dict[str, Any]:
+        """Compact view of the committed real-QPU and oracle evidence."""
+        datasets = []
+        for dataset_id, shots, relative in HARDWARE_EVALUATIONS:
+            path = self.root / relative
+            if not path.is_file():
+                continue
+            payload = json.loads(path.read_text("utf-8"))
+            agg = payload.get("aggregate", {})
+            datasets.append(
+                {
+                    "id": dataset_id,
+                    "backend": payload.get("backend"),
+                    "shots": shots,
+                    "verdict": agg.get("verdict"),
+                    "median_delta_tv": agg.get("median_delta_tv"),
+                    "ci95_low": agg.get("ci95_low"),
+                    "ci95_high": agg.get("ci95_high"),
+                    "n_eval": agg.get("n_eval"),
+                    "n_noisy_better": agg.get("n_noisy_better"),
+                }
+            )
+        pnp = {}
+        pnp_path = self.root / "research/v4/evidence/pnp_emulability/summary.json"
+        if pnp_path.is_file():
+            payload = json.loads(pnp_path.read_text("utf-8"))
+            pnp = {
+                "verdict": payload.get("verdict"),
+                "exact_emulation": payload.get("exact_emulation", []),
+                "qpu_runs": payload.get("qpu_runs", []),
+                "sat": payload.get("sat", {}),
+            }
+        oracle = {}
+        oracle_path = self.root / "research/v4/evidence/pnp_sat_oracles/summary.json"
+        if oracle_path.is_file():
+            oracle = json.loads(oracle_path.read_text("utf-8"))
+        qr_path = self.root / "research/v4/evidence/quantumrings/scarlet_quantum_rings/summary.json"
+        qr = json.loads(qr_path.read_text("utf-8")) if qr_path.is_file() else {}
+        return {
+            "schema_version": "1.0",
+            "datasets": datasets,
+            "pnp": pnp,
+            "sat_oracles": oracle.get("verdict", {}),
+            "sat_oracle_runs": oracle.get("runs", []),
+            "quantumrings": qr.get("aggregate", {}),
+            "note": (
+                "All entries are external measurements or independent-oracle checks. "
+                "No P = NP or ETH claim is attached to any of them."
+            ),
+        }
+
     def research(self) -> Dict[str, Any]:
         return _research_payload()
 
@@ -854,6 +915,8 @@ class StudioHandler(BaseHTTPRequestHandler):
                 return self._json(HTTPStatus.OK, self.server.state.noise())
             if path == "/api/research":
                 return self._json(HTTPStatus.OK, self.server.state.research())
+            if path == "/api/hardware":
+                return self._json(HTTPStatus.OK, self.server.state.hardware())
             if path == "/api/reference":
                 return self._json(HTTPStatus.OK, self.server.state.reference())
             if path == "/api/preset":

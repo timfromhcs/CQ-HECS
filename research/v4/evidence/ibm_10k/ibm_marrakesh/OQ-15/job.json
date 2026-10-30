@@ -1,0 +1,26 @@
+{
+  "dataset_id": "r-ibm-1",
+  "fixed_chain": [
+    44,
+    45,
+    46,
+    47,
+    57
+  ],
+  "job": {
+    "backend": "ibm_marrakesh",
+    "id": "dbie8l6ne4hc73bedhl0",
+    "status": "Completed"
+  },
+  "metadata": {
+    "job_id": "OQ-15",
+    "name": "mirror4_d40",
+    "num_qubits": 4,
+    "qasm_sha256": "d1b08f8d205d925402ddaa9b0da0a4b3f28654d2db40c1fb79af92f962a31631",
+    "transpiled_depth": 150,
+    "transpiled_qasm_sha256": "194945b49b459707b6f640fa333196a20446c2c5f85b5dc18fdeba69ee5e4d52",
+    "transpiled_size": 255
+  },
+  "shots": 10000,
+  "transpiled_qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[156];\ncreg c[4];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nrz(-pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\nsx q[47];\ncz q[46],q[47];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[45],q[46];\nrz(pi/2) q[45];\nsx q[45];\nrz(-pi/2) q[45];\ncz q[44],q[45];\nsx q[44];\nrz(-pi) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nrz(pi/2) q[44];\nsx q[44];\nrz(pi/2) q[44];\nrz(-pi/4) q[45];\ncz q[45],q[44];\nrz(pi/2) q[44];\nsx q[44];\nrz(3*pi/4) q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[44];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/4) q[46];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[45],q[46];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[46],q[45];\nrz(-pi) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nrz(pi/2) q[44];\nsx q[44];\nrz(pi/2) q[44];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nrz(pi/2) q[47];\nsx q[47];\nrz(pi/2) q[47];\ncz q[46],q[47];\ncz q[46],q[45];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[45],q[44];\nrz(-pi) q[44];\nsx q[44];\nrz(pi/2) q[44];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[46],q[45];\nrz(-pi) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nrz(pi/2) q[44];\nsx q[44];\nrz(pi/2) q[44];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[45],q[46];\nrz(-pi) q[45];\nsx q[45];\nrz(-pi) q[45];\nrz(-pi) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[46],q[45];\nsx q[45];\nsx q[46];\ncz q[46],q[45];\nsx q[45];\nsx q[46];\ncz q[46],q[45];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nx q[46];\ncz q[46],q[45];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[45],q[44];\nrz(-pi) q[44];\nsx q[44];\nrz(pi/2) q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[45],q[46];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[44],q[45];\nsx q[44];\nrz(-pi) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[45];\nrz(-pi) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[46],q[45];\nsx q[45];\nsx q[46];\ncz q[46],q[45];\nsx q[45];\nsx q[46];\ncz q[46],q[45];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[46],q[47];\ncz q[46],q[45];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[45],q[46];\nrz(pi/4) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[44],q[45];\nrz(pi/4) q[44];\nsx q[44];\nrz(-pi) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nrz(pi/2) q[44];\nsx q[44];\nrz(pi/2) q[44];\ncz q[45],q[44];\nsx q[44];\nrz(pi/2) q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nrz(-pi/2) q[46];\nsx q[46];\nrz(pi/2) q[47];\nsx q[47];\nrz(3*pi/4) q[47];\nsx q[47];\ncz q[46],q[47];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[45],q[46];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\nmeasure q[44] -> c[0];\nmeasure q[45] -> c[1];\nmeasure q[47] -> c[2];\nmeasure q[46] -> c[3];"
+}

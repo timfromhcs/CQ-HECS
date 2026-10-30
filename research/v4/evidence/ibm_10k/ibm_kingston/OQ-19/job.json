@@ -1,0 +1,26 @@
+{
+  "dataset_id": "r-ibm-1",
+  "fixed_chain": [
+    110,
+    109,
+    118,
+    129,
+    128
+  ],
+  "job": {
+    "backend": "ibm_kingston",
+    "id": "dbie9go1h92s73839i8g",
+    "status": "Completed"
+  },
+  "metadata": {
+    "job_id": "OQ-19",
+    "name": "clifford_t5_d30",
+    "num_qubits": 5,
+    "qasm_sha256": "a374f4e41917a4323b3c2e2a6237277463e66c59511bab878448ccc338a571ff",
+    "transpiled_depth": 52,
+    "transpiled_qasm_sha256": "2073476b9cd7047fa5db8ef795e249776ed7bc18456ebe0a6bd3d27cb312c93f",
+    "transpiled_size": 96
+  },
+  "shots": 10000,
+  "transpiled_qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[156];\ncreg c[5];\nrz(pi/2) q[109];\nsx q[109];\nrz(pi/2) q[109];\nrz(-pi) q[110];\nsx q[110];\nrz(-pi) q[110];\nrz(pi/2) q[118];\nsx q[118];\nrz(-pi/2) q[118];\ncz q[118],q[109];\nsx q[109];\ncz q[109],q[110];\nsx q[109];\nsx q[110];\ncz q[109],q[110];\nsx q[109];\nsx q[110];\ncz q[109],q[110];\nsx q[109];\nrz(-pi/2) q[118];\nsx q[118];\ncz q[118],q[109];\nsx q[109];\nsx q[118];\ncz q[118],q[109];\nsx q[109];\nsx q[118];\ncz q[118],q[109];\nrz(pi/2) q[118];\nsx q[118];\nrz(pi/2) q[118];\nsx q[128];\nrz(3*pi/4) q[128];\nrz(pi/4) q[129];\ncz q[129],q[118];\ncz q[109],q[118];\nsx q[109];\nrz(-pi/2) q[118];\nsx q[118];\nrz(pi/2) q[118];\ncz q[118],q[109];\nsx q[109];\nsx q[118];\ncz q[118],q[109];\nsx q[109];\nsx q[118];\ncz q[118],q[109];\nrz(pi/2) q[109];\nsx q[109];\nrz(pi/2) q[109];\ncz q[110],q[109];\nrz(pi/2) q[109];\nsx q[109];\nrz(pi/2) q[109];\nrz(pi/2) q[110];\nsx q[110];\nrz(pi/2) q[129];\nsx q[129];\nrz(pi/2) q[129];\ncz q[118],q[129];\nx q[118];\nrz(pi/2) q[129];\nsx q[129];\nrz(pi/2) q[129];\ncz q[118],q[129];\nrz(-pi/4) q[118];\nsx q[118];\ncz q[118],q[109];\nsx q[109];\nsx q[118];\ncz q[118],q[109];\nsx q[109];\nsx q[118];\ncz q[118],q[109];\nrz(pi/2) q[118];\nsx q[118];\nrz(pi/2) q[118];\ncz q[128],q[129];\nrz(pi/2) q[129];\nsx q[129];\nrz(pi/2) q[129];\ncz q[129],q[118];\nrz(pi/2) q[118];\nsx q[118];\nrz(pi/2) q[118];\nrz(-pi) q[129];\nsx q[129];\nrz(pi/2) q[129];\ncz q[128],q[129];\nsx q[129];\nrz(pi/2) q[129];\nmeasure q[118] -> c[0];\nmeasure q[110] -> c[1];\nmeasure q[109] -> c[2];\nmeasure q[129] -> c[3];\nmeasure q[128] -> c[4];"
+}

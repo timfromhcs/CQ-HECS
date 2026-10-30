@@ -1,0 +1,26 @@
+{
+  "dataset_id": "r-ibm-1",
+  "fixed_chain": [
+    44,
+    45,
+    46,
+    47,
+    57
+  ],
+  "job": {
+    "backend": "ibm_marrakesh",
+    "id": "dbie8l6ne4hc73bedhl0",
+    "status": "Completed"
+  },
+  "metadata": {
+    "job_id": "OQ-17",
+    "name": "clifford_t4_d16",
+    "num_qubits": 4,
+    "qasm_sha256": "4240b74cb9620c5b687686c66c3174189a9d0b9b7723d09b2e7e0fb8c4a75092",
+    "transpiled_depth": 55,
+    "transpiled_qasm_sha256": "e898cd42fbd3f33341c4db0bf1e32174b126dfdfd540436e6e118743ded8bcc4",
+    "transpiled_size": 87
+  },
+  "shots": 10000,
+  "transpiled_qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[156];\ncreg c[4];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[45];\nsx q[46];\ncz q[46],q[45];\nsx q[45];\nsx q[46];\ncz q[46],q[45];\nsx q[45];\nsx q[46];\ncz q[46],q[45];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[47],q[46];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[46],q[45];\nrz(-pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\nsx q[47];\ncz q[46],q[47];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[45],q[46];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nrz(pi/2) q[46];\nsx q[46];\nrz(-pi) q[46];\ncz q[46],q[45];\ncz q[44],q[45];\nrz(pi/2) q[44];\nsx q[44];\nrz(pi/2) q[44];\nrz(-pi/4) q[46];\ncz q[46],q[45];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[45],q[46];\nrz(-pi/4) q[45];\nsx q[45];\nrz(-pi) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[45],q[46];\nsx q[45];\nsx q[46];\ncz q[45],q[46];\nsx q[45];\nsx q[46];\ncz q[45],q[46];\ncz q[45],q[44];\nrz(pi/2) q[44];\nsx q[44];\nrz(pi/2) q[44];\nmeasure q[47] -> c[0];\nmeasure q[44] -> c[1];\nmeasure q[46] -> c[2];\nmeasure q[45] -> c[3];"
+}

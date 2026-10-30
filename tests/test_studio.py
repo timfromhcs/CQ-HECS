@@ -136,6 +136,9 @@ def test_http_surface(server):
     status, body = _get(server, "/api/health")
     assert status == 200
     assert json.loads(body)["name"] == "CQ-HECS Studio"
+    status, body = _get(server, "/api/hardware")
+    assert status == 200
+    assert json.loads(body)["datasets"]
     status, payload = _post(server, "/api/simulate", {"source": "preset:bell", "shots": 32})
     assert status == 200
     assert payload["num_qubits"] == 2
@@ -145,3 +148,18 @@ def test_http_surface(server):
     assert status == 404
     status, body = _get(server, "/static/style.css")
     assert status == 200 and b"--cyan" in body
+
+
+def test_hardware_view_lists_ibm_10k_and_pnp_rows(state):
+    hardware = state.hardware()
+    by_id = {row["id"]: row for row in hardware["datasets"]}
+    assert by_id["r-io-7 / rigetti"]["shots"] == 1000
+    for backend in ("ibm_fez", "ibm_kingston", "ibm_marrakesh"):
+        row = by_id[f"r-ibm-1 / {backend} 10k"]
+        assert row["backend"] == backend
+        assert row["shots"] == 10000
+        assert row["verdict"] == "SUPPORTED"
+        assert row["n_noisy_better"] == row["n_eval"] == 20
+    assert hardware["pnp"]["verdict"]
+    assert hardware["sat_oracle_runs"]
+    assert "P = NP" in hardware["note"]

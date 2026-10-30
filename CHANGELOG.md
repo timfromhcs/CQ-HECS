@@ -8,6 +8,45 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-10-30
+
+Stable feature release. Adds the MCP server, SAT model enumeration/MaxSAT, a
+hardware lab in the Studio, and a standalone Windows executable.
+
+### Added
+
+- `cqhecs.mcp_server` / `cq-hecs mcp`: newline-delimited JSON-RPC MCP server
+  with tools for circuit execution, analysis, sound SAT solving, model
+  enumeration and hardware evidence.
+- `cqhecs.sat.enumerate_models` / `max_sat` and `cq-hecs sat models|maxsat`.
+  Model enumeration is sound and reports `COMPLETE`/`LIMIT`/`TIMEOUT`; exact
+  MaxSAT is deliberately capped at 20 variables and refuses above that.
+- Studio Hardware lab (`/api/hardware`): Rigetti, IBM `ibm_fez`, QuantumRings,
+  exact-emulability and SAT-oracle evidence in one view.
+- Standalone Windows build (`scripts/build_exe.ps1`, PyInstaller onedir) shipped
+  as `cqhecs-3.2.0-windows-x64.zip`, bundling the CLI, Studio assets, MCP
+  server and Qiskit backend. The build fails unless its version, SAT, circuit
+  and Studio smoke tests pass.
+- 10,000-shot replication of the pinned 25-circuit suite on IBM `ibm_fez`,
+  `ibm_kingston` and `ibm_marrakesh`: H-V3-8 `SUPPORTED` on all three (20/20
+  EVAL jobs each); M-FIT-2 vs M-FIT inconclusive on all three; no anomaly.
+  `scripts/evaluate_ibm_10k.py` reproduces it from the committed counts.
+- Studio Hardware lab and the MCP `cqhecs_hardware` tool list every committed
+  evaluation with its shot count and jobs-closer ratio.
+- `scripts/run_ibm_universal_probes.py`, `scripts/run_ibm_sat_oracles.py`,
+  `scripts/pnp_emulability_check.py`, `scripts/pnp_sat_oracle_report.py`.
+- Finite P-vs-NP evidence: 8 universal probes match Qiskit Statevector at
+  TV <= 5e-15; 3 SAT oracles on IBM have a valid DPLL model as the QPU top
+  outcome on every run; strict MPS bit-losslessness is reported false where
+  the numerical-rank floor discards ~1e-15/1e-13.
+
+### Tests
+
+- MCP stdio contract (incl. `cqhecs_sat_models`, `cqhecs_hardware`), SAT model
+  enumeration/MaxSAT cross-checked against brute force, Studio hardware rows,
+  10k IBM evidence integrity/reproducibility, P-vs-NP evidence integrity, and
+  an opt-in executable smoke test (`CQ_HECS_EXE`).
+
 ## [3.1.0] - 2026-10-30
 
 Feature release on the v3.0.0 base. It adds a local experiment UI, a standalone

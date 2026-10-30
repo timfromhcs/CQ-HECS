@@ -1,0 +1,26 @@
+{
+  "dataset_id": "r-ibm-1",
+  "fixed_chain": [
+    44,
+    45,
+    46,
+    47,
+    57
+  ],
+  "job": {
+    "backend": "ibm_marrakesh",
+    "id": "dbie8l6ne4hc73bedhl0",
+    "status": "Completed"
+  },
+  "metadata": {
+    "job_id": "OQ-08",
+    "name": "ghz4",
+    "num_qubits": 4,
+    "qasm_sha256": "ba8be1dbde0e504e23dfdadfe64590d5950d231ab6076e5b413183fbbbc076c2",
+    "transpiled_depth": 16,
+    "transpiled_qasm_sha256": "449f0a43c6738a63d3055a9264a62f334590c85a7529f06b0ce7d12950a1b855",
+    "transpiled_size": 28
+  },
+  "shots": 10000,
+  "transpiled_qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[156];\ncreg c[4];\nrz(pi/2) q[44];\nsx q[44];\nrz(pi/2) q[44];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[44],q[45];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[45],q[46];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\nrz(pi/2) q[47];\nsx q[47];\nrz(pi/2) q[47];\ncz q[46],q[47];\nrz(pi/2) q[47];\nsx q[47];\nrz(pi/2) q[47];\nmeasure q[44] -> c[0];\nmeasure q[45] -> c[1];\nmeasure q[46] -> c[2];\nmeasure q[47] -> c[3];"
+}
