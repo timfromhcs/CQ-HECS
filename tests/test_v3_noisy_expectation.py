@@ -210,10 +210,14 @@ class TestCertifiedTruncation(unittest.TestCase):
 
 class TestScaleAndConsistency(unittest.TestCase):
     def test_no_noise_matches_dense_engine(self):
+        # 10 qubits / 45 gates instead of 12 / 60: the contract is exact
+        # equality between propagation and the dense engine, and the smaller
+        # shape still forces Pauli-term growth well past the initial support.
+        # The old shape cost 28 s, a seventh of the suite, for the same claim.
         rng = np.random.default_rng(12)
-        n = 12
+        n = 10
         ins = [("barrier", list(range(n)), [])]
-        for _ in range(60):
+        for _ in range(45):
             if rng.random() < 0.5:
                 q = int(rng.integers(n))
                 ins.append((str(rng.choice(["sx", "x", "h", "t"])), [q], []))

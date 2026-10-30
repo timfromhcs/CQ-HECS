@@ -55,19 +55,19 @@ def _counts_to_probs(counts, num_qubits):
 class TestResultSchema(unittest.TestCase):
     """The correctness contract must keep the three error sources separate."""
 
-    def test_hoeffding_bound_is_rigorous_and_monotonic(self):
-        # More shots can only reduce the sampling bound.
+    def test_hoeffding_bound_shape_limits_and_argument_checks(self):
+        """One property sweep instead of seven near-identical assertions.
+
+        Covers: monotonicity in shots, exact reduction to the classic binary
+        bound, growth with the alphabet size, the degenerate and clamped ends,
+        log-space safety for wide registers, and argument rejection.
+        """
         small = hoeffding_total_variation_bound(100, support_size=2)
         large = hoeffding_total_variation_bound(10000, support_size=2)
         self.assertLess(large, small)
         self.assertGreater(small, 0.0)
-        # For a binary outcome it is exactly the classic Hoeffding expression.
-        self.assertAlmostEqual(
-            small, math.sqrt(math.log(40.0) / 200.0), places=12
-        )
+        self.assertAlmostEqual(small, math.sqrt(math.log(40.0) / 200.0), places=12)
 
-    def test_bound_reduces_to_classic_hoeffding_for_binary(self):
-        """K=2 must reproduce sqrt(ln(2/delta)/(2n)) exactly."""
         for shots in (100, 1000):
             for delta in (0.05, 0.01):
                 ours = hoeffding_total_variation_bound(shots, support_size=2,
@@ -75,32 +75,29 @@ class TestResultSchema(unittest.TestCase):
                 classic = math.sqrt(math.log(2.0 / delta) / (2.0 * shots))
                 self.assertAlmostEqual(ours, classic, places=15)
 
-    def test_bound_grows_with_support_size(self):
-        """A wider measurement alphabet needs a looser bound."""
-        bounds = [
-            hoeffding_total_variation_bound(1000, support_size=k)
-            for k in (2, 4, 16, 64)
-        ]
+        bounds = [hoeffding_total_variation_bound(1000, support_size=k)
+                  for k in (2, 4, 16, 64)]
         for smaller, larger in zip(bounds, bounds[1:]):
             self.assertLess(smaller, larger)
 
-    def test_degenerate_support_is_exactly_zero(self):
-        """A single-outcome distribution cannot deviate."""
         self.assertEqual(hoeffding_total_variation_bound(1000, support_size=1), 0.0)
-
-    def test_bound_is_clamped_to_one(self):
-        """TV distance cannot exceed 1, so the bound must not claim otherwise."""
-        huge = hoeffding_total_variation_bound(2, support_size=1 << 40)
-        self.assertLessEqual(huge, 1.0)
-
-    def test_bound_does_not_overflow_for_wide_registers(self):
-        """2**K overflows float64 around K=1024; the log-space form must not."""
+        self.assertLessEqual(hoeffding_total_variation_bound(2, support_size=1 << 40), 1.0)
         for k in (512, 1024, 4096):
             value = hoeffding_total_variation_bound(1000, support_size=k)
             self.assertGreaterEqual(value, 0.0)
             self.assertLessEqual(value, 1.0)
 
-    def test_bound_holds_at_stated_confidence_for_high_cardinality(self):
+        for bad in (
+            lambda: hoeffding_total_variation_bound(0),
+            lambda: hoeffding_total_variation_bound(-1),
+            lambda: hoeffding_total_variation_bound(100, delta=0.0),
+            lambda: hoeffding_total_variation_bound(100, delta=1.0),
+            lambda: hoeffding_total_variation_bound(100, support_size=0),
+        ):
+            with self.assertRaises(ValueError):
+                bad()
+
+    def test_hoeffding_bound_holds_at_stated_confidence_for_high_cardinality(self):
         """
         The bound may be violated with probability up to delta, so this checks
         the *violation rate*, not each individual trial.
@@ -128,20 +125,11 @@ class TestResultSchema(unittest.TestCase):
                     # The dimension-free bound really is violated here.
                     self.assertGreater(float((tv > naive).mean()), delta)
 
-    def test_hoeffding_rejects_invalid_arguments(self):
-        with self.assertRaises(ValueError):
-            hoeffding_total_variation_bound(0)
-        with self.assertRaises(ValueError):
-            hoeffding_total_variation_bound(-1)
-        with self.assertRaises(ValueError):
-            hoeffding_total_variation_bound(100, delta=0.0)
-        with self.assertRaises(ValueError):
-            hoeffding_total_variation_bound(100, delta=1.0)
-        with self.assertRaises(ValueError):
-            hoeffding_total_variation_bound(100, support_size=0)
-
-    def test_total_error_bound_sums_distribution_metrics(self):
+    def test_error_sources_stay_separate_in_every_result_shape(self):
+        """One test over the five result shapes that used to be five tests."""
         from cqhecs.result import SimulationResult
+
+        # 1. A joint distribution sums all three bounds.
         res = SimulationResult(
             path="X", exact=False, error_bound=0.1, unresolved=False,
             counts={"0": 950, "1": 50},
@@ -153,41 +141,29 @@ class TestResultSchema(unittest.TestCase):
         )
         self.assertAlmostEqual(res.total_error_bound, 0.1 + 1e-12 + 0.05, places=15)
 
-    def test_total_error_bound_is_none_without_a_returned_distribution(self):
-        from cqhecs.result import SimulationResult
+        # 2. No returned distribution -> no total bound, and no serialized one.
         for state in (SimulationState.UNRESOLVED, SimulationState.FAILED):
             with self.subTest(state=state):
-                res = SimulationResult(
+                broken = SimulationResult(
                     path="D", exact=False, error_bound=0.1,
                     unresolved=state == SimulationState.UNRESOLVED,
                     state=state,
                 )
-                self.assertIsNone(res.total_error_bound)
-                self.assertIsNone(res.to_dict()["error_bound_metric"])
+                self.assertIsNone(broken.total_error_bound)
+                self.assertIsNone(broken.to_dict()["error_bound_metric"])
 
-    def test_total_error_bound_is_none_for_observable_only_results(self):
-        """
-        A bound on expectation values does not bound a bitstring distribution,
-        so the two must not be summed into one number.
-        """
-        from cqhecs.result import SimulationResult
-        res = SimulationResult(
+        # 3. An expectation-value bound does not bound a bitstring distribution.
+        observables = SimulationResult(
             path="D", exact=False, error_bound=0.01, unresolved=False,
             expectation_values={"Z[0]": 0.5}, counts={},
         )
-        self.assertIsNone(res.total_error_bound)
-        self.assertIsNone(res.to_dict()["error_bound_metric"])
+        self.assertIsNone(observables.total_error_bound)
+        self.assertIsNone(observables.to_dict()["error_bound_metric"])
 
-    def test_exact_state_requires_zero_approximation_error(self):
-        from cqhecs.result import SimulationResult
-        res = SimulationResult(
-            path="X", exact=True, error_bound=0.0, unresolved=False
-        )
-        self.assertEqual(res.state, SimulationState.EXACT)
-        # A deliberate approximation must never be labelled EXACT.
-        approx = SimulationResult(
-            path="X", exact=True, error_bound=1e-3, unresolved=False
-        )
+        # 4. EXACT requires zero approximation error; anything else is CERTIFIED.
+        exact = SimulationResult(path="X", exact=True, error_bound=0.0, unresolved=False)
+        self.assertEqual(exact.state, SimulationState.EXACT)
+        approx = SimulationResult(path="X", exact=True, error_bound=1e-3, unresolved=False)
         self.assertEqual(approx.state, SimulationState.CERTIFIED)
 
 
