@@ -1,110 +1,116 @@
-# CQ-HECS Release Notes
+﻿# CQ-HECS Release Notes
 
-**Version:** 2.5.2
+**Version:** 2.6.0
 **Release date:** 2026-10-30
 **License:** Apache 2.0
 **Repository:** [https://github.com/timfromhcs/CQ-HECS](https://github.com/timfromhcs/CQ-HECS)
 
-> The release workflow copies this file to
-> `dist/RELEASE_NOTES_v2.5.2.md`, prepends the exact source commit and required
-> CI run, and appends the SHA256 values of the final assets. The content
-> describes the code in this tree.
+> The release workflow copies this file to `dist/RELEASE_NOTES_v2.6.0.md`,
+> prepends the exact source commit and required CI run, and appends the SHA256
+> values of the final assets.
 
 ---
 
 ## 1. What this release is
 
-`v2.5.2` is a **correction release**. It adds one helper function and changes
-no existing signature. It fixes two wrong-result defects in exact simulation
-paths, a noise-model parameter convention and missing validation in backend
-profiles. No new simulation path, no performance claim.
+`v2.6.0` adds three measured surfaces on top of the v2.5.2 corrections:
 
-**Re-run anything that used:**
+1. **`M-FIT-2`** — a per-qubit noise fit from the 25 measured `r-io-7` jobs,
+   plus the identification correction that motivated it.
+2. **CQ-HECS Studio** — a local experiment UI (`cq-hecs studio`) for circuits,
+   noise, SAT and the measured evidence.
+3. **A sound SAT engine** — `cq-hecs sat solve|sweep`, with explicit
+   `SAT`/`UNSAT`/`UNKNOWN` semantics.
 
-- **Path B** (`preferred_path="B"`, or the router on low-T-count circuits) with
-  `t`/`tdg` together with other phase gates — `t` and `tdg` were swapped there;
-- **`--profile` / `BackendProfile.to_noise_model()`** — the modelled noise was
-  too weak (one-qubit gate noise by a factor of 2, two-qubit by 4/3);
-- **Path A with the native module built from source**, or `cq_apply_swap` in
-  the C API — `swap` did nothing on Clifford circuits. The published
-  pure-Python wheel was not affected by this one.
+It also adds an independent-engine cross-check (`r-qr-1`, 21/21 circuits) and a
+five-job IonQ pilot that spent the remaining 25 Spark credits (`r-qpu-pilot-1`).
+Neither is a quantum-hardware claim for this package.
 
-| Surface | Status in 2.5.2 |
-| :--- | :--- |
-| `cqhecs` four-path router/backends | supported; Path B `t`/`tdg` fixed |
-| `cqhecs.expectation` (Pauli expectation values) | supported; unchanged (did not use Path B) |
-| `cqhecs.hardware_bridge` profiles and Kraus channels | supported; gate errors are infidelities; stricter validation |
-| `NoisyDensityMatrixBackend` (`NOISY_CLASSICAL`) | supported up to 10 qubits; all manifest gates incl. `cu1`/`crx`/`cry`/`crz` |
-| `FakeHardwareProvider` | offline emulation only; never `REAL_HARDWARE` |
-| `RealHardwareProvider` | fail-closed boundary; no provider is connected |
-| Native C++ core / C API | SWAP fixed in the hybrid engine |
-| Vulkan compute primitives | software-ICD dispatch verified in this audit; no end-to-end GPU acceleration |
+No new simulation path, no performance claim, no change to the frozen `M-FIT`
+verdict.
 
-## 2. Fixed
+## 2. The measured finding
 
-- **CQ-V252-01 (P0) — Path B: `t` and `tdg` swapped.** `T = c0 I + c1 Z` used
-  `c1 = (e^{i pi/4} - 1)/2`, i.e. `diag(e^{i pi/4}, 1)` = `T†` up to a global
-  phase. `h t h` is symmetric and came out right; `h t s h` gave `P(0) = 0.854`
-  instead of `(1 + cos 3pi/4)/2 = 0.146`, labelled `EXACT`. Found by a seeded
-  differential fuzz against Qiskit `Statevector`; earlier tests only used
-  circuits whose probabilities are invariant under `T ↔ T†`.
-- **CQ-V252-02 (P1) — gate error vs. depolarizing parameter.** A profile's
-  `gate_errors` value goes to Qiskit as `InstructionProperties.error` (average
-  gate infidelity `r`), but the noise model used it as the depolarizing `p`.
-  For `E(ρ) = (1 − p) ρ + p I/d` the infidelity is `p (d − 1)/d`, so the
-  model's noise was `r/2` (1q) or `3r/4` (2q). Now `p = d r/(d − 1)`, the same
-  conversion Qiskit Aer applies when relaxation is ignored; values above
-  `(d − 1)/d` are refused rather than clipped.
-- **CQ-V252-03 (P0 for native builds) — SWAP on the native tableau.**
-  `HybridEngine::apply_swap` swapped the tableau and then applied three more
-  CX to it through `HybridEngine::apply_cx`. In tableau mode the SWAP was the
-  identity.
-- **CQ-V252-04 (P2) — profile validation.** `BackendProfile` refuses float or
-  bool qubit indices, T1/T2/readout entries for absent qubits, `T2 > 2 T1`,
-  non-finite times, invalid gate durations, repeated qubits in a key, keys
-  whose width does not match the gate, and gate errors on more than two qubits
-  (previously dropped silently by the noise model).
-- **CQ-V252-05 (P3) — noisy DM gate set.** `cu1`, `crx`, `cry`, `crz` run
-  instead of being refused.
+`research/v3/EMULATOR_BUILD_PLAN.md` read `OQ-02` as a 53.1 % qubit-0 readout
+error. The probes disagree:
 
-## 3. Tests
+| probe | circuit | qubit-0 marginal |
+| :--- | :--- | ---: |
+| `OQ-01` | `X` twice (identity) | `P(1) = 0.070` |
+| `OQ-02` | `X` on all five | `P(1) = 0.469` |
+| `OQ-03` | `X` on qubit 0 only | `P(1) = 0.507` |
+| `OQ-09` | GHZ-5, no `X` | `P(1) = 0.486` |
 
-- `tests/test_v252_regressions.py` (13 tests). Oracles: closed forms,
-  `qiskit.quantum_info.Statevector`/`DensityMatrix` and
-  `average_gate_fidelity` on the produced Kraus operators. On the v2.5.1
-  source 62 sub-cases and 3 tests fail; the Path A SWAP cases fail as well
-  when the native module is loaded.
-- `tests/test_hybrid_mps.cpp`: native SWAP in tableau and statevector mode;
-  fails on the v2.5.1 source.
-- Mutation harness: 24/24 mutants killed (4 new).
-- Local Linux results and exact-SHA CI runs: `research/v2_5_2/TEST_MATRIX.md`.
+A readout matrix would depress `OQ-09` too. It does not. The defect follows the
+`X` gate on qubit 0. `M-FIT-2` fits `p10[0]` on the padded GHZ ladder and solves
+an `X` bit-flip of 0.536.
 
-## 4. Limits and non-claims
+| model | FIT TV | EVAL median ΔTV | 95 % CI | jobs closer |
+| :--- | ---: | ---: | ---: | ---: |
+| `M-FIT` (frozen) | 0.228625 | −0.071905 | [−0.135899, −0.006703] | 14/20 |
+| `M-FIT-2` | **0.120899** | **−0.105360** | [−0.132644, −0.042472] | **16/20** |
 
-- `NOISY_CLASSICAL` output is a modelled distribution, not a measurement.
-  `error_bound = 0.0` means no deliberate approximation of the model; it is not
-  a bound on model-vs-hardware error.
-- Gate errors are modelled as depolarizing noise only. T1/T2 are validated but
-  not turned into relaxation channels. Circuits are not transpiled to a
-  profile's basis gates, so uncalibrated gates stay noiseless.
-- Both built-in profiles are synthetic. No real quantum hardware was used.
-- No mid-circuit measurement, reset or classical control.
-- No performance claim; no benchmark was run for this release.
+`M-FIT-2` is post-hoc and exploratory. The preregistered `M-FIT` verdict
+remains `SUPPORTED`; confirmation of `M-FIT-2` needs a fresh backend and split.
 
-## 5. Installation and smoke test
+## 3. Studio
 
 ```bash
-python -m pip install cqhecs-2.5.2-py3-none-any.whl
-cq-hecs version
-cq-hecs profile list
-cq-hecs --format json run name:bell --profile fake_manila --shots 1000
+cq-hecs studio
+# http://127.0.0.1:8765/
 ```
 
-The pure-Python wheel does not contain the native C++/Vulkan binaries. Build
-those from source with CMake and a C++20 toolchain if you need them.
+- Circuit lab: QASM or preset, forced path, ideal / `M-FIT` / `M-FIT-2`.
+- Noise lab: per-qubit parameters, FIT residual, per-job measured-vs-model ΔTV.
+- SAT lab: sound verdicts and a random-3-SAT sweep.
+- Evidence: all 25 jobs with circuit digests and provider job IDs.
+- Research: `P` vs `NP`, ETH, OpenAI math, with non-claims.
 
-## 6. Evidence
+The server uses only the standard library and the existing package. It binds to
+loopback, serves only bundled files, and never reads credentials. See
+`docs/STUDIO.md`.
 
-- `CHANGELOG.md` — `[2.5.2]` section.
-- `research/v2_5_2/` — baseline, findings, test matrix, execution log.
-- The published release body records the exact source SHA and required CI run.
+## 4. SAT semantics
+
+- `SAT`: a model was found and verified clause by clause.
+- `UNSAT`: exhaustive search finished. No proof object is produced; the result
+  says so.
+- `UNKNOWN`: timeout or node budget. Never reported as `UNSAT`.
+
+The old `python_bridge/sat_engine.py` demonstrator is not the supported surface:
+its branch hash covers only the first 32 variables and it reported a timeout as
+`UNSAT`.
+
+## 5. Verification
+
+| Gate | Result |
+| :--- | :--- |
+| Python suite | **584 passed**, 4 skipped, 1 opt-in `slow` gate (~100 s) |
+| CTest | 19/19 |
+| Source mutation | 35/35 |
+| Metamorphic selftest | 12/12 |
+| Independent oracle | 21/21 PASS (`r-qr-1`) |
+| Version consistency | all surfaces report `2.6.0` |
+
+## 6. Known limits
+
+- `M-FIT-2` is post-hoc; one backend, one day, 1000 shots per job.
+- QuantumRings is a classical simulator, not a QPU.
+- The IonQ pilot is five jobs at 100 shots; it cannot evaluate H-V3-8.
+- No `P = NP` or ETH claim. A finite SAT sweep is not a lower bound.
+- The noise path is exact only up to 10 qubits; above that it refuses.
+
+## 7. Install
+
+```bash
+python -m pip install cqhecs-2.6.0-py3-none-any.whl
+cq-hecs doctor
+cq-hecs studio
+```
+
+## 8. Documentation
+
+- `CHANGELOG.md` — `[2.6.0]` section.
+- `research/v4/FINDINGS.md` — measured findings and reproductions.
+- `research/v4/COMPLEXITY_AND_ETH.md` — complexity boundaries.
+- `docs/STUDIO.md` — UI and HTTP API.

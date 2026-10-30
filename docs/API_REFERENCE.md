@@ -134,5 +134,24 @@ CQ_API double cq_get_active_vram_mb(cq_context_t* ctx);
 CQ_API const char* cq_get_version(void);
 ```
 - **Description**: Queries semantic version string.
-- **Return Value**: Constant string `"2.5.2"`, derived from the package
+- **Return Value**: Constant string `"2.6.0"`, derived from the package
   version (`scripts/version.py`); it must not drift.
+
+---
+
+## 3. Python surfaces added in 2.6.0
+
+These are not C-ABI symbols. They are documented here because the C ABI's
+`cq_solve_sat` remains the legacy native demonstrator.
+
+| Command | Purpose |
+| :--- | :--- |
+| `cq-hecs noise-fit` | Fit `M-FIT-2` from measured `r-io-7` counts; writes the model, validated `BackendProfile`, and the post-hoc evaluation. |
+| `cq-hecs sat solve` | Sound DIMACS DPLL. `SAT` carries a verified model; `UNSAT` is exhaustive and has no proof object; `UNKNOWN` is a timeout or node budget. |
+| `cq-hecs sat sweep` | Empirical random-3-SAT phase-transition sweep. Not an ETH proof. |
+| `cq-hecs studio` | Local experiment UI; see [`STUDIO.md`](STUDIO.md). |
+
+The `cq_solve_sat` C entry point still uses the Hilbert-Cuckoo branch hash. Its
+hash covers only the first 32 assigned variables and a timeout is not
+distinguishable from `UNSAT` in `cq_sat_result_t`. Treat it as a demonstrator,
+not as the sound SAT surface.

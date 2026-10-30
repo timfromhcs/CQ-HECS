@@ -1,0 +1,89 @@
+{
+  "basis_gates": [
+    "cx",
+    "h",
+    "s",
+    "sdg",
+    "t",
+    "tdg",
+    "x",
+    "sx",
+    "rx",
+    "ry",
+    "rz",
+    "measure"
+  ],
+  "calibration_flags": {
+    "non_operational": [],
+    "not_modelled": [
+      {
+        "gate": "x",
+        "qubits": [
+          0
+        ],
+        "reason": "bit-flip probability 0.535556"
+      }
+    ],
+    "relaxation_excluded": {}
+  },
+  "capture_timestamp": "2026-10-30",
+  "coupling_map": [
+    [
+      0,
+      1
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      2,
+      3
+    ],
+    [
+      3,
+      4
+    ]
+  ],
+  "dynamic_circuit_features": {},
+  "gate_durations_ns": {},
+  "gate_errors": {
+    "cx": {
+      "0_1": 0.00375,
+      "1_2": 0.00375,
+      "2_3": 0.00375,
+      "3_4": 0.00375
+    }
+  },
+  "is_synthetic": false,
+  "name": "M-FIT-2[r-io-7/rigetti:cepheus-1-108q]",
+  "num_qubits": 5,
+  "provenance_uri": "dataset:r-io-7@ee11d81750d6f38a292ef08a1ded44fb1d6b86dd1764a01f6cb28961b1331e0e",
+  "provider_name": "CQ-HECS (fit from measured counts)",
+  "readout_errors": {
+    "0": [
+      0.07,
+      0.03
+    ],
+    "1": [
+      0.039,
+      0.06000000000000005
+    ],
+    "2": [
+      0.003,
+      0.05900000000000005
+    ],
+    "3": [
+      0.042,
+      0.09299999999999997
+    ],
+    "4": [
+      0.011,
+      0.07699999999999996
+    ]
+  },
+  "schema_version": "2.0",
+  "source_sha256": "ee11d81750d6f38a292ef08a1ded44fb1d6b86dd1764a01f6cb28961b1331e0e",
+  "t1_us": {},
+  "t2_us": {}
+}

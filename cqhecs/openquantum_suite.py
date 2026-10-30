@@ -364,7 +364,11 @@ def write_suite(target: Path, seed: int = SUITE_SEED) -> Dict[str, Any]:
     manifest = suite_manifest(jobs, seed)
     for job, entry in zip(jobs, manifest["jobs"]):
         (target / entry["qasm_file"]).write_bytes(job.qasm.encode("ascii"))
-    (target / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", "utf-8")
+    # Write bytes, not text: text mode translates "\n" to "\r\n" on Windows,
+    # which would make the preregistered manifest platform-dependent.
+    (target / "manifest.json").write_bytes(
+        (json.dumps(manifest, indent=2) + "\n").encode("ascii")
+    )
     return manifest
 
 

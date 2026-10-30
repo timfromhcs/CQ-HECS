@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cqhecs"
-version = "2.5.2"
+version = "2.6.0"
 description = "CQ-HECS: Deterministic Classical Four-Path Quantum Circuit Simulation Engine"
 readme = "README.md"
 authors = [{ name = "timfromhcs" }]
@@ -53,3 +53,6 @@ cq-hecs = "cqhecs.cli:main"
 [tool.setuptools.packages.find]
 include = ["cqhecs*", "python_bridge*"]
 exclude = ["tests*", "benchmarks*", "audit*"]
+
+[tool.setuptools.package-data]
+"cqhecs.studio" = ["static/*", "data/*"]

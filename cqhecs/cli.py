@@ -11,6 +11,9 @@ This is the single supported command-line entry point. Commands:
     cq-hecs verify CIRCUIT --reference aer
     cq-hecs expect CIRCUIT -o PAULI [-o PAULI ...] [--method auto|stabilizer|dense|sparse_pauli]
     cq-hecs reference list|run
+    cq-hecs noise-fit --data-dir DIR --out DIR
+    cq-hecs sat solve|sweep
+    cq-hecs studio [--port N] [--no-browser]
     cq-hecs selftest [--cases N]
     cq-hecs benchmark smoke
 
@@ -408,6 +411,155 @@ def cmd_reference(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def cmd_noise_fit(args: argparse.Namespace) -> int:
+    """Fit M-FIT-2 from measured suite counts and evaluate it (post-hoc)."""
+    from cqhecs.noise_fit import evaluate_fit, fit_noise, write_fit
+
+    try:
+        fit = fit_noise(args.data_dir, dataset_id=args.dataset, seed=args.seed)
+        evaluation = evaluate_fit(
+            fit, args.data_dir, bootstrap_samples=args.bootstrap, seed=args.seed
+        )
+        if args.out:
+            paths = write_fit(
+                args.data_dir,
+                args.out,
+                dataset_id=args.dataset,
+                seed=args.seed,
+                bootstrap_samples=args.bootstrap,
+            )
+        else:
+            paths = {}
+    except (ValueError, FileNotFoundError) as exc:
+        LOG.error("%s", exc)
+        return EXIT_USAGE
+
+    payload = {
+        "schema_version": JSON_SCHEMA_VERSION,
+        "version": __version__,
+        "model": fit.to_dict(),
+        "evaluation": evaluation,
+        "written": {name: str(path) for name, path in paths.items()},
+    }
+    if args.format == "json":
+        _emit_json(payload)
+    else:
+        fitted = fit.to_dict()
+        print(f"Model      : {fitted['model_id']} on {fitted['backend']}")
+        print(f"Readout p01: {[round(v, 4) for v in fitted['readout']['p01']]}")
+        print(f"Readout p10: {[round(v, 4) for v in fitted['readout']['p10']]}")
+        print(f"X bit-flip : {[round(v, 4) for v in fitted['x_bitflip']]}")
+        print(f"CX depol.  : {fitted['cx_depolarizing']:.6g}")
+        print(f"FIT TV     : {fitted['fit']['fit_tv']:.6f} (M-FIT {fitted['fit']['mfit_fit_tv']:.6f})")
+        for name, model in evaluation["models"].items():
+            print(
+                f"{name:8s} EVAL median ΔTV {model['median_delta_tv']:+.6f} "
+                f"CI [{model['ci95_low']:+.6f}, {model['ci95_high']:+.6f}] "
+                f"better {model['n_noisy_better']}/{evaluation['n_eval']}"
+            )
+        print(f"Status     : {evaluation['status']}")
+        for name, path in paths.items():
+            print(f"Wrote      : {name}: {path}")
+    return EXIT_OK
+
+
+def cmd_sat(args: argparse.Namespace) -> int:
+    """Sound DIMACS solving and an empirical random-3-SAT sweep."""
+    from cqhecs.sat import parse_dimacs, random_3sat, solve, sweep
+
+    if args.sat_command == "solve":
+        try:
+            if args.file:
+                text = Path(args.file).read_text("utf-8")
+                formula = parse_dimacs(text, source=args.file)
+            elif args.cnf:
+                formula = parse_dimacs(args.cnf, source="argument")
+            elif args.random is not None:
+                ratio = args.ratio if args.ratio is not None else 4.26
+                formula = random_3sat(args.random, int(round(ratio * args.random)), seed=args.seed)
+            else:
+                LOG.error("provide a DIMACS file, --cnf TEXT, or --random N")
+                return EXIT_USAGE
+        except (OSError, ValueError) as exc:
+            LOG.error("%s", exc)
+            return EXIT_USAGE
+        result = solve(formula, timeout_seconds=args.timeout)
+        payload = {
+            "schema_version": JSON_SCHEMA_VERSION,
+            "version": __version__,
+            "formula": {
+                "num_vars": formula.num_vars,
+                "num_clauses": formula.num_clauses,
+                "sha256": formula.sha256,
+                "source": formula.source,
+            },
+            "result": result.to_dict(),
+        }
+        if args.json_out:
+            Path(args.json_out).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.json_out).write_text(json.dumps(payload, indent=2) + "\n", "utf-8")
+        if args.format == "json":
+            _emit_json(payload)
+        else:
+            print(f"Formula    : {formula.num_vars} vars, {formula.num_clauses} clauses")
+            print(f"Status     : {result.status}")
+            if result.status == "SAT":
+                print(f"Model      : verified clause by clause ({result.model_verified})")
+            elif result.status == "UNSAT":
+                print("Proof      : none (exhaustive DPLL search; no checkable certificate)")
+            else:
+                print("Proof      : not decided")
+            print(f"Decisions  : {result.decisions}  conflicts {result.conflicts}  nodes {result.nodes}")
+            print(f"Time (ms)  : {result.elapsed_ms:.2f}")
+            print(f"Note       : {result.note}")
+            if result.assignment is not None and args.show_model:
+                print("Model      :", " ".join(f"{k}={'1' if v else '0'}" for k, v in sorted(result.assignment.items())))
+        return EXIT_OK
+
+    if args.sat_command == "sweep":
+        try:
+            payload = sweep(
+                sizes=args.sizes,
+                ratios=args.ratios,
+                trials=args.trials,
+                timeout_seconds=args.timeout,
+                seed=args.seed,
+            )
+        except ValueError as exc:
+            LOG.error("%s", exc)
+            return EXIT_USAGE
+        payload = {"schema_version": JSON_SCHEMA_VERSION, "version": __version__, **payload}
+        if args.json_out:
+            Path(args.json_out).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.json_out).write_text(json.dumps(payload, indent=2) + "\n", "utf-8")
+        if args.format == "json":
+            _emit_json(payload)
+        else:
+            print(" n ratio  clauses  sat/unsat/unknown  median decisions  median ms")
+            for row in payload["rows"]:
+                print(
+                    f"{row['num_vars']:2d} {row['ratio']:5.2f} {row['num_clauses']:7d}  "
+                    f"{row['sat']:2d}/{row['unsat']:2d}/{row['unknown']:2d}          "
+                    f"{row['median_decisions']:8.1f}      {row['median_ms']:8.2f}"
+                )
+            print(payload["non_claim"])
+        return EXIT_OK
+    return EXIT_USAGE
+
+
+def cmd_studio(args: argparse.Namespace) -> int:
+    """Start the local experiment UI."""
+    from cqhecs.studio import serve
+
+    serve(
+        host=args.host,
+        port=args.port,
+        root=args.root or os.getcwd(),
+        open_browser=not args.no_browser,
+    )
+    return EXIT_OK
+
+
 def cmd_selftest(args: argparse.Namespace) -> int:
     from cqhecs.selftest import run_selftest
 
@@ -751,6 +903,14 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
 
 
 # ------------------------------------------------------------------ parser
+def _csv_ints(value: str) -> list[int]:
+    return [int(part) for part in value.split(",") if part.strip()]
+
+
+def _csv_floats(value: str) -> list[float]:
+    return [float(part) for part in value.split(",") if part.strip()]
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="cq-hecs",
@@ -894,6 +1054,46 @@ def build_parser() -> argparse.ArgumentParser:
     bench_sub = p_bench.add_subparsers(dest="benchmark_command", required=True)
     bench_sub.add_parser("smoke", help="Fast end-to-end smoke benchmark")
 
+    p_noise = sub.add_parser(
+        "noise-fit",
+        help="Fit a per-qubit noise profile from measured suite counts",
+    )
+    p_noise.add_argument("--dataset", default="r-io-7", help="Dataset ID (default: r-io-7)")
+    p_noise.add_argument(
+        "--data-dir",
+        default="research/v3/evidence/openquantum/rigetti_cepheus-1-108q",
+        help="Folder containing the measured JOB_ID subfolders",
+    )
+    p_noise.add_argument("--out", default=None, help="Write model, profile and evaluation JSON here")
+    p_noise.add_argument("--bootstrap", type=int, default=5000, help="Bootstrap resamples")
+    p_noise.add_argument("--seed", type=int, default=20261030, help="Deterministic seed")
+
+    p_sat = sub.add_parser("sat", help="Sound DIMACS SAT solving and sweeps")
+    sat_sub = p_sat.add_subparsers(dest="sat_command", required=True)
+    p_sat_solve = sat_sub.add_parser("solve", help="Solve one CNF formula")
+    p_sat_solve.add_argument("file", nargs="?", help="DIMACS .cnf file")
+    p_sat_solve.add_argument("--cnf", default=None, help="DIMACS text")
+    p_sat_solve.add_argument("--random", type=int, default=None, metavar="N", help="Generate random 3-SAT with N variables")
+    p_sat_solve.add_argument("--ratio", type=float, default=None, help="Clause/variable ratio for --random")
+    p_sat_solve.add_argument("--timeout", type=float, default=10.0, help="Timeout in seconds")
+    p_sat_solve.add_argument("--seed", type=int, default=20261030, help="Random seed")
+    p_sat_solve.add_argument("--json-out", default=None, help="Write the full result JSON here")
+    p_sat_solve.add_argument("--show-model", action="store_true", help="Print the satisfying assignment")
+
+    p_sat_sweep = sat_sub.add_parser("sweep", help="Empirical random-3-SAT phase-transition sweep")
+    p_sat_sweep.add_argument("--sizes", type=_csv_ints, default=[10, 15, 20, 25], help="Comma-separated variable counts")
+    p_sat_sweep.add_argument("--ratios", type=_csv_floats, default=[3.0, 3.5, 4.0, 4.26, 4.5, 5.0], help="Comma-separated clause ratios")
+    p_sat_sweep.add_argument("--trials", type=int, default=5, help="Instances per cell")
+    p_sat_sweep.add_argument("--timeout", type=float, default=2.0, help="Per-instance timeout in seconds")
+    p_sat_sweep.add_argument("--seed", type=int, default=20261030, help="Random seed")
+    p_sat_sweep.add_argument("--json-out", default=None, help="Write the full result JSON here")
+
+    p_studio = sub.add_parser("studio", help="Start the local CQ-HECS experiment UI")
+    p_studio.add_argument("--host", default="127.0.0.1", help="Bind address (default: 127.0.0.1)")
+    p_studio.add_argument("--port", type=int, default=8765, help="Port (default: 8765)")
+    p_studio.add_argument("--root", default=None, help="Repository root for evidence discovery")
+    p_studio.add_argument("--no-browser", action="store_true", help="Do not open a browser")
+
     return parser
 
 
@@ -923,6 +1123,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "backend": cmd_backend,
         "profile": cmd_profile,
         "reference": cmd_reference,
+        "noise-fit": cmd_noise_fit,
+        "sat": cmd_sat,
+        "studio": cmd_studio,
         "selftest": cmd_selftest,
         "analyze": cmd_analyze,
         "run": cmd_run,

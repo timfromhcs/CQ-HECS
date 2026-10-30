@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to CQ-HECS (Classical Quantum High-Efficiency Compute Simulator) are documented in this file.
 
@@ -18,8 +18,9 @@ Work towards v3 (`research/v3/V3_STABLE_PLAN.md`). Not released.
   `research/v3/openquantum_suite/`; the runner quotes before spending and
   refuses to submit without `--yes` or above `--budget`; ingest checks circuit
   digests, outcome width and bit order; `M-FIT` is fitted on the FIT split
-  only. `cq-hecs reference run --dataset r-io-7`. **No job has been run**: the
-  Open Quantum API was unreachable from the session that added this.
+  only. `cq-hecs reference run --dataset r-io-7`. **Released in 2.6.0:** all
+  25 jobs ran on `rigetti:cepheus-1-108q` on 2026-10-30; H-V3-8 is
+  `SUPPORTED`.
 
 - `cqhecs.calibration_import`: imports real IBM calibration snapshots
   (`props_*.json` / `conf_*.json`, e.g. from `qiskit-ibm-runtime`) into
@@ -46,6 +47,52 @@ Work towards v3 (`research/v3/V3_STABLE_PLAN.md`). Not released.
   trace loss. Method from Aharonov et al. 2023, Schuster et al. 2025,
   Angrisani et al. 2025; their average-case guarantees are not claimed.
 - `NoisyDensityMatrixBackend.density_matrix()`.
+
+---
+
+## [2.6.0] — 2026-10-30
+
+Feature release: a measured per-qubit noise fit, an independent-engine
+cross-check, a sound SAT surface, and a local experiment UI. No new simulation
+path and no performance claim.
+
+### Added
+
+- `cqhecs.noise_fit` / `cq-hecs noise-fit`: `M-FIT-2`, a per-qubit noise fit
+  from measured counts. `OQ-02`'s 0.531 qubit-0 marginal is identified as an
+  `X`-gate anomaly (`OQ-03` reproduces it with one `X`, `OQ-09` does not), not
+  as readout error. FIT TV 0.2286 → 0.1209; held-out median ΔTV −0.0719 →
+  −0.1054 (16/20 jobs). Post-hoc and exploratory; `M-FIT` and its `SUPPORTED`
+  verdict are unchanged. Artifacts in `research/v4/evidence/r-io-7/`.
+- `BitFlipChannel`: validated single-qubit bit-flip Kraus channel, exported
+  from `cqhecs`.
+- `cqhecs.sat` / `cq-hecs sat solve|sweep`: sound DIMACS DPLL. `SAT` carries a
+  verified model; `UNSAT` only after exhaustive search and explicitly without a
+  proof object; timeout or node budget is `UNKNOWN`. Random-3-SAT
+  phase-transition sweep with an explicit non-claim.
+- `cqhecs.studio` / `cq-hecs studio`: loopback-only experiment UI (standard
+  library HTTP server + static app) for the circuit lab, noise comparison, SAT
+  lab, measured evidence and sourced research. No new runtime dependency.
+- `scripts/quantumrings_crosscheck.py` and `r-qr-1`: 21 noiseless circuits,
+  widths 2–128, cross-checked against the independent QuantumRings simulator;
+  21/21 pass within finite-shot noise. `scripts/build_studio_data.py` writes
+  the verified packaged snapshot.
+- `scripts/collect_openquantum_pilot.py` and `r-qpu-pilot-1`: a five-job,
+  100-shot IonQ pilot that spent the remaining 25 Spark credits on the
+  qubit-0 anomaly. It is not the preregistered suite and is not a confirmation.
+
+### Fixed
+
+- `cqhecs.openquantum_suite.write_suite` now writes `manifest.json` as bytes,
+  so `generate` is byte-identical on Windows and Linux (text mode previously
+  introduced CRLF and made the preregistration check fail on Windows).
+
+### Tests
+
+- 584 Python tests (4 skipped, 1 opt-in `slow` gate) in ~100 s.
+- New: brute-force SAT agreement, pigeonhole UNSAT, node-budget `UNKNOWN`,
+  malformed DIMACS, `M-FIT-2` regression against the measured artifact, Studio
+  state/HTTP tests, and the independent-oracle evidence test.
 
 ---
 

@@ -36,6 +36,7 @@ dist/
 # Caches & Compiler Database
 .cache/
 compile_commands.json
+.playwright-mcp/
 
 # IDE & Editor Metadata
 .vscode/
@@ -67,6 +68,11 @@ logs/
 *.pem
 *.pfx
 secrets/
+# Provider credentials and local-only runners (never commit)
+quantumrings.conf
+sdk-key-*.json
+oq.py
+.local/
 
 # Python & Testing Caches
 __pycache__/

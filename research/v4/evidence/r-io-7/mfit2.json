@@ -1,0 +1,74 @@
+{
+  "backend": "rigetti:cepheus-1-108q",
+  "cx_depolarizing": 0.005,
+  "dataset_id": "r-io-7",
+  "dataset_sha256": "ee11d81750d6f38a292ef08a1ded44fb1d6b86dd1764a01f6cb28961b1331e0e",
+  "fit": {
+    "fit_jobs": [
+      "OQ-04",
+      "OQ-05"
+    ],
+    "fit_tv": 0.12089947687,
+    "mfit_fit_tv": 0.228625350036,
+    "objective": "mean total variation on the padded GHZ FIT jobs",
+    "probe_jobs": [
+      "OQ-01",
+      "OQ-02",
+      "OQ-03"
+    ]
+  },
+  "identifiability": {
+    "anomalous_qubits": [
+      0
+    ],
+    "assumption": "Qubits without an anomaly are assumed to have no X-gate error; the X bit-flip is therefore a lower bound there.",
+    "one_qubit_gate_error": "not fitted: on the padded GHZ jobs a uniform 1q depolarizing term is collinear with the CX term, so the fit keeps it at 0 and reports this rather than inventing a split.",
+    "statement": "OQ-02's marginal on an anomalous qubit is not a readout probability: OQ-03 reproduces the flip with a single X and OQ-09 (no X) does not. p10 for those qubits is fitted on the GHZ ladder; the X bit-flip is solved from OQ-02/OQ-03."
+  },
+  "model_id": "M-FIT-2",
+  "num_qubits": 5,
+  "provenance": {
+    "measurement_date": "2026-10-30",
+    "preregistered_model": "M-FIT (H-V3-8), unchanged",
+    "shots_per_job": 1000,
+    "source": "research/v3/evidence/openquantum/rigetti_cepheus-1-108q",
+    "status": "post-hoc exploratory model; not preregistered"
+  },
+  "readout": {
+    "p01": [
+      0.07,
+      0.039,
+      0.003,
+      0.042,
+      0.011
+    ],
+    "p10": [
+      0.03,
+      0.06,
+      0.059,
+      0.093,
+      0.077
+    ],
+    "p10_observed_from_OQ02": [
+      0.531,
+      0.06,
+      0.059,
+      0.093,
+      0.077
+    ]
+  },
+  "schema_version": "1.0",
+  "warnings": [
+    "M-FIT-2 is post-hoc: it was written after the 25 jobs existed, so the EVAL score is exploratory, not a preregistered confirmation.",
+    "One backend, one day, 1000 shots per job. No drift or T1/T2 claim.",
+    "Readout inversion is an assumption, not a measurement of the true state.",
+    "Qubit(s) 0 show a circuit-dependent flip that is attributed to the X gate, not to readout. See identifiability."
+  ],
+  "x_bitflip": [
+    0.535555555556,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ]
+}

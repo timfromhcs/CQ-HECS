@@ -6,7 +6,7 @@ Canonical version: ``scripts/version.py``.
 
 from __future__ import annotations
 
-__version__ = "2.5.2"
+__version__ = "2.6.0"
 
 from .provider import VulkanQpuBackend
 

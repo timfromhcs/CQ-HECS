@@ -150,6 +150,50 @@ class DepolarizingChannel(NoiseChannel):
         return {"type": "depolarizing_1q", "p": self.p}
 
 
+class BitFlipChannel(NoiseChannel):
+    """
+    Single-qubit bit-flip channel:
+
+        E(rho) = (1 - p) rho + p * X rho X
+
+    Kraus operators:
+        K_0 = sqrt(1 - p) * I
+        K_1 = sqrt(p) * X
+
+    This is the channel used to describe a faulty ``x`` gate whose output is
+    inverted with probability ``p``. It is not a readout model: a readout
+    assignment matrix is tracked separately in :class:`ReadoutErrorChannel`.
+    """
+
+    def __init__(self, p: float):
+        if not (0.0 <= p <= 1.0) or math.isnan(p):
+            raise InvalidNoiseModelError(f"Bit-flip probability must be in [0, 1], got {p}")
+        self.p = float(p)
+        self._kraus = self._build_kraus()
+        self.validate_kraus_completeness()
+
+    @property
+    def name(self) -> str:
+        return "bit_flip"
+
+    @property
+    def kraus_operators(self) -> List[np.ndarray]:
+        return self._kraus
+
+    def _build_kraus(self) -> List[np.ndarray]:
+        p = self.p
+        I = np.eye(2, dtype=complex)
+        X = np.array([[0, 1], [1, 0]], dtype=complex)
+        if p == 0.0:
+            return [I]
+        if p == 1.0:
+            return [X]
+        return [math.sqrt(1.0 - p) * I, math.sqrt(p) * X]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"type": "bit_flip", "p": self.p}
+
+
 class AmplitudeDampingChannel(NoiseChannel):
     """
     Single-qubit amplitude damping (energy relaxation |1> -> |0>):
