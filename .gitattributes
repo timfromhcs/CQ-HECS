@@ -1,0 +1,3 @@
+# Vendored reference data is content-addressed: Git must not rewrite bytes.
+tests/data/quantum_noise_transfer/*.json -text
+tests/data/quantum_noise_transfer/SHA256SUMS -text

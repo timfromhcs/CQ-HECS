@@ -1,0 +1,1182 @@
+[
+  {
+    "circuit_id": "679b418c-f535-45da-8667-cf4baeee273b",
+    "type": "random",
+    "n_qubits": 4,
+    "depth": 5,
+    "gate_counts": {
+      "measure": 4,
+      "rxx": 2,
+      "xx_minus_yy": 1,
+      "cry": 1,
+      "ch": 1,
+      "rz": 1,
+      "csx": 1,
+      "cz": 1,
+      "cu3": 1
+    }
+  },
+  {
+    "circuit_id": "d93990c9-1994-4c97-8db7-9500a6768871",
+    "type": "random",
+    "n_qubits": 4,
+    "depth": 4,
+    "gate_counts": {
+      "measure": 4,
+      "rx": 1,
+      "xx_minus_yy": 1,
+      "u3": 1,
+      "ecr": 1,
+      "cz": 1,
+      "rzz": 1,
+      "rcccx": 1
+    }
+  },
+  {
+    "circuit_id": "0b8feebf-2d4f-4aad-a729-e8d22a9fe0fc",
+    "type": "random",
+    "n_qubits": 2,
+    "depth": 6,
+    "gate_counts": {
+      "xx_plus_yy": 2,
+      "measure": 2,
+      "iswap": 1,
+      "r": 1,
+      "sx": 1,
+      "u1": 1,
+      "rx": 1
+    }
+  },
+  {
+    "circuit_id": "251e31e0-008d-4cc1-b203-e22a1eaeba0c",
+    "type": "random",
+    "n_qubits": 3,
+    "depth": 4,
+    "gate_counts": {
+      "measure": 3,
+      "ccz": 1,
+      "iswap": 1,
+      "u": 1,
+      "cswap": 1,
+      "rz": 1,
+      "u2": 1
+    }
+  },
+  {
+    "circuit_id": "75a56995-7ae3-46f3-9c86-92611fab65ea",
+    "type": "random",
+    "n_qubits": 4,
+    "depth": 4,
+    "gate_counts": {
+      "measure": 4,
+      "rcccx": 1,
+      "iswap": 1,
+      "ry": 1,
+      "t": 1,
+      "c3sx": 1,
+      "tdg": 1,
+      "swap": 1
+    }
+  },
+  {
+    "circuit_id": "cfceb131-779b-4e70-bee8-5f48652b1f7f",
+    "type": "random",
+    "n_qubits": 2,
+    "depth": 5,
+    "gate_counts": {
+      "measure": 2,
+      "crx": 1,
+      "cx": 1,
+      "dcx": 1,
+      "cry": 1,
+      "cu1": 1
+    }
+  },
+  {
+    "circuit_id": "9e4d1082-b79b-45cc-b37a-3f4b9ee388e5",
+    "type": "random",
+    "n_qubits": 5,
+    "depth": 4,
+    "gate_counts": {
+      "measure": 5,
+      "c3sx": 2,
+      "cswap": 1,
+      "cx": 1,
+      "u1": 1,
+      "ry": 1,
+      "ryy": 1
+    }
+  },
+  {
+    "circuit_id": "caa173c4-116c-4f6d-aef8-5a7c6676eed6",
+    "type": "random",
+    "n_qubits": 2,
+    "depth": 3,
+    "gate_counts": {
+      "x": 2,
+      "measure": 2,
+      "y": 1,
+      "z": 1,
+      "p": 1,
+      "ry": 1
+    }
+  },
+  {
+    "circuit_id": "a4d6c08c-2c96-459c-afff-88b42f714e78",
+    "type": "random",
+    "n_qubits": 5,
+    "depth": 7,
+    "gate_counts": {
+      "measure": 5,
+      "rcccx": 4,
+      "c3sx": 3,
+      "id": 1,
+      "ry": 1
+    }
+  },
+  {
+    "circuit_id": "a3ef0ba9-9644-4cc4-920a-a024e391ca36",
+    "type": "random",
+    "n_qubits": 3,
+    "depth": 5,
+    "gate_counts": {
+      "measure": 3,
+      "rzz": 1,
+      "r": 1,
+      "cu3": 1,
+      "cp": 1,
+      "cswap": 1,
+      "rccx": 1
+    }
+  },
+  {
+    "circuit_id": "d31bb107-00e0-4163-8ccc-0e80f6a99cb3",
+    "type": "random",
+    "n_qubits": 2,
+    "depth": 5,
+    "gate_counts": {
+      "measure": 2,
+      "p": 1,
+      "sx": 1,
+      "sxdg": 1,
+      "sdg": 1,
+      "h": 1,
+      "u1": 1,
+      "rz": 1,
+      "z": 1,
+      "r": 1
+    }
+  },
+  {
+    "circuit_id": "9082db76-9139-45e7-9c65-68697d2344f7",
+    "type": "random",
+    "n_qubits": 3,
+    "depth": 6,
+    "gate_counts": {
+      "measure": 3,
+      "ccx": 2,
+      "sdg": 2,
+      "cu1": 1,
+      "s": 1,
+      "u": 1,
+      "ccz": 1,
+      "tdg": 1,
+      "crx": 1
+    }
+  },
+  {
+    "circuit_id": "29c73a19-dc58-4e14-9bfc-b41cd9260e5e",
+    "type": "random",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "id": 1,
+      "tdg": 1,
+      "sx": 1
+    }
+  },
+  {
+    "circuit_id": "824ea867-5a51-47a5-a896-a80021bdb86d",
+    "type": "random",
+    "n_qubits": 4,
+    "depth": 8,
+    "gate_counts": {
+      "measure": 4,
+      "rcccx": 2,
+      "rx": 1,
+      "rz": 1,
+      "u3": 1,
+      "c3sx": 1,
+      "tdg": 1,
+      "ccz": 1,
+      "ch": 1,
+      "cx": 1,
+      "rzz": 1,
+      "cp": 1,
+      "ecr": 1,
+      "xx_plus_yy": 1
+    }
+  },
+  {
+    "circuit_id": "c096a40f-14eb-495a-ac0d-44f488767127",
+    "type": "random",
+    "n_qubits": 5,
+    "depth": 5,
+    "gate_counts": {
+      "measure": 5,
+      "x": 2,
+      "cu3": 2,
+      "cs": 1,
+      "cp": 1,
+      "sx": 1,
+      "iswap": 1,
+      "xx_minus_yy": 1,
+      "sdg": 1,
+      "ryy": 1,
+      "ccz": 1,
+      "crx": 1,
+      "swap": 1
+    }
+  },
+  {
+    "circuit_id": "a172a286-8956-4ee6-b4b6-16418b7edcc2",
+    "type": "random",
+    "n_qubits": 5,
+    "depth": 8,
+    "gate_counts": {
+      "measure": 5,
+      "cry": 2,
+      "cx": 2,
+      "ecr": 1,
+      "dcx": 1,
+      "h": 1,
+      "ccz": 1,
+      "s": 1,
+      "y": 1,
+      "t": 1,
+      "cu3": 1,
+      "rxx": 1,
+      "c3sx": 1,
+      "cu": 1,
+      "ryy": 1,
+      "ccx": 1
+    }
+  },
+  {
+    "circuit_id": "c6a26744-0001-4ea4-baed-5092afd24c71",
+    "type": "random",
+    "n_qubits": 3,
+    "depth": 8,
+    "gate_counts": {
+      "measure": 3,
+      "h": 2,
+      "csdg": 2,
+      "ccz": 1,
+      "rzz": 1,
+      "t": 1,
+      "ccx": 1,
+      "cswap": 1,
+      "csx": 1,
+      "rz": 1,
+      "cu1": 1
+    }
+  },
+  {
+    "circuit_id": "df84af27-3fe0-4db0-bf20-25e59fedf095",
+    "type": "random",
+    "n_qubits": 4,
+    "depth": 5,
+    "gate_counts": {
+      "measure": 4,
+      "r": 1,
+      "ccz": 1,
+      "u": 1,
+      "csdg": 1,
+      "xx_minus_yy": 1,
+      "t": 1,
+      "rcccx": 1,
+      "p": 1,
+      "cy": 1
+    }
+  },
+  {
+    "circuit_id": "8b2aa30d-7a2e-429f-8579-85b7fba03b37",
+    "type": "random",
+    "n_qubits": 5,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 5,
+      "ccx": 2,
+      "cu": 1,
+      "ry": 1
+    }
+  },
+  {
+    "circuit_id": "4486dd31-ac6c-43e9-9921-18abcddaa70e",
+    "type": "random",
+    "n_qubits": 2,
+    "depth": 4,
+    "gate_counts": {
+      "cz": 2,
+      "measure": 2,
+      "ecr": 1,
+      "cp": 1
+    }
+  },
+  {
+    "circuit_id": "2d17eb42-1f82-4b9d-acc6-278964ccbd52",
+    "type": "random",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "z": 1,
+      "rx": 1,
+      "u1": 1,
+      "t": 1
+    }
+  },
+  {
+    "circuit_id": "a17bec41-3bfc-43d6-bbf9-00ffaef688a1",
+    "type": "random",
+    "n_qubits": 3,
+    "depth": 5,
+    "gate_counts": {
+      "measure": 3,
+      "cx": 1,
+      "t": 1,
+      "rccx": 1,
+      "sdg": 1,
+      "rzz": 1,
+      "cy": 1,
+      "crx": 1
+    }
+  },
+  {
+    "circuit_id": "f2048027-60fd-49bc-be5a-e0b7be2ccfcb",
+    "type": "random",
+    "n_qubits": 5,
+    "depth": 7,
+    "gate_counts": {
+      "measure": 5,
+      "rcccx": 2,
+      "rccx": 2,
+      "u2": 1,
+      "rzz": 1,
+      "u3": 1,
+      "cu": 1,
+      "ccz": 1,
+      "tdg": 1,
+      "u": 1,
+      "ccx": 1
+    }
+  },
+  {
+    "circuit_id": "cd780b3d-88c5-46db-abdc-fb15796e84f5",
+    "type": "random",
+    "n_qubits": 3,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 3,
+      "u": 1,
+      "rx": 1,
+      "z": 1,
+      "xx_plus_yy": 1,
+      "r": 1
+    }
+  },
+  {
+    "circuit_id": "50045e2c-74bd-46f1-a3c2-5160d6109915",
+    "type": "random",
+    "n_qubits": 2,
+    "depth": 3,
+    "gate_counts": {
+      "rxx": 2,
+      "measure": 2,
+      "cu1": 1
+    }
+  },
+  {
+    "circuit_id": "7e63e945-e493-452e-80e0-19984d59cc37",
+    "type": "random",
+    "n_qubits": 5,
+    "depth": 8,
+    "gate_counts": {
+      "measure": 5,
+      "c3sx": 2,
+      "rccx": 2,
+      "ccz": 2,
+      "sdg": 2,
+      "sx": 2,
+      "u2": 1,
+      "ecr": 1,
+      "ch": 1,
+      "cswap": 1,
+      "iswap": 1,
+      "x": 1,
+      "ccx": 1
+    }
+  },
+  {
+    "circuit_id": "080944c8-c0f6-467a-913e-a5d1c3a8bfe6",
+    "type": "random",
+    "n_qubits": 4,
+    "depth": 5,
+    "gate_counts": {
+      "measure": 4,
+      "u3": 2,
+      "ccz": 2,
+      "rccx": 1,
+      "y": 1,
+      "sdg": 1,
+      "rz": 1,
+      "id": 1,
+      "r": 1,
+      "u1": 1
+    }
+  },
+  {
+    "circuit_id": "d39af3a5-794f-4491-b1de-37a97d9c94ff",
+    "type": "random",
+    "n_qubits": 5,
+    "depth": 8,
+    "gate_counts": {
+      "measure": 5,
+      "c3sx": 3,
+      "ccz": 2,
+      "ccx": 2,
+      "ch": 1,
+      "cswap": 1,
+      "z": 1,
+      "u": 1,
+      "p": 1,
+      "tdg": 1
+    }
+  },
+  {
+    "circuit_id": "05f11a57-6cab-4d07-b2c1-8ea2d27c2025",
+    "type": "random",
+    "n_qubits": 3,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 3,
+      "ry": 1,
+      "cry": 1,
+      "cp": 1,
+      "rz": 1
+    }
+  },
+  {
+    "circuit_id": "bcf10e4b-cfc6-4236-8959-ea7763ab1da9",
+    "type": "random",
+    "n_qubits": 3,
+    "depth": 5,
+    "gate_counts": {
+      "measure": 3,
+      "u3": 2,
+      "cx": 2,
+      "xx_plus_yy": 1,
+      "p": 1,
+      "ch": 1,
+      "u2": 1,
+      "r": 1,
+      "s": 1
+    }
+  },
+  {
+    "circuit_id": "8e9239b7-c2c8-4b18-abc8-b9289f6da324",
+    "type": "random",
+    "n_qubits": 3,
+    "depth": 7,
+    "gate_counts": {
+      "measure": 3,
+      "cu1": 1,
+      "sdg": 1,
+      "rx": 1,
+      "csx": 1,
+      "h": 1,
+      "swap": 1,
+      "z": 1,
+      "u1": 1,
+      "cry": 1,
+      "ccx": 1,
+      "csdg": 1,
+      "u": 1
+    }
+  },
+  {
+    "circuit_id": "a644183c-ba7a-4201-acfa-b2d14bbf2e95",
+    "type": "random",
+    "n_qubits": 3,
+    "depth": 5,
+    "gate_counts": {
+      "measure": 3,
+      "iswap": 2,
+      "rx": 1,
+      "u2": 1,
+      "tdg": 1,
+      "u1": 1,
+      "z": 1,
+      "id": 1,
+      "ccz": 1
+    }
+  },
+  {
+    "circuit_id": "292fcdb9-7ed4-49bd-b59f-4fbc241125d9",
+    "type": "random",
+    "n_qubits": 2,
+    "depth": 8,
+    "gate_counts": {
+      "u3": 3,
+      "z": 2,
+      "u": 2,
+      "x": 2,
+      "measure": 2,
+      "p": 1,
+      "rx": 1,
+      "sx": 1,
+      "h": 1,
+      "u2": 1,
+      "sdg": 1,
+      "r": 1
+    }
+  },
+  {
+    "circuit_id": "90941553-baba-44f1-b012-27e7942fc67d",
+    "type": "random",
+    "n_qubits": 3,
+    "depth": 5,
+    "gate_counts": {
+      "measure": 3,
+      "ccz": 2,
+      "rccx": 1,
+      "cz": 1,
+      "sdg": 1,
+      "id": 1,
+      "rxx": 1
+    }
+  },
+  {
+    "circuit_id": "f5f44c01-e989-4e50-980d-d7e8561c647e",
+    "type": "random",
+    "n_qubits": 3,
+    "depth": 7,
+    "gate_counts": {
+      "measure": 3,
+      "cswap": 2,
+      "ccz": 2,
+      "ry": 1,
+      "cy": 1,
+      "rccx": 1,
+      "ccx": 1
+    }
+  },
+  {
+    "circuit_id": "d04ba618-5652-4ae4-b25f-df0ed3cdc8d7",
+    "type": "random",
+    "n_qubits": 3,
+    "depth": 8,
+    "gate_counts": {
+      "measure": 3,
+      "cs": 1,
+      "sdg": 1,
+      "csdg": 1,
+      "rccx": 1,
+      "rzx": 1,
+      "id": 1,
+      "csx": 1,
+      "z": 1,
+      "x": 1,
+      "sxdg": 1,
+      "h": 1,
+      "u3": 1,
+      "crz": 1,
+      "ccx": 1
+    }
+  },
+  {
+    "circuit_id": "2cc1c5a0-2152-465f-865d-d388d6af4e44",
+    "type": "random",
+    "n_qubits": 4,
+    "depth": 7,
+    "gate_counts": {
+      "measure": 4,
+      "rccx": 2,
+      "ccz": 2,
+      "sx": 1,
+      "h": 1,
+      "rcccx": 1,
+      "ccx": 1,
+      "c3sx": 1
+    }
+  },
+  {
+    "circuit_id": "c4aa3324-df34-4c4d-89bd-bbb7351fbed9",
+    "type": "random",
+    "n_qubits": 5,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 5,
+      "c3sx": 1,
+      "id": 1,
+      "rx": 1,
+      "rcccx": 1
+    }
+  },
+  {
+    "circuit_id": "8070bc80-2220-495f-80b6-46ee0f21c33a",
+    "type": "random",
+    "n_qubits": 5,
+    "depth": 6,
+    "gate_counts": {
+      "measure": 5,
+      "ccz": 2,
+      "cswap": 2,
+      "ccx": 1,
+      "cp": 1,
+      "rx": 1,
+      "h": 1,
+      "rz": 1,
+      "sdg": 1,
+      "rcccx": 1
+    }
+  },
+  {
+    "circuit_id": "cbc4c15a-d661-47b9-96bc-1eb3a9b13a1f",
+    "type": "random",
+    "n_qubits": 2,
+    "depth": 3,
+    "gate_counts": {
+      "measure": 2,
+      "s": 1,
+      "cp": 1,
+      "swap": 1
+    }
+  },
+  {
+    "circuit_id": "96af64ee-8f94-49b3-ad51-7fd826a2111f",
+    "type": "bell",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "h": 1,
+      "cx": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "7ff72dbf-7170-4be3-bb76-973ece175add",
+    "type": "bell",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "h": 1,
+      "cx": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "4b9357ae-fa48-454c-ab28-4ad8eac1d0ac",
+    "type": "bell",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "h": 1,
+      "cx": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "0888f876-2f59-4408-bf02-cedac2d3510e",
+    "type": "bell",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "h": 1,
+      "cx": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "d0a31003-5c41-41d2-8bc4-2d13bb08a468",
+    "type": "bell",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "h": 1,
+      "cx": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "0db9eb8b-0b8c-4112-a793-8e87c483aa48",
+    "type": "bell",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "h": 1,
+      "cx": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "6905fcaa-a2ff-46cf-afa4-64fe5e0420ea",
+    "type": "bell",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "h": 1,
+      "cx": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "4a933175-6887-417b-af08-84a4863b4164",
+    "type": "bell",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "h": 1,
+      "cx": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "f593d8f8-9f98-4d95-ae4e-00cd394fd49e",
+    "type": "bell",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "h": 1,
+      "cx": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "d94f54bb-d2f9-4788-a480-3264be5dc612",
+    "type": "bell",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "h": 1,
+      "cx": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "b5124c13-e8a8-46ef-b638-9b92e8dd5be2",
+    "type": "bell",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "h": 1,
+      "cx": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "ce34091a-8a24-4790-be6f-7fe74e6af0f6",
+    "type": "bell",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "h": 1,
+      "cx": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "4a7d1e6e-dd08-4fb6-bc74-ea4fc034a1ad",
+    "type": "bell",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "h": 1,
+      "cx": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "8c4741b3-b4ef-469f-b7ea-f39ef3459538",
+    "type": "bell",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "h": 1,
+      "cx": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "4b12c61f-97ce-46d8-91f9-7241d9b14923",
+    "type": "bell",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "h": 1,
+      "cx": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "2b6542f8-bce4-48bb-b644-f1bfecffebe5",
+    "type": "ghz",
+    "n_qubits": 3,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 3,
+      "cx": 2,
+      "h": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "f3c4efaa-9f3d-4227-aa49-5a0a2a2ca5fe",
+    "type": "ghz",
+    "n_qubits": 3,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 3,
+      "cx": 2,
+      "h": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "b1c95b55-8a48-41e0-bd6c-b0b623149fd7",
+    "type": "ghz",
+    "n_qubits": 3,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 3,
+      "cx": 2,
+      "h": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "63c8fd6c-9243-43a5-8bdf-6662e32ca30b",
+    "type": "ghz",
+    "n_qubits": 3,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 3,
+      "cx": 2,
+      "h": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "9fbf1487-43cf-4d17-aaba-45192ab585c6",
+    "type": "ghz",
+    "n_qubits": 3,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 3,
+      "cx": 2,
+      "h": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "d5d2ba20-3999-45f9-bd10-be897e497a51",
+    "type": "ghz",
+    "n_qubits": 4,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 4,
+      "cx": 3,
+      "h": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "78c31c8e-e9a7-4dfd-8bcf-d3c79eee07e0",
+    "type": "ghz",
+    "n_qubits": 4,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 4,
+      "cx": 3,
+      "h": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "095e5549-7e5f-4a3a-aa27-03aa0bb3fcbb",
+    "type": "ghz",
+    "n_qubits": 4,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 4,
+      "cx": 3,
+      "h": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "eddc5898-8726-4ea2-8c84-1665ddcbd331",
+    "type": "ghz",
+    "n_qubits": 4,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 4,
+      "cx": 3,
+      "h": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "82b09adc-d6ff-43dc-aceb-3406184c7bd7",
+    "type": "ghz",
+    "n_qubits": 4,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 4,
+      "cx": 3,
+      "h": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "a5013c52-adfa-4107-9c11-26c989e2f722",
+    "type": "ghz",
+    "n_qubits": 5,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 5,
+      "cx": 4,
+      "h": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "52470907-fbdd-432a-8e18-3b5105d8d1aa",
+    "type": "ghz",
+    "n_qubits": 5,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 5,
+      "cx": 4,
+      "h": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "f9ad80e2-d549-475b-8b14-0cbc772b075b",
+    "type": "ghz",
+    "n_qubits": 5,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 5,
+      "cx": 4,
+      "h": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "6dfa79ef-0457-4ccc-a1bf-18fafb61d96a",
+    "type": "ghz",
+    "n_qubits": 5,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 5,
+      "cx": 4,
+      "h": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "deddaf49-85fa-4442-8f82-9ac5191625cb",
+    "type": "ghz",
+    "n_qubits": 5,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 5,
+      "cx": 4,
+      "h": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "f4a301ac-c83c-474c-9ab3-835d98ecec0a",
+    "type": "qft",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "QFT": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "8c9992e9-c534-4042-9511-e9951ef1de41",
+    "type": "qft",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "QFT": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "e44d2467-adb0-459b-9e3f-0df5e8464bfe",
+    "type": "qft",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "QFT": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "ed4f3893-eee4-4a21-8707-46bb9791dabc",
+    "type": "qft",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "QFT": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "22cffdc2-9251-4ca7-89e9-53075f76846b",
+    "type": "qft",
+    "n_qubits": 2,
+    "depth": 2,
+    "gate_counts": {
+      "measure": 2,
+      "QFT": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "06004c27-00b5-4b01-a98a-18b2ae696d93",
+    "type": "qft",
+    "n_qubits": 3,
+    "depth": 3,
+    "gate_counts": {
+      "measure": 3,
+      "QFT": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "0cb00017-e384-472b-ae2f-902b5c9a4e05",
+    "type": "qft",
+    "n_qubits": 3,
+    "depth": 3,
+    "gate_counts": {
+      "measure": 3,
+      "QFT": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "92dca207-c785-4b4e-a321-d37d2e85737d",
+    "type": "qft",
+    "n_qubits": 3,
+    "depth": 3,
+    "gate_counts": {
+      "measure": 3,
+      "QFT": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "eaa42bf4-0693-483e-a3c9-08469d1e5451",
+    "type": "qft",
+    "n_qubits": 3,
+    "depth": 3,
+    "gate_counts": {
+      "measure": 3,
+      "QFT": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "2503285f-5580-47ae-9e13-2658057c5339",
+    "type": "qft",
+    "n_qubits": 3,
+    "depth": 3,
+    "gate_counts": {
+      "measure": 3,
+      "QFT": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "798d6580-3f3d-4009-8f70-eaef35d56fe7",
+    "type": "qft",
+    "n_qubits": 4,
+    "depth": 4,
+    "gate_counts": {
+      "measure": 4,
+      "QFT": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "f73188df-c06c-4ad4-a025-f4c3b2b3887a",
+    "type": "qft",
+    "n_qubits": 4,
+    "depth": 4,
+    "gate_counts": {
+      "measure": 4,
+      "QFT": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "18b62505-a7dd-410c-852d-a72450745a9e",
+    "type": "qft",
+    "n_qubits": 4,
+    "depth": 4,
+    "gate_counts": {
+      "measure": 4,
+      "QFT": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "62f0506b-eea6-46e3-bf4f-3130fc6368d8",
+    "type": "qft",
+    "n_qubits": 4,
+    "depth": 4,
+    "gate_counts": {
+      "measure": 4,
+      "QFT": 1,
+      "barrier": 1
+    }
+  },
+  {
+    "circuit_id": "1ffe5c59-bcc0-462b-a75b-cf3756843267",
+    "type": "qft",
+    "n_qubits": 4,
+    "depth": 4,
+    "gate_counts": {
+      "measure": 4,
+      "QFT": 1,
+      "barrier": 1
+    }
+  }
+]

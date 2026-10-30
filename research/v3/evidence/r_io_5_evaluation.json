@@ -1,0 +1,299 @@
+{
+  "schema_version": "1.0",
+  "dataset_id": "r-io-5",
+  "dataset_sha256": "8069ad5025d34ee18e8e8005b9e3381175328e76c19d2f7608ed54a5bd2012a3",
+  "circuit_digest": "147359e49845af6657ac162a2c8cc83b0225bcebe1aaa726aceb044bed91e862",
+  "model": {
+    "kind": "device-mean calibration, no physical layout",
+    "backends": {
+      "A": {
+        "backend": "ibm_fez",
+        "captured_at": "2026-04-17 13:19:59.772879",
+        "num_qubits": 156,
+        "num_operational_edges": 171,
+        "cx_error_median": 0.002720653278637769,
+        "cx_error_mean": 0.0045034118263795895,
+        "readout_error_median": 0.014892578125,
+        "readout_error_mean": 0.028497940454727564,
+        "two_qubit_depolarizing_parameter": 0.0036275377048503588
+      },
+      "B": {
+        "backend": "ibm_marrakesh",
+        "captured_at": "2026-04-17 13:20:01.201961",
+        "num_qubits": 156,
+        "num_operational_edges": 167,
+        "cx_error_median": 0.0026128417322314745,
+        "cx_error_mean": 0.005099140429088375,
+        "readout_error_median": 0.014892578125,
+        "readout_error_mean": 0.033530210837339744,
+        "two_qubit_depolarizing_parameter": 0.0034837889763086327
+      }
+    },
+    "one_qubit_gate_error": "not published in this record; modelled as 0",
+    "shots_are_not_resampled_for_the_model": true
+  },
+  "hypothesis": {
+    "id": "H-V3-1",
+    "statement": "On reconstructible circuits, the device-mean noisy prediction has a smaller total-variation distance to the real counts than the ideal distribution, with a median paired difference below 0 and a 95% bootstrap interval excluding 0."
+  },
+  "aggregate": {
+    "n_circuits": 14,
+    "median_delta_tv": -0.01565963464064987,
+    "ci95_low": -0.03254568706028496,
+    "ci95_high": 0.0,
+    "bootstrap_samples": 5000,
+    "bootstrap_seed": 20261030,
+    "verdict": "INCONCLUSIVE",
+    "by_backend": {
+      "A": {
+        "n": 7,
+        "median_delta_tv": -0.03104890965373769,
+        "mean_delta_tv": -0.028067640277619373,
+        "ci95_low": -0.0541817477009075,
+        "ci95_high": 0.0,
+        "n_noisy_better": 4,
+        "median_tv_ideal": 0.17578125,
+        "median_tv_noisy": 0.1447323403462623
+      },
+      "B": {
+        "n": 7,
+        "median_delta_tv": -0.014196873447966385,
+        "mean_delta_tv": -0.011802971430619428,
+        "ci95_low": -0.018755843672751307,
+        "ci95_high": 0.0,
+        "n_noisy_better": 4,
+        "median_tv_ideal": 0.04257812500000001,
+        "median_tv_noisy": 0.0341796875
+      }
+    },
+    "by_family": {
+      "bell": {
+        "n": 2,
+        "median_delta_tv": -0.02408565274353552,
+        "mean_delta_tv": -0.02408565274353552,
+        "ci95_low": -0.03104890965373769,
+        "ci95_high": -0.017122395833333352,
+        "n_noisy_better": 2,
+        "median_tv_ideal": 0.10078125000000002,
+        "median_tv_noisy": 0.07669559725646449
+      },
+      "ghz": {
+        "n": 6,
+        "median_delta_tv": -0.0381166172379922,
+        "mean_delta_tv": -0.0384871627451001,
+        "ci95_low": -0.06086851243694924,
+        "ci95_high": -0.016476358560358846,
+        "n_noisy_better": 6,
+        "median_tv_ideal": 0.13271484374999998,
+        "median_tv_noisy": 0.09459822651200779
+      },
+      "qft": {
+        "n": 6,
+        "median_delta_tv": 0.0,
+        "mean_delta_tv": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0,
+        "n_noisy_better": 0,
+        "median_tv_ideal": 0.06464843750000002,
+        "median_tv_noisy": 0.06464843750000002
+      }
+    },
+    "exploratory_identifiable": {
+      "families": [
+        "bell",
+        "ghz"
+      ],
+      "n": 8,
+      "median_delta_tv": -0.031797298357011325,
+      "ci95_low": -0.0541817477009075,
+      "ci95_high": -0.017122395833333352,
+      "n_noisy_better": 8,
+      "verdict": "SUPPORTED",
+      "note": "not preregistered; QFT on the zero state is invariant under unital noise, so the pooled test includes six structurally uninformative circuits"
+    }
+  },
+  "circuits": [
+    {
+      "circuit_id": "96af64ee-8f94-49b3-ad51-7fd826a2111f",
+      "backend": "A",
+      "family": "bell",
+      "num_qubits": 2,
+      "shots": 15360,
+      "executions": 15,
+      "tv_ideal": 0.17578125,
+      "tv_noisy": 0.1447323403462623,
+      "delta_tv": -0.03104890965373769,
+      "exact_gate_sequence": true,
+      "reconstruction_note": "standard Bell pair H(0); CX(0,1)"
+    },
+    {
+      "circuit_id": "2b6542f8-bce4-48bb-b644-f1bfecffebe5",
+      "backend": "A",
+      "family": "ghz",
+      "num_qubits": 3,
+      "shots": 5120,
+      "executions": 5,
+      "tv_ideal": 0.19511718749999998,
+      "tv_noisy": 0.15142964008430054,
+      "delta_tv": -0.04368754741569944,
+      "exact_gate_sequence": true,
+      "reconstruction_note": "standard GHZ H(0); CX chain"
+    },
+    {
+      "circuit_id": "d5d2ba20-3999-45f9-bd10-be897e497a51",
+      "backend": "A",
+      "family": "ghz",
+      "num_qubits": 4,
+      "shots": 5120,
+      "executions": 5,
+      "tv_ideal": 0.247265625,
+      "tv_noisy": 0.1930838772990925,
+      "delta_tv": -0.0541817477009075,
+      "exact_gate_sequence": true,
+      "reconstruction_note": "standard GHZ H(0); CX chain"
+    },
+    {
+      "circuit_id": "a5013c52-adfa-4107-9c11-26c989e2f722",
+      "backend": "A",
+      "family": "ghz",
+      "num_qubits": 5,
+      "shots": 5120,
+      "executions": 5,
+      "tv_ideal": 0.25859375000000007,
+      "tv_noisy": 0.1910384728270091,
+      "delta_tv": -0.06755527717299098,
+      "exact_gate_sequence": true,
+      "reconstruction_note": "standard GHZ H(0); CX chain"
+    },
+    {
+      "circuit_id": "f4a301ac-c83c-474c-9ab3-835d98ecec0a",
+      "backend": "A",
+      "family": "qft",
+      "num_qubits": 2,
+      "shots": 5120,
+      "executions": 5,
+      "tv_ideal": 0.06660156250000003,
+      "tv_noisy": 0.06660156250000003,
+      "delta_tv": 0.0,
+      "exact_gate_sequence": false,
+      "reconstruction_note": "canonical QFT decomposition; the published gate is a single opaque 'QFT' operation, so the exact decomposition is not verified"
+    },
+    {
+      "circuit_id": "06004c27-00b5-4b01-a98a-18b2ae696d93",
+      "backend": "A",
+      "family": "qft",
+      "num_qubits": 3,
+      "shots": 5120,
+      "executions": 5,
+      "tv_ideal": 0.06269531250000002,
+      "tv_noisy": 0.06269531250000002,
+      "delta_tv": 0.0,
+      "exact_gate_sequence": false,
+      "reconstruction_note": "canonical QFT decomposition; the published gate is a single opaque 'QFT' operation, so the exact decomposition is not verified"
+    },
+    {
+      "circuit_id": "798d6580-3f3d-4009-8f70-eaef35d56fe7",
+      "backend": "A",
+      "family": "qft",
+      "num_qubits": 4,
+      "shots": 5120,
+      "executions": 5,
+      "tv_ideal": 0.09785156249999999,
+      "tv_noisy": 0.09785156249999999,
+      "delta_tv": 0.0,
+      "exact_gate_sequence": false,
+      "reconstruction_note": "canonical QFT decomposition; the published gate is a single opaque 'QFT' operation, so the exact decomposition is not verified"
+    },
+    {
+      "circuit_id": "96af64ee-8f94-49b3-ad51-7fd826a2111f",
+      "backend": "B",
+      "family": "bell",
+      "num_qubits": 2,
+      "shots": 15360,
+      "executions": 15,
+      "tv_ideal": 0.02578125000000002,
+      "tv_noisy": 0.008658854166666669,
+      "delta_tv": -0.017122395833333352,
+      "exact_gate_sequence": true,
+      "reconstruction_note": "standard Bell pair H(0); CX(0,1)"
+    },
+    {
+      "circuit_id": "2b6542f8-bce4-48bb-b644-f1bfecffebe5",
+      "backend": "B",
+      "family": "ghz",
+      "num_qubits": 3,
+      "shots": 5120,
+      "executions": 5,
+      "tv_ideal": 0.03378906250000001,
+      "tv_noisy": 0.019592189052033623,
+      "delta_tv": -0.014196873447966385,
+      "exact_gate_sequence": true,
+      "reconstruction_note": "standard GHZ H(0); CX chain"
+    },
+    {
+      "circuit_id": "d5d2ba20-3999-45f9-bd10-be897e497a51",
+      "backend": "B",
+      "family": "ghz",
+      "num_qubits": 4,
+      "shots": 5120,
+      "executions": 5,
+      "tv_ideal": 0.052734375,
+      "tv_noisy": 0.03397853132724869,
+      "delta_tv": -0.018755843672751307,
+      "exact_gate_sequence": true,
+      "reconstruction_note": "standard GHZ H(0); CX chain"
+    },
+    {
+      "circuit_id": "a5013c52-adfa-4107-9c11-26c989e2f722",
+      "backend": "B",
+      "family": "ghz",
+      "num_qubits": 5,
+      "shots": 5120,
+      "executions": 5,
+      "tv_ideal": 0.0703125,
+      "tv_noisy": 0.03776681293971504,
+      "delta_tv": -0.03254568706028496,
+      "exact_gate_sequence": true,
+      "reconstruction_note": "standard GHZ H(0); CX chain"
+    },
+    {
+      "circuit_id": "f4a301ac-c83c-474c-9ab3-835d98ecec0a",
+      "backend": "B",
+      "family": "qft",
+      "num_qubits": 2,
+      "shots": 5120,
+      "executions": 5,
+      "tv_ideal": 0.04257812500000001,
+      "tv_noisy": 0.04257812500000001,
+      "delta_tv": 0.0,
+      "exact_gate_sequence": false,
+      "reconstruction_note": "canonical QFT decomposition; the published gate is a single opaque 'QFT' operation, so the exact decomposition is not verified"
+    },
+    {
+      "circuit_id": "06004c27-00b5-4b01-a98a-18b2ae696d93",
+      "backend": "B",
+      "family": "qft",
+      "num_qubits": 3,
+      "shots": 5120,
+      "executions": 5,
+      "tv_ideal": 0.0341796875,
+      "tv_noisy": 0.0341796875,
+      "delta_tv": 0.0,
+      "exact_gate_sequence": false,
+      "reconstruction_note": "canonical QFT decomposition; the published gate is a single opaque 'QFT' operation, so the exact decomposition is not verified"
+    },
+    {
+      "circuit_id": "798d6580-3f3d-4009-8f70-eaef35d56fe7",
+      "backend": "B",
+      "family": "qft",
+      "num_qubits": 4,
+      "shots": 5120,
+      "executions": 5,
+      "tv_ideal": 0.0685546875,
+      "tv_noisy": 0.0685546875,
+      "delta_tv": 0.0,
+      "exact_gate_sequence": false,
+      "reconstruction_note": "canonical QFT decomposition; the published gate is a single opaque 'QFT' operation, so the exact decomposition is not verified"
+    }
+  ]
+}

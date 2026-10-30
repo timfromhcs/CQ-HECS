@@ -61,6 +61,25 @@ cq-hecs verify name:bell --reference aer
 cq-hecs benchmark smoke
 ```
 
+### Real-data reference evaluation (experimental)
+
+`reference` compares a noisy CQ-HECS prediction with *measured* bitstrings from
+a pinned public dataset. It is not a claim that the emulator matches a QPU.
+
+```bash
+cq-hecs reference list
+cq-hecs --format json reference run --bootstrap 5000
+```
+
+The default record is R-IO-5 (Quantum Noise Transfer, MIT): real 2–5 qubit
+counts from `ibm_fez` and `ibm_marrakesh` plus run-time calibration. Bell, GHZ
+and QFT circuits are reconstructed; the 40 random circuits are excluded because
+their gate sequences are not published. The published layout is missing, so the
+model is a device-mean model. The preregistered pooled H-V3-1 result on
+2026-10-30 is `INCONCLUSIVE` (median ΔTV −0.015660, 95 % CI
+[−0.032546, 0.000000]); the Bell+GHZ subset is exploratory `SUPPORTED`. See
+`research/v3/HYPOTHESES.md`.
+
 ### Circuits
 
 A circuit argument is one of:

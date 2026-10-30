@@ -444,6 +444,43 @@ def check_noisy_truncation_bound() -> bool:
     return res.error_bound < math.sin(0.3) - 1e-12
 
 
+def check_reference_hash_bypass() -> bool:
+    """A corrupted pinned file must be rejected by verify_dataset."""
+    import shutil
+    import tempfile
+    from pathlib import Path
+
+    from cqhecs.reference import IntegrityError, dataset, verify_dataset
+
+    root = REPO_ROOT / "tests" / "data" / "quantum_noise_transfer"
+    with tempfile.TemporaryDirectory() as temporary:
+        target = Path(temporary)
+        for entry in dataset("r-io-5").files:
+            shutil.copy(root / Path(entry.path).name, target / Path(entry.path).name)
+        victim = target / "noisy_A.json"
+        payload = bytearray(victim.read_bytes())
+        payload[10] ^= 0x01
+        victim.write_bytes(payload)
+        try:
+            verify_dataset(dataset("r-io-5"), target)
+        except IntegrityError:
+            return False
+        return True
+
+
+def check_reference_verdict_suppression() -> bool:
+    """The preregistered pooled H-V3-1 verdict is INCONCLUSIVE on the fixture."""
+    from cqhecs.reference import evaluate
+
+    result = evaluate(
+        REPO_ROOT / "tests" / "data" / "quantum_noise_transfer",
+        backends=("A",),
+        bootstrap_samples=100,
+        seed=7,
+    )
+    return result.aggregate["verdict"] != "INCONCLUSIVE"
+
+
 CHECKS: Dict[str, Callable[[], bool]] = {
     "qubit_bit_order": check_qubit_bit_order,
     "cz_conjugation": check_cz_conjugation,
@@ -476,6 +513,8 @@ CHECKS: Dict[str, Callable[[], bool]] = {
     "noisy_channels_applied": check_noisy_channels_applied,
     "noisy_two_qubit_operand_order": check_noisy_two_qubit_operand_order,
     "noisy_truncation_bound": check_noisy_truncation_bound,
+    "reference_hash_bypass": check_reference_hash_bypass,
+    "reference_verdict_suppression": check_reference_verdict_suppression,
 }
 
 
@@ -789,6 +828,36 @@ MUTANTS: List[SourceMutant] = [
         ),
         check="noisy_truncation_bound",
         mechanism="drops Pauli terms after a gate without adding them to the certified bound",
+    ),
+    SourceMutant(
+        name="Reference dataset hash check bypassed",
+        target="cqhecs/reference.py",
+        original=(
+            "        actual = _sha256(candidate)\n"
+            "        if actual != entry.sha256:\n"
+            "            raise IntegrityError(\n"
+            "                f\"{candidate} has SHA-256 {actual}, expected {entry.sha256}\"\n"
+            "            )\n"
+        ),
+        replacement=(
+            "        actual = _sha256(candidate)\n"
+            "        if False:\n"
+            "            raise IntegrityError(\n"
+            "                f\"{candidate} has SHA-256 {actual}, expected {entry.sha256}\"\n"
+            "            )\n"
+        ),
+        check="reference_hash_bypass",
+        mechanism="accepts a corrupted real-data file whose pinned digest does not match",
+    ),
+    SourceMutant(
+        name="Reference verdict always SUPPORTED",
+        target="cqhecs/reference.py",
+        original=(
+            '        "verdict": "SUPPORTED" if high < 0.0 else ("REJECTED" if low > 0.0 else "INCONCLUSIVE"),\n'
+        ),
+        replacement='        "verdict": "SUPPORTED",\n',
+        check="reference_verdict_suppression",
+        mechanism="turns an inconclusive pooled H-V3-1 interval into a success claim",
     ),
 ]
 

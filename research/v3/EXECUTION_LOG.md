@@ -69,3 +69,47 @@ was found that commits real raw counts.
   this circuit; this is not a performance result.
 - Mutants 28â€“31 (readout phase, skipped channels, swapped two-qubit operands,
   bound suppression) killed: 31/31.
+
+## E-V3-04 Real I/O, dataset expansion and H-V3-1 (2026-10-30)
+
+- Re-tested the network boundary from this environment. `huggingface.co` and
+  `raw.githubusercontent.com` are reachable; `datadryad.org` serves metadata
+  (`/api/v2/...` 200) but file payloads return 401 (bearer token required) and
+  `stash/downloads/file_stream` returns 403; `zenodo.org` returns 403
+  (Cloudflare) for API and record pages. B-NET is therefore **partial**, not
+  total.
+- Admitted R-IO-5 (Quantum Noise Transfer, MIT): 5 raw JSON files vendored
+  under `tests/data/quantum_noise_transfer/` with SHA-256 pins; combined
+  digest `8069ad5025d34ee18e8e8005b9e3381175328e76c19d2f7608ed54a5bd2012a3`.
+  Verified 170 real executions (85 per backend), 2-5 qubits, 1024 shots each.
+- Registered R-IO-6 (BlueQubit `rcs-nighthawk`, Apache-2.0, revision
+  `b9dd86b`): 233 QASM/QPY circuits, 61 logical qubits, raw bitstrings and
+  mirror survival counts. Four small files pinned; not evaluated because the
+  smallest patched circuit is 20 qubits, above the exact density-matrix ceiling.
+- Corrected the dataset reading: the upstream README says 8192 shots but every
+  `raw_counts` block sums to 1024. The harness uses the raw counts.
+- Implemented `cqhecs/reference.py`: registry + SHA-256 verification, Bell/GHZ/
+  QFT reconstruction, device-mean calibration, unital-noise model, TV metric,
+  two-level bootstrap, typed failures. Added `cq-hecs reference list|run` and
+  `scripts/run_reference_evaluation.py`.
+- Preregistered H-V3-1 (pooled unique circuits, median paired ?TV, 95 % CI).
+  Result on 14 unique circuits: median ?TV = -0.015660, CI
+  [-0.032546, 0.000000], **INCONCLUSIVE**. Bell (n=2) and GHZ (n=6) are
+  negative with CIs excluding 0; QFT (n=6) is exactly 0 because QFT on
+  `|0...0>` is maximally mixed and the model is unital (H-V3-2).
+- Exploratory (not preregistered): Bell+GHZ n=8, median ?TV = -0.031797,
+  CI [-0.054182, -0.017122], 8/8 better.
+- Added 28 tests (`tests/test_reference.py`, `tests/test_cli_reference.py`):
+  registry, integrity/corruption, reconstruction, model, metrics, evaluation
+  contract, CLI JSON. Full suite and gates recorded in TEST_MATRIX.md.
+- Added `research/v3/DATASETS.md`, `HYPOTHESES.md` and
+  `COMPLEXITY_BOUNDARY.md`. The P versus NP item remains `BLOCKED — open
+  problem`; no proof is claimed.
+- Local baseline note: the checked-out tree initially failed 12 tests because
+  `build/bin/Release/cq_hecs.dll` was still the 2.5.0 build (CLI reported
+  2.5.0, Path A SWAP trials failed). `cmake --build build --config Release`
+  rebuilt the 2.5.2 native library; the 12 failures disappeared. This is a
+  stale-artifact issue, not a source regression.
+- Gates after the change: flake8 E9/F clean; version consistency 2.5.2;
+  silent-truncation audit PASS; pytest 540 passed / 4 skipped; coverage 88 %;
+  mutation 33/33; CTest 19/19.
