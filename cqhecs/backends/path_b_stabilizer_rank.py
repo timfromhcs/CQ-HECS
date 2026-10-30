@@ -72,20 +72,17 @@ class StabilizerRankSimulator:
         branch_clifford: List[str] = []
 
         for idx, (name, qubits, params) in enumerate(instructions):
-            if name == "t":
+            if name in ("t", "tdg"):
                 t_indices.append(idx)
-                # T = c0*I + c1*Z
-                # c0 = (1 + exp(i*pi/4)) / 2, c1 = (exp(i*pi/4) - 1) / 2
-                e_pi4 = cmath.exp(1j * math.pi / 4.0)
-                c0 = (1.0 + e_pi4) / 2.0
-                c1 = (e_pi4 - 1.0) / 2.0
-                decomposition_coeffs.append((c0, c1))
-                branch_clifford.append("z")
-            elif name == "tdg":
-                t_indices.append(idx)
-                e_mpi4 = cmath.exp(-1j * math.pi / 4.0)
-                c0 = (1.0 + e_mpi4) / 2.0
-                c1 = (e_mpi4 - 1.0) / 2.0
+                # diag(1, w) = c0*I + c1*Z with c0 + c1 = 1 (|0> entry) and
+                # c0 - c1 = w (|1> entry): c0 = (1 + w)/2, c1 = (1 - w)/2.
+                # w = exp(+i*pi/4) for T and exp(-i*pi/4) for Tdg. Swapping
+                # the sign of c1 yields diag(w, 1), i.e. the adjoint gate up
+                # to a global phase (CQ-V252-01).
+                sign = 1.0 if name == "t" else -1.0
+                w = cmath.exp(sign * 1j * math.pi / 4.0)
+                c0 = (1.0 + w) / 2.0
+                c1 = (1.0 - w) / 2.0
                 decomposition_coeffs.append((c0, c1))
                 branch_clifford.append("z")
             elif name in ("rz", "p", "u1") and params:

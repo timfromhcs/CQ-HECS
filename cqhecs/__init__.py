@@ -7,7 +7,7 @@ D) Certified Classical Approximation (Sparse-Pauli-Dynamics) with proven error b
 Hardware-Aware Quantum Bridge: Truthful backend profiles, Kraus noise models, and provider boundaries
 """
 
-__version__ = "2.5.1"
+__version__ = "2.5.2"
 
 from cqhecs.backend import CQHecsBackend
 from cqhecs.provider import (
@@ -40,6 +40,7 @@ from cqhecs.hardware_bridge import (
     InvalidTopologyError,
     create_fake_manila_profile,
     create_linear_profile,
+    depolarizing_parameter_from_infidelity,
 )
 from cqhecs.backends.noisy_density_matrix import NoisyDensityMatrixBackend
 from cqhecs.circuit_analyzer import (
@@ -91,6 +92,7 @@ __all__ = [
     "RealHardwareBackend",
     "create_fake_manila_profile",
     "create_linear_profile",
+    "depolarizing_parameter_from_infidelity",
     "NoisyDensityMatrixBackend",
     "HardwareBridgeError",
     "HardwareAuthorizationRequiredError",

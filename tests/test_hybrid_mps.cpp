@@ -109,6 +109,36 @@ void test_qft_phase_estimation_exact() {
     std::cout << ">>> PASS: QFT & Phase Reconstruction verified bit-exact with fidelity F == 1.0.\n\n";
 }
 
+// CQ-V252-03: in tableau mode apply_swap applied the SWAP to the tableau twice
+// (once directly, once through three HybridEngine::apply_cx calls), so it was
+// the identity. X on qubit 0 followed by SWAP(0, 1) must leave qubit 1 set.
+// sample_counts renders qubit 0 leftmost.
+void test_swap_in_tableau_mode() {
+    std::cout << "  [SWAP] tableau and statevector modes\n";
+    for (uint32_t order = 0; order < 2; ++order) {
+        HybridEngine engine(3);
+        engine.apply_x(0);
+        if (order == 0) engine.apply_swap(0, 1); else engine.apply_swap(1, 0);
+        auto counts = engine.sample_counts(16, 7);
+        assert(counts.size() == 1);
+        assert(counts.begin()->first == "010");
+        assert(engine.get_probability(0b010) > 0.999);
+    }
+    // After a T gate the engine runs on the statevector only; SWAP must still
+    // act exactly once there.
+    HybridEngine promoted(2);
+    promoted.apply_x(0);
+    promoted.apply_t(0);
+    promoted.apply_swap(0, 1);
+    assert(promoted.get_probability(0b10) > 0.999);
+    // SWAP of a qubit with itself is the identity.
+    HybridEngine same(2);
+    same.apply_x(1);
+    same.apply_swap(1, 1);
+    assert(same.sample_counts(8, 1).begin()->first == "01");
+    std::cout << "    PASS\n";
+}
+
 int main() {
     std::cout << "=================================================================\n";
     std::cout << " CQ-HECS Hybrid Engine & Clifford+T Verification Suite\n";
@@ -116,6 +146,7 @@ int main() {
 
     test_grover_search_suite();
     test_qft_phase_estimation_exact();
+    test_swap_in_tableau_mode();
 
     std::cout << "=================================================================\n";
     std::cout << " ALL HYBRID MPS & CLIFFORD+T TESTS PASSED (0 ERRORS, 0 MOCKS)\n";

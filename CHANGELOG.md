@@ -10,6 +10,53 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [2.5.2] — 2026-10-30
+
+Correction release. Findings, reproductions and the test matrix are in
+`research/v2_5_2/`. Every fixed defect has a regression test that fails on the
+v2.5.1 source (`1be682a`) and an independent oracle (closed forms, Qiskit
+`Statevector`/`DensityMatrix`, `average_gate_fidelity`).
+
+### Fixed
+
+- **CQ-V252-01 (P0) — Path B swapped `t` and `tdg`.** The stabilizer-rank
+  decomposition wrote `T = c0 I + c1 Z` with `c1 = (e^{i pi/4} - 1)/2`, which is
+  `diag(e^{i pi/4}, 1)`: the adjoint up to a global phase. Probabilities only
+  differ once another phase breaks the mirror symmetry, so `h t h` was right but
+  `h t s h` gave `P(0) = 0.854` instead of `0.146`, reported as `EXACT`. Every
+  release with Path B was affected for circuits combining `t`/`tdg` with other
+  phases. `c1` is now `(1 - e^{+-i pi/4})/2`.
+- **CQ-V252-02 (P1) — gate error used as depolarizing parameter.**
+  `BackendProfile.to_noise_model()` passed the reported gate error straight to
+  `DepolarizingChannel(p)`. The same number is exported to Qiskit as
+  `InstructionProperties.error`, an average gate infidelity `r`, and the
+  channel with parameter `p = r` has infidelity `r/2` (one qubit) or `3r/4`
+  (two qubits). The model now uses `p = d r / (d - 1)`
+  (`depolarizing_parameter_from_infidelity`, the conversion Qiskit Aer uses
+  without relaxation) and refuses `r > (d - 1)/d` instead of clipping it.
+  Noisy results on `fake_manila`/`linear_5q` change accordingly.
+- **CQ-V252-03 (P0, native builds) — SWAP was the identity on the native
+  tableau.** `HybridEngine::apply_swap` applied the swap to the tableau and
+  then called `HybridEngine::apply_cx` three times, which applied it again.
+  Path A with the native module (and `cq_apply_swap` in the C API) returned
+  the un-swapped state for Clifford circuits. The pure-Python wheel used the
+  correct Python tableau and was not affected.
+- **CQ-V252-04 (P2) — `BackendProfile` validation.** Refuses float/bool qubit
+  indices, T1/T2/readout entries for qubits the profile does not have,
+  `T2 > 2 T1`, non-finite times, negative or out-of-range gate durations,
+  repeated qubits in a gate key and gate-error keys that do not match the
+  gate's arity or are wider than two qubits (the noise model dropped those).
+- **CQ-V252-05 (P3) — noisy density-matrix gate set.** `cu1`, `crx`, `cry`
+  and `crz` are executed (checked against Qiskit) instead of refused, so the
+  backend now covers every gate in the manifest.
+
+### Added
+
+- `cqhecs.depolarizing_parameter_from_infidelity(r, num_qubits)`.
+- Four source mutants (24/24 killed) and a C++ regression for native SWAP.
+
+---
+
 ## [2.5.1] — 2026-10-30
 
 Correction release for the v2.5.0 Hardware-Aware Quantum Bridge. Findings are

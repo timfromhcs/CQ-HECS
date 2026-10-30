@@ -31,7 +31,7 @@ from cqhecs.result import (
 _PARAM_ARITY: Dict[str, int] = {
     "rz": 1, "p": 1, "u1": 1, "rx": 1, "ry": 1,
     "u": 3, "u3": 3, "u2": 2,
-    "cp": 1, "cphase": 1,
+    "cp": 1, "cphase": 1, "cu1": 1, "crx": 1, "cry": 1, "crz": 1,
 }
 
 #: Gates this backend evaluates, by operand count (names as produced by
@@ -40,7 +40,9 @@ _GATES_1Q = frozenset({
     "id", "x", "y", "z", "h", "s", "sdg", "t", "tdg", "sx", "sxdg",
     "rz", "p", "u1", "rx", "ry", "u", "u3", "u2",
 })
-_GATES_2Q = frozenset({"cx", "cnot", "cz", "swap", "cp", "cphase"})
+_GATES_2Q = frozenset({
+    "cx", "cnot", "cz", "swap", "cp", "cphase", "cu1", "crx", "cry", "crz",
+})
 
 #: Operations without a state effect. They never make a preceding measurement
 #: "mid-circuit" (same rule as ``CircuitAnalyzer``).
@@ -143,7 +145,7 @@ class NoisyDensityMatrixBackend:
                 [0, 1, 0, 0],
                 [0, 0, 0, 1]
             ], dtype=complex)
-        if name_l in ("cp", "cphase"):
+        if name_l in ("cp", "cphase", "cu1"):
             lam = params[0]
             return np.array([
                 [1, 0, 0, 0],
@@ -151,6 +153,14 @@ class NoisyDensityMatrixBackend:
                 [0, 0, 1, 0],
                 [0, 0, 0, np.exp(1j * lam)]
             ], dtype=complex)
+        if name_l in ("crx", "cry", "crz"):
+            # The first operand is the control and the more significant tensor
+            # factor here (as for cx above), so the gate is diag(I, R).
+            # rz keeps its exp(-+i lam/2) entries: under a control they are a
+            # relative phase, not a global one.
+            U = np.eye(4, dtype=complex)
+            U[2:, 2:] = NoisyDensityMatrixBackend._gate_matrix_1q(name_l[1:], params)
+            return U
         return None
 
     @staticmethod
