@@ -308,6 +308,7 @@ def cmd_profile(args: argparse.Namespace) -> int:
 
 
 def cmd_reference(args: argparse.Namespace) -> int:
+    from cqhecs.openquantum_suite import SUITE_ID, evaluate_suite
     from cqhecs.reference import DATASETS, ReferenceDataError, evaluate
 
     if args.reference_command == "list":
@@ -325,6 +326,20 @@ def cmd_reference(args: argparse.Namespace) -> int:
                     "notes": list(record.notes),
                 }
                 for record in DATASETS.values()
+            ] + [
+                {
+                    "dataset_id": SUITE_ID,
+                    "title": "Preregistered 25-job Open Quantum suite (own real-QPU runs)",
+                    "licence": "results owned by the submitter; Public plan requires citing Open Quantum",
+                    "source": "research/v3/openquantum_suite/manifest.json",
+                    "pinned_revision": None,
+                    "complete_circuits": True,
+                    "files": [],
+                    "notes": [
+                        "Circuits are SHA-256-pinned before submission.",
+                        "Results are produced by scripts/run_openquantum_suite.py; none ship with the package.",
+                    ],
+                }
             ],
         }
         if args.format == "json":
@@ -334,6 +349,26 @@ def cmd_reference(args: argparse.Namespace) -> int:
                 print(f"{item['dataset_id']}: {item['title']}")
                 print(f"  licence: {item['licence']}  circuits: {item['complete_circuits']}")
                 print(f"  source : {item['source']}")
+        return EXIT_OK
+
+    if args.dataset == SUITE_ID:
+        try:
+            payload = evaluate_suite(Path(args.data_dir), bootstrap_samples=args.bootstrap, seed=args.seed)
+        except ReferenceDataError as exc:
+            LOG.error("%s", exc)
+            return EXIT_USAGE
+        if args.json_out:
+            Path(args.json_out).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.json_out).write_text(json.dumps(payload, indent=2) + "\n", "utf-8")
+        if args.format == "json":
+            _emit_json(payload)
+        else:
+            aggregate = payload["aggregate"]
+            print(f"Dataset : {SUITE_ID} on {payload['backend']} ({payload['dataset_sha256'][:16]}...)")
+            print(f"EVAL    : {aggregate['n_eval']}/{aggregate['n_eval_preregistered']} jobs")
+            print(f"Median delta TV (M-FIT - ideal): {aggregate['median_delta_tv']:+.6f}")
+            print(f"95% bootstrap CI: [{aggregate['ci95_low']:+.6f}, {aggregate['ci95_high']:+.6f}]")
+            print(f"Verdict : {aggregate['verdict']}")
         return EXIT_OK
 
     if args.dataset not in DATASETS:
@@ -765,7 +800,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_ref_run = ref_sub.add_parser("run", help="Run the preregistered reference evaluation")
     p_ref_run.add_argument(
         "--dataset", default="r-io-5",
-        help="Registered dataset ID (default: r-io-5)",
+        help="Registered dataset ID: r-io-5 (default) or r-io-7 (Open Quantum suite results)",
     )
     p_ref_run.add_argument(
         "--data-dir", default="tests/data/quantum_noise_transfer",

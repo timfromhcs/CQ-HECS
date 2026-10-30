@@ -12,6 +12,15 @@ Work towards v3 (`research/v3/V3_STABLE_PLAN.md`). Not released.
 
 ### Added
 
+- `cqhecs.openquantum_suite` and `scripts/run_openquantum_suite.py`: a
+  preregistered 25-job real-QPU suite (`r-io-7`) for Open Quantum. Circuits
+  (2–5 qubits, 5 FIT + 20 EVAL) are SHA-256-pinned in
+  `research/v3/openquantum_suite/`; the runner quotes before spending and
+  refuses to submit without `--yes` or above `--budget`; ingest checks circuit
+  digests, outcome width and bit order; `M-FIT` is fitted on the FIT split
+  only. `cq-hecs reference run --dataset r-io-7`. **No job has been run**: the
+  Open Quantum API was unreachable from the session that added this.
+
 - `cqhecs.calibration_import`: imports real IBM calibration snapshots
   (`props_*.json` / `conf_*.json`, e.g. from `qiskit-ibm-runtime`) into
   non-synthetic `BackendProfile`s with provenance URI, capture timestamp and

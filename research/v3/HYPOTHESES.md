@@ -127,9 +127,22 @@ claims; they are not a proof of `P = NP` and do not transfer to arbitrary
 quantum amplitudes. See `research/v3/LITERATURE_MAP.md` §1 and
 `research/v3/COMPLEXITY_BOUNDARY.md`.
 
+## H-V3-8 — A fitted 3-parameter model beats the ideal distribution on our own QPU runs
+
+**Status: PREREGISTERED, NOT RUN.** Protocol: `research/v3/OPENQUANTUM_RUN_PLAN.md`.
+
+* **Claim:** on the 20 held-out EVAL jobs of the `r-io-7` suite, `M-FIT`
+  (mean readout + one CX depolarizing parameter, fitted on the 5 FIT jobs only)
+  has a smaller TV to the measured counts than the ideal distribution.
+* **Test:** median paired `ΔTV < 0` with a 95 % bootstrap interval (circuits
+  resampled, 5000 draws, seed 20261030) excluding 0.
+* **Data:** none yet. The Open Quantum API was not reachable from the session
+  that registered this hypothesis.
+
 ## Experiment index
 
 | ID | Hypothesis | Dataset | Evidence |
 |---|---|---|---|
 | E-V3-04 | H-V3-1 (pooled + exploratory) | R-IO-5, digest `8069ad50…` | `research/v3/evidence/r_io_5_evaluation.json` |
 | E-V3-05 | H-V3-2 (unital invariance) | analytic + QFT simulation | this file; `tests/test_reference.py::test_qft_is_invariant_under_unital_noise` |
+| E-V3-06 | H-V3-8 (own QPU suite) | R-IO-7 — **not run** | `research/v3/OPENQUANTUM_RUN_PLAN.md`; results will go to `research/v3/evidence/openquantum/` |

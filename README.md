@@ -585,6 +585,7 @@ tied to a source SHA and records `PASS`, `FAIL`, `SKIP`, `BLOCKED`, and
 | [`research/v3/V3_STABLE_PLAN.md`](research/v3/V3_STABLE_PLAN.md) | v3 plan, workstreams, gates |
 | [`research/v3/DATASETS.md`](research/v3/DATASETS.md) | real-data registry, licences, SHA-256 pins, reachability |
 | [`research/v3/HYPOTHESES.md`](research/v3/HYPOTHESES.md) | preregistered hypotheses and outcomes |
+| [`research/v3/OPENQUANTUM_RUN_PLAN.md`](research/v3/OPENQUANTUM_RUN_PLAN.md) | preregistered 25-job real-QPU suite via Open Quantum (`r-io-7`); **not run yet** |
 | [`research/v3/TESTING_TECHNIQUES.md`](research/v3/TESTING_TECHNIQUES.md) | property-based, metamorphic, noise-aware, and fuzzing methods |
 | [`research/v3/COMPLEXITY_BOUNDARY.md`](research/v3/COMPLEXITY_BOUNDARY.md) | P vs NP status and claim boundaries |
 
@@ -608,6 +609,17 @@ circuits cannot discriminate the model. The Bell+GHZ subset is reported as
 **exploratory** (`SUPPORTED`, 8/8), not as a retroactive success. Missing
 layout and one-qubit gate errors are documented limitations, not hidden
 assumptions.
+
+### Next real-data step (not run)
+
+The `r-io-7` suite closes the "missing circuits" gap with jobs this project
+authors itself: 25 circuits (2–5 qubits) are SHA-256-pinned in
+[`research/v3/openquantum_suite/`](research/v3/openquantum_suite/) before any
+submission, five of them are used to fit a three-parameter noise model and
+twenty are held out for hypothesis H-V3-8. The runner
+(`scripts/run_openquantum_suite.py`) quotes first and refuses to spend credits
+without `--yes` and a `--budget`. No job has been executed yet, so there is no
+QPU result in this repository.
 
 ---
 

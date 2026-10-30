@@ -139,3 +139,22 @@ was found that commits real raw counts.
 - No new defect was found. This is a negative result, not a correctness proof.
 - Mutation harness extended with mutant 34 (selftest inverse relation skipped)
   and mutant 35 (ComposedChannel order reversed): 35/35 killed.
+
+## E-V3-06 Own real-QPU suite via Open Quantum (2026-10-30)
+
+- Goal: a real input/output record with complete circuits for V3-D, without
+  depending on third-party datasets.
+- Built `cqhecs/openquantum_suite.py` (25 circuits, seed 20261030, 5 FIT /
+  20 EVAL), `scripts/run_openquantum_suite.py` (quote → submit → collect →
+  evaluate via the Open Quantum skill's `oq.py`) and
+  `tests/test_openquantum_suite.py` (15 tests).
+- Every ideal distribution equals Qiskit `Statevector` to ≤ 1e-12. A first
+  draft of the QPE circuits did not give a deterministic outcome; the inverse
+  QFT ordering was fixed before the manifest was written.
+- Synthetic round trip (counts sampled from a known model, test-only):
+  `M-FIT` recovers `p = 0.04`, `p01 = 0.02`, `p10 = 0.05` within 0.01; changing
+  an EVAL result does not change the fit; tampered QASM, wrong width, reversed
+  bit order and a missing FIT job are refused.
+- **Blocked:** `oq.py doctor` from the cloud session: all three Open Quantum
+  hosts fail with a proxy `403` on `CONNECT`. No job was quoted or submitted
+  and no credit was spent. H-V3-8 stays `PREREGISTERED, NOT RUN`.
