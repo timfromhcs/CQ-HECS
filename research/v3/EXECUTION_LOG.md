@@ -103,7 +103,7 @@ was found that commits real raw counts.
   registry, integrity/corruption, reconstruction, model, metrics, evaluation
   contract, CLI JSON. Full suite and gates recorded in TEST_MATRIX.md.
 - Added `research/v3/DATASETS.md`, `HYPOTHESES.md` and
-  `COMPLEXITY_BOUNDARY.md`. The P versus NP item remains `BLOCKED — open
+  `COMPLEXITY_BOUNDARY.md`. The P versus NP item remains `BLOCKED ï¿½ open
   problem`; no proof is claimed.
 - Local baseline note: the checked-out tree initially failed 12 tests because
   `build/bin/Release/cq_hecs.dll` was still the 2.5.0 build (CLI reported
@@ -113,3 +113,27 @@ was found that commits real raw counts.
 - Gates after the change: flake8 E9/F clean; version consistency 2.5.2;
   silent-truncation audit PASS; pytest 540 passed / 4 skipped; coverage 88 %;
   mutation 33/33; CTest 19/19.
+
+## E-V3-05 Metamorphic / property-based testing (2026-10-30)
+
+- Web research: QuCheck (arXiv:2503.22641), FuzzQ (OOPSLA 2025,
+  DOI 10.1145/3763100), noise-aware property-based testing (2025), QuteFuzz
+  (POPL 2025) and metamorphic testing for quantum programs (arXiv:2208.09206).
+  The transfer map is `TESTING_TECHNIQUES.md`.
+- Exploratory fuzzing before codifying properties:
+  - dense vs exact MPS statevector: 300 circuits (2-6 qubits), 0 mismatches
+    after accounting for the documented chain-order endianness;
+  - composite-gate lowering vs Qiskit `Statevector`: 200 circuits, 0 mismatches;
+  - dense expectation vs `sparse_pauli`/`auto`: 300 circuits, 0 mismatches on
+    Path-D gates; typed refusals for `cp/crx/cry/crz` are expected capabilities;
+  - noisy density matrix under qubit permutation: 100 circuits with random 1q/2q
+    depolarizing and asymmetric readout, 0 mismatches;
+  - MPS finite-shot marginals: 30 circuits x 200k shots, ordered and permuted
+    measurement order, all within the Hoeffding bound.
+- Implemented `cqhecs/selftest.py` (8 metamorphic checks, deterministic seed,
+  Bonferroni-corrected Hoeffding bound) and `cq-hecs selftest`.
+- Added `tests/test_selftest.py` (8 tests) and
+  `tests/test_property_circuits.py` (4 Hypothesis tests, shrinking enabled).
+- No new defect was found. This is a negative result, not a correctness proof.
+- Mutation harness extended with mutant 34 (selftest inverse relation skipped):
+  34/34 killed.

@@ -481,6 +481,14 @@ def check_reference_verdict_suppression() -> bool:
     return result.aggregate["verdict"] != "INCONCLUSIVE"
 
 
+def check_selftest_inverse_property() -> bool:
+    """A broken inverse relation must make the installation self-test fail."""
+    from cqhecs.selftest import run_selftest
+
+    report = run_selftest(cases=2, seed=3)
+    return not report.passed
+
+
 CHECKS: Dict[str, Callable[[], bool]] = {
     "qubit_bit_order": check_qubit_bit_order,
     "cz_conjugation": check_cz_conjugation,
@@ -515,6 +523,7 @@ CHECKS: Dict[str, Callable[[], bool]] = {
     "noisy_truncation_bound": check_noisy_truncation_bound,
     "reference_hash_bypass": check_reference_hash_bypass,
     "reference_verdict_suppression": check_reference_verdict_suppression,
+    "selftest_inverse_property": check_selftest_inverse_property,
 }
 
 
@@ -858,6 +867,14 @@ MUTANTS: List[SourceMutant] = [
         replacement='        "verdict": "SUPPORTED",\n',
         check="reference_verdict_suppression",
         mechanism="turns an inconclusive pooled H-V3-1 interval into a success claim",
+    ),
+    SourceMutant(
+        name="Selftest inverse property silently skipped",
+        target="cqhecs/selftest.py",
+        original="        combined = list(circuit) + _inverse(circuit)\n",
+        replacement="        combined = list(circuit)\n",
+        check="selftest_inverse_property",
+        mechanism="runs C instead of C†C while the selftest still reports PASS",
     ),
 ]
 

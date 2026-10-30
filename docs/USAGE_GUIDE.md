@@ -80,6 +80,23 @@ model is a device-mean model. The preregistered pooled H-V3-1 result on
 [−0.032546, 0.000000]); the Bell+GHZ subset is exploratory `SUPPORTED`. See
 `research/v3/HYPOTHESES.md`.
 
+### Metamorphic self-test
+
+`selftest` runs eight relations that must hold for any correct engine, without
+comparing against a stored expected output:
+
+```bash
+cq-hecs selftest --cases 8
+cq-hecs --format json selftest --cases 8
+```
+
+It checks normalization, `C†C = I`, qubit-permutation equivariance, the
+`p(θ)`/`rz(θ)` global-phase relation, exact MPS vs dense parity, finite-shot
+sampling within a Bonferroni-corrected Hoeffding bound, Kraus/readout
+invariants, and the dense expectation oracle. It is a fast installation check,
+not a proof of correctness; the Qiskit/Aer differential suite remains the
+independent oracle.
+
 ### Circuits
 
 A circuit argument is one of:
