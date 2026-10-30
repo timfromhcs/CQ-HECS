@@ -56,7 +56,7 @@ Paste DIMACS, generate a random 3-SAT instance, or run a phase-transition sweep.
 The supported engine is `cqhecs/sat.py`:
 
 - `SAT` — a model was found and verified clause by clause;
-- `UNSAT` — exhaustive search finished; **no proof object** is produced;
+- `UNSAT` — exhaustive search finished; a tree-resolution certificate is replay-checked (`certified`);
 - `UNKNOWN` — timeout or node budget; never reported as `UNSAT`.
 
 The sweep is an empirical runtime curve. It is not a proof of ETH and says

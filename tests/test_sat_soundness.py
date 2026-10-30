@@ -45,11 +45,12 @@ def test_random_small_formulas_match_brute_force():
                     assert formula.is_satisfied(result.assignment)
 
 
-def test_pigeonhole_is_unsat_and_has_no_fake_certificate():
+def test_pigeonhole_is_unsat_with_checked_certificate():
     result = solve(load_dimacs(BENCH / "pigeonhole_6_5.cnf"), timeout_seconds=10.0)
     assert result.status == UNSAT
     assert result.model_verified is False
-    assert "no independently checkable proof object" in result.note
+    assert result.certified is True
+    assert "certificate checked" in result.note
 
 
 def test_contradictory_units_and_empty_clause():

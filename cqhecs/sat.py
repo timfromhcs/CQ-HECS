@@ -1,17 +1,24 @@
 """
 Sound DIMACS CNF solving for CQ-HECS.
 
-This module is deliberately separate from ``python_bridge.sat_engine``. The
-bridge engine is a demonstrator whose branch-pruning hash covers only the first
-32 assigned variables and whose timeout is reported as ``UNSAT``; both are
-unsound for real DIMACS input. The engine here is the supported surface:
+This module is deliberately separate from ``python_bridge.sat_engine``, a
+demonstrator (its earlier hash/timeout defects, CQ-V3-02, are fixed there). The
+engine here is the supported surface:
 
 * ``SAT`` means a model was found **and verified clause by clause**;
-* ``UNSAT`` means the search space was exhausted;
-* ``UNKNOWN`` means a timeout or node budget stopped the search.
+* ``UNSAT`` means the search space was exhausted; by default it also carries a
+  **tree-resolution refutation** (``SATResult.certificate``) that a separate
+  checker, :func:`check_refutation`, replays: unit propagation at every leaf,
+  one resolution per inner node. ``certified`` is True only after that check;
+* ``UNKNOWN`` means a timeout or node budget stopped the search, or that the
+  two search procedures disagreed (fail closed).
 
-No proof object is produced for ``UNSAT``. The result says so instead of
-pretending that "the loop ended" is a certificate.
+The certificate comes from a second search that uses unit propagation only
+(pure-literal elimination preserves satisfiability but is not a resolution
+step). If that search finds a model where the main search found none, the
+procedures contradict each other and the result is ``UNKNOWN``. A certificate
+that is too large or too slow to produce leaves ``UNSAT`` exhaustive but
+``certified=False``, and the note says why.
 
 The random-3-SAT sweep is an empirical runtime measurement. A curve that looks
 exponential is not a proof of the Exponential Time Hypothesis, and no finite
@@ -190,6 +197,10 @@ class SATResult:
     model_verified: bool
     formula_sha256: str
     note: str
+    #: Tree-resolution refutation (see :func:`check_refutation`); only for UNSAT.
+    certificate: Optional[Tuple[Tuple[Any, ...], ...]] = None
+    #: True only if ``certificate`` passed :func:`check_refutation`.
+    certified: bool = False
 
     @property
     def satisfiable(self) -> Optional[bool]:
@@ -215,7 +226,15 @@ class SATResult:
             "model_verified": self.model_verified,
             "formula_sha256": self.formula_sha256,
             "note": self.note,
+            "certified": self.certified,
+            "certificate_steps": len(self.certificate) if self.certificate else 0,
         }
+
+    def certificate_to_jsonable(self) -> Optional[List[List[Any]]]:
+        """The certificate as plain lists (``["leaf", [lits]]``, ``["resolve", var]``)."""
+        if self.certificate is None:
+            return None
+        return [[kind, list(arg) if kind == "leaf" else arg] for kind, arg in self.certificate]
 
 
 class _Timeout(Exception):
@@ -371,12 +390,207 @@ class _DPLL:
         }
 
 
+#: Largest refutation produced (steps). A larger one is not kept.
+MAX_CERTIFICATE_STEPS = 200_000
+
+
+class _CertificateTooLarge(Exception):
+    pass
+
+
+def _unit_propagation_conflicts(clauses: Sequence[Sequence[int]], decisions: Sequence[int]) -> bool:
+    """True if unit propagation on ``clauses`` under the literals ``decisions`` reaches a conflict."""
+    value: Dict[int, bool] = {}
+    for literal in decisions:
+        var, want = abs(literal), literal > 0
+        if var == 0 or value.get(var, want) != want:
+            return var != 0
+        value[var] = want
+    changed = True
+    while changed:
+        changed = False
+        for clause in clauses:
+            open_literal = 0
+            open_count = 0
+            satisfied = False
+            for literal in clause:
+                known = value.get(abs(literal))
+                if known is None:
+                    open_count += 1
+                    open_literal = literal
+                elif known == (literal > 0):
+                    satisfied = True
+                    break
+            if satisfied:
+                continue
+            if open_count == 0:
+                return True
+            if open_count == 1:
+                value[abs(open_literal)] = open_literal > 0
+                changed = True
+    return False
+
+
+def check_refutation(clauses: Sequence[Sequence[int]], certificate: Optional[Sequence[Sequence[Any]]]) -> bool:
+    """
+    Check a tree-resolution refutation of ``clauses``. Independent of the search.
+
+    ``certificate`` is a post-order list of steps:
+
+    * ``("leaf", decisions)``: unit propagation on ``clauses`` under the decision
+      literals must reach a conflict; this derives the clause of the negated
+      decisions;
+    * ``("resolve", x)``: the entry below the top was derived under the decision
+      ``x`` (it contains ``-x``), the top under ``-x`` (it contains ``x``); their
+      resolvent replaces both.
+
+    True iff every step holds and exactly one clause is left, the empty one. A
+    valid certificate proves that ``clauses`` is unsatisfiable.
+    """
+    if not certificate:
+        return False
+    stack: List[frozenset] = []
+    for step in certificate:
+        if len(step) != 2:
+            return False
+        kind, argument = step
+        if kind == "leaf":
+            decisions = tuple(argument)
+            if not all(isinstance(lit, int) and not isinstance(lit, bool) for lit in decisions):
+                return False
+            if not _unit_propagation_conflicts(clauses, decisions):
+                return False
+            stack.append(frozenset(-lit for lit in decisions))
+        elif kind == "resolve":
+            if not isinstance(argument, int) or isinstance(argument, bool) or argument == 0 or len(stack) < 2:
+                return False
+            false_branch = stack.pop()
+            true_branch = stack.pop()
+            if -argument not in true_branch or argument not in false_branch:
+                return False
+            stack.append((true_branch - {-argument}) | (false_branch - {argument}))
+        else:
+            return False
+    return len(stack) == 1 and not stack[0]
+
+
+class _CertifyingDPLL(_DPLL):
+    """Plain DPLL (unit propagation only) that records a tree-resolution refutation."""
+
+    def __init__(self, formula: CNF, deadline: float, step_cap: int):
+        super().__init__(formula, 0.0, deadline, None)
+        self.proof: List[Tuple[Any, ...]] = []
+        self.step_cap = step_cap
+        self._decisions: List[int] = []
+
+    def _log(self, step: Tuple[Any, ...]) -> None:
+        if len(self.proof) >= self.step_cap:
+            raise _CertificateTooLarge
+        self.proof.append(step)
+
+    def _propagate(self) -> bool:
+        while True:
+            changed = False
+            for clause in self.formula.clauses:
+                unassigned = 0
+                last = 0
+                satisfied = False
+                for literal in clause:
+                    value = self._value(literal)
+                    if value == 1:
+                        satisfied = True
+                        break
+                    if value == 0:
+                        unassigned += 1
+                        last = literal
+                if satisfied:
+                    continue
+                if unassigned == 0:
+                    return False
+                if unassigned == 1:
+                    self._assign_literal(last)
+                    changed = True
+            if not changed:
+                return True
+
+    def search(self, depth: int = 0) -> bool:
+        self.nodes += 1
+        self.max_depth = max(self.max_depth, depth)
+        self._ticks += 1
+        if (self._ticks & 1023) == 0 and time.perf_counter() > self.deadline:
+            raise _Timeout
+        mark = len(self.trail)
+        if not self._propagate():
+            self._log(("leaf", tuple(self._decisions)))
+            self._undo(mark)
+            return False
+        if self._all_satisfied():
+            return True
+        variable = self._choose_variable()
+        if variable is None:
+            return True
+        for value in (1, -1):  # True branch first: the checker relies on this order
+            literal = variable if value == 1 else -variable
+            branch_mark = len(self.trail)
+            self._decisions.append(literal)
+            found = self._assign_literal(literal) and self.search(depth + 1)
+            self._decisions.pop()
+            if found:
+                return True
+            self._undo(branch_mark)
+        self._log(("resolve", variable))
+        self._undo(mark)
+        return False
+
+
+def _certify(formula: CNF, timeout_seconds: float) -> Tuple[Optional[Tuple[Tuple[Any, ...], ...]], str, str]:
+    """
+    Produce and check a refutation. Returns ``(certificate, outcome, note)`` with
+    outcome ``CERTIFIED``, ``NOT_PRODUCED`` or ``DISAGREEMENT``.
+    """
+    import sys
+
+    if any(len(clause) == 0 for clause in formula.clauses):
+        certificate = (("leaf", ()),)
+        if check_refutation(formula.clauses, certificate):
+            return certificate, "CERTIFIED", "empty clause; trivial certificate checked"
+        return None, "DISAGREEMENT", "empty clause present but the trivial certificate failed its check"
+    engine = _CertifyingDPLL(formula, time.perf_counter() + float(timeout_seconds), MAX_CERTIFICATE_STEPS)
+    old_limit = sys.getrecursionlimit()
+    needed = max(2000, 4 * formula.num_vars + 1000)
+    try:
+        if old_limit < needed:
+            sys.setrecursionlimit(needed)
+        found = engine.search()
+    except _Timeout:
+        return None, "NOT_PRODUCED", f"certificate not produced: {float(timeout_seconds):.6g} s budget exhausted"
+    except _CertificateTooLarge:
+        return None, "NOT_PRODUCED", f"certificate not produced: more than {MAX_CERTIFICATE_STEPS} steps"
+    finally:
+        if sys.getrecursionlimit() != old_limit:
+            sys.setrecursionlimit(old_limit)
+    if found:
+        return None, "DISAGREEMENT", "the certifying search found a model where the main search found none"
+    certificate = tuple(engine.proof)
+    if not check_refutation(formula.clauses, certificate):
+        return None, "DISAGREEMENT", "the recorded refutation failed the independent checker"
+    return certificate, "CERTIFIED", f"tree-resolution certificate checked ({len(certificate)} steps)"
+
+
 def solve(
     formula: CNF,
     timeout_seconds: float = 10.0,
     node_budget: Optional[int] = None,
+    certify: bool = True,
+    certificate_timeout_seconds: Optional[float] = None,
 ) -> SATResult:
-    """Solve ``formula`` soundly. Timeout or node budget yields ``UNKNOWN``."""
+    """
+    Solve ``formula`` soundly. Timeout or node budget yields ``UNKNOWN``.
+
+    With ``certify`` (default) an UNSAT verdict is followed by a certifying
+    search, budgeted separately by ``certificate_timeout_seconds`` (default:
+    ``timeout_seconds``); see the module docstring.
+    """
     if timeout_seconds <= 0:
         raise ValueError("timeout_seconds must be > 0")
     if node_budget is not None and node_budget <= 0:
@@ -387,6 +601,8 @@ def solve(
     status: str
     assignment: Optional[Dict[int, bool]] = None
     note: str
+    certificate: Optional[Tuple[Tuple[Any, ...], ...]] = None
+    certified = False
 
     # An empty clause makes the formula UNSAT without any search.
     if any(len(clause) == 0 for clause in formula.clauses):
@@ -413,7 +629,7 @@ def solve(
                     note = "engine produced a model that failed verification; refusing it"
             else:
                 status = UNSAT
-                note = "exhaustive DPLL search; no independently checkable proof object"
+                note = "exhaustive DPLL search; no certificate requested"
         except _Timeout:
             status = UNKNOWN
             note = f"timeout after {float(timeout_seconds):.6g} s; result not decided"
@@ -425,6 +641,16 @@ def solve(
                 import sys
 
                 sys.setrecursionlimit(old_limit)
+
+    if status == UNSAT and certify:
+        budget = float(timeout_seconds if certificate_timeout_seconds is None else certificate_timeout_seconds)
+        certificate, outcome, certificate_note = _certify(formula, budget)
+        if outcome == "DISAGREEMENT":
+            status = UNKNOWN
+            note = f"UNSAT withheld: {certificate_note}; refusing to report either verdict"
+        else:
+            certified = outcome == "CERTIFIED"
+            note = f"exhaustive DPLL search; {certificate_note}"
 
     elapsed_ms = (time.perf_counter() - started) * 1000.0
     return SATResult(
@@ -440,6 +666,8 @@ def solve(
         model_verified=bool(status == SAT and assignment is not None and formula.is_satisfied(assignment)),
         formula_sha256=formula.sha256,
         note=note,
+        certificate=certificate if status == UNSAT else None,
+        certified=bool(certified and status == UNSAT),
     )
 
 
@@ -461,6 +689,7 @@ def enumerate_models(
     clauses = list(formula.clauses)
     models: List[Dict[int, bool]] = []
     status = "UNKNOWN"
+    complete_certified = False
     while len(models) < limit:
         remaining = deadline - time.perf_counter()
         if remaining <= 0:
@@ -470,6 +699,7 @@ def enumerate_models(
         result = solve(current, timeout_seconds=remaining)
         if result.status == UNSAT:
             status = "COMPLETE"
+            complete_certified = result.certified
             break
         if result.status != SAT or result.assignment is None:
             status = "UNKNOWN"
@@ -482,6 +712,7 @@ def enumerate_models(
     return {
         "status": status,
         "complete": status == "COMPLETE",
+        "complete_certified": complete_certified,
         "count": len(models),
         "limit": limit,
         "models": models,
@@ -578,7 +809,7 @@ def sweep(
             for trial in range(trials):
                 instance_seed = seed + 1_000_003 * num_vars + 9_176 * trial + int(ratio * 1000)
                 formula = random_3sat(num_vars, num_clauses, seed=instance_seed)
-                result = solve(formula, timeout_seconds=timeout_seconds)
+                result = solve(formula, timeout_seconds=timeout_seconds, certify=False)
                 counts[result.status] += 1
                 decisions.append(result.decisions)
                 times.append(result.elapsed_ms)
@@ -626,7 +857,12 @@ def summarize(result: SATResult) -> str:
     if result.status == SAT:
         return f"SAT in {result.elapsed_ms:.1f} ms, {result.decisions} decisions, model verified"
     if result.status == UNSAT:
-        return f"UNSAT in {result.elapsed_ms:.1f} ms after {result.decisions} decisions (no proof object)"
+        proof = (
+            f"certificate checked ({len(result.certificate)} steps)"
+            if result.certified
+            else "not certified"
+        )
+        return f"UNSAT in {result.elapsed_ms:.1f} ms after {result.decisions} decisions ({proof})"
     return f"UNKNOWN: {result.note}"
 
 

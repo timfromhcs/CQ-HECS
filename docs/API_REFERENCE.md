@@ -134,7 +134,7 @@ CQ_API double cq_get_active_vram_mb(cq_context_t* ctx);
 CQ_API const char* cq_get_version(void);
 ```
 - **Description**: Queries semantic version string.
-- **Return Value**: Constant string `"3.3.0"`, derived from the package
+- **Return Value**: Constant string `"3.4.0"`, derived from the package
   version (`scripts/version.py`); it must not drift.
 
 ---
@@ -147,7 +147,7 @@ These are not C-ABI symbols. They are documented here because the C ABI's
 | Command | Purpose |
 | :--- | :--- |
 | `cq-hecs noise-fit` | Fit `M-FIT-2` from measured `r-io-7` counts; records the `OQ-02` X-gate anomaly and the fitted X bit-flip. |
-| `cq-hecs sat solve` | Standalone sound DIMACS DPLL. `SAT` carries a verified model; `UNSAT` is exhaustive and has no proof object; `UNKNOWN` is a timeout or node budget. |
+| `cq-hecs sat solve` | Standalone sound DIMACS DPLL. `SAT` carries a verified model; `UNSAT` is exhaustive and, by default, carries a replay-checked tree-resolution certificate (`certified`); `UNKNOWN` is a timeout or node budget. |
 | `cq-hecs sat sweep` | Empirical random-3-SAT phase-transition sweep. Not an ETH proof. |
 | `cq-hecs studio` | Local experiment UI; see [`STUDIO.md`](STUDIO.md). |
 

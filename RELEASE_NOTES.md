@@ -1,11 +1,11 @@
 # CQ-HECS Release Notes
 
-**Version:** 3.3.0
+**Version:** 3.4.0
 **Release date:** 2026-10-30
 **License:** Apache 2.0
 **Repository:** [https://github.com/timfromhcs/CQ-HECS](https://github.com/timfromhcs/CQ-HECS)
 
-> The release workflow copies this file to `dist/RELEASE_NOTES_v3.3.0.md`,
+> The release workflow copies this file to `dist/RELEASE_NOTES_v3.4.0.md`,
 > prepends the exact source commit and required CI run, and appends the SHA256
 > values of the final assets.
 
@@ -13,7 +13,7 @@
 
 ## 1. What this release is
 
-`v3.3.0` adds measured noise from three QPU vendors and makes it usable in
+`v3.4.0` adds measured noise from three QPU vendors and makes it usable in
 every surface: CLI, Studio, MCP, the Windows build and the new web emulator.
 
 1. **A third vendor.** The pinned 25-circuit suite ran on IQM Garnet
@@ -23,6 +23,21 @@ every surface: CLI, Studio, MCP, the Windows build and the new web emulator.
 3. **CQ-HECS Web.** A landing page, a beginner-to-advanced guide in
    EN/DE/FR, a SAT lab, device comparison and the measured profiles as noise
    models: https://cq-hecs-web.vercel.app
+
+It builds on `v3.3.0`, which added checkable UNSAT certificates to the
+Python SAT surface (§3.1). The v3.2.0 content further below still applies:
+
+`v3.2.0` was a stable feature release on the v3.1.0 base. It added:
+
+1. **An MCP server** — `cq-hecs mcp`, newline-delimited JSON-RPC over stdio,
+   no network listener, tools for run/analyze/SAT/models/hardware.
+2. **SAT model enumeration and exact MaxSAT** — `cq-hecs sat models|maxsat`.
+3. **A Studio Hardware lab** — every committed real-QPU evaluation and the
+   finite P-vs-NP probes in one view (`/api/hardware`).
+4. **A multi-backend 10,000-shot replication** — the pinned 25-circuit suite on
+   three IBM backends, all `H-V3-8 SUPPORTED`.
+5. **A standalone Windows build** — `cqhecs-<version>-windows-x64.zip`
+   (PyInstaller onedir), smoke-tested outside the repository.
 
 ## 1.1 IQM Garnet (r-iqm-1)
 
@@ -76,7 +91,7 @@ Evidence: `research/v4/evidence/ibm_10k/`.
 ## 3. SAT surface
 
 - `SAT`: a model was found and verified clause by clause;
-- `UNSAT`: exhaustive search finished; no proof object is produced;
+- `UNSAT`: exhaustive search finished; since v3.3.0 it carries a tree-resolution certificate that `check_refutation` replays (§3.1);
 - `UNKNOWN`: timeout or node budget; never reported as `UNSAT`.
 - `models`: `COMPLETE` only when the solver showed no further model exists;
   `LIMIT` and `TIMEOUT` are reported explicitly. Cross-checked against brute
@@ -84,9 +99,24 @@ Evidence: `research/v4/evidence/ibm_10k/`.
 - `maxsat`: exact weighted MaxSAT by exhaustive enumeration, **refuses above
   20 variables**. It is not a scalable MaxSAT solver.
 
+### 3.1 UNSAT certificates (new in v3.3.0)
+
+`cqhecs.sat.solve(..., certify=True)` follows an UNSAT verdict with a second
+search that uses unit propagation only (pure-literal elimination preserves
+satisfiability but is not a resolution step) and records a tree-resolution
+refutation: one unit-propagation conflict per leaf, one resolution per inner
+node. `check_refutation` is a separate, search-independent replay. `certified`
+is true only after that replay passes. If the two searches disagree the result
+is `UNKNOWN`; if the certificate exceeds its time or 200,000-step budget the
+verdict stays exhaustive-`UNSAT` with `certified=false` and a note. `sweep`
+disables certification so measured runtimes are unchanged. Checked against
+CaDiCaL 1.5.3 (python-sat) on random formulas, with four source mutants of the
+checker and the certifying search. Tree resolution is exponentially weaker than
+CDCL proofs; this is a correctness check, not a speed claim.
+
 ## 4. Standalone executable
 
-`cqhecs-3.3.0-windows-x64.zip` contains `cq-hecs/cq-hecs.exe` and its
+`cqhecs-3.4.0-windows-x64.zip` contains `cq-hecs/cq-hecs.exe` and its
 `_internal/` runtime (Python, NumPy, Qiskit, Qiskit Aer, Studio assets and the
 packaged `r-io-7` snapshot). It is a convenience build of the same package,
 not a second implementation. `scripts/build_exe.ps1` builds it and fails
@@ -125,7 +155,7 @@ metamorphic self-test, static/package smoke, ASan/UBSan and the Python
 
 - `M-FIT-2` is post-hoc. The 10k replication is one suite, one day, on IBM
   Heron backends only.
-- Exact MaxSAT refuses above 20 variables; `UNSAT` has no proof object.
+- Exact MaxSAT refuses above 20 variables; native `UNSAT` and `python_bridge.sat_engine` still have no proof object.
 - The Windows build is x64 only and unsigned.
 - Device profiles cover 5 measured qubits per backend; wider circuits use an
   extrapolated mean readout. Profiles are post-hoc fits from one day per backend.
@@ -137,7 +167,7 @@ metamorphic self-test, static/package smoke, ASan/UBSan and the Python
 ## 8. Install
 
 ```bash
-python -m pip install cqhecs-3.3.0-py3-none-any.whl
+python -m pip install cqhecs-3.4.0-py3-none-any.whl
 cq-hecs doctor
 cq-hecs studio
 cq-hecs mcp      # stdio MCP server
@@ -146,7 +176,7 @@ cq-hecs devices  # measured QPU noise profiles
 
 ## 9. Documentation
 
-- `CHANGELOG.md` — `[3.3.0]` section.
+- `CHANGELOG.md` — `[3.4.0]` and `[3.3.0]` sections.
 - `research/v4/ROADMAP_V4.md` — the path to v4.0.0.
 - `research/v4/FINDINGS.md` — corrected finding and reproductions.
 - `research/v4/COMPLEXITY_AND_ETH.md` — complexity boundaries.

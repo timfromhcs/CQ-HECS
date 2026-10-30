@@ -674,7 +674,7 @@ class StudioState:
             "result": result.to_dict(),
             "non_claim": (
                 "SAT/UNSAT refers to this formula only. UNKNOWN is a timeout, not a "
-                "negative answer; UNSAT has no proof object."
+                "negative answer; UNSAT is certified only when `certified` is true."
             ),
         }
 

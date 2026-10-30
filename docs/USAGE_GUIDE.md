@@ -362,7 +362,7 @@ cq-hecs sat solve --random 30 --ratio 4.26 --timeout 5 --show-model
 cq-hecs sat sweep --sizes 10,15,20,25 --ratios 3.0,4.26,6.0 --trials 5
 ```
 
-`SAT` has a verified model; `UNSAT` is exhaustive and has no proof object;
+`SAT` has a verified model; `UNSAT` is exhaustive and carries a replay-checked tree-resolution certificate by default;
 `UNKNOWN` is a timeout or node budget. The sweep is an empirical curve, not an
 ETH proof.
 
