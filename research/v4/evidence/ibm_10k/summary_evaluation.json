@@ -1,0 +1,102 @@
+{
+  "backends": [
+    {
+      "backend": "ibm_fez",
+      "h_v3_8": {
+        "ci95_high": -0.0233374606565473,
+        "ci95_low": -0.038171688957593486,
+        "median_delta_tv": -0.03293552583117235,
+        "n_eval": 20,
+        "n_noisy_better": 20,
+        "verdict": "SUPPORTED"
+      },
+      "m_fit_2": {
+        "anomalies": [],
+        "status": "EXPLORATORY_POST_HOC",
+        "vs_ideal": {
+          "ci95_high": -0.026519233162554626,
+          "ci95_low": -0.03828135914883089,
+          "direction": "M-FIT-2 better",
+          "median": -0.033695037064149835,
+          "n": 20,
+          "n_negative": 20
+        },
+        "vs_m_fit": {
+          "ci95_high": 0.0008558203344083935,
+          "ci95_low": -0.001602996324350868,
+          "direction": "inconclusive",
+          "median": -0.00048082447338471807,
+          "n": 20,
+          "n_negative": 11
+        }
+      }
+    },
+    {
+      "backend": "ibm_kingston",
+      "h_v3_8": {
+        "ci95_high": -0.019508070304638903,
+        "ci95_low": -0.03165307720563916,
+        "median_delta_tv": -0.027127461143211955,
+        "n_eval": 20,
+        "n_noisy_better": 20,
+        "verdict": "SUPPORTED"
+      },
+      "m_fit_2": {
+        "anomalies": [],
+        "status": "EXPLORATORY_POST_HOC",
+        "vs_ideal": {
+          "ci95_high": -0.0190068455203269,
+          "ci95_low": -0.03226663527883386,
+          "direction": "M-FIT-2 better",
+          "median": -0.026882669956937458,
+          "n": 20,
+          "n_negative": 20
+        },
+        "vs_m_fit": {
+          "ci95_high": 0.0010947560236801643,
+          "ci95_low": -4.9901181012758367e-05,
+          "direction": "inconclusive",
+          "median": 0.00029643776394642357,
+          "n": 20,
+          "n_negative": 7
+        }
+      }
+    },
+    {
+      "backend": "ibm_marrakesh",
+      "h_v3_8": {
+        "ci95_high": -0.021543086660163593,
+        "ci95_low": -0.04141607691435321,
+        "median_delta_tv": -0.027339642381873468,
+        "n_eval": 20,
+        "n_noisy_better": 20,
+        "verdict": "SUPPORTED"
+      },
+      "m_fit_2": {
+        "anomalies": [],
+        "status": "EXPLORATORY_POST_HOC",
+        "vs_ideal": {
+          "ci95_high": -0.02456062050129766,
+          "ci95_low": -0.03721378009754561,
+          "direction": "M-FIT-2 better",
+          "median": -0.029839464300878964,
+          "n": 20,
+          "n_negative": 20
+        },
+        "vs_m_fit": {
+          "ci95_high": 0.0010363462650167243,
+          "ci95_low": -0.0035462719995788122,
+          "direction": "inconclusive",
+          "median": -0.00055027049438542,
+          "n": 20,
+          "n_negative": 12
+        }
+      }
+    }
+  ],
+  "bootstrap_samples": 5000,
+  "note": "External IBM measurements of the pinned 25-circuit suite. H-V3-8 is preregistered; M-FIT-2 is post-hoc. No retuning after the counts.",
+  "schema_version": "1.0",
+  "shots_per_circuit": 10000,
+  "suite": "r-io-7"
+}

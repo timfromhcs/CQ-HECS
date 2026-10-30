@@ -25,9 +25,10 @@ or released**.
    `Failed to extract bcrypt\_bcrypt.pyd: decompression resulted in return
    code -3!`. The build script is still `--onefile`; the `--onedir` build was
    interrupted. See §5.
-4. Evaluate the already-measured **10k-shot IBM runs** (`ibm_10k/*`). They have
-   counts but no `h_v3_8_evaluation.json` / `m_fit_2_*` yet. This is the
-   highest-value evidence work left. See §6.
+4. The **10k-shot IBM runs** are now evaluated
+   (`ibm_10k/summary_evaluation.json`): H-V3-8 is SUPPORTED on all three
+   backends, no anomaly, M-FIT-2 vs M-FIT inconclusive. Surface the table in
+   the Studio Hardware view and README. See §5.
 5. Do not submit more IBM jobs blindly: the open-plan budget is **589 / 600 s
    used, 11 s left**.
 6. After CI is green: merge, release **v3.2.0**, attach the exe/zip, verify
@@ -217,19 +218,19 @@ Add tests that are currently missing:
 
 ## 5. Evidence tuning — highest-value work left
 
-The following runs exist but are **not fully evaluated**:
+The 10k runs are evaluated. The remaining evidence state:
 
 | Path | Shots | Status |
 | :--- | ---: | :--- |
-| `research/v4/evidence/ibm_10k/ibm_fez/` | 10,000 | counts only; no evaluation |
-| `research/v4/evidence/ibm_10k/ibm_kingston/` | 10,000 | counts only; no evaluation |
-| `research/v4/evidence/ibm_10k/ibm_marrakesh/` | 10,000 | counts only; no evaluation |
+| `research/v4/evidence/ibm_10k/ibm_fez/` | 10,000 | **evaluated**: SUPPORTED, -0.032936 |
+| `research/v4/evidence/ibm_10k/ibm_kingston/` | 10,000 | **evaluated**: SUPPORTED, -0.027127 |
+| `research/v4/evidence/ibm_10k/ibm_marrakesh/` | 10,000 | **evaluated**: SUPPORTED, -0.027340 |
 | `research/v4/evidence/ibm_readout50k/pilot_pilot/ibm_fez/` | 50,000 | 4 readout probes |
 | `research/v4/evidence/ibm_readout50k/pilot_pilot/ibm_marrakesh/` | 50,000 | 4 readout probes |
 | `research/v4/evidence/ibm_universal/...` | 10k/50k | 8 probes; summary only |
 | `research/v4/evidence/ibm_sat_oracles/...` | 10k | 3 SAT oracles; summary/report |
 
-### 5.1 Evaluate each 10k backend
+### 5.1 10k backends - already evaluated
 
 ```python
 from pathlib import Path

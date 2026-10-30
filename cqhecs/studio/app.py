@@ -39,6 +39,16 @@ DATASET_RELATIVE = Path("research/v3/evidence/openquantum/rigetti_cepheus-1-108q
 FIT_RELATIVE = Path("research/v4/evidence/r-io-7")
 EVALUATION_RELATIVE = Path("research/v3/evidence/openquantum/rigetti_cepheus-1-108q/h_v3_8_evaluation.json")
 
+# Every committed H-V3-8 evaluation of the pinned 25-circuit suite, as
+# (dataset id, shots per circuit, path relative to the repository root).
+HARDWARE_EVALUATIONS = (
+    ("r-io-7 / rigetti", 1000, EVALUATION_RELATIVE),
+    ("r-ibm-1 / ibm_fez", 1000, Path("research/v4/evidence/ibm/ibm_fez/h_v3_8_evaluation.json")),
+    ("r-ibm-1 / ibm_fez 10k", 10000, Path("research/v4/evidence/ibm_10k/ibm_fez/h_v3_8_evaluation.json")),
+    ("r-ibm-1 / ibm_kingston 10k", 10000, Path("research/v4/evidence/ibm_10k/ibm_kingston/h_v3_8_evaluation.json")),
+    ("r-ibm-1 / ibm_marrakesh 10k", 10000, Path("research/v4/evidence/ibm_10k/ibm_marrakesh/h_v3_8_evaluation.json")),
+)
+
 _STATIC_FILES = {
     "index.html": "text/html; charset=utf-8",
     "app.js": "application/javascript; charset=utf-8",
@@ -678,17 +688,8 @@ class StudioState:
     def hardware(self) -> Dict[str, Any]:
         """Compact view of the committed real-QPU and oracle evidence."""
         datasets = []
-        candidates = [
-            (
-                "r-io-7 / rigetti",
-                self.root / "research/v3/evidence/openquantum/rigetti_cepheus-1-108q/h_v3_8_evaluation.json",
-            ),
-            (
-                "r-io-7 / ibm_fez",
-                self.root / "research/v4/evidence/ibm/ibm_fez/h_v3_8_evaluation.json",
-            ),
-        ]
-        for dataset_id, path in candidates:
+        for dataset_id, shots, relative in HARDWARE_EVALUATIONS:
+            path = self.root / relative
             if not path.is_file():
                 continue
             payload = json.loads(path.read_text("utf-8"))
@@ -697,11 +698,13 @@ class StudioState:
                 {
                     "id": dataset_id,
                     "backend": payload.get("backend"),
+                    "shots": shots,
                     "verdict": agg.get("verdict"),
                     "median_delta_tv": agg.get("median_delta_tv"),
                     "ci95_low": agg.get("ci95_low"),
                     "ci95_high": agg.get("ci95_high"),
                     "n_eval": agg.get("n_eval"),
+                    "n_noisy_better": agg.get("n_noisy_better"),
                 }
             )
         pnp = {}

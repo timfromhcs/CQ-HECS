@@ -631,7 +631,7 @@ function renderHardware() {
   const cards = $("#hardware-datasets");
   cards.innerHTML = "";
   for (const item of datasets) {
-    cards.append(stat(item.id, `${fmt(item.median_delta_tv)}`, `${item.verdict} · ${item.n_eval} EVAL · ${item.backend || ""}`));
+    cards.append(stat(item.id, `${fmt(item.median_delta_tv)}`, `${item.verdict} · ${item.n_eval} EVAL · ${item.shots ?? "?"} shots`));
   }
   const qr = data.quantumrings || {};
   $("#hardware-qr").textContent = qr.verdict ? `QuantumRings ${qr.verdict} ${qr.passed}/${qr.n}` : "QuantumRings n/a";
@@ -680,11 +680,11 @@ function renderHardware() {
 
   const dsTable = el("table");
   const dsHead = el("tr");
-  ["dataset", "backend", "verdict", "median ΔTV", "CI"].forEach((label, i) => dsHead.append(el("th", i === 3 ? "num" : "", label)));
+  ["dataset", "backend", "shots", "verdict", "median ΔTV", "CI", "closer"].forEach((label, i) => dsHead.append(el("th", [2, 4, 6].includes(i) ? "num" : "", label)));
   dsTable.append(dsHead);
   for (const item of datasets) {
     const tr = el("tr");
-    tr.append(el("td", "", item.id), el("td", "", item.backend || "—"), el("td", "", item.verdict || "—"), el("td", "num", fmt(item.median_delta_tv)), el("td", "num", `[${fmt(item.ci95_low)}, ${fmt(item.ci95_high)}]`));
+    tr.append(el("td", "", item.id), el("td", "", item.backend || "—"), el("td", "num", item.shots ?? "—"), el("td", "", item.verdict || "—"), el("td", "num", fmt(item.median_delta_tv)), el("td", "num", `[${fmt(item.ci95_low)}, ${fmt(item.ci95_high)}]`), el("td", "num", item.n_noisy_better != null ? `${item.n_noisy_better}/${item.n_eval}` : "—"));
     dsTable.append(tr);
   }
   $("#hardware-dataset-table").innerHTML = "";

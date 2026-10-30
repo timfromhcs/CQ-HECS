@@ -75,6 +75,14 @@ Four classical simulation paths · one result contract · fail-closed by design
 > than `M-FIT` (+0.001688, CI [+0.000327, +0.004045]); H-V3-9 remains not
 > supported.
 >
+> **10k-shot rerun (3 backends):** `ibm_fez`, `ibm_kingston` and
+> `ibm_marrakesh` each ran the same 25 circuits at 10,000 shots. H-V3-8 is
+> **`SUPPORTED` on all three** (median ΔTV −0.0329 / −0.0271 / −0.0273,
+> 20/20 each). No backend shows the qubit-0 anomaly, and corrected `M-FIT-2`
+> is statistically indistinguishable from `M-FIT` on the paired comparison
+> (CI includes 0 on all three). Evidence:
+> `research/v4/evidence/ibm_10k/summary_evaluation.json`.
+>
 > **Not claimed:** universal quantum simulation, real-QPU execution *by this
 > package*, cross-vendor GPU acceleration, SOTA performance, a proof of
 > `P = NP`, or a proof of ETH. See [Limitations](#limitations-and-non-goals),
@@ -686,6 +694,7 @@ tied to a source SHA and records `PASS`, `FAIL`, `SKIP`, `BLOCKED`, and
 | [`research/v4/COMPLEXITY_AND_ETH.md`](research/v4/COMPLEXITY_AND_ETH.md) | `P` vs `NP`, ETH/SETH, OpenAI math corpus, non-claims |
 | [`research/v4/evidence/quantumrings/`](research/v4/evidence/quantumrings/) | `r-qr-1`: 21/21 independent-engine cross-check |
 | [`research/v4/evidence/ibm/`](research/v4/evidence/ibm/) | the same 25 circuits on IBM `ibm_fez`; H-V3-8 SUPPORTED on a fresh backend |
+| [`research/v4/evidence/ibm_10k/`](research/v4/evidence/ibm_10k/) | 10k-shot reruns on three IBM backends; H-V3-8 SUPPORTED on all three |
 | [`research/v4/evidence/pnp_emulability/`](research/v4/evidence/pnp_emulability/) | exact CQ-HECS vs Qiskit Statevector on 8 universal probes; QPU comparison |
 | [`research/v4/evidence/pnp_sat_oracles/`](research/v4/evidence/pnp_sat_oracles/) | 3–4 variable SAT oracles on IBM; transfer and MPS losslessness |
 | [`research/v4/evidence/openquantum_pilot/`](research/v4/evidence/openquantum_pilot/) | `r-qpu-pilot-1`: IonQ probe batches and collection status |

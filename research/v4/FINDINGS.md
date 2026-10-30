@@ -71,6 +71,21 @@ The per-qubit procedure did not transfer a benefit to a backend without the
 `X` anomaly. H-V3-9 remains not supported. Evidence:
 `research/v4/evidence/ibm/ibm_fez/`.
 
+## 2.1b 10k-shot multi-backend rerun
+
+The same 25 circuits were rerun at 10,000 shots on three IBM backends. No
+retuning was performed after the counts.
+
+| backend | H-V3-8 | median ΔTV | 95 % CI | M-FIT-2 vs M-FIT |
+| :--- | :--- | ---: | ---: | :--- |
+| `ibm_fez` | SUPPORTED | −0.032936 | [−0.038172, −0.023337] | inconclusive (median −0.00048) |
+| `ibm_kingston` | SUPPORTED | −0.027127 | [−0.031653, −0.019508] | inconclusive (median +0.00030) |
+| `ibm_marrakesh` | SUPPORTED | −0.027340 | [−0.041416, −0.021543] | inconclusive (median −0.00055) |
+
+No backend shows an anomalous qubit; M-FIT-2 is never significantly better than
+the frozen mean. Evidence:
+`research/v4/evidence/ibm_10k/summary_evaluation.json`.
+
 ## 2.2 Finite SAT and universal-oracle probes
 
 Eight 2–5 qubit universal probes ran on IBM `ibm_fez` and `ibm_marrakesh`:

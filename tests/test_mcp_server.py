@@ -61,3 +61,22 @@ def test_unknown_tool_is_a_jsonrpc_error():
          "params": {"name": "does_not_exist", "arguments": {}}},
     ])
     assert response["error"]["code"] == -32000
+
+
+def test_sat_models_and_hardware_tools():
+    models, hardware = _session([
+        {"jsonrpc": "2.0", "id": 6, "method": "tools/call",
+         "params": {"name": "cqhecs_sat_models",
+                    "arguments": {"cnf": "p cnf 2 1\n1 2 0\n", "limit": 10}}},
+        {"jsonrpc": "2.0", "id": 7, "method": "tools/call",
+         "params": {"name": "cqhecs_hardware", "arguments": {}}},
+    ])
+    enumerated = json.loads(models["result"]["content"][0]["text"])
+    assert enumerated["status"] == "COMPLETE"
+    assert enumerated["count"] == 3
+    evidence = json.loads(hardware["result"]["content"][0]["text"])
+    by_id = {row["id"]: row for row in evidence["datasets"]}
+    for backend in ("ibm_fez", "ibm_kingston", "ibm_marrakesh"):
+        row = by_id[f"r-ibm-1 / {backend} 10k"]
+        assert row["shots"] == 10000
+        assert row["verdict"] == "SUPPORTED"

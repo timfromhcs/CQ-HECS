@@ -148,18 +148,19 @@ def _tool_models(arguments: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _tool_hardware(_arguments: Dict[str, Any]) -> Dict[str, Any]:
+    from cqhecs.studio.app import HARDWARE_EVALUATIONS
+
     root = ROOT / "research/v4/evidence"
     out: Dict[str, Any] = {"datasets": []}
-    for name, path in (
-        ("ibm_fez", root / "ibm/ibm_fez/h_v3_8_evaluation.json"),
-        ("rigetti_r_io_7", ROOT / "research/v3/evidence/openquantum/rigetti_cepheus-1-108q/h_v3_8_evaluation.json"),
-    ):
+    for name, shots, relative in HARDWARE_EVALUATIONS:
+        path = ROOT / relative
         if path.is_file():
             payload = json.loads(path.read_text("utf-8"))
             out["datasets"].append(
                 {
                     "id": name,
                     "backend": payload.get("backend"),
+                    "shots": shots,
                     "verdict": payload.get("aggregate", {}).get("verdict"),
                     "median_delta_tv": payload.get("aggregate", {}).get("median_delta_tv"),
                     "n_eval": payload.get("aggregate", {}).get("n_eval"),
