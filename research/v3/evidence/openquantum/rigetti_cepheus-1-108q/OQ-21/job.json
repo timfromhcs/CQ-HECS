@@ -1,0 +1,16 @@
+{
+  "job": {
+    "id": "131d6a94-f7f8-49b8-ae8f-1557ad652e49",
+    "status": "Created",
+    "submitted_at": "2026-10-30T12:21:55.038Z"
+  },
+  "quote": {
+    "backend": "rigetti:cepheus-1-108q",
+    "plan": "Public Plan",
+    "priority": "Standard Queue",
+    "total_cost": 1,
+    "execution_plan_id": "072f7eb6-574b-4bae-aafa-d3399c4abe7a",
+    "queue_priority_id": "0f7b91a3-d1bf-46fb-af9c-55b77fa72bed"
+  },
+  "qasm_sha256": "ab7a4dfa2d86b6ed607afe9d32699398895694d51daedd28f64b99a492f38ec4"
+}

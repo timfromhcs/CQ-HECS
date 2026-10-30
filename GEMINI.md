@@ -1,358 +1,1374 @@
-# GEMINI MISSION — CQ-HECS SOTA Hardening, Research-to-Code, Hardware-Aware Quantum Bridge, and Verified Stable Release
+# CQ-HECS V3 STABLE — Autonomous Research, Engineering, Verification and Release Mission
 
 **Repository:** https://github.com/timfromhcs/CQ-HECS  
-**Document role:** The operative, autonomous engineering and research mission for the next verified CQ-HECS release.  
-**Prepared against the public repository snapshot:** 2026-10-29.  
-**Observed latest stable release at preparation:** `v2.4.0`; the live repository, tag, workflow runs, and release assets MUST be re-discovered at runtime.  
-**Default branch observed at preparation:** `main`; never assume the branch name remains unchanged.  
-**Working release direction:** `v2.5.0` only if a meaningful backward-compatible public capability is implemented and passes every mandatory gate. If the evidence supports only bug fixes, use the correct patch version instead.  
-**Desired outcome:** Bring every measurable engineering, mathematical, numerical, performance, research, documentation, security, and release dimension as close to an evidence-backed 10/10 as the actual problem permits.  
-**Execution style:** Autonomous, long-horizon, evidence-first, bounded self-healing loops. No fake-green tests, fabricated results, hidden approximation, unsupported SOTA claims, credential leaks, destructive cleanup, or unauthorized paid hardware jobs.
+**Mission target:** Deliver the next genuinely stable major release, `v3.0.0`, only when the evidence supports a major-version release.  
+**Prepared against the public repository state observed on:** 2026-10-30 (Europe/Berlin).  
+**Observed stable baseline:** `v2.5.1`, tag `v2.5.1`, source commit `1be682a20ca3ccc9079893e0b150217a568a23e6`.  
+**Canonical project version at baseline:** `2.5.1` (`scripts/version.py`).  
+**Primary branch observed:** `main`.  
+**Purpose:** A long-horizon, agentic, evidence-first engineering and research plan for an Opus 5.5 high-effort coding/research agent.  
+**Execution rule:** Inspect first, preserve work, make a measured plan from the live tree, implement in small auditable slices, prove each slice, then publish only a verified release.
 
-> **Meaning of “10/10”:** It is a target for the quality of evidence, correctness, coverage of the supported problem classes, engineering discipline, and honest limitation reporting—not a guarantee of universal simulation, zero defects, superiority on every benchmark, or equivalence with a quantum processor. A claim that cannot be demonstrated is a `NOT PROVEN` or `BLOCKED` item, never a success by wording.
+> **Mission honesty:** “V3 Stable”, “SOTA”, “exact”, “GPU accelerated”, “real hardware”, “subexponential”, “polynomial”, and “verified” are technical claims, not marketing words. They must be supported by code, primary sources, formal statements, reproducible experiments, and/or exact-SHA CI evidence. A hypothesis is not a feature. A simulation is not a QPU run. A Vulkan shader dispatch is not automatically a GPU-accelerated quantum simulator. An ETH refutation is not a proof that P = NP.
+
+> **Evidence update, 2026-10-30 — the first real QPU data exists.** The
+> preregistered `r-io-7` suite ran to completion on
+> `rigetti:cepheus-1-108q` via Open Quantum: 25 of 25 jobs (5/5 FIT, 20/20
+> EVAL), 1000 shots each, 1 credit per job, 25 credits. Verdict
+> **`SUPPORTED`** — median ΔTV = −0.071905, 95 % CI [−0.135899, −0.006703],
+> 14/20 EVAL circuits closer to the measurement than the ideal distribution.
+> This changes what the next agent must assume:
+>
+> - **A QPU run now exists, but not from this package.** `cqhecs` still has no
+>   provider adapter; `RealHardwareBackend` remains a fail-closed boundary.
+>   The counts are external reference data, submitted by a separate runner.
+> - **Readout error, not gate error, is the dominant measured effect.**
+>   P(0|1) spans 0.059–0.531 per qubit (mean 0.164); P(1|0) spans 0.003–0.070
+>   (mean 0.033). The fitted CX depolarizing parameter is 0.00125.
+> - **`M-FIT` is structurally too weak and stays frozen anyway.** It is
+>   preregistered; the per-qubit readout it computes is replaced by the device
+>   mean in `noise_model()`. Its own fit quality says so: mean TV `0.229` on
+>   the five jobs it was tuned on. Any repair is `M-FIT-2`, post-hoc,
+>   exploratory, and needs a fresh suite on another backend to be confirmed.
+> - **The work packages are written down, not implemented:**
+>   [`research/v3/EMULATOR_BUILD_PLAN.md`](research/v3/EMULATOR_BUILD_PLAN.md).
+> - **Still missing:** any calibration snapshot (the provider returned none),
+>   any second backend, and any second day. No drift, T1/T2, or cross-device
+>   claim is available from this data. `OQ-25` repeats `OQ-09` and moved
+>   ΔTV from −0.0442 to −0.0321, which is inside shot noise, not a drift
+>   measurement.
+>
+> Treat every "no real hardware" statement below as scoped to *this package's
+> execution modes*, not to the existence of measured QPU data in `research/`.
 
 ---
 
-## 0. Mission order
+# 0. Mission order and completion contract
 
-Act as a coordinated senior team: quantum-algorithm researcher, numerical analyst, classical simulation engineer, C++20/Vulkan engineer, Python/API maintainer, test/fuzz architect, performance engineer, security reviewer, CI/CD/release engineer, and scientific technical writer.
+Act as a coordinated senior team consisting of:
 
-Complete the mission in this order:
+- quantum-algorithm and quantum-information researcher;
+- classical quantum-circuit simulation researcher;
+- tensor-network / factor-graph / FAQ algorithm engineer;
+- complexity-theory researcher (SAT, #SAT, ETH, circuit complexity, proof complexity);
+- exact-arithmetic and numerical-analysis engineer;
+- C++20 / Vulkan / GPU systems engineer;
+- Python / Qiskit / API maintainer;
+- hardware-provider integration engineer;
+- SAT / DIMACS correctness engineer;
+- test, fuzz, differential-oracle and mutation-testing architect;
+- UI/UX and terminal-interface designer;
+- security, supply-chain, CI/CD and release engineer;
+- scientific technical writer and documentation auditor.
 
-1. Discover the live repository and preserve all operator work.
-2. Reconcile the published release, version strings, source SHA, README, research records, and CI evidence. Fix stale or contradictory claims before new feature claims.
-3. Reproduce and resolve high-severity correctness, numerical, parser, API, resource, and result-contract defects.
-4. Read and classify current relevant literature—including OpenAI Math and current classical-emulator/real-QPU methods—without assuming that a paper, abstract, model-generated explanation, or adjacent Lean file proves transferability.
-5. Write falsifiable hypotheses and preregister experiments before choosing a major research prototype.
-6. Select at most ONE major new architectural feature for this release, based on the evidence and current code. The preferred target is a **Hardware-Aware Quantum Bridge**: truthful backend profiles and calibration provenance, a narrow testable noise-model capability if it can be implemented rigorously, and a provider boundary for optional real hardware. Do not force all subfeatures into Stable if any are not ready.
-7. Implement minimal, reviewable changes with independently checked mathematics and robust regression tests.
-8. Run all local quality gates and repair defects through bounded self-healing loops.
-9. Benchmark only equivalent result semantics on preregistered workloads, preserve raw results, and reject unsupported speed claims.
-10. Push a focused branch and PR through authorized GitHub credentials; run exact-SHA cloud gates and repair all genuine failures without bypasses.
-11. Update all documentation, reports, and user-facing claims to match the code and evidence. Re-test the final content-changing commit.
-12. Merge and release only when repository policy and all mandatory gates permit it. Download/inspect release artifacts and independently recompute their checksums where practical.
-13. Finish with a concise but complete evidence report: commit/tag, gates, actual results, test/benchmark artefacts, remaining limitations, and all `NOT RUN`/`BLOCKED` items.
+The mission is to take the actual current repository from its latest stable state to a materially better v3 release. Do not assume that all proposed features are feasible or stable. Determine what is already implemented, what is incomplete, what is inaccurate, and what can be proven within the cycle.
 
-Do not ask the operator questions for facts discoverable from the repo, public documentation, code, tests, configuration, or normal toolchain. Use sound judgment and continue. Ask for a human only when necessary for non-bypassable approval, missing access, owner-provisioned credentials, a paid/billable hardware run, or a security/permission boundary. Never bypass these blockers.
+## 0.1 Required execution order
 
-## 1. Non-negotiable invariants
+1. Rediscover the live GitHub state and the local working copy. The snapshot in this document is a starting reference, not a permanent fact.
+2. Preserve every user change, branch, untracked file, release tag and prior research artefact.
+3. Reconstruct an exact baseline: repository SHA, tag, package version, release assets, CI runs, source-tree structure, test inventory, dependency/toolchain versions, supported execution modes and current claims.
+4. Audit the existing `GEMINI.md`, README, architecture docs, release notes, UI code, C++ core, Python backends, SAT tools, Vulkan code and hardware bridge. Reuse valid work; do not rewrite blindly.
+5. Reproduce P0/P1 correctness and scientific-integrity risks before adding major features.
+6. Build a versioned evidence ledger and falsifiable research hypotheses.
+7. Re-read the OpenAI and Anthropic ETH artifacts and current quantum-simulation research from primary sources. Record exact revisions, statements, assumptions, proof scope and limitations.
+8. Select a bounded set of V3 deliverables. A research prototype may remain experimental; it must not silently become a stable production backend.
+9. Implement a coherent V3 architecture with stable contracts, exact/fail-closed semantics, clear capability routing and measured UI.
+10. Run the local build/test/benchmark loops on the current platform, then run the full cross-platform/cloud gates on the exact candidate SHA.
+11. Perform visual QA of every user-facing terminal/UI surface and README rendering.
+12. Update documentation only after the implementation and evidence are stable; then rerun the relevant checks on the docs-changing commit.
+13. Build clean packages, install them in clean environments, inspect the actual artifacts, independently verify checksums and SBOM, and confirm that release notes describe the exact artifact commit.
+14. Merge and publish only through repository policy and authorized credentials. Never bypass checks, reviews, branch protection, provider consent, or required secrets.
+15. Finish with a compact but complete report containing exact SHAs, tags, CI links, artifacts, benchmark data, supported limits, unresolved issues and all blocked/not-run items.
 
-1. **Correctness before performance.** A correct slower result or an explicit refusal is better than a fast plausible error.
-2. **No fake results.** Never fabricate state amplitudes, probabilities, counts, observables, uncertainty bounds, GPU telemetry, hardware results, benchmark data, Lean proof status, cloud success, release assets, or source links.
-3. **Fail closed.** Unsupported operations, invalid QASM, unknown gates, invalid indices, missing calibration, exceeding resource/time budgets, untrusted numerical states, backend timeouts, or unusable bounds must return a typed refusal/failure/unresolved result. Never silently substitute identity, invent uniform counts, silently switch to an unrelated simulator, or report success for partial work.
-4. **Metric correctness.** An observable-space bound is not automatically a state-vector bound, a total-variation bound, a confidence interval, or a bound on joint counts. Keep error scope explicit in every public and internal API.
-5. **Approximation visibility.** Distinguish exact algebraic transformations, floating-point evaluation, numerical rank decisions, intentional approximation/truncation, sampling uncertainty, physical-device noise, and error mitigation. Never compress these into one ambiguous `exact` or `error_bound` flag.
-6. **Independent oracles.** A test must not validate a function using the same helper, parser, gate matrix, convention, or algorithm that it is meant to test. Use independent derivation, analytical cases, Qiskit/Aer, Stim, direct NumPy matrices, or a separate reference path as appropriate.
-7. **Do not weaken quality gates.** Never delete/skip a failing test, reduce coverage thresholds, change tolerances without a derivation, mark a failing job optional, modify expected output to fit suspect code, suppress warnings without explanation, or change benchmark inclusion after seeing results to force a win.
-8. **Hypotheses are not findings.** Every candidate has `PROPOSED`, `SUPPORTED`, `REJECTED`, `INCONCLUSIVE`, `DEFERRED`, or `BLOCKED` status with a reproducible experiment ID and a dated evidence reference. Only results that meet the prespecified test can be called supported.
-9. **No universal efficient simulator claim.** Do not promise efficient classical simulation of arbitrary universal quantum circuits. Complexity depends on circuit structure and output task; worst-case behaviour can require exponential classical resources.
-10. **Hardware honesty.** Source compilation, SPIR-V validation, software-ICD dispatch, physical GPU dispatch, and full end-to-end GPU acceleration are separate evidence levels. A classical simulation, hardware noise model, provider fake, and physical QPU result are different result sources.
-11. **Preserve operator work.** Inventory the current branch, tracked modifications, staged changes, and untracked files before editing. Do not discard or overwrite unrelated operator data.
-12. **Safe Git.** Use a focused feature branch and PR. Do not force-push, rewrite public history, delete published tags, bypass checks/review, modify branch protection, push directly to a protected branch, or create a fake tag to trigger the release workflow.
-13. **Secret hygiene.** Never put credentials in this document, source, commit, URL, terminal logs, CI artefacts, benchmark files, issues, or final output. Never dump environment/auth headers. Use existing approved GitHub auth or short-lived secret storage and least privilege. Do not hunt the filesystem for leaked tokens, turn off TLS verification, use `--insecure`, or place a PAT in a remote URL.
-14. **Evidence for every gate.** Mark each item `PASS`, `FAIL`, `SKIP` with reason, `BLOCKED`, or `NOT RUN`. A skipped test is not a pass. Do not claim a test ran unless an actual recorded invocation or cloud job establishes it.
-15. **Bounded autonomy.** Self-healing means diagnosis, minimal repair, and re-verification—not unbounded blind editing. Limit each root-cause repair to three targeted attempts before documenting the blocker and continuing on independent work.
-16. **No premature “done.”** Report full completion only after the exact final source SHA, mandatory test suite, cloud gates, release provenance, and required documentation agree. If a non-bypassable external blocker remains, say `BLOCKED` precisely.
+## 0.2 Definition of done
 
-## 2. Live discovery and safe baseline
+V3 is complete only when all of the following hold:
 
-Repository facts in this file are a snapshot, not permanent truth. At mission start, discover actual state and refresh every important external source. Do not rely on badge labels or old audit text.
+- every supported execution path has an explicit capability contract and truthful result metadata;
+- all confirmed P0 and P1 defects are fixed or the affected functionality is disabled/refused with an explicit documented reason;
+- no fabricated solver output, quantum state, probability, error bound, hardware result, device metric or performance number can be surfaced as real;
+- exact arithmetic is exact within explicitly bounded representation limits and overflow is detected before undefined behavior;
+- approximation, finite precision, sampling uncertainty, modeled noise and physical-device uncertainty are separately represented;
+- SAT/UNSAT/#SAT statuses are logically sound, including timeouts and resource exhaustion;
+- any research algorithm is labelled `EXPERIMENTAL` until its mathematical scope and implementation are independently verified;
+- the TUI/CLI reports actual telemetry or explicitly labels a demo; no simulation of live metrics is presented as a live reading;
+- Vulkan claims match the actual tested device, dispatch path and end-to-end integration level;
+- real quantum-provider execution is a separate opt-in mode and never falls back invisibly to classical simulation;
+- independent differential, property, fuzz, mutation, negative, and regression tests cover the changed contracts;
+- Linux and Windows native builds, supported Python compatibility lanes, sanitizers, packaging and exact-SHA cloud CI pass;
+- README, architecture, usage, API, benchmark, citation and release files agree with the same final source SHA;
+- the final report does not claim a universal quantum simulator, P = NP, a real QPU run, or SOTA superiority without a valid proof or benchmark.
 
-### 2.1 Inspect the working copy and repository
+A blocker is not a reason to fake completion. Mark `BLOCKED`, document the exact missing permission/credential/device, and finish all independent offline work.
 
-Run or use an equivalent safe inventory:
+---
+
+# 1. Live baseline discovery and repository safety
+
+## 1.1 Re-discover the repository before changing anything
+
+Use GitHub and the actual local checkout. Verify:
 
 ```bash
 git status --short --branch
 git branch --show-current
 git rev-parse HEAD
 git remote -v
-git log -12 --oneline --decorate
+git log -15 --oneline --decorate
 git tag --list 'v*' --sort=-version:refname
 ```
 
-Then retrieve the live GitHub metadata for:
+Also query the live GitHub API (or the connected GitHub integration) for:
 
-- repository default branch, latest commit, tags, stable/draft/prerelease releases and their assets;
-- open/closed PRs that affect the current stable cycle;
-- recent CI, nightly and release workflow runs with exact head SHA, status and conclusion;
-- required checks/rulesets/branch rules if credentials permit access;
-- contents of `ci.yml`, `nightly.yml`, `release.yml` and any cloud-build/deployment configuration;
-- current state of `GEMINI.md`, `README.md`, `ARCHITECTURE.md`, `CHANGELOG.md`, `RELEASE_NOTES.md`, `pyproject.toml`, `CMakeLists.txt`, package constraints and tests.
+- default branch and latest commit SHA;
+- latest release, stable/prerelease/draft tags and target commits;
+- all open PRs and recent closed/merged PRs relevant to the V3 baseline;
+- the exact `ci.yml`, `nightly.yml`, `release.yml` runs for the latest stable SHA;
+- all release assets, sizes, digests/checksum files and release body;
+- branch protection/rulesets and required checks, when the API exposes them;
+- recent workflow failure history and the latest nightly result.
 
-If checkout is stale, fetch carefully. If dirty, create a read-only inventory of every changed file, the diff summary, and untracked work. Never use destructive reset/cleanup commands to get a clean tree. Do not overwrite pre-existing edits to `GEMINI.md` without explicitly preserving their useful content; reconcile them with this mission rather than erasing historical decisions.
+Never assume `main`, `v2.5.1`, a clean tree or any SHA is still current. If the live version changed since this plan was prepared, rebase the plan on the actual release and rename the research directory accordingly.
 
-### 2.2 Current known discrepancy to actively verify
+## 1.2 Baseline facts observed on 2026-10-30
 
-The public snapshot inspected on 2026-10-29 shows `v2.4.0` published, while parts of `README.md` and `research/v2_4/RELEASE_AUDIT.md` still describe `v2.3.0` as the latest/current baseline. The README has old candidate verification entries (including 377 tests/version `2.3.0`), while the newer v2.4 research matrix records 420 candidate Python tests and other updated evidence. Re-check these files against the live release/tag/SHA and repair all stale statements. Do not blindly replace historical baselines: label them as historical evidence for their actual SHA, and add the current final-SHA results separately.
+These facts were observed from the public repository and must be rechecked before use:
 
-The live v2.4.0 release note says that v2.4.0 adds Pauli expectation values, nine composite gate lowerings, and result-contract corrections, but does not add a new simulation path, noise models, mid-circuit measurement/reset, or end-to-end GPU acceleration. Keep that scope truthful unless the live code and evidence prove a later change.
+- latest published release: `v2.5.1`;
+- source SHA: `1be682a20ca3ccc9079893e0b150217a568a23e6`;
+- release date: 2026-10-30;
+- package wheel: `cqhecs-2.5.1-py3-none-any.whl`;
+- package sdist: `cqhecs-2.5.1.tar.gz`;
+- SBOM: `cqhecs-sbom.spdx.json`;
+- published SHA-256 assets are recorded in the GitHub release body;
+- exact-SHA CI run observed: `40984668303`, with seven successful jobs (static/package, Linux native, Windows native, ASan/UBSan, Python 3.12, 3.13 and 3.14 compatibility);
+- release run observed: `40984668504`, successful;
+- no open PRs were returned in the live query at that time;
+- `main` pointed at `1be682a20ca3ccc9079893e0b150217a568a23e6`;
+- canonical version lived in `scripts/version.py` and was `2.5.1`.
 
-### 2.3 Build a durable audit trail
+Do not copy any of the above into new release notes as though V3 had already been tested. Treat these as historical baseline metadata only.
 
-Follow the repository's current research naming convention. Prefer a new `research/v2_5/` directory or the appropriate next-stable area, containing at least:
+## 1.3 Working tree preservation
 
-- `BASELINE.md` — exact baseline SHA, versions, platform/toolchain, device/ICD class, dependencies, dirty state and historical release;
-- `HYPOTHESES.md` — falsifiable hypotheses, assumptions, prespecified acceptance/rejection criteria and decisions;
-- `LITERATURE_MAP.md` — source permalink/version, scope, model, proof/review status and transfer decision;
-- `FINDINGS.md` — stable defect IDs, severity, repro, root cause, fix, regression test and disposition;
-- `TEST_MATRIX.md` — actual commands/results, duration, logs/artifact URLs, exact commit and `SKIP`/`BLOCKED` reasons;
-- `EXECUTION_LOG.md` — chronological repair/build/test/cloud attempts and checkpoints;
-- `BENCHMARK_PROTOCOL.md` — preregistered workload families, metric definitions, run methodology and exclusion rules;
-- `RELEASE_AUDIT.md` — exact tag/SHA, CI URLs, packages, checksum/SBOM evidence, documentation consistency and limitations.
+Before editing:
 
-Historical records are append-only in spirit: never rewrite an old record so that a result appears to have been performed against a commit it did not test. Clearly distinguish baseline, candidate-branch, merged-SHA, tag and downloaded-artifact evidence.
+- record staged changes, unstaged changes and untracked files;
+- save a patch or immutable snapshot of operator changes outside the repository working tree;
+- identify generated build files and tracked binary assets;
+- inspect `.gitignore`, submodules and LFS status;
+- do not run `git reset --hard`, `git clean -fdx`, force-push, history rewrite or tag deletion;
+- do not overwrite the existing root `GEMINI.md` without first preserving its contents and decisions;
+- do not remove historical `research/v2_*` files merely because they are old;
+- create a dedicated branch using the current repository conventions, for example `agent/cq-hecs-v3-stable`, unless a conflicting branch already exists.
 
-### 2.4 Source inventory
+If the current tree is dirty, distinguish the user's edits from agent edits in the execution log. Do not commit unrelated operator changes.
 
-Read the live code rather than trusting historical reports. At minimum inspect:
+## 1.4 Build an immutable baseline dossier
 
-- Python: `cqhecs/circuit_parsing.py`, `gate_lowering.py`, `gate_manifest.py`, `circuit_analyzer.py`, `router.py`, `result.py`, `backend.py`, `provider.py`, `expectation.py`, `cli.py`, `scheduler.py`, `circuit_library.py`;
-- Python backends: `path_a_stabilizer.py`, `path_b_stabilizer_rank.py`, `path_c_mps_exact.py`, `path_d_sparse_pauli.py`, `dense_reference.py`;
-- C++/C ABI/native binding, QASM parsers, MPS, statevector, stabilizer/tableau, tensor network, memory/paging, Vulkan context/pipeline/engine and every shader surfaced by the live tree;
-- all current Python, C++, CTest, property, fuzz, mutation, concurrency, parser, size-limit, result-contract, native-artifact and CLI tests;
-- package configuration, pinned constraints, workflow definitions, release scripts, SBOM/checksum generation and all docs/benchmark/research claims.
+Create a new research folder, preferably:
 
-Historical findings should be reproduced against current code. If a defect is already fixed, prove that with code inspection and regression tests; do not waste time re-implementing it.
+```text
+research/v3/
+    BASELINE.md
+    SOURCE_INVENTORY.md
+    DEFECT_REGISTER.md
+    HYPOTHESES.md
+    LITERATURE_MAP.md
+    RESEARCH_TRANSFER_AUDIT.md
+    ARCHITECTURE_DECISIONS.md
+    BENCHMARK_PROTOCOL.md
+    TEST_MATRIX.md
+    EXECUTION_LOG.md
+    UI_UX_AUDIT.md
+    RELEASE_AUDIT.md
+    LIMITATIONS.md
+    evidence/
+```
 
-## 3. Definition of “10/10” and scorecard
+If another V3/V3.0 research folder exists, extend it rather than creating duplicate competing records.
 
-At the start, establish a baseline and fill this matrix with scores and evidence. Re-evaluate after implementation. Scores without evidence are not accepted. A high score in one dimension cannot compensate for P0 correctness, scientific, security or release failures.
+Every report must state:
 
-| Dimension | Target evidence for a 10/10-quality claim |
-|---|---|
-| Mathematical correctness | Every supported path has independent analytic/differential/property tests; assumptions and unsupported cases are explicit. |
-| Numerical honesty | Rounding, rank floor, intentional truncation, sampling, noise and error bounds are separately reported and validated. |
-| Semantic consistency | One public operation means the same thing across Python, CLI, Qiskit, QASM and native entry points—or is explicitly rejected by a documented capability contract. |
-| Resource safety | Inputs and intermediate allocations are preflighted; no uncontrolled OOM, paging corruption, or silent partial mutation; time/memory limits fail closed. |
-| Adversarial robustness | Property/fuzz tests cover malformed inputs, extreme values, index/layout bugs, seed edges, concurrency, resource denial and corrupted artifacts. |
-| SOTA relevance | Live, primary-source literature map; comparators run fairly; feature improves a specific named workload class or is deferred. |
-| Performance | Fresh, reproducible, end-to-end benchmarks with variance and resource metrics; no superiority claim based on a shader microbenchmark or a single GHZ circuit. |
-| GPU truthfulness | Device identity and execution path recorded; CPU/GPU parity and validation pass; full simulator acceleration separately measured. |
-| QPU bridge truthfulness | Fake-provider and real-provider paths are distinguishable; real run provenance and raw counts are retained; no silent simulated fallback. |
-| API and architecture | Typed contracts, stable serialization, canonical semantics, compatibility tests and capability-first routing. |
-| Security/supply chain | Least permissions, pinned third-party Actions, safe secrets, build/package checks, checksums and SPDX SBOM verified. |
-| CI/release integrity | Required jobs pass on the exact final SHA; tag matches version; artifacts build/install/run and published hashes are independently checked. |
-| Documentation | Every claim traced to code/evidence; all supported limitations, setup, API, examples and hardware status reflect the same commit. |
-| Reproducibility | Seeds, versions, environment, raw logs, benchmark protocol, exact SHA and artifact digests are recorded. |
-| Maintainability | One major feature at a time, small modules, reviewable diffs, clear errors and no dead/duplicated unsupported implementations. |
+- exact source SHA;
+- date/time and timezone;
+- OS, CPU, RAM, GPU, Vulkan driver/ICD and whether the GPU is physical or software;
+- compiler/CMake/Python/Qiskit/Aer/Stim/Lean versions where applicable;
+- command line, exit code and captured log path;
+- whether the evidence is baseline, candidate, merge commit, tag or downloaded release artifact;
+- which results were local versus cloud;
+- all `NOT RUN`, `SKIP`, `BLOCKED`, `INCONCLUSIVE` states.
 
-**Hard stop:** Any unresolved P0 issue in incorrect outputs, metric conflation, silent truncation, result provenance, security, or release integrity blocks Stable no matter what the average score is.
+Historical evidence must remain attached to the SHA that actually produced it. Never edit a prior test matrix to imply an old commit passed tests that were only run later.
 
-## 4. Product and scientific boundaries
+---
 
-CQ-HECS is a **classical quantum-circuit emulator**. It is not a physical quantum processor. It may model, optimize, validate or submit circuits to actual providers through a separate explicit provider mode, but each result must say which source created it.
+# 2. Actual V2.5.1 architecture: preserve and extend
 
-Current documented four-path intent:
+The current project is not a blank slate. Read the live files; the following is the observed architecture inventory and a starting map only.
 
-- **Path A — Stabilizer tableau:** specialized efficient classical simulation of the supported Clifford/stabilizer subset. It is not a universal gate simulator.
-- **Path B — Stabilizer rank/decomposition:** can handle selected low-non-Clifford workloads; branch/rank growth may become exponential.
-- **Path C — MPS/tensor chain:** effective for workloads with manageable entanglement for a chosen ordering. Paging shifts storage but does not eliminate computation or exponential entanglement growth. Numerically removed singular values must be reported accurately.
-- **Path D — Sparse Pauli / Heisenberg propagation:** targets supported observables and can provide an observable-specific bound. It must not certify a joint measurement distribution unless a distribution bound is separately derived and proven.
-- **Dense reference:** limited by exponential memory/runtime; retain it as an independent small-circuit oracle, not a large-system promise.
-- **Vulkan:** primitive dispatch evidence is distinct from a real GPU simulator backend. The current Vulkan engine may be planner/allocator-only; inspect live code before claiming gate execution.
+## 2.1 Python quantum-simulation surface
 
-Do not make up a universal “number of qubits supported.” Report width alongside gate depth, topology, entanglement/rank, path, observable type, shots, memory/time budget, numerical semantics and whether the result is resolved. A 300-qubit GHZ circuit is not evidence of 300-qubit arbitrary-circuit simulation.
+Core modules include:
 
-## 5. Literature and research-transfer workflow
+```text
+cqhecs/
+  backend.py
+  circuit_analyzer.py
+  circuit_library.py
+  circuit_parsing.py
+  cli.py
+  expectation.py
+  gate_lowering.py
+  gate_manifest.py
+  hardware_bridge.py
+  provider.py
+  result.py
+  router.py
+  scheduler.py
+  backends/
+    dense_reference.py
+    noisy_density_matrix.py
+    path_a_stabilizer.py
+    path_b_stabilizer_rank.py
+    path_c_mps_exact.py
+    path_d_sparse_pauli.py
+```
 
-### 5.1 OpenAI Math
+Existing high-level capabilities recorded in the V2.5.1 release notes:
 
-Primary source: https://github.com/openai/math
+- four-path router/backends;
+- Path A stabilizer-tableau path;
+- Path B stabilizer-rank/decomposition path;
+- Path C MPS/tensor-chain path;
+- Path D sparse-Pauli observable path;
+- Pauli expectation API;
+- composite gate lowering;
+- independent dense reference for small cases;
+- hardware-aware noise/profile bridge;
+- noisy density-matrix reference path with a 10-qubit documented ceiling.
 
-At mission start, retrieve the actual current revision and relevant manifests/docs; record exact SHA, date, source file/permalink, repository-reported counts and how each count is defined. Do not hardcode manuscript/family/formalization counts from this file or prior reports. Distinguish manuscripts, result families, headline results, and formalized claims. A nearby Lean proof does not automatically formalize the full paper result. Verify the theorem statement, assumptions, domain, model, proof dependencies and match to the actual circuit workload.
+The exact capabilities, gate support and numerical semantics must be revalidated from source and tests. Do not infer that “Path C exact” means symbolic exactness if the implementation uses float64, Q1.31 or numerical-rank thresholds.
 
-Classify every candidate:
+## 2.2 Native C++20 and Vulkan surface
 
-- `DIRECT_TRANSFER`: theorem/method directly applies to the implemented operation and all assumptions are met;
-- `ADAPTABLE`: useful idea but requires a new derivation/prototype;
-- `VALIDATION_ONLY`: useful test, lower bound or boundary, not a runtime algorithm;
-- `NEGATIVE_RESULT`: rules out an overclaim or proposed transfer;
-- `NOT_RELEVANT`: no material relationship to the current project;
-- `UNVERIFIED_RESEARCH`: insufficiently independently checked;
-- `RESEARCH_ONLY`: explicitly cannot be included in Stable code or claims yet.
+The repository contains:
 
-For each candidate record title/ID, date/revision, primary URL, theorem/proof status, computational model, assumptions, likely circuit family, relevant CQ-HECS module, expected measurable benefit, independent test, acceptance/rejection threshold and decision.
+```text
+include/
+  cq/
+    exact_cyclotomic.hpp
+  cq_hecs/
+    core/
+    tensor_network.hpp
+    transpiler/
+    vulkan/
+    constraint_solver.hpp
+    residual_engine.hpp
+  cqhecs/
+    algebra/ring.hpp
+    stabilizer/tableau.hpp
+    vulkan/
 
-Investigate (without assuming any is transferable):
+src/
+  algebra/ring.cpp
+  constraint_solver.cpp
+  hybrid_engine.cpp
+  sat_solver.cpp
+  stabilizer/
+  tensor_network.cpp
+  vulkan/
+  terminal_ui.cpp
+  terminal_ui.hpp
+  tiered_storage.cpp
+  ...
 
-1. Quantum query complexity/lower bounds: use to constrain claims, never treat query complexity as classical gate-level runtime.
-2. Quantum algorithms/fixed gate sets: use small circuits as validation/benchmark families, not proof of efficient classical simulation.
-3. Fourier-transform and exact arithmetic statements: transfer only when arithmetic model, coefficient representation, root-of-unity assumptions, preparation costs and numeric stability match.
-4. Quantum many-body and statistical-mechanics results: candidate physically motivated Hamiltonian, spin-chain, Pauli-observable or MPS benchmark families.
-5. QMA hardness and complexity-boundary results: use to prevent misleading universal-efficiency claims, not as a solver speedup.
-6. Formalized statements: audit the formal theorem itself and the implemented correspondence; formalization is valuable only within its proven scope.
+shaders/
+  compute/
+  ...
+```
 
-### 5.2 Anthropic and machine-checked mathematics
+The codebase includes exact cyclotomic/dyadic-ring representations for Clifford+T-related values, stabilizer/tableau code, MPS code, sparse/tensor-related components, Vulkan buffers/context/pipelines, embedded shaders, QASM parsing and native SAT tooling.
 
-Primary research entry points to re-check live:
+There are currently duplicate/parallel exact-ring surfaces (`cq::Cyclotomic8` and `cqhecs::algebra::ExactRingElement`). Audit their invariants and usage before choosing whether to consolidate. Avoid an ABI-breaking rewrite merely for aesthetic consistency.
 
-- https://www.anthropic.com/research/formalizing-fermats-last-theorem
-- https://www.anthropic.com/research/formal-verification
+## 2.3 Hardware bridge status at baseline
 
-The transferable engineering lesson is to split complex mathematics/software contracts into small machine-checkable claims, keep proof and code correspondence explicit, and independently test the implementation. A formal proof only proves the formal proposition under its assumptions; it does not certify that the specification fully models real hardware or that a C++/Python implementation refines it unless that connection is established.
+The `v2.5.1` release notes describe:
 
-Prioritize narrow, high-value proof targets:
+- `IDEAL_CLASSICAL`, `NOISY_CLASSICAL`, `REAL_HARDWARE` as separate modes;
+- synthetic built-in profiles;
+- Kraus noise channels and a noisy density-matrix backend;
+- a fake provider for offline emulation only;
+- a fail-closed `RealHardwareProvider` boundary, with no provider connected;
+- no mid-circuit measurement, reset or classical control in the stated scope;
+- no basis transpilation to a profile's native gates in the current fake-noise bridge;
+- no real hardware result used to justify a release claim; the measured
+  `r-io-7` counts are research evidence and evaluation data, not a package
+  feature (see the evidence update at the top of this document).
 
-- exact gate-lowering identities, including global phase and operand order;
-- Clifford Pauli conjugation and signs;
-- validity of result-bound composition and result-kind constraints;
-- Kraus completeness and simple channel invariants for a future noise module;
-- measurement-layout and bit-order remapping invariants.
+The V3 agent must inspect the actual implementation and tests. Do not state that a real provider exists just because a class named `RealHardwareProvider` exists. A fail-closed placeholder is a security boundary, not a connected hardware integration.
 
-Do not start by formalizing the whole codebase. Select one critical property, define it unambiguously, provide a small formal proof when practical, and pair it with executable tests against independently implemented behavior.
+## 2.4 Vulkan status must be split into levels
 
-### 5.3 Current emulator and hardware landscape
+The repository has real Vulkan infrastructure and compute shader dispatch tests, but this does not by itself mean the complete CQ-HECS simulator executes its quantum state evolution on the GPU.
 
-Check live primary documentation/releases for the relevant projects, recording the date and revision rather than copying old claims:
+The current `cqhecs::vulkan::VulkanEngine` source describes/implements a planner or memory-allocation facade whose gate methods fail closed rather than evolving a state. Separately, `VulkanContext` has device/queue/pipeline and dispatch methods for selected compute primitives (including reset, CORDIC and tensor contraction), and `test_vulkan_compute_contract.cpp` validates real dispatch/readback. The CI lane permits a software ICD for dispatch testing. The V2.5.1 release note records a Vulkan primitive-dispatch verification on one AMD iGPU, but explicitly says that this is **not end-to-end GPU acceleration**.
 
-- Qiskit Aer: ideal statevector, stabilizer, MPS, density-matrix/noisy methods and measurement/dynamic-circuit semantics;
-- Stim: high-performance stabilizer and quantum-error-correction workload references;
-- MQT DDSIM: decision-diagram and hybrid Schrödinger–Feynman approaches;
-- NVIDIA cuQuantum/CUDA-Q: GPU-oriented statevector/tensor-network and heterogeneous workflows (ensure platform-specific claims are properly scoped);
-- Qulacs and QuEST: simulation methods and CPU/GPU/parallel options;
-- tensor-network ecosystem/papers (such as quimb and applicable cuTensorNet APIs): graph/topology-aware contraction and slicing;
-- a real-QPU provider's official API and calibration documentation only when designing an actual adapter.
+V3 must retain these distinctions:
 
-A tool being installed does not establish a result or superiority. Keep external engines as optional test-only comparators where possible; do not add heavy runtime dependencies just to make a benchmark look modern. Pin exact versions/options in reports. Read primary papers/docs before adopting algorithms.
+| Evidence level | What it proves | What it does not prove |
+|---|---|---|
+| Shader source compiles | GLSL/shader source is syntactically/build valid | Device execution |
+| SPIR-V validates | Compiled SPIR-V passes the selected validator | Dispatch or correct output |
+| Software ICD dispatch | Vulkan commands and readback work on a software implementation | Physical GPU performance |
+| Physical GPU primitive dispatch | A named physical device executed named primitives correctly | Full simulator acceleration |
+| End-to-end GPU simulation | An actual supported simulator path performs state evolution on GPU and is correct | Universal GPU speedup or all-circuit scalability |
+| Reproducible comparative benchmark | A named workload on named hardware showed measured improvement | General SOTA superiority |
 
-### 5.4 Research selection gate
+All future GPU status fields and README badges must use one of these levels, not a generic `GPU supported` label.
 
-Create a table of candidates scored from 1–5 on relevance, evidence quality, implementability, expected benefit, independent-oracle quality, portability, and reverse-risk. Record scores before the major feature is chosen. Choose at most one major architecture prototype for this cycle. If no candidate satisfies the testability and resource requirements, do correctness/security/compatibility work and defer the feature honestly.
+---
 
-## 6. Preferred major feature: Hardware-Aware Quantum Bridge
+# 3. Priority audit findings from the inspected source
 
-Treat this as a preferred hypothesis-driven direction, not as permission to prematurely advertise every subfeature as Stable. Build vertical slices only after current baseline issues are resolved.
+These are **audit leads**, not all independently reproduced bugs. The agent must reproduce each against the live baseline, record a minimal failing test, determine severity, and fix only confirmed problems. If a concern is disproven, record the proof and close it as `NOT A DEFECT`.
 
-### 6.1 Three irreducibly separate execution modes
+## 3.1 P0/P1: Python DPLL timeout and false UNSAT risk
 
-1. `IDEAL_CLASSICAL`: ideal classical simulation using a supported CQ-HECS engine.
-2. `NOISY_CLASSICAL`: classical emulation with an explicit, versioned and scoped noise model; output is a modelled distribution or estimator, not a physical measurement.
-3. `REAL_HARDWARE`: a submitted job executed on an identified physical QPU; raw counts/results and provider provenance come from the real device.
+File to inspect:
 
-Never silently fall from `REAL_HARDWARE` to either classical mode. An explicitly requested fallback must be a separate, visible event and must not preserve the `REAL_HARDWARE` result label. Each result must carry source/mode, provider/backend if applicable, circuit hash, compiled/transpiled circuit hash if applicable, layout, seed where meaningful, shots, timestamps, calibration/profile reference, noise-model revision, result kind, error metric and status.
+- `python_bridge/sat_engine.py`
 
-### 6.2 Backend profile schema
+Observed source pattern:
 
-Design a versioned, validated `BackendProfile`/equivalent structure, separate from execution code. Include only fields supported by source data:
+- `CQSATSolver.solve()` calls `_dpll()` and creates `SATSolverResult` with `satisfiable`, `assignment`, counters and `verified`;
+- `_dpll()` returns `(False, None)` when wall-clock budget is exceeded;
+- the result-building code can then set `verified=True` for any non-SAT outcome because it treats `not sat` as an UNSAT proof;
+- the result model has no explicit `timed_out`/`unknown`/`status` field in the inspected file.
 
-- provider name and exact backend identifier;
-- profile schema version, capture timestamp and source/provenance URI or export digest;
-- qubit count and coupling/topology graph;
-- supported/native gate set and basis conventions;
-- gate error values with scope (per gate, qubit pair, calibration snapshot), units and measurement source;
-- readout/assignment error data;
-- T1/T2 and gate/readout durations when available;
-- supported dynamic circuit features (mid-circuit measurement, reset, classical control, conditional gates);
-- calibration age/staleness and completeness diagnostics;
-- unknown/missing fields represented as unknown, not guessed constants.
+This is a serious semantic hazard: timeout is not an UNSAT proof. Verify the current revision and add an explicit tri-state or richer status:
 
-Validate finite numeric ranges, units, qubit identifiers, topology consistency and schema version. Never treat an example profile or simulator-derived values as real calibration. Keep raw provider responses out of secrets and sanitize before logging.
+```text
+SAT_VERIFIED
+UNSAT_PROVEN
+TIMEOUT_UNKNOWN
+RESOURCE_LIMIT_UNKNOWN
+INVALID_INPUT
+INTERNAL_ERROR
+```
 
-### 6.3 Canonical circuit IR
+Never encode timeout as `satisfiable=False, verified=True`. A SAT assignment must be checked independently against the original clauses. An UNSAT status requires a sound exhaustive proof process; a timeout or heuristic pruning event must never become proof.
 
-Investigate whether a canonical intermediate representation can eliminate semantic drift between Qiskit, OpenQASM, Python instruction lists and native C/QASM entry points. Do not perform a high-risk full rewrite unless tests justify it. At minimum the IR must preserve:
+Apply the same contract audit to `src/sat_solver.cpp`, CLI JSON, C API and every wrapper. The native path already attempts to distinguish timeout (`timed_out=true`, `verified=false`), but its branch-pruning soundness still requires audit.
 
-- declared qubit and classical-register widths, including idle high-index qubits;
-- gate identity, parameters, global phase and operand order;
-- explicit qubit/clbit measurement mapping;
+## 3.2 P0/P1: Hash-based Cuckoo pruning is not an UNSAT proof by itself
+
+Files:
+
+- `src/sat_solver.cpp`
+- `python_bridge/sat_engine.py`
+- `python_bridge/cq_hecs.py` / `JSpaceGamma` implementation
+
+The native solver hashes assignments into a finite table and may prune when a stored 64-bit hash matches. The Python solver hashes only the first 32 sorted assigned variables in its current inspected implementation and may prune when the cuckoo table reports a match.
+
+A hash collision is not proof that two search states are identical. A finite/replacement hash table can also evict entries, and a heuristic cache cannot establish logical unsatisfiability unless a collision-safe equality check validates the canonical state.
+
+Required action:
+
+1. Trace whether any hash collision/duplicate detection can remove an otherwise necessary branch.
+2. If yes, classify as P0 correctness if it can yield false UNSAT.
+3. Replace the proof-critical use with collision-safe canonical state keys (full immutable assignment plus any formula/propagation state necessary to identify the node), or make the hash table advisory only and never allow it to close a branch as a proof.
+4. If the design is a transposition table, compare full canonical keys after hash lookup.
+5. Add adversarial collision tests by injecting a deliberately constant hash function.
+6. Compare SAT/UNSAT with brute force for small random CNFs and an independent solver (for example, PySAT if available as a test extra, or a transparent brute-force oracle for small n).
+7. Add formulas where branches differ only in variables above bit 32 and formulas whose partial assignments differ in exactly one bit.
+8. Confirm timeout, collision, table saturation and eviction never yield false UNSAT.
+
+Do not retain “cycle pruning” language if no actual cycle exists in the search graph. A DPLL recursion tree is not automatically a cyclic state machine.
+
+## 3.3 P1: DIMACS parser contract and Python/native parity
+
+Files:
+
+- `python_bridge/sat_engine.py` (`DIMACSParser`)
+- `src/sat_solver.cpp` and parser header
+- `tests/test_fuzz_sat.py`, `tests/cpp/test_sat_parser.cpp`
+
+Audit:
+
+- declared variable/clause counts;
+- clauses spanning multiple lines (valid DIMACS commonly permits clause continuation);
+- multiple clauses on one line;
+- empty clauses;
+- unterminated final clause;
+- zero terminators;
+- literals outside the declared variable range;
+- duplicate and tautological literals;
+- malformed/missing problem line;
+- comments and whitespace;
+- integer overflow, huge files and resource ceilings;
+- file path/stdin errors;
+- consistent Python/C++ parsing semantics.
+
+The Python parser inspected at baseline initializes a clause accumulator per raw line and appears to accept more permissive syntax than the strict native parser. Verify this with a reference DIMACS grammar and differential tests. Do not “fix” valid continuation syntax by rejecting it. Compare parsed clause multisets after canonical normalization.
+
+## 3.4 P1: Exact ring arithmetic overflow and undefined behavior
+
+Files:
+
+- `include/cq/exact_cyclotomic.hpp`
+- `include/cqhecs/algebra/ring.hpp`
+- `src/algebra/ring.cpp`
+- `tests/cpp/test_exact_ring.cpp`
+
+Observed risk:
+
+- coefficients use signed `int64_t`;
+- multiplication/addition expressions can overflow signed integers;
+- scaling and shifts need checked bounds;
+- denominator exponent addition (`k + other.k`) can overflow `uint32_t`;
+- `noexcept` arithmetic that cannot report overflow may force undefined behavior or silent corruption;
+- conversion using `pow(sqrt(2), k)` can overflow/underflow numerically even when the symbolic value is representable;
+- exactness claims need to state coefficient/exponent bounds.
+
+Required action:
+
+1. Re-derive the arithmetic formulas from the represented ring definition.
+2. Check all intermediate operations, not just the final value. `__int128` can help on supported compilers but itself has limits; implement checked arithmetic or use a proven arbitrary-precision backend where appropriate.
+3. Decide whether to expose checked operations returning an error/expected type or throw typed overflow exceptions. Do not hide failure in `noexcept` arithmetic.
+4. Guard shifts, multiplication, addition, subtraction, negation of `INT64_MIN`, and exponent sums.
+5. Add exact boundary tests at and around overflow, including negative coefficients and `k` boundaries.
+6. Add differential tests against Python big integers / SymPy exact algebra for randomized bounded cases.
+7. Verify canonicalization uniqueness, addition/multiplication associativity within representable bounds, conjugation, norm, field identities and gate unitarity.
+8. Avoid converting exact values to `double` for equality or correctness decisions.
+9. Separate exact symbolic representation from approximate numerical export.
+10. Audit both ring implementations and either unify them safely or document why two are intentionally retained.
+
+## 3.5 P1: C++ exact-ring test may be disabled in Release
+
+`tests/cpp/test_exact_ring.cpp` uses `assert(...)`. The native CI configures a Release CMake build. Many Release toolchains define `NDEBUG`, which compiles assertions out.
+
+Verify whether `test_exact_ring` is currently meaningful under the actual CI compiler flags. Replace correctness-critical `assert` calls with an always-active test/check macro or a test framework that fails in Release. Alternatively, explicitly undefine `NDEBUG` for test targets, but prefer explicit checks with clear diagnostics.
+
+Add a meta-test demonstrating that a deliberately false condition fails the test executable even under Release configuration. Never report `500,000` assertions as executed if the compiler removed them.
+
+## 3.6 P1: Demo telemetry presented as live metrics
+
+Files:
+
+- `python_bridge/tui_dashboard.py`
+- `src/terminal_ui.cpp`
+- `src/terminal_ui.hpp`
+
+The Python dashboard currently constructs telemetry-like values through formula-driven updates and preset constants. The C++ terminal UI updates VRAM, jitter, nudge state and attention weights using `sin`, cycle counters and synthetic patterns. It labels the engine `ACTIVE`, displays performance-like values and uses phrases such as `PHYSICAL HARVEST`.
+
+Unless every reading is sourced from a real measured counter, these values are not live telemetry. This conflicts with the project's anti-fabrication invariant.
+
+Required action:
+
+- replace fabricated readings with a metrics-provider interface that reports actual measured values;
+- use `UNKNOWN`, `NOT AVAILABLE`, or `DEMO DATA` when no valid source exists;
+- if synthetic mode is retained, require explicit `--demo` and place a persistent `SIMULATED DATA` label in every frame;
+- never call a CPU timing surrogate “GPU jitter” or “physical entropy”;
+- remove hard-coded current version strings from UI code;
+- never report VRAM utilization unless a supported device query actually returns it;
+- do not infer an MPS bond dimension or tensor residual from a preset;
+- do not present generated attention weights as a real optimizer's decisions;
+- ensure `--cycles`/`--rate` and interactive quit work on Windows, Linux, redirected output and non-TTY sessions;
+- ensure dashboard collection does not mutate the simulation under observation.
+
+This is a P1 trust/UI issue and must block Stable if misleading data remains.
+
+## 3.7 P1: Vulkan device selection and GPU provenance
+
+`src/vulkan/vulkan_context.cpp` selects a “best” device using device type and name heuristics and has special scoring for Lavapipe/llvmpipe/SwiftShader. This may be acceptable for CI, but V3 must make selection policy observable and testable.
+
+Required action:
+
+- identify software versus physical devices using robust Vulkan properties and explicit user selection/override;
+- do not equate `VK_PHYSICAL_DEVICE_TYPE_CPU` with a particular software ICD without recording evidence;
+- report device name, vendor ID, device ID, driver version, API version, queue family and required feature support;
+- support `--device auto|index|name` or an equivalent stable selection API;
+- expose why a requested device was rejected;
+- add tests for no device, multiple devices, software ICD, integrated GPU, discrete GPU and missing `shaderInt64`;
+- never silently fall back from a requested physical GPU to a software ICD or CPU.
+
+## 3.8 P1/P2: C++ UI and package/UI version drift
+
+`src/terminal_ui.cpp` and `python_bridge/tui_dashboard.py` have older version strings and target descriptions. Use the canonical version surface or build metadata. Ensure no hard-coded v0.2.0/v2.4.0 labels survive in a current v3 UI.
+
+## 3.9 P2: Baseline benchmark artefacts are historical
+
+Files under `benchmarks/` include v0.2.0-era Vulkan/MPS benchmark reports and single-run smoke JSON from v2.2.0. Keep them for provenance, but mark them historical and remove their appearance of current V3 evidence. Never overwrite historical raw outputs with newer numbers.
+
+## 3.10 P2: README and research scope consistency
+
+Read every root and `docs/` document. The V3 README must not accidentally inherit old claims such as generic cross-vendor GPU acceleration, unlimited exact MPS, a universal 300-qubit capability, “bit-exact” floating-point behavior, actual QPU connectivity, or SOTA claims unsupported by current tests.
+
+---
+
+# 4. Scientific boundaries and vocabulary
+
+## 4.1 Three separate quantum execution modes
+
+Use the current three-mode model, but audit and strengthen it:
+
+1. `IDEAL_CLASSICAL`: a classical computer simulates an ideal circuit using a named CQ-HECS path.
+2. `NOISY_CLASSICAL`: a classical computer evaluates a specified noise model/profile; output is a modeled distribution or estimator.
+3. `REAL_HARDWARE`: a job is submitted to and returned by an identified physical QPU.
+
+No mode may silently masquerade as another. A result record must contain execution mode, result source, implementation/method, device/provider/backend, circuit hash, compiled/transpiled circuit hash where applicable, qubit and classical-bit mappings, shots, seed (when meaningful), timestamps, calibration/profile provenance, noise-model version, result kind, numerical status, error scope, and job ID when real hardware was used.
+
+A fake provider always returns `NOISY_CLASSICAL` or an explicitly named emulator source, never `REAL_HARDWARE`.
+
+## 4.2 Result semantics are not one boolean
+
+Retain/extend the current `SimulationState` but audit every field and constructor. A truthful result may need:
+
+- execution state: `EXACT`, `CERTIFIED`, `UNRESOLVED`, `FAILED`;
+- result kind: joint counts, marginal counts, expectation values, amplitudes, statevector, density matrix, unitary, raw QPU counts, sampled estimate;
+- exactness mode: symbolic/exact-ring, exact stabilizer algebra, exact combinatorial result, floating-point evaluation without deliberate truncation, or approximate/truncated;
+- approximation metadata: what was truncated, when, by what policy and what diagnostic was computed;
+- error bound: value or null, metric, target object, assumptions, proof/certificate reference;
+- sampling uncertainty: confidence, failure probability, support size, method;
+- model uncertainty: profile age, calibration provenance and omitted channels;
+- source of result: local path, simulator package, hardware provider or external oracle.
+
+`None` means “not available / not derived”, never “zero”.
+
+`error_bound = 0.0` must not be used to suggest physical correctness, zero floating-point roundoff, a perfect hardware match or a certified bound on a different metric. A zero bound can only be stated for the metric and object actually proved.
+
+## 4.3 Do not claim arbitrary efficient classical quantum simulation
+
+Classical simulation can be efficient for restricted families: stabilizer circuits, bounded-entanglement MPS families, some low-width tensor networks, circuits with compatible algebraic phase structure, and task-specific observables. Universal worst-case circuits can require exponential resources under widely studied complexity assumptions.
+
+CQ-HECS must report the workload structure and output task, not merely qubit count.
+
+A statement such as “300+ qubits supported” must include the circuit family, backend path, depth, topology, bond/rank, measured output type, memory/time budget and exactness status. A GHZ or 1D cluster state result is not evidence for arbitrary 300-qubit universal circuits.
+
+---
+
+# 5. ETH / P vs NP / OpenAI Math / Anthropic research protocol
+
+This work is a research-input stream, not a license to advertise a P = NP result or blindly port a SAT paper into the quantum simulator.
+
+## 5.1 Logical boundaries that every agent must preserve
+
+Definitions:
+
+- `P`: decision problems solvable deterministically in polynomial time.
+- `NP`: decision problems whose proposed witnesses can be verified in polynomial time.
+- `P ⊆ NP` is known.
+- `P = NP` is open.
+- 3-SAT is NP-complete.
+- ETH asserts, in one standard formulation, that 3-SAT has no deterministic `2^{o(n)}`-time algorithm in the number `n` of variables (with the relevant input-size conventions).
+- #3-SAT counts satisfying assignments and is a #P-complete counting problem.
+
+The implication is:
+
+```text
+P = NP  =>  ETH is false
+ETH is false  -/->  P = NP
+```
+
+A subexponential algorithm such as `2^{O(n / sqrt(log n))}` is not a polynomial-time algorithm. It remains asymptotically superpolynomial. The new papers do not prove that `P = NP`.
+
+Do not claim that subexponential SAT automatically gives subexponential time for all NP problems: the OpenAI manuscript explicitly notes that a `2^{o(n)}` bound does not necessarily transfer under arbitrary polynomial-time reductions. Inspect the size blow-up of each reduction.
+
+## 5.2 OpenAI ETH manuscript — exact current artifact to review
+
+Primary source:
+
+- https://github.com/openai/math/tree/main/preprints/The-Exponential-Time-Hypothesis-is-False-October-25-2026
+- https://github.com/openai/math/blob/main/lean/docs/378.md
+
+The October 25, 2026 manuscript claims a deterministic algorithm for exactly counting satisfying assignments of arbitrary fixed-width `k`-CNF formulas (for every fixed `k ≥ 2`) in subexponential time and polynomial space. The headline expression in the manuscript is of the form:
+
+```text
+(n + m) ^ O_k(1) * 2 ^ (O_k(n log log n / sqrt(log n)))
+```
+
+For fixed clause density (`m ≤ Dn` for fixed `D`), the manuscript gives a stronger sparse-formula expression of the form:
+
+```text
+(n + m) ^ O_(k,D)(1) * 2 ^ (O_(k,D)(n / sqrt(log n)))
+```
+
+The core paper combines algebraic interpolation/grouping with exact tensor-network contraction and a 2-adic/modular algebraic structure. Read the complete paper and the proof roadmap; do not rely only on a summary.
+
+Important formalization discrepancy to preserve:
+
+- the current public `lean/docs/378.md` scope note describes a Lean-verified bound with an extra `(log log n)` factor compared with the sharper headline manuscript form;
+- the weaker expression is still subexponential, so it still suffices for the claimed ETH refutation if all formal statements and encodings match;
+- do not say the Lean files formalize the exact sharpest paper theorem unless the live scope note and comparator prove that exact match.
+
+The manuscript has additional consequences (including selected counting results and a circuit lower bound for a language in `E^NP`) that need to be read and checked individually. Do not generalize them to all NP languages or to P vs NP.
+
+## 5.3 Anthropic ETH artifact — exact current artifact to review
+
+Primary sources:
+
+- https://github.com/anthropics/formal-math/tree/main/eth
+- https://github.com/anthropics/formal-math/blob/main/eth/README.md
+- https://github.com/anthropics/formal-math/blob/main/eth/MainResults.lean
+
+Anthropic's public README describes a deterministic subexponential algorithm for 3-SAT that in fact solves the harder #3-SAT counting task, with headline running time:
+
+```text
+2 ^ O(n log log n / sqrt(log n))
+```
+
+The condensed technical idea is a tensor-network contraction recurrence, with a SWAP/singlet decomposition. In the README the recurrence is presented as:
+
+```text
+e(9 K^16) <= 0.9 e(K) + O(1/K)
+```
+
+The SWAP operator is decomposed as identity minus twice a singlet projector; terms are grouped by the number of singlet components, followed by a choice of row/column contraction and balanced regrouping. This is a high-level roadmap, not a full implementation specification. Read the paper and source proof for exact definitions, constants, domains and assumptions.
+
+The Anthropic README explicitly states that the result is purely asymptotic and says nothing about solving formulas in practice. Preserve that caveat in all CQ-HECS documents.
+
+The README also explains formalization boundaries:
+
+- `MainResults.lean` states key theorems and the proof is in separate files;
+- the repository's Comparator workflow checks statement correspondence against challenge statements and also checks proofs with the independent `nanoda` kernel;
+- the README documents how the Lean statements differ from printed paper statements;
+- `Challenge.lean` contains two challenge statements that intentionally use `sorry`; do not mistake those statement placeholders for proved results or quote the build warnings without context;
+- the paper-to-Lean correspondence must be manually audited via the paper index/appendix and current proof files.
+
+The Anthropic paper is a research artifact. Its publication/formalization status is not the same thing as broad independent community acceptance. Record the current status and date; do not say “universally accepted” or “refereed” unless verified.
+
+## 5.4 Formal proof policy for AI-derived mathematics
+
+For each imported theorem or algorithm, keep these separate:
+
+1. prose statement in the paper;
+2. formal theorem statement;
+3. proof term accepted by Lean;
+4. dependency/axiom report;
+5. paper-to-formal-statement correspondence;
+6. extracted or handwritten executable implementation;
+7. implementation-to-formal-specification correspondence;
+8. experimental evidence and performance.
+
+Lean acceptance proves the formal proposition under its assumptions and axioms. It does not automatically prove that the proposition fully captures the paper's intended statement or that an unrelated C++/Python implementation is a refinement of that formal model.
+
+For every research import, record:
+
+- source URL and immutable commit/revision;
+- paper version/date;
+- exact theorem identifiers;
+- full assumptions and computational model;
+- exact formal statement and proof target;
+- axioms and trusted dependencies;
+- independent checker status;
+- limitations and known statement discrepancies;
+- exact CQ-HECS module that could use the idea;
+- transformation proof needed for transfer;
+- negative/edge-case examples;
+- benchmark workload and oracle;
+- transfer classification.
+
+Allowed classifications:
+
+- `DIRECT_TRANSFER`: the published theorem directly applies and all assumptions match;
+- `ADAPTABLE`: the technique suggests a new construction, but a new proof is needed;
+- `VALIDATION_ONLY`: useful comparator/test family/boundary only;
+- `NEGATIVE_RESULT`: prevents an unsafe or false claim;
+- `RESEARCH_ONLY`: a prototype may be explored but is not release code;
+- `NOT_RELEVANT`: no material application found;
+- `UNVERIFIED`: insufficient proof or source correspondence.
+
+## 5.5 What the ETH results may and may not contribute to CQ-HECS
+
+Do not copy the OpenAI/Anthropic SAT algorithm into the quantum simulator as a generic quantum speedup. The algorithms solve a very specific classical Boolean counting problem. They do not compute arbitrary complex quantum amplitudes by themselves, do not run a QPU and do not prove universal quantum simulation tractability.
+
+Potential research adaptations, all `RESEARCH_ONLY` until proved:
+
+### A. Boolean factor-graph / #SAT representation
+
+Represent a CNF formula as a sum-product network:
+
+```text
+#SAT(F) = sum_{x in {0,1}^n} product_{clause c} 1[c(x) is satisfied]
+```
+
+Implement a small independent Boolean tensor-network prototype to understand factor arity, variable elimination, contraction order, rank, sparsity, and exact integer arithmetic. The first implementation is a reference/research tool, not an assumption that the OpenAI algorithm has been reproduced.
+
+### B. Weighted tensor contraction
+
+A quantum amplitude is also a sum over internal wire assignments, but with complex-valued tensor factors and interference:
+
+```text
+A(y | x) = sum_{z} product_g T_g(z, x, y)
+```
+
+The algebraic domain differs from Boolean counting. Quantum circuits can contain complex phases and cancellations. The OpenAI 2-adic divisibility structure or Anthropic SWAP/singlet rank recurrence does not transfer automatically.
+
+The candidate research question is:
+
+> Under which exact coefficient domains, representations, valuations, rank conditions, and graph structures can a Boolean contraction theorem be generalized to a weighted complex tensor network without losing exactness or the proved complexity bound?
+
+Potential domains to investigate:
+
+- integers/rationals for simple exact factor graphs;
+- cyclotomic/dyadic rings for Clifford+T amplitudes;
+- finite fields/modular rings only where reconstruction is mathematically justified;
+- exact algebraic number fields for appropriate root-of-unity gates;
+- arbitrary-precision complex balls/intervals for certified approximate results;
+- standard complex floating point only for explicitly non-certified numerical experiments.
+
+For each domain, prove that addition/multiplication, zero testing, equality, conjugation and coefficient growth are controlled. Do not assume a valuation or divisibility property that has not been shown for every tensor operation.
+
+### C. SWAP/singlet decomposition
+
+Prototype the identity for two-qubit operators and test basis conventions, normalization, ordering and global phase. Generalize only after deriving the tensor form for the exact network object. The optimization is relevant only when SWAP tensors are part of the contracted network and the rank decomposition is cheaper than simply permuting tensor indices.
+
+For networks where a SWAP is only a wire relabeling, explicit decomposition may add more work rather than reduce it. Require an operation-count model and benchmark it.
+
+### D. FAQ / InsideOut / tensor-layout symmetry
+
+Use the current 2026 work:
+
+- https://arxiv.org/abs/2610.00547
+
+The paper presents functional aggregate queries (FAQs) as a unified language for exact classical quantum-circuit simulation. It relates representation-aware InsideOut evaluation to treewidth bounds, fractional-edge-cover/sparsity bounds, rank-width-based simulation for suitable phase structures, and a tensor-layout-symmetry-width tractability criterion. The authors also report polynomial-size representations for Clifford-circuit affine-quadratic factors under their stated model.
+
+This is a promising architecture inspiration:
+
+- make the requested computation explicit (amplitude, probability, expectation, sample, partition function);
+- make the algebra/semiring explicit;
+- make the factor representation explicit;
+- make the evaluation plan explicit;
+- estimate graph/representation parameters before execution;
+- choose a provably valid plan based on the task and supported factor algebra.
+
+Do not rebrand the CQ-HECS router as an FAQ implementation unless the data model and InsideOut evaluation are genuinely implemented and independently tested.
+
+## 5.6 No P = NP roadmap claims
+
+The project may contain a research sandbox named `complexity_lab`, but its UI and README must state:
+
+- P vs NP remains open;
+- ETH subexponential results are not polynomial-time algorithms;
+- practical SAT solver speed on a dataset does not prove a worst-case asymptotic bound;
+- empirical scaling does not prove P = NP or P ≠ NP;
+- heuristics, hash pruning, SAT witness verification and exact UNSAT proof are separate;
+- #SAT counting is strictly more informative than SAT decision, but a solver for a restricted representation is not a universal #SAT solver.
+
+A P = NP claim may only be made if an independently reviewed, mathematically valid polynomial-time algorithm for an NP-complete problem is provided with a complete proof of worst-case running time and correctness. That is not an expected V3 outcome.
+
+---
+
+# 6. Quantum simulation research and SOTA benchmarking
+
+V3 should improve a specific workload class or an interface/verification guarantee. It must not claim “best simulator” based on a list of modern paper titles.
+
+## 6.1 Define the computational task first
+
+Distinguish:
+
+- strong simulation: compute exact amplitudes/probabilities or a full state representation;
+- weak simulation: sample from a measurement distribution;
+- observable estimation: compute expectation values for named observables;
+- noisy simulation: apply a stated noise model;
+- circuit compilation/transpilation: map gates and topology to a device basis;
+- physical execution: submit to actual hardware;
+- error mitigation: transform measured/noisy estimates under explicit assumptions.
+
+A benchmark comparing different tasks, result semantics or approximation policies is invalid.
+
+## 6.2 Current CQ-HECS paths to preserve and improve
+
+### Path A — stabilizer tableau
+
+- Scope: supported Clifford/stabilizer operations.
+- Preserve symplectic/GF(2) correctness, Pauli phases/signs, measurement and seeded sampling.
+- Differential-test against Stim and Qiskit Aer stabilizer for overlapping supported semantics.
+- Verify reset, measurement ordering, global phase irrelevance for counts, qubit indexing and partial measurement.
+- No claim for general non-Clifford gates unless the exact path explicitly supports them.
+
+### Path B — stabilizer-rank/decomposition
+
+- Audit actual branch/rank growth and cutoff behavior.
+- Separate exact algebraic decomposition from floating-point evaluation of branch amplitudes.
+- Confirm the branch ceiling fails closed and is reported.
+- Compare small circuits against dense statevector and Aer extended-stabilizer where semantics overlap.
+- Measure scaling against T-count and entangling structure, not only qubit width.
+- If the state representation is float64, do not call all arithmetic “bit-exact”.
+
+### Path C — MPS/tensor chain
+
+- Test all gate layouts and operand order, adjacent and non-adjacent routing, SWAP restoration, measurement and sampling.
+- Preserve no-silent-truncation behavior.
+- Distinguish no configured truncation from mathematical exactness: floating-point roundoff, fixed-point quantization, numerical rank thresholds and storage precision still matter.
+- Keep per-update discarded spectral mass separate from a propagated global state/observable bound.
+- Report bond-dimension history, maximum bond, RAM, disk, paging, temporary workspace and numerical rank floor.
+- Make memory preflight happen before allocations or partial state mutation.
+- Differential-test supported small cases against Aer untruncated MPS and dense statevector.
+- Stress area-law, low-entanglement, 1D cluster, QFT-like, random brickwork and volume-law/high-entanglement families.
+- For impossible volume-law cases, return `UNRESOLVED` rather than fabricate or silently truncate.
+
+### Path D — sparse Pauli / Heisenberg propagation
+
+- Treat this as a task-specific observable engine, not a full state simulator.
+- Verify conjugation identities and phases for every supported gate.
+- Independently derive the observable bound for every pruning/truncation rule.
+- Report the exact observable(s), norm/metric and omitted-term proof.
+- Never relabel an observable-specific error bound as a joint distribution or statevector bound.
+- Compare with dense exact expectations on small random circuits.
+
+### Noisy density-matrix path
+
+- Current documented ceiling is 10 qubits; the dense density matrix has quadratic statevector dimension in memory.
+- Preserve explicit memory preflight and strict ceiling.
+- Verify Kraus completeness, trace preservation, Hermiticity, positivity within justified numerical tolerance, normalization and readout map.
+- Test asymmetric qubit-specific noise, non-mirror-symmetric circuits, partial measurement and all supported gate parameters.
+- Ensure noise attaches to the original source gate semantics, not accidentally to lowered constituent gates unless that is the documented model.
+- No unknown gate is treated as identity.
+
+## 6.3 External state-of-practice comparators
+
+At mission start, re-check current official versions and supported options. Relevant comparators include:
+
+- Qiskit Aer: https://qiskit.github.io/qiskit-aer/ — current docs describe statevector, density matrix, stabilizer, extended stabilizer, MPS, unitary, superoperator and GPU-enabled methods with backend-specific restrictions;
+- Stim: https://github.com/quantumlib/Stim — stabilizer and quantum-error-correction circuit simulation; verify exact release, semantics and output type;
+- MQT DDSIM: https://github.com/cda-tum/ddsim — decision-diagram / hybrid circuit simulation; inspect current branch, build and supported tasks;
+- NVIDIA cuQuantum: https://developer.nvidia.com/cuquantum-sdk — GPU-oriented statevector/tensor-network APIs with vendor/platform constraints;
+- MQT Bench: https://github.com/cda-tum/mqt-bench — benchmark families/circuit workloads, not itself a universal correctness oracle;
+- quimb: https://github.com/jcmgray/quimb — tensor-network construction/contraction ecosystem;
+- Qiskit transpiler/IBM Runtime docs when a real provider adapter is considered.
+
+No runtime dependency should be added merely to create an SOTA-looking dependency list. Prefer optional test-only extras for differential oracles and pin exact versions in test reports.
+
+## 6.4 Benchmark families
+
+Build a reproducible benchmark suite with at least:
+
+- GHZ and GHZ-like stabilizer;
+- 1D cluster states;
+- random Clifford circuits;
+- Clifford+T circuits with controlled T-count;
+- nearest-neighbour brickwork at controlled depth;
+- QFT/QFT-like structures;
+- random universal circuits;
+- low-entanglement and area-law states;
+- volume-law/high-entanglement states;
+- sparse-observable and Pauli-heavy workloads;
+- noisy circuits with asymmetric per-qubit/per-gate parameters;
+- topology-constrained hardware circuits;
+- large-narrow and small-dense workloads.
+
+For each benchmark record input circuit hash, exact circuit generator version, n-qubits, depth, gate counts, T-count, two-qubit gate count, topology, estimated/observed entanglement proxy, max bond/rank, output task, path, shots, precision mode, truncation settings, memory budget, runtime, peak RSS/VRAM if measured, device identity, error and correctness oracle.
+
+Use warmups, repeated runs, median and spread (and confidence intervals where suitable). Separate build/compile time from execution. Do not compare a CPU result from one task with a GPU result from another task or different numerical accuracy.
+
+---
+
+# 7. V3 architecture proposal
+
+Do not rebuild everything into a monolith. Keep the current four-path architecture and progressively introduce explicit abstractions where they reduce semantic drift or enable measurable research.
+
+## 7.1 Proposed layers
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ User surfaces: CLI / Python API / Qiskit adapter / TUI         │
+├──────────────────────────────────────────────────────────────┤
+│ Canonical Circuit IR + Result Contract + Capability Registry   │
+├──────────────────────────────────────────────────────────────┤
+│ Planner: task-aware path selection + resource preflight        │
+├──────────────────────────────────────────────────────────────┤
+│ Simulation backends                                            │
+│  A stabilizer | B stabilizer-rank | C MPS | D sparse Pauli     │
+│  dense reference | noisy density-matrix | experimental FAQ     │
+├──────────────────────────────────────────────────────────────┤
+│ Algebra / tensor / graph engines                               │
+│  exact cyclotomic | checked integer | tensor factors           │
+│  variable elimination | contraction plans | rank/symmetry      │
+├──────────────────────────────────────────────────────────────┤
+│ Execution devices                                              │
+│  CPU | Vulkan primitive backend | experimental Vulkan path     │
+│  provider adapters (explicit REAL_HARDWARE only)               │
+├──────────────────────────────────────────────────────────────┤
+│ Evidence / observability / provenance / testing                │
+└──────────────────────────────────────────────────────────────┘
+```
+
+Do not force every module into the proposed shape if the existing architecture is already clearer. Record architecture decisions and their evidence.
+
+## 7.2 Canonical Circuit IR
+
+Audit whether the current `Instruction` model preserves:
+
+- declared qubit count including unused high-index qubits;
+- quantum and classical register widths;
+- global phase;
+- gate identity and exact source parameters;
+- operand/control order;
+- measurement `(qubit, clbit)` mapping;
 - terminal versus mid-circuit measurement;
-- reset/classical conditions as distinct operations that may be unsupported by some paths;
-- source provenance, parse diagnostics and capability requirements.
+- reset, barriers, delay and classical conditional metadata;
+- source frontend and parse diagnostics;
+- device layout/transpilation mapping.
 
-Every front-end must either produce equivalent normalized semantics or issue a typed refusal. Never accept dynamic operations in one parser and silently omit them in another. Keep ABI constraints explicit; an 8-bit opcode index must reject an out-of-range operand before it wraps.
+Do not normalize away semantics required by another backend. A frontend must either produce a semantically equivalent canonical IR or a typed refusal. Add a round-trip serialization format with explicit schema version.
 
-### 6.4 Narrow noise-model capability
+A full IR rewrite is not mandatory if small compatible additions solve the observed mismatch. Avoid ABI-breaking index-width changes without a migration plan.
 
-Only implement the channels that can be rigorously specified and independently tested within the release. Candidate order:
+## 7.3 Capability registry and planner
 
-1. readout/assignment error;
-2. one-qubit depolarizing channel;
-3. amplitude damping and phase damping under an explicit convention;
-4. selected two-qubit depolarizing errors;
-5. optional relaxation channels using valid T1/T2 and gate durations.
+Every backend should declare capabilities as data, not rely on scattered gate-name conditions. Capabilities should include:
 
-Do not conflate amplitude-damping parameters, T1/T2, dephasing rates, gate duration or a vendor's reported infidelity. Research and define each convention. Reject inconsistent parameter ranges. Noise channels must have an explicit supported gate/model scope.
+- supported gate set and parameter arity;
+- supported measurements and classical control;
+- output/result kinds;
+- exactness/numerical mode;
+- max width and resource ceilings;
+- noise support;
+- topology constraints;
+- supported arithmetic domain;
+- device requirements;
+- known unsupported/experimental semantics.
 
-For Kraus representations, check completeness \(\sum_i K_i^\dagger K_i=I\) within a prespecified numerical tolerance. For a density-matrix implementation test trace preservation, Hermiticity, positivity within numerical tolerance, normalized measurement probabilities and the noiseless limit. For trajectory sampling test seeded reproducibility and compare Monte Carlo estimates to an independent small density-matrix/Aer reference with precomputed confidence limits. A high shot count is not a proof; statistical acceptance needs a valid bound and a prespecified test.
+The planner should select only a backend whose declared capability supports the requested task. Resource preflight must run before allocation. If no path can return the requested result within limits, return `UNRESOLVED` with a useful explanation.
 
-Choose either a narrowly correct exact Density-Matrix reference for tiny systems, or a carefully described seeded trajectory engine. Do not add both broadly without a clear acceptance test. Keep the expected exponential scaling visible and impose pre-allocation memory/time limits. If an operation exceeds the budget, return `UNRESOLVED`/resource refusal before partially mutating state.
+Do not silently route from a requested GPU/QPU path to CPU or from a requested real device to an emulator.
 
-### 6.5 Real-provider adapter — optional and explicitly authorized
+## 7.4 Provenance and result schema
 
-Inspect current official provider APIs and existing Qiskit interfaces before choosing one; do not invent endpoints or hardcode credentials. Separate interface definition from provider plugin so standard CI never requires a token.
+Add only the metadata that is required and can be populated accurately. Consider a stable run manifest containing:
 
-Minimum interface semantics:
+- schema version;
+- CQ-HECS version and source SHA;
+- normalized circuit hash;
+- original source hash if available;
+- frontend and parser version;
+- selected backend and planner decision trace;
+- device identity and actual execution path;
+- numerical settings and approximation details;
+- random seed(s);
+- output type;
+- time/memory metrics and where they were measured;
+- calibration/noise provenance;
+- error certificate and exact scope;
+- warnings/refusals.
 
-- discover/list an available backend/profile;
-- transpile/validate circuit against supported topology/gates with complete mapping metadata;
-- submit only when explicitly requested and authorized;
-- poll status with timeout and cancellation support where provider allows;
-- fetch raw result and calibration/provenance;
-- normalize result into a truthful result contract without losing raw provider data;
-- surface quota, timeout, unavailable backend, invalid job ID, partial result and provider error as typed errors.
+Do not break v2 clients casually. Add compatibility tests and a schema migration note for any versioned result change.
 
-Test with a deterministic FakeProvider for success, timeout, rejection, malformed result, missing metadata, cancellation, duplicate submission and retry safety. Never use a fake provider to substantiate real hardware claims. Real hardware smoke test is a separately authorized operation with a strict small-qubit/shot/cost ceiling, logged job IDs and user consent. If credentials or consent are absent, report `BLOCKED/NOT RUN`; continue all mock and offline work.
+---
 
-### 6.6 Error mitigation — not first priority
+# 8. V3 research implementation workstreams
 
-Read current provider guidance and primary literature. Only add readout mitigation or Zero-Noise Extrapolation after raw noisy simulation and hardware provenance are stable. Preserve raw counts, corrected estimates, mitigation model, fit/extrapolation data, confidence/uncertainty and all assumptions. Never claim unbiasedness or error correction unless mathematically established for that method and case. “Mitigated” is not “exact.”
+The agent should build the highest-value workstreams in the order below. A workstream may be deferred if the evidence or time/resource budget is insufficient. A failed hypothesis is a valid research outcome; do not keep forcing it into code.
 
-## 7. Correctness, numerical analysis and API-contract hardening
+## Workstream A — Correctness, contract and exact arithmetic foundation (mandatory)
 
-Before any major feature, audit every path and public result constructor.
+Deliverables:
 
-### 7.1 Required invariants
+1. Fix confirmed SAT timeout/UNSAT status issues.
+2. Make proof-critical hash/transposition logic collision-safe or remove proof authority from probabilistic hash pruning.
+3. Harmonize Python/native DIMACS parsing.
+4. Fix confirmed integer overflow/undefined behavior in both exact-ring surfaces.
+5. Make exact-ring tests active in Release builds.
+6. Audit all result constructors and remove ambiguous `exact`/zero-bound semantics.
+7. Confirm Qubit/clbit, endian, partial measurement, global phase and operand-order parity across QASM, Qiskit, instruction lists, Python and native ABI.
+8. Add regression tests for every confirmed issue.
 
-- All probabilities are finite, non-negative within the declared rounding convention, and correctly normalized within a justified tolerance.
-- Counts are non-negative integers and sum to shots only where they represent the actual joint measurement distribution.
-- Independent marginals are never serialized or named as joint counts.
-- Observable expectations lie within theoretically valid limits for bounded Hermitian Pauli observables (allowing only a justified numerical tolerance); weighted sums use correct coefficients and phases.
-- `error_bound` includes a named metric and target object; `None` means unavailable, not zero.
-- `total_error_bound` is only available if every component can be validly composed under its assumptions and target metric. No mixing of observable, norm, sampling, confidence, hardware-noise or TV metrics without a derivation.
-- `EXACT`/`CERTIFIED`/`UNRESOLVED`/`FAILED` semantics are exclusive and consistent across CLI, API, Qiskit result header and JSON.
-- `exact=True` must state whether it means no deliberate approximation, algebraically exact transformations, exact rational/symbolic arithmetic, or a numerically evaluated method. Never imply bitwise or physical exactness without proof.
-- Numerical rank/floor diagnostics, bond-budget truncation and propagated global error bounds are separate. A sum of local discarded SVD weight is not automatically a global state error certificate.
-- Invalid/non-finite angles, huge inputs, unknown gates, register mismatch, width overflow, idle top qubits, classical mapping, global phase, endian conventions and gate-order ambiguities are tested.
-- Resource ceilings occur before allocation/mutation. Failed execution leaves no partially valid state or fabricated results.
-- Any paging/offload subsystem validates page identity/checksum/size and fails closed on missing, truncated, stale or corrupt blocks.
-- Deterministic seeds are passed through all stochastic layers, and metadata states which randomness source is used.
+Acceptance:
 
-### 7.2 Output schema / result type
+- no timeout can be represented as UNSAT;
+- no collision can prune a branch as a proof;
+- all successful SAT assignments are independently verified;
+- UNSAT status has a sound exhaustive method and explicit proof provenance (or is clearly an untrusted decision status if a proof artifact is not generated);
+- exact-ring overflow is caught deterministically;
+- all Release tests execute meaningful checks;
+- cross-frontend semantics match on the supported subset.
 
-Audit the current `SimulationResult` and add fields only with compatibility in mind. Prefer explicit structured fields such as:
+## Workstream B — Representation-aware tensor/FAQ research engine (one main research feature)
 
-- `status` / `result_state`;
-- `result_kind` (joint counts, marginal counts, expectation values, statevector, density matrix, provider raw counts, etc.);
-- `execution_mode` (`IDEAL_CLASSICAL`, `NOISY_CLASSICAL`, `REAL_HARDWARE`);
-- `method` / `backend_path`;
-- `exactness_semantics` and `numerical_status`;
-- `approximation_applied` and diagnostic details;
-- `error_bound`, `error_bound_metric`, `error_bound_covers`, assumptions and confidence level where applicable;
-- `sampling_uncertainty` kept distinct from deterministic/model error;
-- source SHA, circuit hash, backend/profile/noise model IDs and seed if applicable;
-- typed refusal/error reason, not only a free-form message.
+Build a contained research package first, for example:
 
-Do not create a needless schema rewrite if the current v2 public API can express the semantics truthfully. Add migration/compatibility tests if changing field names or serialization. Every supported result must make it impossible—or at least mechanically detectable—for a caller to confuse uncertified counts with certified distribution output.
+```text
+cqhecs/research_tensor/
+    domains.py
+    factors.py
+    factor_graph.py
+    elimination.py
+    contraction_plan.py
+    metrics.py
+    boolean_counting.py
+    weighted_networks.py
+    faq.py
+    experimental_backends.py
+```
 
-### 7.3 Security/resource inputs
+The exact package layout may follow the current repository style.
 
-Validate all user-supplied counts, qubit numbers, shot counts, RAM/disk budgets, tolerances, confidence values, circuit depth and parser sizes before allocation. Reject boolean-as-integer parameters, float indices, NaN/infinity, negative dimensions, enormous declared registers and overflow-prone arithmetic. Put timeout bounds around fuzzers, subprocesses, provider polling and any potentially unbounded solver. Do not evaluate arbitrary strings with `eval`, `exec`, or equivalent parser shortcuts.
+### B1. Minimal reference model
 
-## 8. Testing architecture: gates that must not be bypassed
+Implement a small, transparent factor graph/TensorNetwork model:
 
-Record exact tool versions, environment and outputs. A pass requires a successful exit code and expected test artifacts—not an agent summary alone.
+- typed indices with dimensions;
+- factors with named variables/indices;
+- explicit coefficient domain;
+- declared free/bound indices;
+- stable circuit/formula normalization;
+- deterministic contraction plans;
+- intermediate-size and operation-count estimation;
+- resource-budget preflight;
+- exact brute-force evaluator for tiny networks as oracle.
 
-### L0 — provenance and no-loss baseline
+The first domains should be narrowly chosen and mathematically simple:
 
-- Working tree/branch/HEAD recorded; all pre-existing modified and untracked files inventoried and preserved.
-- Live default branch, latest stable release/tag, main HEAD and PR state recorded.
-- No unrelated diff is overwritten.
-- Baseline test/build/benchmark evidence captured on its true SHA; historical results labeled historical.
+- Boolean/0-1 factors for SAT decision and count;
+- arbitrary-precision integers for exact #SAT counts;
+- exact dyadic/cyclotomic coefficients only when the implementation's ring is checked and the operation set is supported;
+- floating complex domain for non-certified experiments, with explicit tolerance/precision metadata.
 
-### L1 — static checks and packaging
+Do not implement a universal semiring abstraction before there is a concrete use case. But keep the coefficient operations behind a typed interface so future domains can be added.
 
-Run current repository commands, adapting to live files:
+### B2. Variable elimination / InsideOut baseline
+
+Implement an exact, deterministic baseline:
+
+- choose elimination orders (min-fill, min-degree or a documented heuristic);
+- estimate induced width;
+- track factor support/entry counts;
+- execute with exact small arithmetic;
+- compare against brute force on small instances;
+- store the order and intermediate-size trace.
+
+This is a reference point for FAQ-style evaluation. Do not describe it as the new OpenAI algorithm.
+
+### B3. FAQ-style task specification
+
+Represent the requested computation separately from the evaluation algorithm:
+
+- SAT decision;
+- #SAT counting;
+- amplitude `A(y|x)`;
+- probability;
+- named expectation value;
+- partition/sum-product function.
+
+The output contract must state whether variables are summed, fixed or free. For a quantum circuit, boundary indices represent input/output basis values and internal wire indices are aggregated. Validate the mapping by enumerating all amplitudes for tiny circuits and comparing to dense matrix/statevector references.
+
+### B4. Treewidth, fractional cover, rank-width and symmetry descriptors
+
+Implement estimators separately and label approximate estimates as such:
+
+- primal/line/incidence graph extraction;
+- min-fill/min-degree induced width estimates;
+- fractional edge-cover lower/upper estimators where available;
+- phase-graph rank computations for compatible quadratic phase forms;
+- separator symmetry descriptors;
+- tensor-layout symmetry candidates.
+
+A heuristic structural score must not be used as a correctness proof. Store estimator provenance and limitations.
+
+### B5. Weighted complex extension experiment
+
+Prototype only after the Boolean/integer model is proven:
+
+- exact Clifford+T gate tensors over the verified cyclotomic ring;
+- independent basis ordering and endian tests;
+- exact contraction of tiny circuits;
+- exact comparison to symbolic/direct matrix multiplication;
+- explicit coefficient growth and overflow behavior;
+- no generic irrational-angle gates in the exact ring unless represented by a separate algebraic/transcendental model.
+
+Explore whether the OpenAI valuation/modular compression can be generalized to these coefficients. Before coding the optimization, write a theorem statement with every needed assumption. If no valid proof is found, keep a benchmarked exploratory prototype and label it `RESEARCH_ONLY`.
+
+### B6. Anthropic SWAP/singlet experiment
+
+- implement the two-qubit identity in a tiny algebra test;
+- build tensor-form tests under both wire-order conventions;
+- verify normalization and projector idempotence;
+- generate small grid/complete-graph tensor networks;
+- compare direct contraction with decomposed contraction;
+- count rank/term growth and runtime;
+- verify the recurrence's variables/normalization exactly before attempting to reproduce it.
+
+Do not use the recurrence from the README as a black-box production complexity estimate. Re-derive the definitions and hidden constants from the paper.
+
+### B7. Research acceptance
+
+A new optimization can graduate only if:
+
+- the mathematical operation is specified;
+- correctness is proved or independently established within a clearly bounded domain;
+- all assumptions match real inputs;
+- exact small cases match an independent oracle;
+- resource use is bounded and fail-closed;
+- the same task/accuracy baseline is used in benchmarks;
+- worst-case behavior and known limitations are documented;
+- it beats an existing plan on a preregistered family or unlocks a family previously unsupported.
+
+If it does not meet this, retain it as an experiment, not Stable routing.
+
+## Workstream C — Quantum simulation quality and backend planner (mandatory)
+
+- Audit A-D contracts and add explicit backend capability declarations.
+- Add planner decision traces: why backend A/B/C/D/dense/noisy was selected, what alternatives were considered, and why they were rejected.
+- Make resource estimates visible before execution.
+- Make backend failure typed; no silent fallback except when the user explicitly asks for an allowed fallback.
+- Add exact small-circuit oracle parity across all supported backend pairs.
+- Add workload-based benchmarks with independent external comparators.
+- Ensure all experimental new algorithms are opt-in.
+
+A planner should choose by task and capability, not blindly by the largest qubit count or a single entropy heuristic.
+
+## Workstream D — Hardware-aware noise and real-QPU bridge (bounded)
+
+Keep classical noise modeling and physical provider execution distinct.
+
+### D1. Noise model and profile hardening
+
+Audit:
+
+- parameter validation for finite values and correct physical ranges;
+- Kraus completeness `Σ K_i† K_i = I`;
+- trace preservation and positivity within numerical tolerance;
+- qubit/gate targeting and ordered two-qubit pairs;
+- profile schema version and provenance;
+- age/staleness and unknown fields;
+- basis-gate mapping and whether errors attach before/after gate lowering;
+- whether uncalibrated gates are refused, modeled as noiseless by explicit policy, or unknown.
+
+Never invent T1/T2, gate error, readout error, calibration timestamp or provider URI. The two built-in baseline profiles are synthetic and must stay labelled synthetic.
+
+### D2. Basis transpilation / topology map
+
+This is a useful V3 capability if it can be built correctly:
+
+- canonical gate-to-native-basis lowering;
+- coupling graph validation;
+- directed versus undirected two-qubit gate semantics;
+- routing SWAP insertions;
+- complete logical-to-physical qubit map;
+- classical-bit map preservation;
+- gate duration/error propagation where provider metadata supports it;
+- explicit refusal when no valid mapping exists.
+
+Prove/validate each rewrite against independent matrix semantics for small circuits. Record original and transpiled circuit hashes.
+
+### D3. Real provider adapter boundary
+
+Do not invent a backend endpoint. Inspect current official providers, SDKs and auth contracts at runtime. Prefer an isolated optional plugin to avoid making offline CI require credentials.
+
+Minimum provider interface:
+
+```text
+list_backends()
+get_backend_metadata(name)
+validate_and_transpile(circuit, backend)
+submit(circuit, shots, explicit_authorization)
+get_job_status(job_id)
+cancel(job_id)  # only where provider supports it
+fetch_result(job_id)
+fetch_calibration_snapshot(backend)
+```
+
+Design typed statuses for queued/running/done/cancelled/failed/expired/unknown and preserve provider-native job IDs and raw result references.
+
+Real submission requires all of:
+
+- explicit user/operator authorization for this run;
+- valid provider credentials from an approved secret mechanism;
+- named backend and cost/qubit/shot ceilings;
+- displayed circuit and shot count;
+- no hidden retry that duplicates billable jobs;
+- idempotency support where provider semantics permit it;
+- job timeout/cancellation behavior;
+- raw result and calibration provenance.
+
+If no provider credentials and approval exist, implement and test the adapter boundary offline and report `REAL_HARDWARE: BLOCKED/NOT RUN`. Do not create a fake “real QPU” run.
+
+### D4. Fake provider tests
+
+Test success, rejection, malformed payload, job timeout, partial result, duplicate submission, cancellation, stale calibration, backend unavailable, unsupported gate, missing metadata and provider outage. The fake provider must remain `NOISY_CLASSICAL` or `FAKE_PROVIDER`, never `REAL_HARDWARE`.
+
+## Workstream E — Vulkan GPU execution (prove the path before claiming acceleration)
+
+The current repository has compute primitives and dispatch tests. V3 may extend them, but it must not advertise an end-to-end GPU simulator until the complete path is integrated and benchmarked.
+
+### E1. Device and capability inventory
+
+- enumerate device name/vendor/device/driver/API;
+- detect compute queues and required features/extensions;
+- expose physical versus software ICD;
+- identify actual memory heap sizes and supported host/device memory;
+- make selection observable and overrideable;
+- distinguish no device from unsupported feature from software-only device.
+
+### E2. Primitive correctness
+
+For each shader pipeline:
+
+- source and SPIR-V hash/version;
+- compile and validate;
+- bounds-check all dispatch dimensions and buffer sizes;
+- validate alignment, descriptor limits, integer overflow and synchronization;
+- run known-value host-to-device-to-host test;
+- compare output against independent CPU reference;
+- test boundary sizes and incomplete workgroups;
+- test device-loss/dispatch failure handling;
+- run validation layers in a dedicated CI lane where available.
+
+### E3. End-to-end simulator integration criteria
+
+Only implement an end-to-end GPU simulation slice if a clearly bounded workload supports it. It must:
+
+- receive a canonical circuit/operation plan;
+- allocate and evolve a valid state/tensor on device memory;
+- support a declared gate/measurement subset;
+- perform all required tensor operations on GPU rather than dispatching a decorative primitive and doing the actual simulation on CPU;
+- return outputs in the same result contract;
+- compare to a CPU reference on all supported small workloads;
+- report transfers, sync, compilation/JIT, and kernel execution separately;
+- fail closed for unsupported circuits;
+- avoid vendor-specific assumptions unless selected device reports them.
+
+### E4. Performance requirement
+
+Run same-device CPU versus GPU end-to-end comparisons where possible, plus at least one named physical AMD or other device if available. Record software ICD results separately. No claim based on microbenchmark-only acceleration.
+
+If the GPU path is slower for a workload, report it; use dispatch only when the measured/capability decision justifies it. A good V3 outcome may be a more truthful status display and a reliable primitive library, not a forced GPU feature.
+
+## Workstream F — UI/UX, CLI and live observability (mandatory)
+
+### F1. Current state
+
+The repository has a CLI, a Rich-based Python terminal dashboard and a native C++ terminal UI. The inspected UI code contains formula-driven telemetry and static/default values. The V3 UX must eliminate the appearance of fake runtime readings.
+
+### F2. Product UX goals
+
+- make the first run understandable in under a minute;
+- make the active backend/mode/result status obvious;
+- show what the simulator can and cannot do for the submitted circuit;
+- explain why a path was selected;
+- present resource estimate before expensive work;
+- show progress only if progress is actually measured;
+- surface unsupported operations with actionable wording;
+- make exactness/approximation/noise/hardware provenance understandable;
+- support keyboard navigation and clean non-interactive CLI output;
+- render well on Windows Terminal, PowerShell, CMD, common Linux terminals and redirected CI logs;
+- keep compact mode and plain text/JSON output;
+- respect terminal width, Unicode fallback, high contrast and screen-reader/plain-text usability.
+
+### F3. Replace synthetic telemetry
+
+Create a `MetricsProvider` abstraction. Candidate sources:
+
+- process RSS / peak RSS through OS-supported APIs;
+- memory budget usage counted by the backend's own allocator;
+- Vulkan device name and memory heap properties from Vulkan, clearly labelled as capacity/heap info, not current utilization unless measured;
+- actual timing from `steady_clock`/`perf_counter` for completed stages;
+- actual MPS bond dimensions from the active `ExactMPSTensorChain`;
+- actual circuit width/depth/gate/T-count from `CircuitAnalyzer`;
+- actual path selection and unresolved reason from the router;
+- actual provider job status from the provider adapter.
+
+Unavailable metrics must render as `N/A` or `UNKNOWN`. A `--demo` mode may use deterministic generated values but the UI must persistently show `DEMO / SIMULATED VALUES`. Do not show “physical entropy”, “VRAM active” or “GPU load” without a genuine measurement.
+
+### F4. Recommended dashboard layout
+
+The TUI should have meaningful panels:
+
+1. **Run overview:** version, source SHA, run ID, execution mode, current status.
+2. **Circuit:** qubits, classical bits, depth, gate count, two-qubit gate count, T-count, unsupported operations.
+3. **Planner:** selected path, capability fit, resource estimate, reason for selection/rejection of alternatives.
+4. **Execution metrics:** elapsed time, measured RSS, allocator memory, device/ICD identity, actual kernel count/stages.
+5. **Numerics:** exactness semantics, arithmetic domain, truncation policy, discarded spectral diagnostics, result-kind-specific error bound.
+6. **Hardware bridge:** synthetic/real profile provenance, provider/backend, calibration age, topology and job status; hidden if irrelevant.
+7. **Evidence:** circuit hash, seed, test/reference validation flag and warnings.
+
+### F5. CLI improvements
+
+Audit and refine the existing CLI commands rather than creating a second command hierarchy. Candidate UX:
+
+```bash
+cq-hecs doctor --format text|json
+cq-hecs analyze circuit.qasm --explain
+cq-hecs run circuit.qasm --explain --format json
+cq-hecs profile list
+cq-hecs backend list
+cq-hecs benchmark run --suite smoke|full --output results/
+cq-hecs monitor [--demo]
+cq-hecs research status
+```
+
+Only expose commands that are implemented. Every subcommand needs help text, stable exit codes, JSON schema tests, invalid argument tests and a clean-venv smoke test.
+
+### F6. UI visual QA
+
+For every UI change:
+
+- capture screenshots of representative terminal widths (80, 100, 120, 160 columns) using a real terminal emulator where possible;
+- test Windows Terminal and at least one Linux terminal/CI pseudo-terminal;
+- test narrow width, no color, no Unicode, redirected output and long backend/device names;
+- check panel overflow, table truncation, alignment, color contrast and stale state;
+- verify every displayed number originates from a named metrics source;
+- compare screenshot and data source in a review artefact;
+- ensure no placeholder/inert keybinding is displayed.
+
+Do not claim visual QA passed if only a code review was performed. If screenshot capture is unavailable, mark that gate `NOT RUN` and provide a reproducible command for the operator.
+
+## Workstream G — Documentation and developer experience (mandatory)
+
+Refresh:
+
+- `README.md`;
+- `ARCHITECTURE.md` and `docs/ARCHITECTURE.md`;
+- `docs/API_REFERENCE.md`;
+- `docs/USAGE_GUIDE.md`;
+- `docs/QASM_CONTRACT.md`;
+- `docs/BENCHMARKS.md`;
+- `docs/V2_IMPLEMENTATION_MATRIX.md` (rename/replace with a version-neutral or V3 matrix; preserve V2 history);
+- `CHANGELOG.md`;
+- `RELEASE_NOTES.md`;
+- `CITATION.cff`;
+- `llms.txt`, `llms-full.txt`;
+- example programs and screenshots;
+- GitHub templates and project metadata.
+
+The README should include:
+
+1. Clear product definition: classical quantum circuit emulator and optional bridge boundary, not a quantum computer.
+2. Current stable status and tested platforms.
+3. A capability matrix by backend, circuit family, output type, precision and limits.
+4. Realistic quick start for pure-Python package and native C++ build.
+5. CLI examples for analyze, run, expectation, noise profiles and optional monitor.
+6. Clear explanation of `EXACT`, `CERTIFIED`, `UNRESOLVED`, `FAILED` and execution modes.
+7. A “What CQ-HECS does not claim” section.
+8. Current benchmark methodology, source SHA and result links.
+9. Architecture diagram with correct CPU/GPU/QPU boundaries.
+10. Roadmap and research-only experiments with status labels.
+11. Citation/reproducibility instructions.
+12. License and contribution guide.
+
+Avoid giant badge walls, claims without links and outdated performance tables. Badges must point to real workflows and release metadata.
+
+---
+
+# 9. Test architecture — gates are non-negotiable
+
+The current CI already provides a strong base: static/package checks, Linux C++20/Vulkan and Python suite, Windows native suite, Python 3.12–3.14 compatibility, and Linux ASan/UBSan native tests. Preserve and improve these lanes. Do not weaken thresholds to get green.
+
+## 9.1 L0 — Provenance and repository safety
+
+- exact branch/HEAD/tag/release recorded;
+- dirty tree and operator changes preserved;
+- no uncommitted or untracked source unexpectedly omitted;
+- all artifacts tied to true SHA;
+- release metadata reconciled.
+
+## 9.2 L1 — Static and package checks
+
+Run the current repository checks, adapting names only if the live project changed:
 
 ```bash
 python -m compileall -q cqhecs tests scripts python_bridge
@@ -364,327 +1380,765 @@ python -m build
 python -m twine check dist/*
 ```
 
-Lint requirements must meet or exceed the current CI configuration; do not loosen an existing rule. Verify package metadata, version agreement, wheel and sdist names, CLI entry points, license, dependencies and reproducible content where feasible. Install the wheel into a clean virtual environment—not the development tree—and run help, version, doctor, a simple circuit and JSON-schema validation. Clean-venv tests must ensure the package works without repository-relative imports or undeclared benchmark/dev extras.
+Also validate:
 
-### L2 — native build, CTest and shader checks
+- `pyproject.toml` metadata and supported Python range;
+- exact dependency pins in CI constraints;
+- wheel/sdist contain expected packages and no test-only modules;
+- license files and package entry points;
+- clean-venv install without repo-root imports;
+- `cq-hecs --help`, `version`, `doctor`, profile list and a deterministic Bell/GHZ JSON smoke run;
+- all JSON outputs parse and conform to a versioned schema;
+- `pip check` in a clean environment;
+- wheel import and command execution from outside the repository.
 
-Use the live project build instructions. Typical commands:
+## 9.3 L2 — C++20 native build and sanitizers
+
+Linux and Windows release builds:
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DCQ_BUILD_TESTS=ON
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCQ_BUILD_TESTS=ON
 cmake --build build --config Release --parallel
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-Run the required platform/configuration variants in the live CI workflow. Keep CTest output/JUnit logs. Confirm tests actually execute with the required native binding, e.g. `CQ_HECS_REQUIRE_NATIVE=1`; native coverage must not silently skip. Shader source compilation/SPIR-V validation is one gate; actual device dispatch and end-to-end GPU execution are separate.
-
-### L3 — Python suite, coverage and API contracts
-
-On the current supported versions and platforms, run the exact full suite, including:
+Also run sanitizer builds where supported:
 
 ```bash
-python -m pytest tests/ -q
+cmake -B build-asan -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCQ_BUILD_TESTS=ON -DCQ_ENABLE_SANITIZERS=ON
+cmake --build build-asan --parallel
+ctest --test-dir build-asan --output-on-failure
 ```
 
-Where native execution is required, set `CQ_HECS_REQUIRE_NATIVE=1`. Retain XML/JUnit output. The current CI policy observed at preparation uses a minimum overall branch coverage threshold of 70%; preserve that as a hard floor unless live configuration is stricter. Do not accept coverage regression from baseline. Aim for at least 85% overall where feasible and at least 90% branch coverage for new critical logic; more importantly, cover all safety/correctness branches and every new failure path. A project-wide percentage does not replace focused tests.
+Required validation:
 
-### L4 — analytic, property and differential tests
+- ASan and UBSan reach the relevant production and test translation units;
+- test binaries contain real active assertions/checks in all build types;
+- parser, solver, exact arithmetic, tensor update and memory-budget tests run under sanitizers;
+- `ctest` logs and JUnit XML are retained;
+- no test is silently skipped due missing native extension in mandatory Linux/Windows lanes.
 
-For each engine and new feature:
+## 9.4 L3 — Full Python suite and coverage
 
-- small analytical gates/states/circuits with known exact answers;
-- randomized circuits drawn from a named and reproducible distribution, with recorded seeds;
-- Qiskit `Statevector`, `Operator`, `SparsePauliOp` or Aer references where semantics overlap;
-- Stim for supported stabilizer/Clifford cases;
-- independent NumPy matrices/closed forms where possible;
-- compare full probability distributions/TV distance or state fidelity, not just intersecting count keys;
-- compare observables individually and validate the correct phase/sign convention;
-- test measurement bit-order, register offsets, idle qubits, global phase and repeated measurement semantics;
-- use statistical confidence tests with prespecified alpha/bounds for independent sampled outcomes;
-- test unsupported operations as explicit rejection rather than accepting them in parser and dropping them later.
+Keep `CQ_HECS_REQUIRE_NATIVE=1` in mandatory native lanes. Confirm that native-only tests cannot silently skip. Retain the existing branch coverage threshold (currently observed at 70% in CI) or raise it only when justified; never lower it for convenience.
 
-An oracle must be independent of the code under test. If both implementations share a helper, derive a second check directly from the mathematical definition. Store generated test cases/seed lists to reproduce any failure. Do not commit millions of redundant random cases; commit a compact deterministic regression and preserve detailed logs/artifacts separately.
+Target increased coverage in:
 
-### L5 — mutation tests, fuzzing, adversarial and reliability
+- result serialization and status mapping;
+- timeout/error/refusal paths;
+- parser branches and malformed DIMACS/QASM;
+- hardware profile validation;
+- noisy density matrix;
+- circuit analysis and route decisions;
+- API compatibility;
+- CLI JSON and exit codes.
 
-Run the project's mutation harness:
+Line/branch coverage is not proof of correctness; use semantic oracles too.
 
-```bash
-python scripts/run_mutation_tests.py
+## 9.5 L4 — Independent mathematical and differential tests
+
+### Quantum
+
+- compare small statevectors to dense reference, Qiskit Aer and/or direct matrix products;
+- compare stabilizer circuits to Stim and Aer stabilizer;
+- compare MPS to Aer untruncated MPS on overlapping gates;
+- compare expectation values to direct dense calculations;
+- compare noisy density matrices to Aer density matrix/noise models;
+- test every gate with asymmetric/non-palindromic circuits to reveal order/endian errors;
+- include qubit `0`, highest valid qubit, non-adjacent pair, reversed operand order and partial measurement.
+
+### Exact algebra
+
+- Python arbitrary-precision reference;
+- random ring identities within a checked representable range;
+- overflow boundaries;
+- exact gate matrix identities and unitarity;
+- exact Clifford+T circuits versus direct exact products;
+- float export checked separately from exact equality.
+
+### SAT / #SAT
+
+- exhaustive brute-force oracle for small `n`;
+- random CNFs and structured formulas;
+- solver witness validation;
+- known SAT/UNSAT instances;
+- collision-injected hash functions;
+- table capacity and eviction stress;
+- timeout under tiny budget returns UNKNOWN, never UNSAT;
+- DIMACS parser cross-front-end differential tests;
+- #SAT count against exhaustive truth-table enumeration.
+
+### Tensor / FAQ prototype
+
+- random small factor graphs checked against brute-force sum-product;
+- random elimination orders preserve exact answers;
+- index rename/permutation invariants;
+- free/bound variable semantics;
+- Boolean and integer domains;
+- small Clifford amplitudes checked against direct statevector;
+- exact coefficient and phase order tests.
+
+## 9.6 L5 — Property, fuzz, mutation and adversarial testing
+
+- Hypothesis tests for parsers, circuits, result contracts, gate lowering and ring normalization;
+- bounded libFuzzer/AFL-style fuzzing where supported;
+- deterministic seed and corpus recording;
+- fuzz timeout and memory caps;
+- source-level mutation harness (preserve current mutations and add new ones for each P0/P1 fix);
+- parser truncation/overflow mutants;
+- gate operand swap/phase sign mutants;
+- false-UNSAT/hash-collision mutants;
+- remove timeout detection mutant;
+- zero/NaN/Inf error-bound mutants;
+- change bit order and measurement map mutants;
+- remove Kraus validation mutant;
+- alter Vulkan buffer bounds mutant.
+
+Every important mutant should be killed by a specific test. Mutation count is not a correctness proof; explain survivors and equivalent mutants explicitly.
+
+## 9.7 L6 — Numerical and statistical validation
+
+- probabilities finite and normalized within justified precision;
+- density matrices Hermitian and trace-preserving within tolerance;
+- positive semidefinite checks where meaningful (with scale-aware tolerance);
+- error bounds checked against adversarial reference examples;
+- sampling confidence statements use correct support size and failure probability;
+- distinguish `TV`, norm, expectation, amplitude, per-outcome and state error metrics;
+- seeds reproducible and passed through every stochastic layer;
+- no test relies on a statistical pass with no prespecified tolerance or sample-size derivation.
+
+## 9.8 L7 — GPU/Vulkan gates
+
+Separate these jobs:
+
+1. shader source compile;
+2. SPIR-V validation;
+3. software ICD primitive dispatch/readback;
+4. physical GPU primitive dispatch;
+5. end-to-end simulator integration;
+6. end-to-end CPU/GPU parity and performance benchmark.
+
+A software ICD pass is valuable CI evidence but cannot be presented as physical GPU performance. If a physical device is unavailable in cloud CI, mark the physical GPU lane not run and retain local evidence only if it was actually captured.
+
+## 9.9 L8 — provider bridge tests
+
+- FakeProvider contract tests run offline in all CI;
+- no provider credential needed in standard CI;
+- real hardware test lane is manually approved, optional and cost-capped;
+- no credential printing in logs;
+- no retries that cause duplicate billable jobs;
+- raw job provenance checked;
+- real test output is not copied from fake-provider fixtures.
+
+## 9.10 L9 — security/supply chain
+
+- pin GitHub Actions by full immutable SHA;
+- least-privilege workflow permissions;
+- no secrets in source/URLs/logs/artifacts;
+- validate dependency lock/constraints;
+- audit pip packages and native build inputs;
+- validate SPDX SBOM and checksum generation;
+- check archive paths against traversal;
+- verify artifact hashes after download;
+- use TLS verification; never use `--insecure`;
+- do not scan the filesystem for credentials;
+- run secret scanners using approved GitHub facilities where available.
+
+## 9.11 L10 — Documentation and visual QA
+
+- README render preview and link check;
+- CLI help snapshots;
+- TUI screenshot matrix;
+- terminal width/non-TTY/no-color tests;
+- every data value in UI tied to a telemetry source;
+- current version and feature labels verified;
+- all claims cross-linked to code/tests/research evidence;
+- old benchmarks clearly marked historical.
+
+## 9.12 L11 — Exact-SHA cloud verification
+
+Run CI on the exact proposed merge/release SHA. A previous branch SHA or a docs-only ancestor passing is not enough if later source/docs changes affect the artifact. Capture all workflow IDs/URLs and job conclusions in `research/v3/TEST_MATRIX.md`.
+
+---
+
+# 10. Benchmark protocol and claim discipline
+
+## 10.1 Preregister before running
+
+For every performance experiment record:
+
+- hypothesis and expected benefit;
+- workload family and generation version;
+- input hashes and seeds;
+- included/excluded workloads and reasons;
+- baseline revision and new revision;
+- hardware/software environment;
+- comparable result semantics;
+- measurement start/end points;
+- warmup and repetition count;
+- aggregation statistic and spread;
+- correctness/error gate;
+- memory/time ceiling;
+- stopping condition.
+
+Do not change benchmark inclusion after viewing results to manufacture a win.
+
+## 10.2 Comparison policy
+
+- compare equal circuit and output task;
+- compare equal noise model and sampling shots;
+- compare equal accuracy/error requirements;
+- separate preprocessing and runtime;
+- include compilation and device transfer when claiming user-visible GPU improvement;
+- use identical hardware and thermal/driver context where possible;
+- avoid benchmarking against a baseline version that has different correctness semantics;
+- include raw data and scripts;
+- report failures, timeouts and unresolved circuits, not just successes.
+
+## 10.3 Performance language
+
+Allowed:
+
+- “2.3× faster on the listed benchmark suite on device X, with the following result semantics.”
+- “Lower peak RSS on workload family Y under settings Z.”
+- “The experimental FAQ planner reduced estimated intermediate tensor entries on the tested family; correctness matched brute force for these sizes.”
+
+Not allowed:
+
+- “SOTA quantum simulator” without broad, fair and current comparator evidence;
+- “10× GPU acceleration” from shader dispatch alone;
+- “supports arbitrary 300-qubit circuits” based on GHZ/MPS examples;
+- “P = NP progress” based on solver speed on a finite corpus;
+- “exact” when the implementation uses undocumented rounding/truncation;
+- “real quantum result” from a fake provider or simulator.
+
+---
+
+# 11. Bounded self-healing and long-horizon agent loop
+
+The agent should act autonomously on safe, reversible engineering work. Self-healing is not random code mutation or repeated blind retries.
+
+## 11.1 Global loop
+
+```text
+DISCOVER
+  -> BASELINE
+  -> AUDIT
+  -> HYPOTHESIS
+  -> DESIGN
+  -> IMPLEMENT ONE SLICE
+  -> BUILD
+  -> TEST
+  -> DIFFERENTIAL / MUTATION / FUZZ
+  -> REVIEW CLAIMS
+  -> RECORD EVIDENCE
+  -> NEXT SLICE
+  -> FINAL LOCAL GATE
+  -> CLOUD GATE
+  -> DOCS/RELEASE GATE
+  -> REPORT
 ```
 
-The current v2.4 candidate records 14/14 killed mutants, while earlier baseline evidence may differ; remeasure live state and require no reduction in relevant mutation strength. Any mutant that simulates the wrong state, phase, sign, layout, error metric, approximation status, provider mode or resource behavior must be killed by tests. Add mutants for new critical contracts rather than gaming the total count.
+At each stage, checkpoint the current branch, exact diff and latest green commands. Use small commits or well-defined checkpoints so a failed experiment can be reverted without losing unrelated work.
 
-Run property-based parser/circuit tests and the live fuzz suites. Add bounded tests for:
+## 11.2 Repair loop A — correctness defect
 
-- invalid, malformed, enormous or non-finite OpenQASM and instruction lists;
-- all register and endianness edge cases;
-- unknown gate/parameter/circuit versions;
-- resource limits, overflow, RAM budget, disk quota, corrupt/missing page files;
-- concurrent executions, deterministic seeds and shared-state contamination;
-- NaN/inf, near-singular matrices, near-zero singular values and normalization drift;
-- malformed FakeProvider payloads, duplicate jobs, timeouts and unavailable profiles;
-- failures in optional dependencies, native extension and Vulkan runtime.
+1. Reproduce on the baseline SHA or an isolated fixture.
+2. Capture expected and actual outputs.
+3. Build the smallest counterexample.
+4. Identify whether the defect is specification, code, test oracle or documentation.
+5. Derive the invariant independently.
+6. Implement the smallest correction.
+7. Add a regression test that fails on the old code.
+8. Run focused tests.
+9. Run adjacent module tests.
+10. Run the full suite.
+11. Run mutation tests against the defect.
+12. Record root cause and evidence.
 
-Every fuzzer/subprocess must have a timeout and bounded memory. Crashes, hangs, OOM, inconsistent status, unbounded logs, false success and partial mutation are failures.
+Maximum: three targeted repair attempts per root cause. After three unsuccessful attempts, stop changing that surface, document the blocker and continue with independent work.
 
-### L6 — benchmark and performance integrity
+## 11.3 Repair loop B — build / CI failure
 
-Use a preregistered `BENCHMARK_PROTOCOL.md`, a machine-readable benchmark schema, raw JSON/CSV, exact source SHA and command. Include workload families rather than only GHZ:
+1. Capture exact command, toolchain and log.
+2. Classify source failure, environment issue, dependency issue, test failure or infrastructure flake.
+3. Reproduce locally where feasible.
+4. Do not delete/skip the test or suppress compiler warnings to get green.
+5. Fix the root cause or pin the correct dependency/toolchain.
+6. rerun failed job, then full local gates.
+7. rerun cloud exact-SHA CI.
 
-- Clifford/random stabilizer;
-- Clifford+T across growing T-count;
-- 1D low-entanglement/MPS-friendly and entanglement-growth circuits;
-- 2D/long-range/topology-aware circuits;
-- QFT/arithmetic and composite-gate circuits;
-- selected Pauli expectations;
-- representative unresolved/resource-refusal paths;
-- noise-model circuits and provider-free bridge tests if implemented.
+If external CI infrastructure is genuinely flaky, retain all attempts and mark the infrastructure diagnosis. A flaky pass is not proof that the source is always correct.
 
-Record circuit width/depth/gate counts, topology, T-count, estimated/actual tensor rank or Pauli-term count, approximation settings, shots/seeds, exactness/result type, warm-up, setup/compile time, simulation time, readback/serialization time, end-to-end wall time, median/spread, peak RSS, temporary storage and GPU/device memory where available. Separate CPU, software Vulkan ICD, physical GPU and real QPU evidence. Track energy only if measured with an identified method.
+## 11.4 Repair loop C — resource/reliability failure
 
-Run warmups and repeated measurements. Hold out entire circuit families from router/heuristic calibration. Never tune on final validation cases. Compare only equal output semantics and equivalent precision/accuracy. A microkernel result is not a simulator speedup. Use the project’s preregistered initial bar (e.g. 15% median end-to-end improvement on a named held-out workload or a material resource benefit) only as an engineering acceptance criterion, not a scientific constant. If the criterion is missed, reject/defer the optimization and report it honestly.
+1. Identify preflight versus actual allocation behavior.
+2. Capture peak RSS/device heap and intermediate sizes.
+3. Reproduce with a bounded input.
+4. Ensure no partial state or stale temporary pages remain after failure.
+5. Add a deterministic budget test.
+6. Confirm a resource refusal is explicit and machine-readable.
 
-### L7 — hardware/provider tests
+## 11.5 Research loop D — hypothesis testing
 
-Default CI must not require credentials or incur QPU charges. Test all provider logic offline using a deterministic fake. Test a real provider only with explicit authorization, strict shot/qubit/cost cap, secure credential handling and an audit record. A lack of credentials is `BLOCKED/NOT RUN`, not a failure of local CI and not evidence that the hardware feature works.
+For each hypothesis:
 
-For real hardware, store only permitted non-secret provenance: provider/backend, job ID, submitted circuit/transpiled hashes, layout, raw counts, shots, timestamps, calibration/profile reference, queue/run status, and returned metadata. Do not assert sampled counts must equal ideal simulator counts exactly. Compare distributions/observables statistically using an explicitly chosen methodology, and treat real noise/drift as observed uncertainty—not as a bug to erase.
-
-### L8 — cloud CI and release gates
+1. State the exact claim.
+2. List mathematical assumptions.
+3. Derive the needed intermediate lemmas.
+4. Select a minimal experiment.
+5. Specify independent oracle and expected acceptance/rejection criterion.
+6. Implement a reference version first.
+7. Run experiment with recorded seeds/hashes.
+8. Analyze positive and negative results.
+9. Formalize critical identities/lemmas where practical.
+10. Decide `SUPPORTED`, `REJECTED`, `INCONCLUSIVE`, `DEFERRED` or `BLOCKED`.
 
-- Every required CI job must run on the exact candidate SHA and pass.
-- Verify branch and merge method permitted by the actual repository rules; never skip required checks.
-- Release workflow must confirm the tag points to the intended merged commit and that the tag equals the canonical package version.
-- Verify build artifacts in a clean install and smoke a deterministic circuit/API/JSON path.
-- Generate release notes, SHA-256 checksums and SPDX SBOM only after final contents are assembled; verify all listed assets exist.
-- Download the published artifacts and independently recompute checksums when permitted. Check wheel/sdist metadata and that the downloaded package actually installs and executes.
-- Record stable tag, exact commit, CI run URL, release workflow URL, asset URLs, sizes/digests, SBOM validation, and any limitations in `RELEASE_AUDIT.md`.
-- A release-created event or green badge alone does not prove asset correctness. Any mismatch blocks final completion.
+Do not rewrite the hypothesis after seeing results without creating a new version and preserving the original outcome.
 
-## 9. Self-healing loop protocol
+## 11.6 Repair loop E — docs/UI claim mismatch
 
-Use a durable task ledger with `ID`, severity, evidence, hypothesis, owner/module, state, attempt count, last command, exit code, log path, regression test, code commit, acceptance criterion and next action.
+1. Extract the claim from README/UI/release note.
+2. Find the source implementation.
+3. Find test or benchmark evidence.
+4. If evidence is missing, downgrade the claim or add a test.
+5. update every duplicated claim source.
+6. render/preview and check links.
+7. re-run version/docs checks.
 
-States: `NEW → TRIAGED → REPRODUCED → FIX_IN_PROGRESS → LOCAL_RETEST → FULL_GATES → CLOUD_GATES → RESOLVED`; alternate terminal states are `REJECTED`, `DEFERRED`, `BLOCKED` and `INCONCLUSIVE`. A status transition must cite evidence.
+## 11.7 Stop and escalation rules
 
-### 9.1 Loop A — correctness defect
+Stop and request operator authorization only for:
 
-1. Reproduce on the recorded baseline/candidate SHA and capture a minimal failing input.
-2. Identify the violated invariant; write a short proof/reason why the expected result is correct.
-3. Create a deterministic regression test before or with the fix. For P0/P1, use an independent oracle.
-4. Make the smallest change that fixes the root cause; avoid unrelated refactors.
-5. Run the test against pre-fix if feasible to confirm it fails, then passes after fix.
-6. Run related modules and the full relevant suite.
-7. Re-run mutation/property tests to ensure the bug is detectable.
-8. Update finding log and mark resolved only if the complete evidence passes.
-
-### 9.2 Loop B — failed build/test/CI
+- a real billable QPU submission;
+- a hardware test with external cost or provider terms;
+- missing owner-only credentials/permissions;
+- merge to protected branch if policy requires human review;
+- deletion/destructive action or rewriting release history;
+- security-sensitive change requiring owner decision.
 
-For each failure:
+Do not ask for information already available from the repo. Do not stop the entire V3 mission because real hardware is not available; finish offline adapter tests and mark real QPU as blocked/not run.
 
-1. Identify whether it is a product failure, test defect, environmental/toolchain issue, stale cache, external service, or unsupported runtime.
-2. Capture full non-secret log, command, environment versions and exact failing job/SHA.
-3. Reproduce locally or in the closest equivalent environment; do not guess from a truncated summary.
-4. Form one root-cause hypothesis and one minimally scoped repair.
-5. Run the smallest regression, then the impacted gates, then full gates.
-6. Commit only after the repair passes and is documented.
-7. Push the candidate branch and re-run exact-SHA CI. Treat changed SHA as new evidence that requires its own gates.
-8. Repeat up to three targeted repairs per root-cause class. If external/permissions/tooling prevents progress, mark `BLOCKED` with evidence and continue unrelated work.
-
-### 9.3 Loop C — resource/reliability failure
+Never send a message that says the work will happen later. Perform all permitted work in the current execution.
 
-1. Capture the failing circuit, declared dimensions, actual allocation point, peak memory and time.
-2. Determine whether preflight, overflow validation, budget enforcement or cleanup is faulty.
-3. Add a test proving refusal occurs before destructive mutation or uncontrolled allocation.
-4. Test just-below/at/above the limit, and verify subsequent valid execution still works.
-5. Verify page/file cleanup is isolated to this run and does not remove operator data.
-6. Retest concurrency and the affected backend.
+---
 
-### 9.4 Loop D — hypothesis/benchmark
-
-1. Record assumptions and acceptance/rejection criteria before tuning.
-2. Build minimal prototype behind an internal/experimental boundary.
-3. Validate correctness against an independent reference first.
-4. Run preregistered workload families, including held-out cases, multiple repetitions and complete end-to-end accounting.
-5. If wrong, unstable, slower, less memory-safe or semantically weaker, reject or redesign the hypothesis.
-6. Do not change the acceptance bar after observing results; any methodological change is preregistered as a new experiment.
-7. Promote to Stable only after correctness, robustness, public contract and documentation are complete.
-
-### 9.5 Loop E — docs/evidence mismatch
-
-1. Find the exact contradiction and identify which artifact/SHA is authoritative.
-2. Recheck source/API/CI/release metadata rather than selecting the most flattering value.
-3. Update current narrative, leave historical records labeled as historical, and link the exact evidence.
-4. Run link checks/documentation examples where supported, `check_version.py`, wheel smoke and all relevant tests after doc/code changes.
-5. Do not report completion while public surfaces still disagree.
-
-### 9.6 Stop rules
-
-- Maximum three targeted repair attempts per root-cause class before marking `BLOCKED`/`INCONCLUSIVE` and documenting next diagnostic steps.
-- Stop any release/push/hardware operation if authorization or security is uncertain.
-- Stop feature expansion if any P0 issue is unresolved or if the remaining time/compute budget cannot support a valid verification.
-- Keep making safe progress on independent issues rather than asking the operator unnecessary questions.
-- Never spin on repeated identical failures without a new diagnosis or changed evidence.
-
-## 10. Architecture and implementation rules
-
-- Prefer explicit capability contracts over monolithic “auto magic.” The router must choose only a backend that supports the operation and required result kind. Resource estimates should be conservative and explainable; use heuristic optimization only after measuring it against a fixed baseline.
-- Do not silently reroute forced-backend requests. Automatic escalation may occur only through typed capability/resource outcomes and must be logged in the result metadata.
-- Treat optional backends/dependencies as optional: no import-time failure in the core package if an optional provider, GPU or benchmark library is missing.
-- Use deterministic stable JSON with schema version and well-defined numeric/enum serialization. JSON mode must produce one valid document on stdout; diagnostics go to stderr.
-- Preserve API/ABI compatibility or document and test migration. Never change a native ABI, QASM index representation or result schema casually.
-- Use clear type annotations, small cohesive functions, explicit error types, RAII in C++, overflow-safe sizes and bounded resource use.
-- No giant all-at-once rewrite. Keep changesets small enough to review and bisect.
-- Avoid duplicated implementation of the same operation in Python/native without a shared contract plus independent differential tests.
-- Avoid a new dependency unless it is necessary, maintained, appropriately licensed, pinned for CI and tested under the supported matrix.
-- Do not fold research-only features into the default route until acceptance criteria are met. Mark experimental capability at API, CLI, docs and result level.
-
-## 11. GPU and device execution claims
-
-For every Vulkan/GPU-related experiment, record:
-
-- actual physical device/vendor/device ID and driver/runtime when hardware is used;
-- ICD/device class: physical GPU vs software implementation (Lavapipe or other software ICD);
-- shader source and SPIR-V digest, build options and validation result;
-- operation actually executed on the device, buffer sizes, data uploaded/read back and numerical contract;
-- CPU reference result and tolerance derivation;
-- validation-layer errors, synchronization/memory behavior, deterministic repeated-run outcomes;
-- total pipeline timings including dispatch setup, transfer, synchronization and output conversion.
-
-Stages of evidence must be labeled exactly:
-
-1. `SOURCE_COMPILED`;
-2. `SPIRV_VALIDATED`;
-3. `SOFTWARE_ICD_DISPATCH_VERIFIED`;
-4. `PHYSICAL_DEVICE_PRIMITIVE_VERIFIED`;
-5. `FULL_SIMULATOR_PATH_DEVICE_EXECUTED`;
-6. `END_TO_END_ACCELERATION_BENCHMARKED`.
-
-Only claim the highest level actually exercised. A physical-device primitive test does not establish that the four Python paths are GPU-accelerated. If a Vulkan MPS kernel is added, compare its tensors/results with an independent CPU reference across valid and adversarial gate/order/rank cases and test memory allocation, descriptor lifetime, synchronization, device loss and out-of-memory failures.
-
-## 12. Security, CI and supply-chain hardening
-
-- Read live workflow permissions and minimize `GITHUB_TOKEN` scope; write permissions belong only to the job that needs them.
-- Pin third-party GitHub Actions to verified full commit SHAs, retaining a human-readable release comment. Verify that referenced commits match the intended upstream releases.
-- Use explicit `timeout-minutes`, concurrency control, and cancellation where correct. Never hide required release jobs behind `continue-on-error`.
-- Validate untrusted input before subprocess execution; avoid shell interpolation of user/provider strings; use argument arrays, timeouts and bounded output.
-- Do not parse QASM or arithmetic using `eval`; do not execute untrusted provider data as code.
-- Check dependencies/license/SBOM and package contents. Release assets must not contain local logs with secrets, auth files, credentials, calibration data restricted by a provider, or unnecessary private paths.
-- Preserve security scanning and TLS verification. Never lower repository visibility or repository protection for convenience.
-- Ensure a failed job exits non-zero and reports the primary failure. Retried transient external calls must be bounded and must not mask repeated deterministic failures.
-- Verify all generated artifacts using checksums and, if supported, signature/attestation provenance. Don't assert signing/attestation when it is not configured.
-
-## 13. Documentation, release notes and benchmark claim audit
-
-After implementation is stable, review every public text and runnable example:
-
-- `README.md`, `ARCHITECTURE.md`, `CHANGELOG.md`, `RELEASE_NOTES.md`, `GEMINI.md`, `docs/API_REFERENCE.md`, `docs/ARCHITECTURE.md`, `docs/QASM_CONTRACT.md`, `docs/USAGE_GUIDE.md`, `docs/BENCHMARKS.md`, `docs/V2_IMPLEMENTATION_MATRIX.md`, CLI help, Python docstrings, Qiskit backend metadata, examples, citations, badges and version strings;
-- research baseline, findings, hypothesis decisions, benchmark protocol/results, test matrix and release audit.
-
-Check and correct:
-
-- current release and version status;
-- exact test counts, coverage, mutation score, shader tests, CI results and platform/device claims;
-- examples that use existing public API and have actually been executed in the package smoke test;
-- limits for each path, gate set, qubit-index width, shot/resource limits, exactness and error-bound semantics;
-- explicit statement that no physical QPU was used unless a documented authorized job really ran;
-- every performance claim linked to raw, reproducible benchmark evidence;
-- every citation points to a real primary source and the correct current/revision-specific content;
-- historical metrics are clearly labeled with their SHA/date and never presented as current results.
-
-The final content-changing commit must itself be re-tested. Documentation edits can break examples, schema output, install steps or truthfulness; they are not “free” after the final test.
-
-## 14. Versioning, branch, merge and release policy
-
-1. Determine semver from the actual changes and existing public contract. A new backward-compatible public capability may justify a minor feature release; a pure fix-only release should use a patch. A public incompatible schema/API/ABI change requires explicit major-release analysis and migration plan.
-2. Do not precommit to v2.5.0 if the feature is not accepted. Choose the next version only after scope and compatibility are known; then update all canonical version surfaces with the repository's existing script/convention.
-3. Work on a named branch, e.g. `agent/cq-hecs-next-stable-<feature>`. Confirm branch names and permissions live.
-4. Commit focused stages: baseline/report; correctness; feature; tests; documentation/release metadata, as useful for review. Do not include unrelated operator changes.
-5. Push using existing approved auth. Open or update a PR with problem statement, design, trade-offs, tests, benchmark evidence, API changes and limitations.
-6. Wait for actual required checks/approvals by polling the supported GitHub interface; do not promise background execution or mark a pending job complete. Repair genuine failures within the self-healing rules.
-7. Merge only after all mandatory checks pass and the repository's allowed merge rules permit it.
-8. Confirm merged commit SHA, then ensure the release tag targets the intended merged commit and matches canonical version. If the workflow requires a tag trigger, use the documented approved method only after green exact-SHA CI.
-9. Verify release pipeline completion, asset list, checksums and SPDX SBOM. Download and recompute hashes where possible. Install wheel in a clean environment and execute minimal public API/CLI examples.
-10. Re-query GitHub releases, tag ref and workflow runs to establish final state. Store exact URLs and digests in `RELEASE_AUDIT.md`.
-11. If credentials, permissions, branch protection or external services block a step, do not bypass. Stop at that gate with concrete evidence and leave a reviewable branch/PR if possible.
-
-## 15. Stable-release acceptance gates
-
-All mandatory gates must be explicitly marked before Stable promotion:
-
-### Gate A — Baseline/reproducibility
-- [ ] The live baseline SHA and current version/release are verified.
-- [ ] All pre-existing work is preserved and no unintended files changed.
-- [ ] Baseline and candidate evidence are clearly separated.
-
-### Gate B — Scientific correctness
-- [ ] All P0 findings are resolved or the release is blocked.
-- [ ] Every new algorithm has an independent analytical or differential oracle.
-- [ ] Metric and result-kind invariants are exhaustively tested.
-- [ ] Approximation/numerical/noise/provenance semantics are explicit.
-- [ ] Unsupported inputs fail closed and resource limits are preflighted.
-
-### Gate C — Software quality
-- [ ] Full Python tests pass on the supported CI matrix.
-- [ ] Native build and CTest pass with required native code loaded.
-- [ ] Coverage is at least the live CI threshold and no unexplained regression exists.
-- [ ] Mutation, property/fuzz, concurrency, parser, resource and API-contract gates pass.
-- [ ] Static analysis and dependency/package checks pass.
-
-### Gate D — Performance evidence
-- [ ] Workloads and acceptance bar were preregistered.
-- [ ] Fresh raw benchmark output is produced for the exact candidate SHA.
-- [ ] All end-to-end overhead and result semantics are included.
-- [ ] Held-out workloads show the stated improvement; otherwise claim is withdrawn or feature deferred.
-
-### Gate E — GPU/QPU honesty
-- [ ] Every device claim has the correct evidence level.
-- [ ] Provider fake tests pass and no credentials are required for default CI.
-- [ ] Any real QPU claim has actual job provenance, raw results and explicit authorization.
-- [ ] No silent fallback can mislabel classical output as hardware output.
-
-### Gate F — Security and supply chain
-- [ ] Action pins, permissions, secrets and subprocess boundaries pass review.
-- [ ] Wheel, sdist, SPDX SBOM and checksums build and validate.
-- [ ] No sensitive content or credentials appear in tracked files or release assets.
-
-### Gate G — Docs and release
-- [ ] All public surfaces describe the same version and supported semantics.
-- [ ] All examples in updated docs are smoke-tested or explicitly marked illustrative.
-- [ ] CI and release jobs pass on the relevant exact SHA.
-- [ ] The published tag, assets and hashes independently match the release audit.
-- [ ] Known limitations, unrun tests and blockers are documented honestly.
-
-**No “mostly green” release:** a blocked mandatory gate blocks Stable. It may be released as an experimental/pre-release only if the repository workflow permits it, the limitations are visible and no safety/correctness issue is being hidden.
-
-## 16. Final report format
-
-At the end, write a final report in the repository and respond to the operator with a compact summary containing:
-
-1. **Outcome:** `RELEASED`, `READY_FOR_REVIEW`, `BLOCKED`, or `NOT_RELEASED`—never an ambiguous “done.”
-2. Repository/branch/PR/tag, exact source and merged SHAs, and release URL if one exists.
-3. A gate table of command, status, measured outcome and evidence link. Use actual counts only from captured outputs.
-4. Test counts, coverage, mutation/fuzz results, platform matrix and native requirement status.
-5. Benchmark method, raw output link, median/spread, peak resources and precise workload class; state “no performance claim” when not earned.
-6. GPU execution tier and QPU status: `NOT RUN`, `BLOCKED`, or actual authorized job metadata.
-7. Main defects fixed and new capabilities shipped.
-8. Known limitations, deferred hypotheses, unrun tests and external blockers.
-9. Release asset filenames, sizes, SHA-256 and SBOM status.
-10. Documentation/claim changes and remaining scorecard dimensions below 10/10.
-
-Scorecard is not allowed to use a perfect rating as a marketing device. For each dimension below 10/10, say exactly what remains; for a 10/10, link the evidence and define its scope. This project can be production-quality on specific supported classes without being a universal simulator.
-
-## 17. First actions at runtime
-
-Perform these in order before major edits:
-
-1. Discover live head/tag/release/CI/PR state and preserve a dirty checkout.
-2. Reconcile the README/research/release mismatch described in §2.2.
-3. Re-run baseline version, Python compile/lint, full tests, native build/CTest, shader verification, mutation tests, package build and clean-wheel smoke as available. Capture output and exact SHA.
-4. Audit result contracts, MPS numerical rank/approximation metadata, Path D bound semantics, all gate-lowering tables and provider/native parser consistency. Reproduce any suspected defect; do not assume old findings remain open.
-5. Update research records using current source/release evidence and live literature. Record hypotheses before selecting one major prototype.
-6. Choose the smallest vertical slice of the Hardware-Aware Quantum Bridge that can meet all stable gates. If that scope is not implementable safely, prioritize correctness and documentation fixes and record why the new feature was deferred.
-7. Implement tests with each change, run the bounded self-healing loops, then execute the full local-to-cloud-to-release sequence above.
-
-**Definition of success:** not “all qubits always work,” not “the tests have been made green,” and not “the agent used every technique.” Success is a reproducible, scientifically honest release whose supported operations are correct, unsupported operations fail safely, performance claims are backed by fair benchmarks, and the exact published source and artifacts have verifiable evidence.
+# 12. Milestone plan: v2.5.1 -> v3.0.0
+
+Milestones are ordered gates, not calendar estimates. A later milestone may start on an independent branch only if it does not obscure a correctness blocker.
+
+## M0 — Snapshot and baseline audit
+
+**Deliverables:** `BASELINE.md`, `SOURCE_INVENTORY.md`, initial `DEFECT_REGISTER.md`, exact test matrix and claim map.  
+**Gate:** the team can answer exactly what exists, what works, what is experimental and what is only a placeholder.
+
+## M1 — Correctness and trust hardening
+
+**Priority:** P0/P1.  
+Fix or explicitly disable confirmed:
+
+- Python SAT timeout status;
+- collision-prone SAT pruning if proof-critical;
+- Python/native DIMACS mismatch;
+- exact-ring overflow/shift/exponent hazards;
+- Release-disabled assertions;
+- fabricated UI telemetry;
+- result-metadata semantic mismatches;
+- any confirmed QASM/Qiskit bit-order/operand/measurement regression.
+
+**Gate:** focused regression, independent differential and full local test suite pass.
+
+## M2 — Contracts and planner consistency
+
+Implement or improve:
+
+- canonical circuit semantics (incremental, compatibility-preserving);
+- central capability descriptions;
+- result-kind/execution-mode provenance;
+- resource preflight and refusal codes;
+- planner explain mode;
+- stable JSON schema and CLI exits.
+
+**Gate:** all frontends behave identically for the supported subset and explicitly refuse unsupported semantics.
+
+## M3 — Mathematical research engine (bounded, experimental)
+
+Implement Boolean factor-graph reference, exact #SAT brute-force comparator for small cases, variable elimination/InsideOut, structural estimators and a transparent FAQ-style task model. Then explore a weighted Clifford+T tensor prototype and one SWAP/singlet reproduction experiment.
+
+**Gate:** exact reference results match independent brute force/dense quantum outputs for small instances; research-only labels and limitations are correct. No requirement to reproduce the full OpenAI/Anthropic asymptotic result unless the proof and implementation scope are realistically achievable.
+
+## M4 — Quantum path and benchmark improvement
+
+Harden A-D, run current external comparators, improve route explanations and implement at most one evidence-backed planner/backend improvement. Keep experimental backends out of default stable routing until proven.
+
+**Gate:** preregistered workload family shows a measured benefit or a previously unsupported task becomes correctly supported; no regressions elsewhere.
+
+## M5 — Noise model and real-provider bridge
+
+Improve provenance and optional device-aware lowering. Implement one real provider adapter only if current official SDK/API access and test infrastructure are available. The fake provider remains offline and explicitly synthetic.
+
+**Gate:** all fake-provider tests pass; no invisible fallback; real QPU mode remains blocked/not run unless an authorized real job is actually completed and recorded.
+
+## M6 — Vulkan/device layer
+
+Improve device selection, telemetry and dispatch safety. Implement an end-to-end GPU simulator slice only if a specific workload and supported shader pipeline can be completed and differentially verified.
+
+**Gate:** clearly identified device class, host/device parity, correct end-to-end pipeline, and fair benchmark. Otherwise retain primitive-only status and document it correctly.
+
+## M7 — UI/UX and developer workflow
+
+Replace synthetic dashboards with real metrics, redesign the TUI around actual run data, improve CLI `--explain`, resource preflight and JSON, and add screenshots/visual regression artefacts.
+
+**Gate:** all displayed values trace to metrics sources or are clearly demo-marked; keyboard and non-TTY flows work.
+
+## M8 — Docs, packaging and release preparation
+
+Update README, API docs, architecture, research reports, benchmarks, release notes and citation metadata. Rebuild wheel/sdist and install cleanly. Check every published claim against the code.
+
+**Gate:** docs, version and artifacts align on the same candidate SHA.
+
+## M9 — Cloud, release and final audit
+
+Run Linux/Windows CI, sanitizers, Python compatibility, shader checks, mutation, fuzz and package tests. Verify exact-SHA CI. Merge/release through policy, download all assets, independently hash them and record the final release audit.
+
+**Gate:** no mandatory failure, no unresolved P0/P1, no false claim, all artifact digests verified.
+
+---
+
+# 13. Proposed V3 Stable feature set and deferral rules
+
+The agent must decide final V3 contents from evidence; this table is a target, not a guarantee.
+
+| Area | V3 Stable target | Experimental / defer if not proven |
+|---|---|---|
+| Core contracts | robust result schema, explicit status, capability registry | breaking result model rewrite |
+| Quantum paths | A-D correctness, explainable routing, better benchmarks | unsupported universal path |
+| Exact arithmetic | checked operations and bounded guarantees | arbitrary precision backend if not completed/benchmarked |
+| Tensor research | Boolean factor graphs, exact reference, FAQ evaluation model if correct | claimed OpenAI/Anthropic port; universal weighted compression |
+| Circuit simulation | measured workload-specific improvements | SOTA superiority language |
+| Noise | corrected density matrix, validated Kraus channels, provenance | unvalidated complex noise model |
+| QPU bridge | clean provider boundary, robust fake tests, optional adapter | real hardware claim without actual authorized job |
+| Vulkan | honest device detection and primitive dispatch, possibly one end-to-end slice | generic cross-vendor full GPU acceleration |
+| UI | measured TUI/CLI, demo explicitly marked | fake active metrics or speculative GUI overhaul |
+| SAT | sound status/UNSAT handling, collision-safe search, #SAT reference | P = NP or general NP polynomial claims |
+| Documentation | current, cited, reproducible | badges/claims without proof |
+
+A major version requires a real user-visible capability, interface/semantic milestone, or architecture upgrade with migration notes. If V3 only fixes defects and delivers no meaningful stable capability, choose a justified minor/patch release instead of manufacturing a `3.0.0` release.
+
+---
+
+# 14. GitHub, CI, release and supply-chain workflow
+
+## 14.1 Branch and PR policy
+
+- Work on a focused branch.
+- Commit in coherent checkpoints (baseline audit, correctness fixes, research prototype, UI, docs, release).
+- Keep commits reviewable; avoid one massive unreviewable commit.
+- Do not force-push or rewrite shared history.
+- Do not push directly to protected `main` if the repository policy requires PR.
+- Create a PR with problem statement, design, test evidence, benchmark protocol and limitations.
+- Wait for exact-SHA required CI, then merge only if policy permits.
+
+## 14.2 CI requirements
+
+Maintain or improve:
+
+- static checks/package smoke;
+- Linux C++20/Vulkan/Python full suite;
+- Windows C++20/Vulkan/Python full suite;
+- Python supported-version matrix;
+- ASan/UBSan;
+- shader compilation/validation;
+- software Vulkan dispatch test;
+- nightly stress/fuzz/mutation/performance smoke;
+- optional hardware provider tests (offline fake by default).
+
+Check action references are immutable full SHAs, permissions are job-scoped and minimal, concurrency does not cancel release workflows, and artifacts upload on failures when useful.
+
+## 14.3 Release integrity
+
+Before tag:
+
+- canonical version in `scripts/version.py`;
+- `cqhecs.__version__`, `pyproject.toml`, CMake/package metadata and docs consistent;
+- changelog/release notes correct and dated;
+- release source SHA exact;
+- required CI green on exact SHA;
+- wheel and sdist clean-venv tested;
+- CLI smoke JSON valid;
+- SPDX SBOM generated and schema validated;
+- SHA-256 checksums generated after final release notes/assets;
+- artifact file list matches release workflow expectations;
+- each asset downloaded and digest independently checked after publication.
+
+Never edit an already published release asset to make old documentation look current. Publish an erratum or a new release instead.
+
+---
+
+# 15. Required documentation formats and research reporting
+
+## 15.1 `research/v3/HYPOTHESES.md`
+
+Each hypothesis must have:
+
+```text
+ID:
+Title:
+Status: PROPOSED | SUPPORTED | REJECTED | INCONCLUSIVE | DEFERRED | BLOCKED
+Claim:
+Formal statement:
+Assumptions:
+Scope:
+Related theorem/paper:
+Transfer classification:
+Required lemmas:
+Prototype:
+Independent oracle:
+Benchmark family:
+Pre-registered acceptance criteria:
+Observed result:
+Decision:
+Evidence files:
+Exact source SHA:
+Reviewer notes:
+```
+
+## 15.2 `research/v3/RESEARCH_TRANSFER_AUDIT.md`
+
+For each OpenAI/Anthropic/FAQ idea:
+
+- theorem name and source revision;
+- paper statement and Lean statement side by side;
+- assumptions and domains;
+- proof checker status;
+- exact code-to-theorem mapping;
+- candidate CQ-HECS module;
+- gap analysis;
+- prototype design;
+- independent tests;
+- reason for adoption/rejection/deferral.
+
+## 15.3 `research/v3/TEST_MATRIX.md`
+
+Each row includes exact command, source SHA, OS/toolchain, result, duration, log, artefact URL and status. Do not put `PASS` if the command did not run. Use explicit `SKIP`, `NOT RUN`, `BLOCKED` and `INCONCLUSIVE`.
+
+## 15.4 `research/v3/LIMITATIONS.md`
+
+List the limitations users could otherwise misunderstand:
+
+- gate/circuit subset per path;
+- max qubits and why it exists;
+- dense memory scaling;
+- MPS entanglement/bond growth;
+- finite precision and truncation;
+- exact ring coefficient limits;
+- noisy model assumptions and size ceiling;
+- Vulkan primitive vs full simulator status;
+- QPU provider status;
+- unsupported dynamic-circuit features;
+- SAT solver timeout/UNSAT proof model;
+- research prototypes not shipped/stable.
+
+---
+
+# 16. Stable acceptance gates — hard go/no-go
+
+Every gate is recorded as `PASS`, `FAIL`, `NOT RUN`, `SKIP (reason)`, `BLOCKED (reason)` or `INCONCLUSIVE`.
+
+## Gate A — Repository/release truth
+
+- live baseline, branch, release, tag and SHA reconciled;
+- no unpreserved user changes;
+- canonical version verified;
+- all current claims sourced.
+
+## Gate B — Scientific correctness
+
+- ETH/P-vs-NP boundaries accurate;
+- no claim that P = NP was solved;
+- all imported research claims map to primary sources;
+- formal verification scope and implementation scope separated;
+- exact arithmetic overflow guarded;
+- no fabricated SAT/UNSAT/#SAT or quantum outputs.
+
+## Gate C — Quantum correctness
+
+- A-D and density-matrix path differentially validated within declared scope;
+- measurement/classical map and endian semantics consistent;
+- approximation/error metadata scoped correctly;
+- unsupported operations refuse before partial output;
+- all new research tensor algorithms exact on testable tiny cases.
+
+## Gate D — SAT correctness
+
+- timeout never treated as UNSAT;
+- hash collisions cannot prune proof-critical branches;
+- SAT witnesses independently verified;
+- UNSAT proof path sound and documented;
+- DIMACS parsing follows the declared grammar;
+- #SAT brute-force reference agrees for small instances.
+
+## Gate E — Hardware and GPU truth
+
+- fake and physical provider results distinct;
+- no fallback masquerades as real hardware;
+- synthetic profiles labelled synthetic;
+- Vulkan device and ICD identity visible;
+- end-to-end GPU claim only if actual integrated path is measured;
+- real QPU job recorded only if explicitly authorized and completed.
+
+## Gate F — UX and observability
+
+- no fake live telemetry;
+- all metrics sourced or demo-marked;
+- CLI/TUI cross-platform and readable;
+- screenshots/visual QA evidence included where supported;
+- all controls/commands work as advertised.
+
+## Gate G — Software quality
+
+- static/package checks pass;
+- Linux/Windows native tests pass;
+- Python full suite with native required passes;
+- supported Python compatibility passes;
+- sanitizers pass;
+- mutation and fuzz gates pass;
+- no tests silently skipped in required lanes;
+- no weakened thresholds or deleted tests.
+
+## Gate H — Performance evidence
+
+- benchmark protocol preregistered;
+- same-task comparisons;
+- raw results and scripts retained;
+- no regressions beyond agreed tolerance without explanation;
+- no ungrounded SOTA claims.
+
+## Gate I — Security/supply chain
+
+- least-privilege permissions;
+- immutable action pins;
+- no credentials in code/logs;
+- SBOM valid;
+- checksums independently verified;
+- archive/package contents sane.
+
+## Gate J — Docs/release
+
+- README, API, architecture, changelog, release notes, citations, llms files agree;
+- clean package install/CLI smoke pass;
+- exact source SHA CI green;
+- published tag equals canonical version;
+- downloaded release assets match recorded hashes.
+
+**Hard stop:** Any unresolved P0 correctness defect, false UNSAT possibility, false hardware provenance, fake live telemetry, unguarded exact arithmetic overflow, hidden approximation, broken release provenance or failed mandatory CI blocks Stable.
+
+---
+
+# 17. Final report contract
+
+When complete, return a concise executive summary followed by detailed evidence. Include:
+
+1. final version, tag and exact source SHA;
+2. PR/merge URL and exact-SHA CI URLs;
+3. actual features implemented and file paths;
+4. confirmed defects and fixes with regression tests;
+5. research hypotheses and status, including rejected hypotheses;
+6. formalized theorem/proof status and exact scope;
+7. quantum simulation capabilities by backend and tested circuit family;
+8. Vulkan device/dispatch/end-to-end status;
+9. real QPU provider status and whether any authorized real job ran;
+10. UI screenshots/visual QA evidence;
+11. benchmarks with exact hardware, workload, baseline and result;
+12. test counts, coverage, CTest, sanitizer, fuzz and mutation results;
+13. package/release asset names and SHA-256 verification;
+14. limitations and known risks;
+15. items `NOT RUN`, `SKIP`, `BLOCKED` or `INCONCLUSIVE`;
+16. explicit statement that P vs NP remains open unless a genuinely valid proof is delivered and independently checked (expected V3 status: open).
+
+Do not say “perfect”, “bug-free”, “SOTA” or “10/10” as an absolute. Say what was tested and what the evidence supports.
+
+---
+
+# 18. First actions for the agent
+
+Start immediately with the following sequence:
+
+1. Fetch live repository metadata, latest release, branch, main SHA, open PRs and recent workflow runs.
+2. Inspect the local checkout status and preserve user work.
+3. Read current `GEMINI.md`, README, architecture, version, all active CI workflows and V2.5.1 research reports.
+4. Build a complete source inventory from the live tree.
+5. Reproduce the Python DPLL timeout result contract issue and test hash collision behavior in both SAT implementations.
+6. Reproduce DIMACS parser differences with a grammar-compliant multiline CNF fixture.
+7. Audit both exact-ring implementations for overflow and check CMake Release flags for `NDEBUG`.
+8. Verify whether the exact-ring test assertions execute in Release.
+9. Trace every live TUI metric to its data source; replace fabricated values or label demo mode explicitly.
+10. Reconcile Vulkan primitive dispatch and AMD iGPU evidence with the actual test logs and release documentation.
+11. Read the full OpenAI ETH manuscript, `lean/docs/378.md`, Anthropic ETH README/paper/MainResults/PaperIndex and the 2026 FAQ quantum simulation paper.
+12. Create the V3 research dossier and defect register.
+13. Implement the highest-severity confirmed correctness fixes before any new research backend.
+14. Proceed milestone by milestone, preserving exact evidence and refusing unsupported claims.
+
+**End condition:** The agent must stop only after V3 passes the mandatory gates and the final report is evidence-complete, or after it has exhausted the bounded repair cycles and documented a precise external blocker. A partial but truthful result is better than a fabricated Stable release.
+
+---
+
+# 19. Primary research and technical references
+
+The following are seed sources, not a closed bibliography. At runtime, fetch current versions, record immutable revisions and add or remove sources based on relevance.
+
+## OpenAI / ETH / formal mathematics
+
+- OpenAI, *The Exponential Time Hypothesis is False* (25 October 2026):  
+  https://github.com/openai/math/tree/main/preprints/The-Exponential-Time-Hypothesis-is-False-October-25-2026
+- OpenAI Lean formalization scope note:  
+  https://github.com/openai/math/blob/main/lean/docs/378.md
+- OpenAI Math repository:  
+  https://github.com/openai/math
+
+## Anthropic / ETH / formal mathematics
+
+- Anthropic, *A 2^{o(n)} Time Algorithm for 3-SAT* artefact:  
+  https://github.com/anthropics/formal-math/tree/main/eth
+- Anthropic ETH README and formalization caveats:  
+  https://github.com/anthropics/formal-math/blob/main/eth/README.md
+- Anthropic formal-math repository:  
+  https://github.com/anthropics/formal-math
+
+## Quantum-circuit simulation / tensor networks
+
+- Geerts et al., *Unifying and Extending Strong Simulation of Quantum Circuits* (30 September 2026):  
+  https://arxiv.org/abs/2610.00547
+- Qiskit Aer simulator API:  
+  https://qiskit.github.io/qiskit-aer/stubs/qiskit_aer.AerSimulator.html
+- Qiskit Aer simulator methods tutorial:  
+  https://qiskit.github.io/qiskit-aer/tutorials/1_aersimulator.html
+- Stim:  
+  https://github.com/quantumlib/Stim
+- MQT DDSIM:  
+  https://github.com/cda-tum/ddsim
+- NVIDIA cuQuantum:  
+  https://developer.nvidia.com/cuquantum-sdk
+- MQT Bench:  
+  https://github.com/cda-tum/mqt-bench
+- quimb:  
+  https://github.com/jcmgray/quimb
+
+## Formal verification and proof checking
+
+- Lean 4: https://github.com/leanprover/lean4
+- Mathlib: https://github.com/leanprover-community/mathlib4
+- Anthropic comparator/nanoda details: inspect the live Anthropic ETH repository and pinned CI scripts.
+
+## Existing CQ-HECS references
+
+- Repository: https://github.com/timfromhcs/CQ-HECS
+- Current baseline release (re-discover at runtime): https://github.com/timfromhcs/CQ-HECS/releases
+- Current architecture: `ARCHITECTURE.md`, `docs/ARCHITECTURE.md`
+- V2.5.1 correction findings and test matrix: `research/v2_5_1/`
+- OpenAI Math transfer history: `research/v2_1/openai_math/`, `research/v2_4/evidence/`, `research/v2_5/`
+- Existing simulator benchmark history: `benchmarks/`, `docs/BENCHMARKS.md`
+
+---
+
+**Mission motto:** Build the strongest CQ-HECS that the mathematics, code and evidence actually justify. Preserve the ambition; remove the exaggeration. Make every result reproducible, every limitation visible and every success independently checkable.

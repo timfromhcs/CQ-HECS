@@ -29,12 +29,20 @@ Four classical simulation paths · one result contract · fail-closed by design
 > **Status: `v2.5.2` (2026-10-30).** This is a correction release, not a
 > performance claim. It fixes two wrong-result defects in exact paths, a
 > noise-parameter convention, and profile validation. The current tree passes
-> **552 Python tests**, **19/19 CTest**, **35/35 source mutants**, **88 %
-> branch coverage**, and a **12-check metamorphic self-test**.
+> **553 Python tests** (4 skipped, 1 opt-in slow gate) in **~69 s**, **19/19
+> CTest**, **35/35 source mutants**, **86 % branch coverage**, and a **12-check
+> metamorphic self-test**.
 >
-> **Not claimed:** universal quantum simulation, real-QPU execution,
-> cross-vendor GPU acceleration, SOTA performance, or a proof of `P = NP`.
-> See [Limitations](#limitations-and-non-goals) and
+> **First measured QPU data (complete):** all 25 preregistered `r-io-7` jobs
+> ran on `rigetti:cepheus-1-108q` on 2026-10-30. H-V3-8 returns
+> **`SUPPORTED`** — median ΔTV = −0.071905, 95 % CI [−0.135899, −0.006703].
+> That is one backend, one day, 1000 shots per circuit; the measured readout
+> and gate numbers are in
+> [Research and real-data evidence](#research-and-real-data-evidence).
+>
+> **Not claimed:** universal quantum simulation, real-QPU execution *by this
+> package*, cross-vendor GPU acceleration, SOTA performance, or a proof of
+> `P = NP`. See [Limitations](#limitations-and-non-goals) and
 > [`research/v3/COMPLEXITY_BOUNDARY.md`](research/v3/COMPLEXITY_BOUNDARY.md).
 
 <details>
@@ -104,7 +112,7 @@ That rule is enforced in code, not only in documentation:
 | **Public surfaces** | `cq-hecs` CLI, Qiskit `BackendV2`, Python API, C ABI |
 | **Simulation paths** | A: stabilizer tableau · B: stabilizer rank · C: untruncated MPS · D: sparse Pauli |
 | **Noise** | Typed profiles, Kraus channels, exact float64 density matrix up to 10 qubits |
-| **Verification** | 552 Python tests, 19 CTest, 35 mutants, 12-check selftest, 12 SPIR-V shaders |
+| **Verification** | 553 Python tests (~69 s), 19 CTest, 35 mutants, 12-check selftest, 12 SPIR-V shaders |
 | **Platforms** | Linux x64, Windows 10/11; Python 3.11–3.14 |
 | **License** | Apache-2.0 |
 
@@ -115,7 +123,10 @@ That rule is enforced in code, not only in documentation:
 - **Not a universal quantum simulator.** Each path has a target class and a hard
   limit; no path claims polynomial-time simulation of arbitrary circuits.
 - **Not a QPU.** `RealHardwareBackend` is a fail-closed boundary without a
-  provider integration. No job was executed on physical hardware.
+  provider integration. This package has never executed a job on physical
+  hardware. One externally submitted reference suite (`r-io-7`) produced
+  measured counts that are used as evaluation data only, never as a result of
+  this package.
 - **Not a GPU-accelerated simulator.** The Python paths are CPU-only. Vulkan
   compute was verified for native primitives, not for end-to-end circuit
   simulation.
@@ -483,8 +494,8 @@ not performance claims. CI evidence for the exact pushed SHA is recorded in
 
 | Gate | Result |
 | :--- | :--- |
-| Python suite | **552 passed**, 4 skipped (optional `qiskit-ibm-runtime` absent locally) |
-| Branch coverage | **88 %** (CI threshold 70 %) |
+| Python suite | **553 passed**, 4 skipped, 1 opt-in `slow` gate (**~69 s**) |
+| Branch coverage | **86 %** (CI threshold 70 %) on this branch, which adds the real-data harness; `main` was 88 % |
 | CTest (native) | **19/19** |
 | Source mutation | **35/35** killed |
 | Metamorphic selftest | **12/12** |
@@ -561,8 +572,10 @@ python scripts/verify_vulkan_shaders.py
   written and to the calibrated qubits; circuits are not transpiled to the
   profile basis. Uncalibrated gates remain noiseless. Both built-in profiles are
   synthetic; `fake_manila` uses the Manila topology, not its calibration values.
-- **No real QPU execution.** `RealHardwareBackend` is a fail-closed boundary;
-  no physical job was submitted.
+- **No real QPU execution by this package.** `RealHardwareBackend` is a
+  fail-closed boundary; nothing in `cqhecs` submits a job. The `r-io-7` counts
+  were produced by a separate, manually approved runner against Open Quantum
+  and enter the repository only as a pinned evaluation dataset.
 - **No cross-vendor GPU claim.** One AMD iGPU primitive dispatch was verified
   historically; current CI uses a software ICD.
 - **Cloud Build is not verified here.** `cloudbuild.yaml` exists, but no
@@ -585,7 +598,8 @@ tied to a source SHA and records `PASS`, `FAIL`, `SKIP`, `BLOCKED`, and
 | [`research/v3/V3_STABLE_PLAN.md`](research/v3/V3_STABLE_PLAN.md) | v3 plan, workstreams, gates |
 | [`research/v3/DATASETS.md`](research/v3/DATASETS.md) | real-data registry, licences, SHA-256 pins, reachability |
 | [`research/v3/HYPOTHESES.md`](research/v3/HYPOTHESES.md) | preregistered hypotheses and outcomes |
-| [`research/v3/OPENQUANTUM_RUN_PLAN.md`](research/v3/OPENQUANTUM_RUN_PLAN.md) | preregistered 25-job real-QPU suite via Open Quantum (`r-io-7`); **not run yet** |
+| [`research/v3/OPENQUANTUM_RUN_PLAN.md`](research/v3/OPENQUANTUM_RUN_PLAN.md) | preregistered 25-job real-QPU suite via Open Quantum (`r-io-7`); **13/25 executed, 2026-10-30** |
+| [`research/v3/EMULATOR_BUILD_PLAN.md`](research/v3/EMULATOR_BUILD_PLAN.md) | emulator work packages derived from the measured `r-io-7` data; not implemented |
 | [`research/v3/TESTING_TECHNIQUES.md`](research/v3/TESTING_TECHNIQUES.md) | property-based, metamorphic, noise-aware, and fuzzing methods |
 | [`research/v3/COMPLEXITY_BOUNDARY.md`](research/v3/COMPLEXITY_BOUNDARY.md) | P vs NP status and claim boundaries |
 
@@ -610,16 +624,58 @@ circuits cannot discriminate the model. The Bell+GHZ subset is reported as
 layout and one-qubit gate errors are documented limitations, not hidden
 assumptions.
 
-### Next real-data step (not run)
+### `r-io-7`: first measured QPU reference run
 
-The `r-io-7` suite closes the "missing circuits" gap with jobs this project
-authors itself: 25 circuits (2–5 qubits) are SHA-256-pinned in
+The gap R-IO-5 leaves is closed by circuits this project authors itself: 25
+circuits (2–5 qubits) are SHA-256-pinned in
 [`research/v3/openquantum_suite/`](research/v3/openquantum_suite/) before any
-submission, five of them are used to fit a three-parameter noise model and
-twenty are held out for hypothesis H-V3-8. The runner
-(`scripts/run_openquantum_suite.py`) quotes first and refuses to spend credits
-without `--yes` and a `--budget`. No job has been executed yet, so there is no
-QPU result in this repository.
+submission, five FIT jobs calibrate a three-parameter model and twenty EVAL
+jobs are held out for H-V3-8.
+
+On **2026-10-30** all 25 jobs ran on `rigetti:cepheus-1-108q` through Open
+Quantum, Public plan, standard queue, 1000 shots each, 1 credit per job (25 of
+25 credits spent). The bit-order probe returned `00001` (qubit 0 rightmost),
+so no string was reversed anywhere, and every circuit matched its pinned
+SHA-256 before submission.
+
+| Quantity | Value |
+| :--- | :--- |
+| FIT jobs | 5/5 completed |
+| EVAL jobs | 20/20 completed |
+| Verdict | **`SUPPORTED`** |
+| M-FIT parameters | `p01 = 0.033`, `p10 = 0.164`, `cx = 0.00125` |
+| Mean TV of the fit on the FIT jobs | 0.229 |
+| Median ΔTV (noisy − ideal) | **−0.071905** |
+| 95 % bootstrap CI | **[−0.135899, −0.006703]** |
+| Circuits where noisy is better | 14/20 |
+
+That verdict is narrow and it is meant to be: a three-parameter model beats
+the ideal distribution on the held-out circuits **of this suite, on this
+backend, on this day**. It is not a "close to real hardware" claim, and the
+fit itself is mediocre (`0.229` mean TV on the five jobs it was tuned on).
+
+Two measured facts carry beyond the verdict:
+
+| Per-qubit readout, 1000 shots (`OQ-01`/`OQ-02`) | P(1\|0) | P(0\|1) |
+| :--- | ---: | ---: |
+| Qubit 0 | 0.070 | **0.531** |
+| Qubits 1–4 | 0.003–0.042 | 0.059–0.093 |
+| Device mean | 0.033 | 0.164 |
+
+1. **Readout dominates, not gate error.** GHZ-5 costs 0.010 of ideal-outcome
+   share when the CX count goes from 20 to 36 (`OQ-04` → `OQ-05`), while going
+   from 2 to 5 qubits costs 0.197 (`OQ-06` → `OQ-09`). The fitted CX
+   depolarizing parameter lands at 0.00125, near the bottom of its grid.
+2. **The device mean is the wrong shape.** The model loses on Bell and GHZ-3
+   (ΔTV +0.042) and wins on the 4–5-qubit circuits (−0.04 … −0.20). It is
+   right on average and wrong per qubit — and `fit_model()` already computes
+   the per-qubit values before `noise_model()` replaces them with the mean.
+
+No calibration snapshot was delivered for any job (`calibration_data_url` was
+null), so nothing here constrains T1/T2. What to build from this is in
+[`research/v3/EMULATOR_BUILD_PLAN.md`](research/v3/EMULATOR_BUILD_PLAN.md);
+the raw counts are pinned in
+[`research/v3/evidence/openquantum/`](research/v3/evidence/openquantum/).
 
 ---
 

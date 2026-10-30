@@ -1,0 +1,256 @@
+{
+  "backend": "rigetti:cepheus-1-108q",
+  "jobs": {
+    "OQ-01": {
+      "name": "readout_zero_5",
+      "qasm_sha256": "b65b54d3a7031b353a041788273202baa8e80c27df294de13b685228af9e4d84",
+      "preparation_id": "8a11cb0d-a2f6-46e9-85dc-93343873adc5",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "provider_job_id": "0c8e84ec-4959-4cd0-8417-be9d4038d016",
+      "status": "Completed"
+    },
+    "OQ-02": {
+      "name": "readout_one_5",
+      "qasm_sha256": "ad5800f335c3c1b22ba199e42727ecdbbdbcd5103b9d848f223e79fa1506080b",
+      "preparation_id": "0ef0fa29-2243-4848-9fbf-4e525e519822",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "provider_job_id": "e352b1a5-3e14-48ea-ba58-6d471770b7df",
+      "status": "Completed"
+    },
+    "OQ-03": {
+      "name": "bitorder_q0_5",
+      "qasm_sha256": "ddd4df5a558580621105ccf817bbd4cb8f3f3ef656828af82ac559ad301b8f50",
+      "preparation_id": "857eef23-77ad-45da-b73e-69688c0e5ac5",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "provider_job_id": "972f3899-f861-41e6-8481-c857070f5381",
+      "status": "Completed"
+    },
+    "OQ-04": {
+      "name": "ghz5_pad2",
+      "qasm_sha256": "d27474c78eb8ba2f89acf94e221328e1f58022031046295ce6dd23786f5e1b88",
+      "preparation_id": "e18a8a0b-6e90-47a8-87ff-70c5891f49f1",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "provider_job_id": "f13f23c6-03cf-46db-8486-fb328f3bf7cb",
+      "status": "Completed"
+    },
+    "OQ-05": {
+      "name": "ghz5_pad4",
+      "qasm_sha256": "493ca804ad5d6e6e7bca54b9162fb1d03fb3e35e8cce8fb3af60c537bd4188cc",
+      "preparation_id": "64d7629b-fe68-4d76-881e-6ab0af060ad6",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "provider_job_id": "548fbde6-ece1-4a83-a14f-4fc2542f1b5f",
+      "status": "Completed"
+    },
+    "OQ-06": {
+      "name": "bell",
+      "qasm_sha256": "ae0cd142574796138ef95bd28378ae0a56b611999e3e31369cdacefe51a7b825",
+      "preparation_id": "093281de-6a31-41d7-8347-86978b3bb0d3",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "provider_job_id": "08230128-eb16-4fec-8f71-a9d2dde83f4d",
+      "status": "Completed"
+    },
+    "OQ-07": {
+      "name": "ghz3",
+      "qasm_sha256": "ad6de3bf6c92ab4c70ced19bee2b03a09148c60bbaa45d4bf7dc7290d917e16a",
+      "preparation_id": "0315f420-a7d6-41a8-8d8f-1cf4ca125701",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "provider_job_id": "8c7f2044-c133-47ec-95b3-cf7df022f960",
+      "status": "Completed"
+    },
+    "OQ-08": {
+      "name": "ghz4",
+      "qasm_sha256": "ba8be1dbde0e504e23dfdadfe64590d5950d231ab6076e5b413183fbbbc076c2",
+      "preparation_id": "8bbb1000-a1ae-43f6-bece-f9ad94058441",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "provider_job_id": "054a76de-86b1-4fd3-9aaf-885accc406b2",
+      "status": "Completed"
+    },
+    "OQ-09": {
+      "name": "ghz5",
+      "qasm_sha256": "1b3fe915e5bc20df69da445ce63878f08cd4479da656d743a5838f229753135e",
+      "preparation_id": "e58338bf-9634-46ec-ad8f-df032bea0cae",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "provider_job_id": "c107a9c9-8f27-4376-8f3a-4a3b42c10180",
+      "status": "Completed"
+    },
+    "OQ-10": {
+      "name": "qpe3_t",
+      "qasm_sha256": "d9f87104cb3c042d0f672563e04083e323ad1149302284519a15cd9aa3e5c074",
+      "preparation_id": "5cd46744-c7d6-4a42-9585-ba68163b6240",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "provider_job_id": "a8b453dd-8f2c-473c-8a48-9fea382a123a",
+      "status": "Completed"
+    },
+    "OQ-11": {
+      "name": "qpe3_s",
+      "qasm_sha256": "943abe986cec69fdc810f6a4aa4522adf067b1cdcebf2705a7d077a89aaafc66",
+      "preparation_id": "4d128cbd-ba91-4177-bb7c-d967c1a09afe",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "provider_job_id": "6d814422-b9ea-4eee-b146-318bd3dc3bae",
+      "status": "Completed"
+    },
+    "OQ-12": {
+      "name": "qft4_roundtrip",
+      "qasm_sha256": "5efb9ffcf8c14afd3de38f26bd18e3e62a2fd0b2c12484fdad5815d7b0488b8d",
+      "preparation_id": "b0f1be6c-0963-40e4-a112-831ffc3cf4f9",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "provider_job_id": "1e0b19b8-7114-46e0-9095-f2deba6aeefc",
+      "status": "Completed"
+    },
+    "OQ-13": {
+      "name": "mirror4_d10",
+      "qasm_sha256": "6488fa46da340c7c5f99db876625825feef2926c6af15bf9746bc53822099967",
+      "preparation_id": "4cd3be20-ed25-47c1-9400-342864aed04c",
+      "quoted_credits": 1.0,
+      "plan": "Public Plan",
+      "provider_job_id": "5b29bc8d-1994-4366-a00d-4d170c830140",
+      "status": "Completed"
+    },
+    "OQ-14": {
+      "name": "mirror4_d20",
+      "qasm_sha256": "9e210333734de5a09d6eb92b66f6db484a683a90685a71e7c9aefa78ceba34b9",
+      "preparation_id": "d11758f3-3756-4197-b9b5-d148f90ddc52",
+      "quoted_credits": 1,
+      "plan": "Public Plan",
+      "priority": "Standard Queue",
+      "provider_job_id": "02b96dfa-defa-4c1c-a777-ab6e6b9bf8e3",
+      "status": "Completed",
+      "submitted_at": "2026-10-30T12:09:31+00:00"
+    },
+    "OQ-15": {
+      "name": "mirror4_d40",
+      "qasm_sha256": "d1b08f8d205d925402ddaa9b0da0a4b3f28654d2db40c1fb79af92f962a31631",
+      "preparation_id": "b105ae16-5346-4928-b2a8-607d1139db2f",
+      "quoted_credits": 1,
+      "plan": "Public Plan",
+      "priority": "Standard Queue",
+      "provider_job_id": "25f39ad1-eaee-4a37-a17e-52cb5240173b",
+      "status": "Completed",
+      "submitted_at": "2026-10-30T12:11:29+00:00"
+    },
+    "OQ-16": {
+      "name": "clifford_t3_d12",
+      "qasm_sha256": "369ceefe6606a60f8a95995bfcf9c0e74dec8acb00c6514375336d430c05d130",
+      "preparation_id": "83204c38-f397-40f1-8a03-e5f1858f4c97",
+      "quoted_credits": 1,
+      "plan": "Public Plan",
+      "priority": "Standard Queue",
+      "provider_job_id": "b8d9ca24-04b9-4ba9-96a9-dc8134f517b7",
+      "status": "Completed",
+      "submitted_at": "2026-10-30T12:13:56+00:00"
+    },
+    "OQ-17": {
+      "name": "clifford_t4_d16",
+      "qasm_sha256": "4240b74cb9620c5b687686c66c3174189a9d0b9b7723d09b2e7e0fb8c4a75092",
+      "preparation_id": "5235d97e-3c8e-4fe2-beb3-401ac35cea10",
+      "quoted_credits": 1,
+      "plan": "Public Plan",
+      "priority": "Standard Queue",
+      "provider_job_id": "e5fe65de-3ee6-4128-8281-d21bc4e449c6",
+      "status": "Completed",
+      "submitted_at": "2026-10-30T12:15:29+00:00"
+    },
+    "OQ-18": {
+      "name": "clifford_t5_d20",
+      "qasm_sha256": "43718ce80206f1c846e5665e3b2d099c471b241d64948fec16acab46f6558517",
+      "preparation_id": "a2e139ff-d1d9-441f-9433-8c00611ae507",
+      "quoted_credits": 1,
+      "plan": "Public Plan",
+      "priority": "Standard Queue",
+      "provider_job_id": "d847ee24-c0a8-4112-a85e-345b2ccda79b",
+      "status": "Completed",
+      "submitted_at": "2026-10-30T12:16:58+00:00"
+    },
+    "OQ-19": {
+      "name": "clifford_t5_d30",
+      "qasm_sha256": "a374f4e41917a4323b3c2e2a6237277463e66c59511bab878448ccc338a571ff",
+      "preparation_id": "aaee96dc-1573-47c5-bc23-434f28256fb4",
+      "quoted_credits": 1,
+      "plan": "Public Plan",
+      "priority": "Standard Queue",
+      "provider_job_id": "726ef1aa-7e7e-424c-ac69-9e96381c90d0",
+      "status": "Completed",
+      "submitted_at": "2026-10-30T12:19:02+00:00"
+    },
+    "OQ-20": {
+      "name": "brickwork4_l3",
+      "qasm_sha256": "374810731e0332bf632c3631f7c8b7659543f54123a97708a743f8d454b6332f",
+      "preparation_id": "1b3ed392-d184-4fe8-8387-3d291b826477",
+      "quoted_credits": 1,
+      "plan": "Public Plan",
+      "priority": "Standard Queue",
+      "provider_job_id": "0fdcb4e7-3007-4cbb-a8e1-9ae71b0276d1",
+      "status": "Completed",
+      "submitted_at": "2026-10-30T12:20:30+00:00"
+    },
+    "OQ-21": {
+      "name": "brickwork5_l4",
+      "qasm_sha256": "ab7a4dfa2d86b6ed607afe9d32699398895694d51daedd28f64b99a492f38ec4",
+      "preparation_id": "2eb0cdd5-d396-4c58-9253-fbb8ef17a621",
+      "quoted_credits": 1,
+      "plan": "Public Plan",
+      "priority": "Standard Queue",
+      "provider_job_id": "131d6a94-f7f8-49b8-ae8f-1557ad652e49",
+      "status": "Completed",
+      "submitted_at": "2026-10-30T12:21:58+00:00"
+    },
+    "OQ-22": {
+      "name": "grover2_mark11",
+      "qasm_sha256": "1d3cd2a57c41f565a2fa1f8a461c053eded1ca7344635baa965b641ae8453a2e",
+      "preparation_id": "86dee7c1-a7db-460b-a571-e6ec4e5c62f7",
+      "quoted_credits": 1,
+      "plan": "Public Plan",
+      "priority": "Standard Queue",
+      "provider_job_id": "25eaf262-a5d2-4f1a-8cc6-d58a03925b16",
+      "status": "Completed",
+      "submitted_at": "2026-10-30T12:27:45+00:00"
+    },
+    "OQ-23": {
+      "name": "bv4_1011",
+      "qasm_sha256": "58266bb5658ed3e5eaf336b70ae49582891ec3105dda18d3149688f3f10e0b5d",
+      "preparation_id": "c9cd77ac-fb5a-462a-bf12-d9db2512700c",
+      "quoted_credits": 1,
+      "plan": "Public Plan",
+      "priority": "Standard Queue",
+      "provider_job_id": "d2f0453b-6218-40aa-bc26-3b2bd6c19cff",
+      "status": "Completed",
+      "submitted_at": "2026-10-30T12:23:42+00:00"
+    },
+    "OQ-24": {
+      "name": "dj3_balanced",
+      "qasm_sha256": "470e5399a1a7ac5d6cbb3257bbdf6a827b52961b93d952de1ea064cc25c000d7",
+      "preparation_id": "a45fe0be-acad-45f7-b31f-c1c3dedaf10d",
+      "quoted_credits": 1,
+      "plan": "Public Plan",
+      "priority": "Standard Queue",
+      "provider_job_id": "ce93b8ef-e2f8-4c32-9773-b458a9ab4399",
+      "status": "Completed",
+      "submitted_at": "2026-10-30T12:24:29+00:00"
+    },
+    "OQ-25": {
+      "name": "ghz5_repeat",
+      "qasm_sha256": "1b3fe915e5bc20df69da445ce63878f08cd4479da656d743a5838f229753135e",
+      "preparation_id": "861fe23c-1b98-40c5-80a8-7c40f71be134",
+      "quoted_credits": 1,
+      "plan": "Public Plan",
+      "priority": "Standard Queue",
+      "provider_job_id": "03d4afe6-a8b6-403b-a082-c1765a362151",
+      "status": "Completed",
+      "submitted_at": "2026-10-30T12:26:03+00:00"
+    }
+  },
+  "quoted_total": 25.0,
+  "aborted_note": "Run stopped on request after OQ-13; OQ-14..OQ-25 never submitted."
+}

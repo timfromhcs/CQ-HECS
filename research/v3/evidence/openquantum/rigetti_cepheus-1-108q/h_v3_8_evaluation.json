@@ -1,0 +1,302 @@
+{
+  "schema_version": "1.0",
+  "dataset_id": "r-io-7",
+  "suite_version": "1.0",
+  "suite_seed": 20261030,
+  "backend": "rigetti:cepheus-1-108q",
+  "dataset_sha256": "3127779f571fcc0f8b44677844f51bb46bc0d7bfba9a6087a2e83dae0e22d023",
+  "calibration_files": {},
+  "bit_order": {
+    "job_id": "OQ-03",
+    "mode": "00001",
+    "expected": "00001",
+    "little_endian": true
+  },
+  "model": {
+    "name": "M-FIT",
+    "p01_mean": 0.03300000000000001,
+    "p10_mean": 0.16399999999999998,
+    "cx_depolarizing": 0.00125,
+    "per_qubit_p01": [
+      0.07,
+      0.039,
+      0.003,
+      0.042,
+      0.011
+    ],
+    "per_qubit_p10": [
+      0.531,
+      0.06,
+      0.059,
+      0.093,
+      0.077
+    ],
+    "fit_mean_tv": 0.22862535003610462,
+    "fit_jobs": [
+      "OQ-01",
+      "OQ-02",
+      "OQ-04",
+      "OQ-05"
+    ],
+    "one_qubit_gate_error": "not modelled (0)",
+    "relaxation": false
+  },
+  "hypothesis": {
+    "id": "H-V3-8",
+    "statement": "On the 20 held-out EVAL jobs, the M-FIT prediction has a smaller total-variation distance to the measured counts than the ideal distribution: median paired difference below 0 with a 95% bootstrap interval excluding 0."
+  },
+  "aggregate": {
+    "n_eval": 20,
+    "n_eval_preregistered": 20,
+    "complete": true,
+    "median_delta_tv": -0.07190526314122046,
+    "ci95_low": -0.13589945722292343,
+    "ci95_high": -0.006702914503097776,
+    "n_noisy_better": 14,
+    "bootstrap_samples": 5000,
+    "bootstrap_seed": 20261030,
+    "verdict": "SUPPORTED"
+  },
+  "circuits": [
+    {
+      "job_id": "OQ-06",
+      "name": "bell",
+      "family": "ghz",
+      "num_qubits": 2,
+      "cx_count": 1,
+      "shots": 1000,
+      "provider_job_id": "08230128-eb16-4fec-8f71-a9d2dde83f4d",
+      "tv_ideal": 0.07299999999999998,
+      "tv_noisy": 0.11520900281249999,
+      "delta_tv": 0.04220900281250001
+    },
+    {
+      "job_id": "OQ-07",
+      "name": "ghz3",
+      "family": "ghz",
+      "num_qubits": 3,
+      "cx_count": 2,
+      "shots": 1000,
+      "provider_job_id": "8c7f2044-c133-47ec-95b3-cf7df022f960",
+      "tv_ideal": 0.10899999999999999,
+      "tv_noisy": 0.15024159146248353,
+      "delta_tv": 0.041241591462483546
+    },
+    {
+      "job_id": "OQ-08",
+      "name": "ghz4",
+      "family": "ghz",
+      "num_qubits": 4,
+      "cx_count": 3,
+      "shots": 1000,
+      "provider_job_id": "054a76de-86b1-4fd3-9aaf-885accc406b2",
+      "tv_ideal": 0.21699999999999997,
+      "tv_noisy": 0.172535885367363,
+      "delta_tv": -0.04446411463263697
+    },
+    {
+      "job_id": "OQ-09",
+      "name": "ghz5",
+      "family": "ghz",
+      "num_qubits": 5,
+      "cx_count": 4,
+      "shots": 1000,
+      "provider_job_id": "c107a9c9-8f27-4376-8f3a-4a3b42c10180",
+      "tv_ideal": 0.27,
+      "tv_noisy": 0.22583419446845202,
+      "delta_tv": -0.044165805531548
+    },
+    {
+      "job_id": "OQ-10",
+      "name": "qpe3_t",
+      "family": "qpe",
+      "num_qubits": 4,
+      "cx_count": 15,
+      "shots": 1000,
+      "provider_job_id": "a8b453dd-8f2c-473c-8a48-9fea382a123a",
+      "tv_ideal": 0.591,
+      "tv_noisy": 0.3863021053222768,
+      "delta_tv": -0.20469789467772315
+    },
+    {
+      "job_id": "OQ-11",
+      "name": "qpe3_s",
+      "family": "qpe",
+      "num_qubits": 4,
+      "cx_count": 15,
+      "shots": 1000,
+      "provider_job_id": "6d814422-b9ea-4eee-b146-318bd3dc3bae",
+      "tv_ideal": 0.5309999999999999,
+      "tv_noisy": 0.34916335769567297,
+      "delta_tv": -0.18183664230432695
+    },
+    {
+      "job_id": "OQ-12",
+      "name": "qft4_roundtrip",
+      "family": "qft_mirror",
+      "num_qubits": 4,
+      "cx_count": 24,
+      "shots": 1000,
+      "provider_job_id": "1e0b19b8-7114-46e0-9095-f2deba6aeefc",
+      "tv_ideal": 0.3019999999999998,
+      "tv_noisy": 0.11321704059905584,
+      "delta_tv": -0.18878295940094397
+    },
+    {
+      "job_id": "OQ-13",
+      "name": "mirror4_d10",
+      "family": "mirror",
+      "num_qubits": 4,
+      "cx_count": 14,
+      "shots": 1000,
+      "provider_job_id": "5b29bc8d-1994-4366-a00d-4d170c830140",
+      "tv_ideal": 0.153,
+      "tv_noisy": 0.053653588350196034,
+      "delta_tv": -0.09934641164980396
+    },
+    {
+      "job_id": "OQ-14",
+      "name": "mirror4_d20",
+      "family": "mirror",
+      "num_qubits": 4,
+      "cx_count": 16,
+      "shots": 1000,
+      "provider_job_id": "02b96dfa-defa-4c1c-a777-ab6e6b9bf8e3",
+      "tv_ideal": 0.17200000000000004,
+      "tv_noisy": 0.07121720399380596,
+      "delta_tv": -0.10078279600619408
+    },
+    {
+      "job_id": "OQ-15",
+      "name": "mirror4_d40",
+      "family": "mirror",
+      "num_qubits": 4,
+      "cx_count": 32,
+      "shots": 1000,
+      "provider_job_id": "25f39ad1-eaee-4a37-a17e-52cb5240173b",
+      "tv_ideal": 0.19499999999999998,
+      "tv_noisy": 0.08271507706381909,
+      "delta_tv": -0.11228492293618089
+    },
+    {
+      "job_id": "OQ-16",
+      "name": "clifford_t3_d12",
+      "family": "clifford_t",
+      "num_qubits": 3,
+      "cx_count": 3,
+      "shots": 1000,
+      "provider_job_id": "b8d9ca24-04b9-4ba9-96a9-dc8134f517b7",
+      "tv_ideal": 0.07600000000000004,
+      "tv_noisy": 0.12211533214997057,
+      "delta_tv": 0.04611533214997053
+    },
+    {
+      "job_id": "OQ-17",
+      "name": "clifford_t4_d16",
+      "family": "clifford_t",
+      "num_qubits": 4,
+      "cx_count": 10,
+      "shots": 1000,
+      "provider_job_id": "e5fe65de-3ee6-4128-8281-d21bc4e449c6",
+      "tv_ideal": 0.14900000000000002,
+      "tv_noisy": 0.13521570365903865,
+      "delta_tv": -0.013784296340961372
+    },
+    {
+      "job_id": "OQ-18",
+      "name": "clifford_t5_d20",
+      "family": "clifford_t",
+      "num_qubits": 5,
+      "cx_count": 10,
+      "shots": 1000,
+      "provider_job_id": "d847ee24-c0a8-4112-a85e-345b2ccda79b",
+      "tv_ideal": 0.8540000000000001,
+      "tv_noisy": 0.5632394295782928,
+      "delta_tv": -0.29076057042170733
+    },
+    {
+      "job_id": "OQ-19",
+      "name": "clifford_t5_d30",
+      "family": "clifford_t",
+      "num_qubits": 5,
+      "cx_count": 9,
+      "shots": 1000,
+      "provider_job_id": "726ef1aa-7e7e-424c-ac69-9e96381c90d0",
+      "tv_ideal": 0.5025000000000001,
+      "tv_noisy": 0.339879207620959,
+      "delta_tv": -0.16262079237904103
+    },
+    {
+      "job_id": "OQ-20",
+      "name": "brickwork4_l3",
+      "family": "brickwork",
+      "num_qubits": 4,
+      "cx_count": 5,
+      "shots": 1000,
+      "provider_job_id": "0fdcb4e7-3007-4cbb-a8e1-9ae71b0276d1",
+      "tv_ideal": 0.2321533510534284,
+      "tv_noisy": 0.2679004806461019,
+      "delta_tv": 0.03574712959267348
+    },
+    {
+      "job_id": "OQ-21",
+      "name": "brickwork5_l4",
+      "family": "brickwork",
+      "num_qubits": 5,
+      "cx_count": 8,
+      "shots": 1000,
+      "provider_job_id": "131d6a94-f7f8-49b8-ae8f-1557ad652e49",
+      "tv_ideal": 0.21568638256130918,
+      "tv_noisy": 0.22296925892839242,
+      "delta_tv": 0.007282876367083246
+    },
+    {
+      "job_id": "OQ-22",
+      "name": "grover2_mark11",
+      "family": "algorithm",
+      "num_qubits": 2,
+      "cx_count": 2,
+      "shots": 1000,
+      "provider_job_id": "25eaf262-a5d2-4f1a-8cc6-d58a03925b16",
+      "tv_ideal": 0.15100000000000002,
+      "tv_noisy": 0.15137846733476584,
+      "delta_tv": 0.0003784673347658196
+    },
+    {
+      "job_id": "OQ-23",
+      "name": "bv4_1011",
+      "family": "algorithm",
+      "num_qubits": 5,
+      "cx_count": 3,
+      "shots": 1000,
+      "provider_job_id": "d2f0453b-6218-40aa-bc26-3b2bd6c19cff",
+      "tv_ideal": 0.7490000000000001,
+      "tv_noisy": 0.5961665257744966,
+      "delta_tv": -0.15283347422550353
+    },
+    {
+      "job_id": "OQ-24",
+      "name": "dj3_balanced",
+      "family": "algorithm",
+      "num_qubits": 4,
+      "cx_count": 3,
+      "shots": 1000,
+      "provider_job_id": "ce93b8ef-e2f8-4c32-9773-b458a9ab4399",
+      "tv_ideal": 0.36900000000000005,
+      "tv_noisy": 0.2500345597796567,
+      "delta_tv": -0.11896544022034333
+    },
+    {
+      "job_id": "OQ-25",
+      "name": "ghz5_repeat",
+      "family": "ghz",
+      "num_qubits": 5,
+      "cx_count": 4,
+      "shots": 1000,
+      "provider_job_id": "03d4afe6-a8b6-403b-a082-c1765a362151",
+      "tv_ideal": 0.283,
+      "tv_noisy": 0.25089042771900144,
+      "delta_tv": -0.03210957228099853
+    }
+  ]
+}
