@@ -138,6 +138,29 @@ cannot go through the current schema unchanged.
 - Migration guide for schema 1.0 profiles (read-compatible; write 2.0).
 - This schema change is what makes the release a major version.
 
+### W8 — Noisy expectation values at scale (from the 2023–2025 literature)
+
+Source: `research/v3/LITERATURE_MAP.md` §2 (Aharonov et al. 2023, Schuster et
+al. 2025, Angrisani et al. 2025, Begušić et al. 2024; PDFs read).
+
+- `cqhecs.noisy_expectation.noisy_expectation_values`: Pauli expectation
+  values under a `NoiseModel` with two engines — exact density matrix
+  (≤ 10 qubits) and Heisenberg Pauli propagation with the adjoint of every
+  channel (unital and non-unital) and readout as an affine map on measured
+  factors. `FakeHardwareBackend.expectation_values` adds the topology and
+  calibration-flag checks.
+- **Certified bound:** the discarded Pauli 1-norm. It remains a worst-case
+  bound under noise because CPTP adjoints are unital and positive, hence
+  operator-norm contractive (Russo–Dye). The literature's average-case
+  guarantees are not claimed.
+- **Acceptance (preregistered before the runs in E-V3-03):** both engines
+  equal Aer within 1e-12 + Aer's trace loss on (a) channels built with Aer's
+  constructors and (b) Aer's `NoiseModel.from_backend` on real calibration;
+  truncated propagation never exceeds its reported bound against the exact
+  density matrix; four mutants killed.
+- **Not claimed:** speed-ups, typical-case efficiency, closeness to real
+  hardware.
+
 ### W7 — Carry-overs
 
 - CQ-V252-06: OpenQASM `gate` definitions (both parsers, shared category).
@@ -168,6 +191,18 @@ V3-D, the bridge without real-data evaluation may ship as `v2.6.0` (additive
 parts only) — never as v3 Stable and never with a "close to real hardware"
 claim.
 
+## 4a. Complexity boundaries that bind every v3 claim
+
+- P vs NP is open; relativization, natural proofs and algebrization rule out
+  whole classes of proof techniques. A simulator cannot "bridge" them, and no
+  CQ-HECS text may suggest otherwise.
+- BQP ⊄ PH relative to an oracle (Raz–Tal), #P-hardness of exact random-circuit
+  probabilities (Bouland et al.) and the Ω̃(n²) stabilizer-rank lower bound
+  (Mehraban–Tahmasbi) keep every exact path exponential in the worst case.
+- Polynomial-time results for *noisy* circuits are average-case (over inputs
+  or random circuits) and need constant noise per gate; CQ-HECS uses their
+  mechanism (W8) but reports only per-instance worst-case bounds.
+
 ## 5. Order of work
 
 1. Merge/release v2.5.2 (PR #17) — correctness first.
@@ -187,3 +222,5 @@ claim.
 | W4 real I/O | BLOCKED (B-NET) | zenodo.org, datadryad.org, ieee-dataport.org denied by the network policy |
 | W5 Sycamore gates | NOT STARTED | — |
 | W6 contract/CLI | PARTIAL | schema 2.0 profile fields; CLI not yet |
+| W8 noisy expectation values | DONE (local) | both engines = Aer to ≤ 1e-12 + trace loss (channels from Aer constructors; Aer `from_backend` on manila/lagos); truncated bound never violated (25 circuits); 127-qubit ibm_brisbane calibration, ~4000 gates: < 1.2 s, bound ≈ 1e-4 (functional check, not a benchmark); mutants 28–31 killed |
+| Research: P vs NP / complexity | DONE | `LITERATURE_MAP.md` §1: no proof-barrier result is implementable; they constrain claims only |

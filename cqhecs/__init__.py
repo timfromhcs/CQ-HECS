@@ -64,6 +64,7 @@ from cqhecs.expectation import (
     ExpectationResult,
     expectation_values,
 )
+from cqhecs.noisy_expectation import noisy_expectation_values
 from cqhecs.scheduler import VulkanComputeScheduler
 from cqhecs.backends import (
     PathAStabilizerBackend,
@@ -100,6 +101,7 @@ __all__ = [
     "create_linear_profile",
     "depolarizing_parameter_from_infidelity",
     "OutOfModelError",
+    "noisy_expectation_values",
     "ThermalRelaxationChannel",
     "TensorChannel",
     "ComposedChannel",

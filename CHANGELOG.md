@@ -28,6 +28,15 @@ Work towards v3 (`research/v3/V3_STABLE_PLAN.md`). Not released.
   ≤ 1e-12.
 - `OutOfModelError`: the fake backend refuses circuits on flagged qubits or
   pairs instead of running them without calibrated noise.
+- `cqhecs.noisy_expectation_values` / `FakeHardwareBackend.expectation_values`:
+  Pauli expectation values of noisy circuits. Exact density matrix up to 10
+  qubits; above that, Heisenberg Pauli propagation with the adjoint noise
+  channels and readout, reporting the discarded Pauli 1-norm as a worst-case
+  bound (valid under noise because CPTP adjoints are operator-norm
+  contractive). Both engines agree with Qiskit Aer to ≤ 1e-12 plus Aer's own
+  trace loss. Method from Aharonov et al. 2023, Schuster et al. 2025,
+  Angrisani et al. 2025; their average-case guarantees are not claimed.
+- `NoisyDensityMatrixBackend.density_matrix()`.
 
 ---
 

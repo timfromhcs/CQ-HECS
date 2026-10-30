@@ -44,3 +44,28 @@ was found that commits real raw counts.
 - Order matters: Aer applies depolarizing then relaxation. A mutant with the
   reverse order survived its first check because the chosen parameters gave
   p = 0 (relaxation alone exceeded the error); the check now uses p > 0.
+
+## E-V3-03 Literature and W8 (noisy expectation values)
+
+- Web search (P vs NP barriers, Williams 2025, Raz–Tal, RCS hardness,
+  stabilizer-rank bounds, Pauli propagation under noise, sparse Pauli
+  dynamics, BP tensor networks, Quantum Echoes) and PDF reading of
+  arXiv:2211.03999, 2407.12768, 2501.13101, 2308.05077 and Aaronson's survey
+  (pages listed in LITERATURE_MAP.md). arXiv is blocked locally; the hosted
+  PDF reader worked.
+- Acceptance for W8 written into V3_STABLE_PLAN.md before the oracle runs.
+- First oracle run (Aer full pipeline, manila/lagos, X/Y/Z observables,
+  readout, T1/T2): both engines within 1e-15 after Aer's trace loss; truncated
+  propagation inside its bound.
+- Three own mistakes caught before testing: lowered instead of source gates
+  passed to the density matrix (would repeat CQ-V251-04), dead code, and the
+  phase of the XZ factor in the readout map (−i, not +i).
+- One test-construction error: Qiskit's `a.tensor(b)` puts `b` on the first
+  qarg; the asymmetric two-qubit oracle channel had its factors reversed
+  (failures only in trials containing that gate; channel check confirmed).
+- 127-qubit functional check on the real ibm_brisbane snapshot (excluding
+  flagged qubits): 2/4/6 kicked layers (1335/2669/4003 gates), thresholds
+  1e-3 and 1e-4: 0.6–1.2 s, bounds 1.7e-3…1.1e-4. Light cones are small in
+  this circuit; this is not a performance result.
+- Mutants 28–31 (readout phase, skipped channels, swapped two-qubit operands,
+  bound suppression) killed: 31/31.

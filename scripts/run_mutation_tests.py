@@ -398,6 +398,52 @@ def check_import_flags_non_operational() -> bool:
     return True
 
 
+def check_noisy_readout_phase() -> bool:
+    """<Y> after sx|0> is -1; with readout (p01, p10) = (0.1, 0.3) it reads 0.2 - 0.6 * 1."""
+    from cqhecs.hardware_bridge import NoiseModel
+    from cqhecs.noisy_expectation import noisy_expectation_values
+
+    model = NoiseModel()
+    model.set_readout_error(0, 0.1, 0.3)
+    res = noisy_expectation_values([("sx", [0], [])], ["Y[0]"], model, method="pauli_propagation")
+    return abs(res.values["Y[0]"] - (-0.4)) > 1e-12
+
+
+def check_noisy_channels_applied() -> bool:
+    """x then depolarizing p = 0.5 gives <Z> = -(1 - p)."""
+    from cqhecs.hardware_bridge import DepolarizingChannel, NoiseModel
+    from cqhecs.noisy_expectation import noisy_expectation_values
+
+    model = NoiseModel()
+    model.add_1q_channel("x", 0, DepolarizingChannel(0.5))
+    res = noisy_expectation_values([("x", [0], [])], ["Z[0]"], model, method="pauli_propagation")
+    return abs(res.values["Z[0]"] - (-0.5)) > 1e-12
+
+
+def check_noisy_two_qubit_operand_order() -> bool:
+    """|11> with damping 0.5 on cx's first operand: <Z0> = 0, <Z1> = -1."""
+    from cqhecs.hardware_bridge import AmplitudeDampingChannel, DepolarizingChannel, NoiseModel, TensorChannel
+    from cqhecs.noisy_expectation import noisy_expectation_values
+
+    model = NoiseModel()
+    model.add_2q_channel("cx", (0, 1), TensorChannel(AmplitudeDampingChannel(0.5), DepolarizingChannel(0.0)))
+    res = noisy_expectation_values([("x", [0], []), ("cx", [0, 1], [])], ["Z[0]", "Z[1]"], model,
+                                   method="pauli_propagation")
+    return abs(res.values["Z[0]"]) > 1e-12 or abs(res.values["Z[1]"] + 1.0) > 1e-12
+
+
+def check_noisy_truncation_bound() -> bool:
+    """Dropping the sin(0.3) Y term must be reported in the bound."""
+    import math
+    from cqhecs.hardware_bridge import NoiseModel
+    from cqhecs.noisy_expectation import noisy_expectation_values
+
+    res = noisy_expectation_values([("h", [0], []), ("rz", [0], [0.3]), ("h", [0], [])], ["Z[0]"],
+                                   NoiseModel(), method="pauli_propagation", prune_threshold=0.5,
+                                   error_tolerance=1.0)
+    return res.error_bound < math.sin(0.3) - 1e-12
+
+
 CHECKS: Dict[str, Callable[[], bool]] = {
     "qubit_bit_order": check_qubit_bit_order,
     "cz_conjugation": check_cz_conjugation,
@@ -426,6 +472,10 @@ CHECKS: Dict[str, Callable[[], bool]] = {
     "relaxation_after_depolarizing": check_relaxation_after_depolarizing,
     "import_flags_inconsistent_t2": check_import_flags_inconsistent_t2,
     "import_flags_non_operational": check_import_flags_non_operational,
+    "noisy_readout_phase": check_noisy_readout_phase,
+    "noisy_channels_applied": check_noisy_channels_applied,
+    "noisy_two_qubit_operand_order": check_noisy_two_qubit_operand_order,
+    "noisy_truncation_bound": check_noisy_truncation_bound,
 }
 
 
@@ -699,6 +749,46 @@ MUTANTS: List[SourceMutant] = [
         replacement="            pass\n",
         check="import_flags_non_operational",
         mechanism="drops gate_error = 1 entries so circuits on broken pairs run noiseless",
+    ),
+    SourceMutant(
+        name="Readout phase of a Y factor flipped",
+        target="cqhecs/noisy_expectation.py",
+        original="            factor_phase = -1j if ((x_mask & bit) and (z_mask & bit)) else 1.0\n",
+        replacement="            factor_phase = 1j if ((x_mask & bit) and (z_mask & bit)) else 1.0\n",
+        check="noisy_readout_phase",
+        mechanism="uses XZ = +iY in the readout map",
+    ),
+    SourceMutant(
+        name="Noise channels skipped in Pauli propagation",
+        target="cqhecs/noisy_expectation.py",
+        original="        for channel in reversed(list(_channels(noise_model, gate, qubits))):\n",
+        replacement="        for channel in ():\n",
+        check="noisy_channels_applied",
+        mechanism="propagates the ideal circuit while reporting NOISY_CLASSICAL",
+    ),
+    SourceMutant(
+        name="Two-qubit noise map operands swapped",
+        target="cqhecs/noisy_expectation.py",
+        original="        for ax, az, bx, bz, c in columns[4 * ja + jb]:\n",
+        replacement="        for ax, az, bx, bz, c in columns[4 * jb + ja]:\n",
+        check="noisy_two_qubit_operand_order",
+        mechanism="applies a two-qubit channel with its operands exchanged",
+    ),
+    SourceMutant(
+        name="Gate-step truncation left out of the noisy bound",
+        target="cqhecs/noisy_expectation.py",
+        original=(
+            "            terms = sim._apply_gate_backward(terms, name, list(op_qubits), list(params))\n"
+            "            terms, dropped = sim._truncate_terms(terms)\n"
+            "            bound += dropped\n"
+        ),
+        replacement=(
+            "            terms = sim._apply_gate_backward(terms, name, list(op_qubits), list(params))\n"
+            "            terms, dropped = sim._truncate_terms(terms)\n"
+            "            bound += 0.0\n"
+        ),
+        check="noisy_truncation_bound",
+        mechanism="drops Pauli terms after a gate without adding them to the certified bound",
     ),
 ]
 

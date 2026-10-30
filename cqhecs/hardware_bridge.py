@@ -1091,6 +1091,49 @@ class FakeHardwareBackend:
                         f"Allowed coupling edges: {sorted(valid_edges)}"
                     )
 
+    def _check_in_model(self, instructions: List[Tuple[str, List[int], List[float]]]) -> None:
+        for name, qubits, _ in instructions:
+            if name in ("barrier", "id") or not qubits:
+                continue
+            reason = self.profile.out_of_model_reason(list(qubits), self.relaxation)
+            if reason is not None:
+                raise OutOfModelError(
+                    f"Refusing {name} on qubits {list(qubits)}: {reason}. The noise "
+                    "model has no calibrated channel for it."
+                )
+
+    def expectation_values(self, circuit: Any, observables: Any, **options: Any) -> Any:
+        """
+        Noisy Pauli expectation values under this backend's noise model.
+
+        Applies the same topology, width and calibration-flag checks as
+        :meth:`run`, then delegates to
+        :func:`cqhecs.noisy_expectation.noisy_expectation_values` (``options``
+        are passed through). Unlike :meth:`run` this is not limited to 10
+        qubits: above that the Pauli-propagation engine is used and its
+        certified truncation bound is reported.
+        """
+        from cqhecs.circuit_parsing import parse_circuit
+        from cqhecs.noisy_expectation import noisy_expectation_values
+
+        instructions, num_qubits = parse_circuit(circuit)
+        if num_qubits > self.profile.num_qubits:
+            raise InvalidTopologyError(
+                f"Circuit width {num_qubits} exceeds backend qubit count {self.profile.num_qubits}."
+            )
+        self.validate_circuit_topology(instructions)
+        self._check_in_model(instructions)
+        result = noisy_expectation_values(circuit, observables, self.noise_model, **options)
+        result.metadata.update({
+            "backend_profile_id": self.profile.name,
+            "profile_is_synthetic": self.profile.is_synthetic,
+            "profile_source_sha256": self.profile.source_sha256,
+            "calibration_timestamp": self.profile.capture_timestamp,
+            "relaxation_modelled": self.relaxation,
+            "is_real_hardware": False,
+        })
+        return result
+
     def run(
         self,
         circuit: Any,
@@ -1120,15 +1163,7 @@ class FakeHardwareBackend:
 
         effective_noise = self.noise_model if execution_mode == ExecutionMode.NOISY_CLASSICAL else None
         if effective_noise is not None:
-            for name, qubits, _ in instructions:
-                if name in ("barrier", "id") or not qubits:
-                    continue
-                reason = self.profile.out_of_model_reason(list(qubits), self.relaxation)
-                if reason is not None:
-                    raise OutOfModelError(
-                        f"Refusing {name} on qubits {list(qubits)}: {reason}. The noise "
-                        "model has no calibrated channel for it."
-                    )
+            self._check_in_model(instructions)
 
         backend = NoisyDensityMatrixBackend()
         res = backend.simulate(

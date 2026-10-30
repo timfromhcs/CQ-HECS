@@ -219,6 +219,19 @@ touches such a qubit or pair raises `OutOfModelError`. With `relaxation=True`
 the noise per gate is Qiskit Aer's device model; the result is still
 `NOISY_CLASSICAL` (a model), not a hardware measurement.
 
+Noisy expectation values work beyond the 10-qubit density-matrix limit:
+
+```python
+res = backend.expectation_values(circuit, ["Z[20]", "Z[19]Z[20]"],
+                                 prune_threshold=1e-6, error_tolerance=0.01)
+res.values, res.method, res.error_bound   # 'noisy_pauli_propagation' above 10 qubits
+```
+
+`error_bound` is the 1-norm of the Pauli terms dropped during propagation. It
+bounds the difference to the exact value *of the noise model* for this circuit
+and the |0…0⟩ input; it does not bound the distance to real hardware. Values
+whose bound exceeds `error_tolerance` are `None`.
+
 ## 4. Python API
 
 ```python

@@ -256,23 +256,13 @@ class NoisyDensityMatrixBackend:
         measured.reverse()
         return measured
 
-    def simulate(
-        self,
-        circuit: Any,
-        noise_model: Optional[NoiseModel] = None,
-        shots: int = 1024,
-        seed: int = 42,
-    ) -> SimulationResult:
+    def _prepare(self, circuit: Any):
         """
-        Execute exact density matrix simulation of circuit with optional noise model.
+        Parses, lowers and validates ``circuit`` before any allocation.
 
-        Raises:
-            ValueError: For an invalid ``shots`` or ``seed`` argument (checked
-                before any parsing or allocation).
+        Returns ``(blocks, measured_qubits, num_qubits)``, or a FAILED or
+        UNRESOLVED :class:`SimulationResult` explaining the refusal.
         """
-        self._validate_run_arguments(shots, seed)
-        t_start = time.perf_counter()
-
         try:
             source_instructions, num_qubits = parse_source_circuit(circuit)
         except Exception as e:
@@ -325,6 +315,10 @@ class NoisyDensityMatrixBackend:
                     f"Gate {name!r} expects {expected} parameter(s), got {len(params)}"
                 )
 
+        return blocks, measured_qubits, num_qubits
+
+    def _evolve(self, blocks: List[Any], num_qubits: int, noise_model: Optional[NoiseModel]) -> np.ndarray:
+        """Evolves |0...0><0...0| through ``blocks``; qubit 0 is the LSB of the result."""
         # Initialize density matrix |0...0><0...0|. Tensor axis k (and n + k)
         # belongs to qubit k.
         dim = 1 << num_qubits
@@ -360,6 +354,50 @@ class NoisyDensityMatrixBackend:
         row_axes = list(range(num_qubits - 1, -1, -1))
         col_axes = [num_qubits + k for k in row_axes]
         rho_mat = np.transpose(rho, row_axes + col_axes).reshape((dim, dim))
+
+        return rho_mat
+
+    def density_matrix(self, circuit: Any, noise_model: Optional[NoiseModel] = None) -> np.ndarray:
+        """
+        Final density matrix of ``circuit`` (terminal measurements ignored).
+
+        The basis index has qubit 0 as its least-significant bit.
+
+        Raises:
+            ValueError: If the circuit is refused (unsupported operation,
+                mid-circuit measurement) or wider than ``max_qubits``.
+        """
+        prepared = self._prepare(circuit)
+        if isinstance(prepared, SimulationResult):
+            raise ValueError(
+                prepared.metadata.get("error") or prepared.metadata.get("unresolved_reason")
+            )
+        blocks, _measured, num_qubits = prepared
+        return self._evolve(blocks, num_qubits, noise_model)
+
+    def simulate(
+        self,
+        circuit: Any,
+        noise_model: Optional[NoiseModel] = None,
+        shots: int = 1024,
+        seed: int = 42,
+    ) -> SimulationResult:
+        """
+        Execute exact density matrix simulation of circuit with optional noise model.
+
+        Raises:
+            ValueError: For an invalid ``shots`` or ``seed`` argument (checked
+                before any parsing or allocation).
+        """
+        self._validate_run_arguments(shots, seed)
+        t_start = time.perf_counter()
+
+        prepared = self._prepare(circuit)
+        if isinstance(prepared, SimulationResult):
+            return prepared
+        blocks, measured_qubits, num_qubits = prepared
+        dim = 1 << num_qubits
+        rho_mat = self._evolve(blocks, num_qubits, noise_model)
 
         # Invariant checks on final density matrix
         trace_val = np.trace(rho_mat)
