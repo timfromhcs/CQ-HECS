@@ -23,8 +23,9 @@
    `SAT`/`UNSAT`/`UNKNOWN` semantics.
 
 It also adds an independent-engine cross-check (`r-qr-1`, 21/21 circuits) and a
-five-job IonQ pilot that spent the remaining 25 Spark credits (`r-qpu-pilot-1`).
-Neither is a quantum-hardware claim for this package.
+five-job IonQ pilot plus a higher-statistics identification batch
+(`r-qpu-pilot-1`) that spent the two 25-credit Spark balances. Both batches are
+queued as of 2026-10-30; neither is a quantum-hardware claim for this package.
 
 No new simulation path, no performance claim, no change to the frozen `M-FIT`
 verdict.
@@ -85,7 +86,7 @@ its branch hash covers only the first 32 variables and it reported a timeout as
 
 | Gate | Result |
 | :--- | :--- |
-| Python suite | **584 passed**, 4 skipped, 1 opt-in `slow` gate (~110 s) |
+| Python suite | **585 passed**, 4 skipped, 1 opt-in `slow` gate (~110 s) |
 | CTest | 19/19 |
 | Source mutation | 35/35 |
 | Metamorphic selftest | 12/12 |

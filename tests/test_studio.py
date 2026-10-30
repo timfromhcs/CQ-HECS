@@ -121,6 +121,14 @@ def test_bad_input_is_refused_not_approximated(state):
         state.sat_sweep({"sizes": [999], "ratios": [4.0], "trials": 1})
 
 
+def test_packaged_dataset_fallback(tmp_path):
+    state = StudioState(tmp_path)
+    assert state.dataset.available is True
+    assert state.dataset.source.startswith("packaged:")
+    assert len(state.dataset.counts) == 25
+    assert state.dataset.dataset_sha256
+
+
 def test_http_surface(server):
     status, body = _get(server, "/")
     assert status == 200

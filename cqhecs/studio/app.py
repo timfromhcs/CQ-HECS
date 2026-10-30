@@ -784,6 +784,15 @@ class StudioHTTPServer(ThreadingHTTPServer):
         self.state = state
         super().__init__(address, StudioHandler)
 
+    def handle_error(self, request: Any, client_address: Any) -> None:
+        # A browser closing a keep-alive connection is not an engine error.
+        import sys
+
+        error = sys.exc_info()[1]
+        if isinstance(error, (ConnectionResetError, BrokenPipeError)):
+            return
+        super().handle_error(request, client_address)
+
 
 class StudioHandler(BaseHTTPRequestHandler):
     server: StudioHTTPServer

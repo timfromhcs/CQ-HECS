@@ -47,7 +47,7 @@ Four classical simulation paths · one result contract · fail-closed by design
 > simulator within finite-shot noise — **21/21 PASS**. QuantumRings is a
 > classical simulator, not a QPU.
 >
-> The current tree passes **584 Python tests** (4 skipped, 1 opt-in slow gate)
+> The current tree passes **585 Python tests** (4 skipped, 1 opt-in slow gate)
 > in **~110 s**, **19/19 CTest**, **35/35 source mutants**, and a **12-check
 > metamorphic self-test**.
 >
@@ -55,7 +55,10 @@ Four classical simulation paths · one result contract · fail-closed by design
 > ran on `rigetti:cepheus-1-108q` on 2026-10-30. H-V3-8 returns
 > **`SUPPORTED`** — median ΔTV = −0.071905, 95 % CI [−0.135899, −0.006703].
 > A five-job, 100-shot IonQ pilot (`r-qpu-pilot-1`) spent the remaining 25
-> Spark credits on the qubit-0 anomaly; it is not a confirmation run.
+> Spark credits on the qubit-0 anomaly; a second batch (`OQ-01`/`OQ-03` at
+> 200 shots, `OQ-02` at 100) spent another 25 on the same identification
+> triple. Both batches are **queued** as of 2026-10-30; collection is a
+> separate step and neither is a confirmation run.
 >
 > **Not claimed:** universal quantum simulation, real-QPU execution *by this
 > package*, cross-vendor GPU acceleration, SOTA performance, a proof of
@@ -130,7 +133,7 @@ That rule is enforced in code, not only in documentation:
 | **Public surfaces** | `cq-hecs` CLI, `cq-hecs studio` web UI, Qiskit `BackendV2`, Python API, C ABI, SAT engine |
 | **Simulation paths** | A: stabilizer tableau · B: stabilizer rank · C: untruncated MPS · D: sparse Pauli |
 | **Noise** | Typed profiles, Kraus channels, exact float64 density matrix up to 10 qubits, measured `M-FIT-2` |
-| **Verification** | 584 Python tests (~110 s), 19 CTest, 35 mutants, 12-check selftest, 12 SPIR-V shaders, 21/21 independent oracle |
+| **Verification** | 585 Python tests (~110 s), 19 CTest, 35 mutants, 12-check selftest, 12 SPIR-V shaders, 21/21 independent oracle |
 | **Platforms** | Linux x64, Windows 10/11; Python 3.11–3.14 |
 | **License** | Apache-2.0 |
 
@@ -552,7 +555,7 @@ not performance claims. CI evidence for the exact pushed SHA is recorded in
 
 | Gate | Result |
 | :--- | :--- |
-| Python suite | **584 passed**, 4 skipped, 1 opt-in `slow` gate (**~110 s**) |
+| Python suite | **585 passed**, 4 skipped, 1 opt-in `slow` gate (**~110 s**) |
 | Branch coverage | **83 %** (CI threshold 70 %) on the `cqhecs` package |
 | CTest (native) | **19/19** |
 | Source mutation | **35/35** killed |
