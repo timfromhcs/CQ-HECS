@@ -233,6 +233,6 @@ claim.
 | W8 noisy expectation values | DONE (local) | both engines = Aer to ≤ 1e-12 + trace loss (channels from Aer constructors; Aer `from_backend` on manila/lagos); truncated bound never violated (25 circuits); 127-qubit ibm_brisbane calibration, ~4000 gates: < 1.2 s, bound ≈ 1e-4 (functional check, not a benchmark); mutants 28–31 killed |
 | Datasets | R-IO-5 admitted; R-IO-6 registered; R-IO-1/2/3 blocked | `research/v3/DATASETS.md` |
 | W4 own QPU suite (R-IO-7) | **RUN, H-V3-8 SUPPORTED** (2026-10-30) | 25/25 jobs on `rigetti:cepheus-1-108q`; median ΔTV −0.071905, CI [−0.135899, −0.006703]; `research/v3/evidence/openquantum/` |
-| Per-qubit noise fit (M-FIT-2) | DONE (code), H-V3-9 **REJECTED** (post-hoc) | `cqhecs/noise_fit.py`, `cq-hecs noise-fit`, `tests/test_noise_fit.py`; per-qubit readout does not transfer without layout |
+| Per-qubit noise fit (M-FIT-2) | DONE (code), H-V3-9 **REJECTED** (post-hoc) | `cqhecs/noise_fit.py`, `cq-hecs noise-fit`, `tests/test_noise_fit.py`; the v3.1 correction identifies OQ-02's 0.531 as an X-gate anomaly, improves the fit and the vs-ideal score, but the paired comparison with M-FIT still includes 0 |
 | Testing techniques | DONE (selftest + property tests) | `research/v3/TESTING_TECHNIQUES.md`; `cqhecs/selftest.py`; `tests/test_property_circuits.py`; 12/12 selftest checks |
 | Research: P vs NP / complexity | DONE (boundary only) | `LITERATURE_MAP.md` §1, `COMPLEXITY_BOUNDARY.md`: no proof; the item is `BLOCKED — open problem` |

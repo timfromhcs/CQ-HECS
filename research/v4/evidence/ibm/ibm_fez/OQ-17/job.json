@@ -1,0 +1,26 @@
+{
+  "dataset_id": "r-ibm-1",
+  "fixed_chain": [
+    98,
+    111,
+    110,
+    109,
+    118
+  ],
+  "job": {
+    "backend": "ibm_fez",
+    "id": "dbidem5ep8hs73ankcvg",
+    "status": "Completed"
+  },
+  "metadata": {
+    "job_id": "OQ-17",
+    "name": "clifford_t4_d16",
+    "num_qubits": 4,
+    "qasm_sha256": "4240b74cb9620c5b687686c66c3174189a9d0b9b7723d09b2e7e0fb8c4a75092",
+    "transpiled_depth": 55,
+    "transpiled_qasm_sha256": "a5ce27b9868fabcdeb04bde87f491511e7db4f03874847490cdb5145cd21be55",
+    "transpiled_size": 87
+  },
+  "shots": 1000,
+  "transpiled_qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[156];\ncreg c[4];\nsx q[98];\nsx q[110];\nsx q[111];\ncz q[111],q[98];\nsx q[98];\nsx q[111];\ncz q[111],q[98];\nsx q[98];\nsx q[111];\ncz q[111],q[98];\nsx q[111];\ncz q[110],q[111];\nsx q[110];\nsx q[111];\ncz q[110],q[111];\nsx q[110];\nsx q[111];\ncz q[110],q[111];\nrz(pi/2) q[110];\nsx q[110];\nrz(pi/2) q[110];\ncz q[109],q[110];\nsx q[109];\nrz(pi/2) q[110];\nsx q[110];\nrz(pi/2) q[110];\nrz(pi/2) q[111];\nsx q[111];\nrz(pi/2) q[111];\ncz q[110],q[111];\nrz(pi/2) q[110];\nsx q[110];\nrz(pi/2) q[110];\ncz q[110],q[109];\nsx q[109];\nsx q[110];\ncz q[110],q[109];\nsx q[109];\nsx q[110];\ncz q[110],q[109];\nrz(pi/2) q[110];\nsx q[110];\nrz(pi/2) q[110];\nrz(-pi/2) q[111];\nsx q[111];\nrz(pi/2) q[111];\ncz q[111],q[110];\nrz(pi/2) q[110];\nsx q[110];\nrz(-pi) q[110];\nrz(pi/2) q[111];\nsx q[111];\nrz(pi/2) q[111];\ncz q[110],q[111];\ncz q[98],q[111];\nrz(pi/2) q[98];\nsx q[98];\nrz(pi/2) q[98];\nrz(-pi/4) q[110];\ncz q[110],q[111];\nrz(pi/2) q[110];\nsx q[110];\nrz(pi/2) q[110];\nrz(pi/2) q[111];\nsx q[111];\nrz(pi/2) q[111];\ncz q[111],q[110];\nrz(-pi) q[110];\nsx q[110];\nrz(pi/2) q[110];\nrz(-pi/4) q[111];\nsx q[111];\ncz q[111],q[110];\nsx q[110];\nsx q[111];\ncz q[111],q[110];\nsx q[110];\nsx q[111];\ncz q[111],q[110];\ncz q[111],q[98];\nrz(pi/2) q[98];\nsx q[98];\nrz(pi/2) q[98];\nmeasure q[109] -> c[0];\nmeasure q[98] -> c[1];\nmeasure q[110] -> c[2];\nmeasure q[111] -> c[3];"
+}

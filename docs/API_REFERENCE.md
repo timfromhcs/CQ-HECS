@@ -134,5 +134,23 @@ CQ_API double cq_get_active_vram_mb(cq_context_t* ctx);
 CQ_API const char* cq_get_version(void);
 ```
 - **Description**: Queries semantic version string.
-- **Return Value**: Constant string `"3.0.0"`, derived from the package
+- **Return Value**: Constant string `"3.1.0"`, derived from the package
   version (`scripts/version.py`); it must not drift.
+
+---
+
+## 3. Python surfaces added in 3.1.0
+
+These are not C-ABI symbols. They are documented here because the C ABI's
+`cq_solve_sat` remains the native bridge.
+
+| Command | Purpose |
+| :--- | :--- |
+| `cq-hecs noise-fit` | Fit `M-FIT-2` from measured `r-io-7` counts; records the `OQ-02` X-gate anomaly and the fitted X bit-flip. |
+| `cq-hecs sat solve` | Standalone sound DIMACS DPLL. `SAT` carries a verified model; `UNSAT` is exhaustive and has no proof object; `UNKNOWN` is a timeout or node budget. |
+| `cq-hecs sat sweep` | Empirical random-3-SAT phase-transition sweep. Not an ETH proof. |
+| `cq-hecs studio` | Local experiment UI; see [`STUDIO.md`](STUDIO.md). |
+
+The `cq_solve_sat` C entry point and `python_bridge.sat_engine` use the v3.0.0
+`SAT_VERIFIED`/`UNSAT_PROVEN`/`TIMEOUT_UNKNOWN` vocabulary. The standalone
+`cqhecs.sat` surface uses `SAT`/`UNSAT`/`UNKNOWN`.

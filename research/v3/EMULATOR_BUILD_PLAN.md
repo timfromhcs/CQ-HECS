@@ -268,27 +268,31 @@ the repository alone:
 
 | Package | State | Evidence |
 | :--- | :--- | :--- |
-| W1 `cq-hecs noise-fit` | **done**; profile is byte-identical on refit, readout reproduces §1.1 exactly with binomial SE | `cqhecs/noise_fit.py`, `tests/test_noise_fit.py`, `evidence/openquantum/rigetti_cepheus-1-108q/m_fit_2_profile.json` |
-| W1 acceptance "lower median ΔTV than M-FIT" | **not met**: +0.055345, 95 % CI [−0.006595, +0.091789], 7/20 better | `m_fit_2_exploratory.json` |
+| W1 `cq-hecs noise-fit` | **done**; profile is byte-identical on refit, per-qubit readout and the X anomaly are recorded with binomial SE | `cqhecs/noise_fit.py`, `tests/test_noise_fit.py`, `evidence/openquantum/rigetti_cepheus-1-108q/m_fit_2_profile.json` |
+| W1 acceptance "lower paired ΔTV than M-FIT" | **not met**: −0.026455, 95 % CI [−0.041286, +0.020742], 12/20 better. Against ideal: −0.105360, CI [−0.132644, −0.042472], 16/20 better | `m_fit_2_exploratory.json` |
 | W2 pinned dataset | **met**: `cq-hecs reference run --dataset r-io-7` reproduces `h_v3_8_evaluation.json` offline | `DATASETS.md` |
-| W3 per-qubit readout in the noisy path | **done**: GHZ-5 with the §1.1 matrices equals the analytic product to 1e-12; the mean model differs by TV > 0.05 | `tests/test_noise_fit.py::PerQubitReadoutTests` |
-| W4 corrected vs uncorrected CX | **done, both reported**: 0.00125 corrected (fit TV 0.297) vs 0.018 uncorrected (fit TV 0.135) | `m_fit_2_profile.json` |
+| W3 per-qubit readout in the noisy path | **done**: GHZ-5 with the fitted matrices equals the analytic product to 1e-12; the mean model differs materially | `tests/test_noise_fit.py::PerQubitReadoutTests` |
+| W4 corrected vs uncorrected CX | **done, both reported**: 0.005 corrected (fit TV 0.121) vs 0.018 uncorrected (fit TV 0.135) | `m_fit_2_profile.json` |
 | W5 explicit calibration state | **done**: `calibration: absent` in the profile and `calibration_status` in the H-V3-8 output | tests above |
 | W6 Open Quantum adapter | open | — |
 
-**Why W1 fails its acceptance.** In `OQ-02` (X on every qubit) 404 of 1000
-shots read `11110`: logical qubit 0 misreads `1` as `0`. In the GHZ jobs the
-same single-zero pattern on qubit 0 occurs 15–24 times per 1000. The probes
-and the entangling circuits ran on different physical qubits, so the probe's
-qubit 0 says nothing about the GHZ's qubit 0. The corrected CX fit is lower
-than the uncorrected one only because the transferred readout is wrong for
-those jobs; its fit TV (0.297) is worse than the uncorrected fit (0.135).
-Reporting 0.00125 as the "true" CX error would be the false claim §W4 warned
-about, in the other direction.
+**The v3.0.0 reading of W1 was confounded.** `OQ-02` (X on every qubit) has
+404 of 1000 shots in `11110`: logical qubit 0 reads `0` when it should read
+`1`. The v3.0.0 fit installed that 0.531 as a readout matrix. The probes rule
+that out:
+
+* `OQ-01` (X twice, identity) gives `P(1|0) = 0.070`;
+* `OQ-03` (X on qubit 0 only) gives `P(1) = 0.507` — the same flip with one X;
+* `OQ-09` (GHZ-5, no X) gives `P(1) = 0.486` — no flip without X.
+
+The defect follows the X gate, not the measurement. The corrected fit puts
+`p10[0] = 0.03` and an X bit-flip of 0.536. Its GHZ fit TV is 0.121, better
+than both the frozen mean (0.229) and the uncorrected CX fit (0.135).
 
 **What follows.** A per-qubit model needs either the physical layout of every
 job or a readout probe inside each job. Neither is available for `r-io-7`.
 The next suite should (a) request and pin the provider's layout, or (b) add
 mid-suite readout probes compiled with the same layout as the circuits they
 calibrate, and (c) run on a second backend so a model is confirmed on data it
-was not written from.
+was not written from. The X-gate anomaly is itself a target for a dedicated
+probe on the next backend.

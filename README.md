@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 <img src=".github/assets/logo.svg" alt="CQ-HECS logo" width="720"/>
 
@@ -26,28 +26,50 @@ Four classical simulation paths · one result contract · fail-closed by design
 
 ---
 
-> **Status: `v3.0.0` Stable (2026-10-30).** Every v3 gate in
-> [`research/v3/RELEASE_PROCESS.md`](research/v3/RELEASE_PROCESS.md) passed
-> before tagging. v3 fixes two P0 SAT soundness defects (a timeout and a hash
-> collision could each be reported as a *verified* UNSAT), checks exact-ring
-> overflow, removes synthetic telemetry shown as live, adds the Google
-> Sycamore gate set and profile schema 2.0, and evaluates the noise model
-> against measured QPU counts. The release tree passes **594 Python tests**
-> (native build required, 0 skipped, 1 opt-in slow gate), **21/21 CTest**,
-> **40/40 source mutants**, **86 % branch coverage** and a **12-check
-> metamorphic self-test**. Upgrading from 2.x: [`docs/MIGRATION_V3.md`](docs/MIGRATION_V3.md).
+> **Status: `v3.1.0` (2026-10-30).** A feature release on the v3.0.0 Stable
+> base. It adds:
+>
+> 1. **CQ-HECS Studio** — a local `cq-hecs studio` UI for circuits, the measured
+>    noise comparison, a sound SAT lab and the evidence ledger. Standard-library
+>    HTTP server, no new runtime dependency, loopback only.
+> 2. **A standalone sound SAT surface** — `cq-hecs sat solve|sweep`. `SAT`
+>    carries a verified model; `UNSAT` only after exhaustive search and without
+>    a proof object; a timeout or node budget is `UNKNOWN`.
+> 3. **An independent-engine cross-check** — 21 noiseless circuits (GHZ widths
+>    2–128, QFT, Clifford+T, brickwork, Grover, BV, DJ, mirror) agree with the
+>    QuantumRings simulator within finite-shot noise: **21/21 PASS**.
+> 4. **A corrected `M-FIT-2` identification.** v3.0.0 installed `OQ-02`'s 0.531
+>    qubit-0 marginal as readout error. `OQ-03` reproduces the flip with one `X`
+>    and `OQ-09` (no `X`) does not, so it is an `X`-gate anomaly. The corrected
+>    fit uses `p10[0] = 0.03` and an `X` bit-flip of 0.536: FIT TV 0.2286 →
+>    0.1209, held-out ΔTV vs ideal −0.0719 → −0.1054 (16/20). The paired
+>    comparison with `M-FIT` is −0.0265, CI [−0.0413, +0.0207], so H-V3-9
+>    remains not supported.
+>
+> The release tree passes **618 Python tests** (0 skipped, 1 opt-in slow
+> gate), **21/21 CTest**, **40/40 source mutants**, a **12-check metamorphic
+> self-test**, and the independent oracle **21/21**.
 >
 > **First measured QPU data (complete):** all 25 preregistered `r-io-7` jobs
 > ran on `rigetti:cepheus-1-108q` on 2026-10-30. H-V3-8 returns
 > **`SUPPORTED`** — median ΔTV = −0.071905, 95 % CI [−0.135899, −0.006703].
-> That is one backend, one day, 1000 shots per circuit; the measured readout
-> and gate numbers are in
-> [Research and real-data evidence](#research-and-real-data-evidence).
+> A five-job, 100-shot IonQ pilot and a 200-shot identification batch spent the
+> two 25-credit Spark balances; both were **queued** as of 2026-10-30 and are
+> not confirmation runs.
+>
+> **Fresh backend (IBM):** the same 25 pinned circuits also ran on `ibm_fez`
+> (156 qubits, job `dbidem5ep8hs73ankcvg`, 1000 shots, 9 s QPU time). H-V3-8 is
+> **`SUPPORTED`** again: median ΔTV −0.036642, 95 % CI [−0.045217, −0.027301],
+> 20/20. The corrected `M-FIT-2` found **no anomaly** — `OQ-03` gives 0.994 on
+> qubit 0 — so the 0.531 flip is Rigetti-specific. On IBM it is slightly worse
+> than `M-FIT` (+0.001688, CI [+0.000327, +0.004045]); H-V3-9 remains not
+> supported.
 >
 > **Not claimed:** universal quantum simulation, real-QPU execution *by this
-> package*, cross-vendor GPU acceleration, SOTA performance, or a proof of
-> `P = NP`. See [Limitations](#limitations-and-non-goals) and
-> [`research/v3/COMPLEXITY_BOUNDARY.md`](research/v3/COMPLEXITY_BOUNDARY.md).
+> package*, cross-vendor GPU acceleration, SOTA performance, a proof of
+> `P = NP`, or a proof of ETH. See [Limitations](#limitations-and-non-goals),
+> [`research/v3/COMPLEXITY_BOUNDARY.md`](research/v3/COMPLEXITY_BOUNDARY.md)
+> and [`research/v4/COMPLEXITY_AND_ETH.md`](research/v4/COMPLEXITY_AND_ETH.md).
 
 <details>
 <summary><strong>Kurzfassung (Deutsch)</strong></summary>
@@ -115,10 +137,10 @@ That rule is enforced in code, not only in documentation:
 | Item | Value |
 | :--- | :--- |
 | **Package** | `cqhecs` (source install; not currently on PyPI) |
-| **Public surfaces** | `cq-hecs` CLI, Qiskit `BackendV2`, Python API, C ABI |
+| **Public surfaces** | `cq-hecs` CLI, `cq-hecs studio`, Qiskit `BackendV2`, Python API, C ABI, SAT engine |
 | **Simulation paths** | A: stabilizer tableau · B: stabilizer rank · C: untruncated MPS · D: sparse Pauli |
 | **Noise** | Typed profiles, Kraus channels, exact float64 density matrix up to 10 qubits |
-| **Verification** | 594 Python tests, 21 CTest, 40 mutants, 12-check selftest, 12 SPIR-V shaders |
+| **Verification** | 618 Python tests, 21 CTest, 40 mutants, 12-check selftest, 12 SPIR-V shaders, 21/21 independent oracle |
 | **Platforms** | Linux x64, Windows 10/11; Python 3.11–3.14 |
 | **License** | Apache-2.0 |
 
@@ -215,6 +237,45 @@ equivariance, zero-noise identity, and channel composition order.
 - **Python API:** router, expectation values, profiles, reference harness.
 - **Native:** C++20 core, C ABI, Vulkan compute shaders (separately built and
   tested).
+- **Studio:** a local browser UI for circuits, noise, SAT and the measured
+  evidence (`cq-hecs studio`).
+
+### CQ-HECS Studio
+
+`cq-hecs studio` starts a loopback-only experiment UI over the same engine. It
+has no build step and no new runtime dependency (standard-library HTTP server +
+the existing package).
+
+![CQ-HECS Studio overview](docs/assets/studio-overview.png)
+
+- **Circuit lab:** QASM or preset, forced path, shots, seed, ideal / `M-FIT` /
+  `M-FIT-2`; histogram, path decision, state and error classes.
+- **Noise lab:** per-qubit fitted parameters and a measured-vs-model ΔTV table
+  for every held-out `r-io-7` job, with a CX override for experiments.
+- **SAT lab:** DIMACS or random 3-SAT, sound verdicts, and a phase-transition
+  sweep.
+- **Evidence:** all 25 jobs with their circuit digests and provider job IDs.
+- **Research:** sourced notes on `P` versus `NP`, ETH, and the OpenAI math
+  corpus, with the same non-claims as this README.
+
+See [`docs/STUDIO.md`](docs/STUDIO.md) for the API and the security model.
+
+### Sound SAT surface
+
+The supported standalone surface is `cqhecs/sat.py` and `cq-hecs sat`:
+
+```bash
+cq-hecs sat solve benchmarks/sat/pigeonhole_6_5.cnf
+cq-hecs sat solve --random 30 --ratio 4.26 --timeout 5
+cq-hecs sat sweep --sizes 10,15,20,25 --ratios 3.0,4.26,6.0 --trials 5
+```
+
+`SAT` means a model was found and verified clause by clause. `UNSAT` means the
+search space was exhausted; no proof object is produced and the result says so.
+A timeout or node budget is `UNKNOWN`, never `UNSAT`. The older
+`python_bridge.sat_engine` is the native bridge; it was fixed in v3.0.0 and uses
+the `SAT_VERIFIED`/`UNSAT_PROVEN`/`TIMEOUT_UNKNOWN` vocabulary. The Studio and
+`cq-hecs sat` use the standalone engine.
 
 ---
 
@@ -249,6 +310,7 @@ cq-hecs doctor
 cq-hecs selftest --cases 8
 cq-hecs run name:bell --shots 1000 --seed 42
 cq-hecs --format json run name:bell --shots 1000
+cq-hecs studio
 ```
 
 `selftest` returns exit code `0` only if all 12 checks pass. It is a fast
@@ -312,13 +374,13 @@ choco install vulkan-sdk cmake ninja -y --no-progress
 
 ```bash
 python -m build
-# dist/cqhecs-3.0.0-py3-none-any.whl
-# dist/cqhecs-3.0.0.tar.gz
+# dist/cqhecs-3.1.0-py3-none-any.whl
+# dist/cqhecs-3.1.0.tar.gz
 ```
 
 Published wheels, sdists, SHA-256 checksums, and the SPDX SBOM are attached to
 [GitHub Releases](https://github.com/timfromhcs/CQ-HECS/releases). The latest
-release is `v3.0.0`.
+release is `v3.1.0`.
 
 ---
 
@@ -497,18 +559,18 @@ A deeper component matrix is in [`ARCHITECTURE.md`](ARCHITECTURE.md) and
 ## Verification
 
 The numbers below are from the Linux CI lane with the native build required
-(`CQ_HECS_REQUIRE_NATIVE=1`) on the `v3.0.0` tree. They are measurements, not
+(`CQ_HECS_REQUIRE_NATIVE=1`) on the `v3.1.0` tree. They are measurements, not
 performance claims. The release audit records the exact SHA and CI runs.
 
 | Gate | Result |
 | :--- | :--- |
-| Python suite | **594 passed**, 0 skipped, 1 opt-in `slow` gate (~170 s on CI) |
-| Branch coverage | **86 %** (CI threshold 70 %) |
+| Python suite | **618 passed**, 0 skipped, 1 opt-in `slow` gate |
+| Branch coverage | **84 %** measured locally on this tree (v3.0.0 release audit: 86 %) |
 | CTest (native) | **21/21**, including a `WILL_FAIL` meta-test proving checks run in Release builds |
 | Source mutation | **40/40** killed |
 | Metamorphic selftest | **12/12** |
 | SPIR-V shaders | **12/12** verified |
-| Version consistency | all surfaces report `3.0.0` |
+| Version consistency | all surfaces report `3.1.0` |
 | Lint | `flake8 --select=E9,F` clean on `cqhecs`, `python_bridge`, `scripts`, `tests` |
 | Silent-truncation audit | no patterns found |
 | Latest CI matrix | 7/7 jobs: Linux, Windows, ASan/UBSan, Python 3.12–3.14, static/package |
@@ -603,6 +665,11 @@ tied to a source SHA and records `PASS`, `FAIL`, `SKIP`, `BLOCKED`, and
 | Record | Content |
 | :--- | :--- |
 | [`research/v3_0_0/RELEASE_AUDIT.md`](research/v3_0_0/RELEASE_AUDIT.md) | v3.0.0 release audit: tag SHA, CI runs, independently recomputed asset hashes, final gates |
+| [`research/v4/FINDINGS.md`](research/v4/FINDINGS.md) | corrected `OQ-02` identification, M-FIT-2, independent oracle, SAT surface |
+| [`research/v4/COMPLEXITY_AND_ETH.md`](research/v4/COMPLEXITY_AND_ETH.md) | `P` vs `NP`, ETH/SETH, OpenAI math corpus, non-claims |
+| [`research/v4/evidence/quantumrings/`](research/v4/evidence/quantumrings/) | `r-qr-1`: 21/21 independent-engine cross-check |
+| [`research/v4/evidence/ibm/`](research/v4/evidence/ibm/) | the same 25 circuits on IBM `ibm_fez`; H-V3-8 SUPPORTED on a fresh backend |
+| [`research/v4/evidence/openquantum_pilot/`](research/v4/evidence/openquantum_pilot/) | `r-qpu-pilot-1`: IonQ probe batches and collection status |
 | [`research/v2_5_2/RELEASE_AUDIT.md`](research/v2_5_2/RELEASE_AUDIT.md) | v2.5.2 release audit and artifact hashes |
 | [`research/v3/V3_STABLE_PLAN.md`](research/v3/V3_STABLE_PLAN.md) | v3 plan, workstreams, gates |
 | [`research/v3/DATASETS.md`](research/v3/DATASETS.md) | real-data registry, licences, SHA-256 pins, reachability |
@@ -666,33 +733,75 @@ the ideal distribution on the held-out circuits **of this suite, on this
 backend, on this day**. It is not a "close to real hardware" claim, and the
 fit itself is mediocre (`0.229` mean TV on the five jobs it was tuned on).
 
-Two measured facts carry beyond the verdict:
+Three probes identify the qubit-0 defect:
 
-| Per-qubit readout, 1000 shots (`OQ-01`/`OQ-02`) | P(1\|0) | P(0\|1) |
-| :--- | ---: | ---: |
-| Qubit 0 | 0.070 | **0.531** |
-| Qubits 1–4 | 0.003–0.042 | 0.059–0.093 |
-| Device mean | 0.033 | 0.164 |
+| probe | circuit | qubit-0 marginal | reading |
+| :--- | :--- | ---: | :--- |
+| `OQ-01` | `X` twice (identity) | `P(1) = 0.070` | readout `P(1\|0)` |
+| `OQ-02` | `X` on all five | `P(1) = 0.469` | readout **and** `X` error |
+| `OQ-03` | `X` on qubit 0 only | `P(1) = 0.507` | the same flip with one `X` |
+| `OQ-09` | GHZ-5, no `X` | `P(1) = 0.486` | no flip without `X` |
 
-1. **Readout dominates, not gate error.** GHZ-5 costs 0.010 of ideal-outcome
+1. **The 53 % qubit-0 “readout error” is an `X`-gate anomaly.** A readout
+   matrix would depress `OQ-09` as well; it does not. Installing `0.531` as
+   readout over-corrects every GHZ circuit. The corrected `M-FIT-2` fits
+   `p10[0]` on the padded GHZ ladder instead and solves an `X` bit-flip of
+   0.536 from `OQ-02`/`OQ-03`.
+2. **Width still costs more than depth.** GHZ-5 costs 0.010 of ideal-outcome
    share when the CX count goes from 20 to 36 (`OQ-04` → `OQ-05`), while going
    from 2 to 5 qubits costs 0.197 (`OQ-06` → `OQ-09`). The fitted CX
-   depolarizing parameter lands at 0.00125, near the bottom of its grid.
-2. **The per-qubit readout does not transfer between jobs.** The device-mean
-   model loses on Bell and GHZ-3 (ΔTV +0.042) and wins on the 4–5-qubit
-   circuits. A per-qubit model (`M-FIT-2`, `cq-hecs noise-fit`, written after
-   the data was known) does **worse**, not better: median ΔTV versus `M-FIT`
-   +0.055, 95 % CI [−0.007, +0.092], Bell TV 0.115 → 0.243. The 0.531 defect
-   on qubit 0 shows up only in the gate-free probes (404/1000 shots read
-   `11110` in `OQ-02`); in the GHZ jobs qubit 0 is unremarkable. The provider
-   evidently placed those jobs on different physical qubits, and no layout was
-   published. This is hypothesis H-V3-9, recorded as **rejected** (post-hoc).
+   depolarizing parameter is 0.005, consistent with depth being a small term on
+   this device.
 
-No calibration snapshot was delivered for any job (`calibration_data_url` was
-null), so nothing here constrains T1/T2. What to build from this is in
-[`research/v3/EMULATOR_BUILD_PLAN.md`](research/v3/EMULATOR_BUILD_PLAN.md);
-the raw counts are pinned in
-[`research/v3/evidence/openquantum/`](research/v3/evidence/openquantum/).
+The corrected `M-FIT-2` improves the FIT residual **0.2286 → 0.1209** and the
+held-out score against the ideal distribution **−0.0719 → −0.1054** (16/20
+jobs closer, 95 % CI [−0.1326, −0.0425]). Against the frozen `M-FIT` the paired
+median is −0.0265 with 95 % CI [−0.0413, +0.0207], so H-V3-9 — “M-FIT-2 beats
+M-FIT” — is still **not supported**; the corrected model is a better physical
+description, not a proven better predictor than the frozen mean on this suite.
+The model is post-hoc and exploratory; confirmation needs a fresh backend and a
+fresh split.
+
+### Fresh backend: the same suite on IBM `ibm_fez`
+
+After the Rigetti analysis, the same 25 pinned circuits were run externally on
+IBM Quantum `ibm_fez` (156 qubits, open plan, job
+`dbidem5ep8hs73ankcvg`, 1000 shots, 9 s QPU time). A fixed physical chain
+`[98, 111, 110, 109, 118]` keeps logical qubit q on the same physical qubit in
+every job, and the bit-order probe returned `00001`.
+
+| Quantity | IBM `ibm_fez` |
+| :--- | :--- |
+| H-V3-8 | **`SUPPORTED`** |
+| Median ΔTV (M-FIT − ideal) | **−0.036642** |
+| 95 % bootstrap CI | **[−0.045217, −0.027301]** |
+| EVAL jobs where M-FIT is closer | **20/20** |
+| Corrected M-FIT-2 anomalies | **none** |
+| M-FIT-2 vs ideal | −0.032766, CI [−0.044632, −0.023821], 20/20 |
+| M-FIT-2 vs M-FIT | +0.001688, CI [+0.000327, +0.004045], 5/20 |
+
+The 0.531 flip does **not** reproduce: `OQ-01` gives `P(1|0) = 0.001`, `OQ-02`
+gives `P(1) = 0.989`, `OQ-03` gives `P(1) = 0.994` and `OQ-09` gives
+`P(1) = 0.496`. The anomaly is Rigetti-specific, and the corrected per-qubit
+model is slightly worse than the frozen mean on this healthy backend. H-V3-9
+remains not supported. Unlike the Rigetti run, IBM exposed backend properties;
+they are stored as `calibration.json`. Evidence:
+[`research/v4/evidence/ibm/`](research/v4/evidence/ibm/).
+
+A five-job, 100-shot IonQ pilot (`r-qpu-pilot-1`) spent the remaining 25 Spark
+credits on the qubit-0 question; a second batch (`OQ-01`/`OQ-03` at 200 shots,
+`OQ-02` at 100) spent another 25. Both batches were **queued** as of
+2026-10-30; they are not the preregistered suite and not a confirmation run.
+See
+[`research/v4/evidence/openquantum_pilot/`](research/v4/evidence/openquantum_pilot/).
+
+No calibration snapshot was delivered for any Rigetti job
+(`calibration_data_url` was null), so nothing there constrains T1/T2. The IBM
+run does include backend properties. The raw counts are pinned in
+[`research/v3/evidence/openquantum/`](research/v3/evidence/openquantum/) and
+[`research/v4/evidence/ibm/`](research/v4/evidence/ibm/), and the corrected
+Rigetti fit is in
+[`research/v4/evidence/r-io-7/`](research/v4/evidence/r-io-7/).
 
 ---
 
@@ -702,6 +811,9 @@ the raw counts are pinned in
 CQ-HECS/
 ├── cqhecs/                 # Python core: parser, lowering, router, backends, result contract
 │   ├── backends/           # Paths A–D and the noisy density-matrix backend
+│   ├── studio/             # local experiment UI (stdlib HTTP + static app)
+│   ├── sat.py              # standalone sound DPLL, DIMACS, sweep
+│   ├── noise_fit.py        # measured per-qubit fit (M-FIT-2)
 │   ├── hardware_bridge.py  # profiles, Kraus channels, fake/real provider boundary
 │   ├── calibration_import.py
 │   ├── reference.py        # real-data harness (R-IO-5 / R-IO-6 registry)
@@ -728,6 +840,7 @@ CQ-HECS/
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | component matrix and verification levels |
 | [`docs/QASM_CONTRACT.md`](docs/QASM_CONTRACT.md) | parser grammar, error categories, exit codes |
 | [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md) | CLI, Python, and C ABI contracts |
+| [`docs/STUDIO.md`](docs/STUDIO.md) | local UI, HTTP API, security, and provenance |
 | [`docs/USAGE_GUIDE.md`](docs/USAGE_GUIDE.md) | verified commands and usage examples |
 | [`docs/EMBEDDING_GUIDE.md`](docs/EMBEDDING_GUIDE.md) | C ABI embedding in C++, Python, C#, Rust |
 | [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) | current and historical benchmarks |
@@ -773,7 +886,7 @@ exposes a “Cite this repository” entry from [`CITATION.cff`](CITATION.cff).
 @software{cqhecs2026,
   author  = {Stark, Tim Johann},
   title   = {CQ-HECS: Classical Quantum High-Efficiency Compute Simulator},
-  version = {3.0.0},
+  version = {3.1.0},
   year    = {2026},
   url     = {https://github.com/timfromhcs/CQ-HECS},
   license = {Apache-2.0}

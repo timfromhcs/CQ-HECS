@@ -328,6 +328,46 @@ Global options: `--json` (strict JSON on stdout, diagnostics on stderr) and
 
 ---
 
+## 5.1 Studio, measured noise, and sound SAT
+
+### Start the local UI
+
+```bash
+cq-hecs studio
+# http://127.0.0.1:8765/
+cq-hecs studio --port 9000 --no-browser
+```
+
+The UI has circuit, noise, SAT, evidence, and research views. It reads the
+repository evidence if present, otherwise the packaged `r-io-7` snapshot. It
+never reads provider credentials. See [`STUDIO.md`](STUDIO.md).
+
+### Fit `M-FIT-2`
+
+```bash
+cq-hecs noise-fit \
+  --data-dir research/v3/evidence/openquantum/rigetti_cepheus-1-108q \
+  --out research/v4/evidence/r-io-7/profile.json
+```
+
+The fit is deterministic and post-hoc. The 0.531 qubit-0 marginal in `OQ-02`
+is an `X`-gate anomaly, not readout; the profile records the anomaly, the
+fitted `p10`, and the `X` bit-flip.
+
+### Sound SAT
+
+```bash
+cq-hecs sat solve benchmarks/sat/pigeonhole_6_5.cnf
+cq-hecs sat solve --random 30 --ratio 4.26 --timeout 5 --show-model
+cq-hecs sat sweep --sizes 10,15,20,25 --ratios 3.0,4.26,6.0 --trials 5
+```
+
+`SAT` has a verified model; `UNSAT` is exhaustive and has no proof object;
+`UNKNOWN` is a timeout or node budget. The sweep is an empirical curve, not an
+ETH proof.
+
+---
+
 ## 6. Troubleshooting
 
 **`cq-hecs: command not found`** — the console script directory is not on

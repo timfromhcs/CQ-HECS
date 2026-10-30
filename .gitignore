@@ -1,4 +1,4 @@
-# Build & Output Directories
+﻿# Build & Output Directories
 target/
 build/
 bin/
@@ -67,6 +67,12 @@ logs/
 *.pem
 *.pfx
 secrets/
+# Provider credentials and local-only runners (never commit)
+quantumrings.conf
+sdk-key-*.json
+apikey*.json
+oq.py
+.local/
 
 # Python & Testing Caches
 __pycache__/
@@ -90,3 +96,4 @@ cq_test_swap.bin
 # bulky raw upstream dumps (see research/v2_4/evidence/README.md)
 research/v2_4/evidence/openai_math_tree.json
 research/v2_4/evidence/*.b64
+.playwright-mcp/

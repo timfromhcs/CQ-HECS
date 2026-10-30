@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CQ-HECS Studio</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="/static/logo.svg" alt="" width="34" height="34">
+      <div>
+        <strong>CQ-HECS</strong>
+        <span>Studio</span>
+      </div>
+    </div>
+    <nav id="nav">
+      <button data-view="overview" class="active"><span>00</span>Overview</button>
+      <button data-view="circuit"><span>01</span>Circuit lab</button>
+      <button data-view="noise"><span>02</span>Noise lab</button>
+      <button data-view="sat"><span>03</span>SAT lab</button>
+      <button data-view="evidence"><span>04</span>Evidence</button>
+      <button data-view="research"><span>05</span>Research</button>
+    </nav>
+    <div class="side-foot">
+      <span class="dot" id="health-dot"></span>
+      <span id="health-text">connecting…</span>
+      <small>local only · 127.0.0.1</small>
+    </div>
+  </aside>
+
+  <main>
+    <header class="top">
+      <div>
+        <h1 id="view-title">Overview</h1>
+        <p id="view-sub">Classical four-path quantum emulation, measured noise, sound SAT.</p>
+      </div>
+      <div class="chips" id="top-chips"></div>
+    </header>
+
+    <section class="view active" id="view-overview">
+      <div class="hero panel">
+        <div>
+          <p class="eyebrow">Emulation, not decoration</p>
+          <h2>Every number here comes from a run, a measurement, or is missing.</h2>
+          <p>The studio exposes the four simulation paths, the measured <code>r-io-7</code>
+             noise fit, and a sound SAT engine. Refusals are shown as refusals.</p>
+          <div class="actions">
+            <button class="primary" data-go="circuit">Open circuit lab</button>
+            <button data-go="noise">Compare noise models</button>
+            <button data-go="sat">Solve a CNF</button>
+          </div>
+        </div>
+        <div class="hero-mark" aria-hidden="true">
+          <div class="orb"></div>
+          <span>A</span><span>B</span><span>C</span><span>D</span>
+        </div>
+      </div>
+      <div class="grid four" id="overview-stats"></div>
+      <div class="grid two">
+        <div class="panel">
+          <h3>What is real</h3>
+          <ul class="checklist" id="real-list"></ul>
+        </div>
+        <div class="panel">
+          <h3>What is not claimed</h3>
+          <ul class="crosslist" id="not-list"></ul>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Measured evidence at a glance</h3>
+          <span class="tag" id="dataset-tag">dataset</span>
+        </div>
+        <div class="grid three" id="overview-evidence"></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-circuit">
+      <div class="grid lab">
+        <div class="panel">
+          <div class="panel-head"><h3>Circuit</h3><span class="tag">QASM 2.0</span></div>
+          <label class="field">
+            <span>Preset</span>
+            <select id="preset"></select>
+          </label>
+          <label class="field">
+            <span>Source</span>
+            <textarea id="qasm" spellcheck="false" rows="16"></textarea>
+          </label>
+          <div class="controls">
+            <label class="field"><span>Shots</span><input id="shots" type="number" value="1024" min="1" max="20000"></label>
+            <label class="field"><span>Seed</span><input id="seed" type="number" value="42" min="0"></label>
+            <label class="field"><span>Path</span>
+              <select id="path"><option value="auto">auto</option><option>A</option><option>B</option><option>C</option><option>D</option></select>
+            </label>
+            <label class="field"><span>Noise</span>
+              <select id="noise"><option value="ideal">ideal</option><option value="mfit">M-FIT</option><option value="mfit2">M-FIT-2</option></select>
+            </label>
+          </div>
+          <button class="primary wide" id="run-circuit">Run circuit</button>
+          <p class="hint">Noise runs use the exact density matrix, limited to 10 qubits. Above that the studio refuses instead of approximating.</p>
+        </div>
+        <div class="panel result">
+          <div class="panel-head"><h3>Result</h3><span class="tag" id="circuit-state">idle</span></div>
+          <div class="metrics" id="circuit-metrics"></div>
+          <div class="chart" id="circuit-chart"><p class="empty">Run a circuit to see the distribution.</p></div>
+          <div class="table-wrap" id="circuit-table"></div>
+          <p class="hint" id="circuit-note"></p>
+          <details id="circuit-json"><summary>Raw result JSON</summary><pre></pre></details>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-noise">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Measured noise, fitted</h3>
+          <span class="tag warn">post-hoc · exploratory</span>
+        </div>
+        <p id="noise-summary" class="lede"></p>
+        <div class="grid four" id="noise-cards"></div>
+        <div class="table-wrap" id="noise-qubits"></div>
+      </div>
+      <div class="grid two">
+        <div class="panel">
+          <div class="panel-head"><h3>Held-out ΔTV per job</h3><span class="tag">lower is better</span></div>
+          <div class="chart tall" id="noise-delta"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Inspect one job</h3>
+            <select id="job-select"></select>
+          </div>
+          <div class="controls">
+            <label class="field"><span>CX override</span><input id="cx-override" type="range" min="0" max="0.03" step="0.0005" value="0"></label>
+            <button id="apply-override">Apply override</button>
+          </div>
+          <div class="metrics" id="job-metrics"></div>
+          <div class="chart" id="job-chart"></div>
+          <p class="hint">Bars compare the measured counts with the ideal distribution, M-FIT and M-FIT-2.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-sat">
+      <div class="grid lab">
+        <div class="panel">
+          <div class="panel-head"><h3>Formula</h3><span class="tag">DIMACS CNF</span></div>
+          <label class="field">
+            <span>CNF</span>
+            <textarea id="cnf" spellcheck="false" rows="14">c two clauses, one model
+p cnf 3 3
+1 2 0
+-2 3 0
+-3 1 0</textarea>
+          </label>
+          <div class="controls">
+            <label class="field"><span>Random vars</span><input id="sat-n" type="number" value="20" min="3" max="120"></label>
+            <label class="field"><span>Ratio</span><input id="sat-ratio" type="number" value="4.26" step="0.01" min="0" max="20"></label>
+            <label class="field"><span>Timeout s</span><input id="sat-timeout" type="number" value="5" step="0.1" min="0.01" max="30"></label>
+            <label class="field"><span>Node budget</span><input id="sat-budget" type="number" value="0" min="0" step="1"></label>
+          </div>
+          <div class="actions">
+            <button class="primary" id="sat-solve">Solve CNF</button>
+            <button id="sat-random">Random 3-SAT</button>
+          </div>
+          <p class="hint">UNKNOWN means the timeout stopped the search. It is never reported as UNSAT.</p>
+        </div>
+        <div class="panel result">
+          <div class="panel-head"><h3>Verdict</h3><span class="tag" id="sat-status">idle</span></div>
+          <div class="metrics" id="sat-metrics"></div>
+          <div id="sat-assignment" class="assignment"></div>
+          <div class="table-wrap" id="sat-table"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Phase-transition sweep</h3>
+          <span class="tag">empirical, not ETH</span>
+        </div>
+        <div class="controls">
+          <label class="field"><span>Sizes</span><input id="sweep-sizes" value="10,15,20,25"></label>
+          <label class="field"><span>Ratios</span><input id="sweep-ratios" value="3.0,3.5,4.0,4.26,4.5,5.0"></label>
+          <label class="field"><span>Trials</span><input id="sweep-trials" type="number" value="3" min="1" max="20"></label>
+          <label class="field"><span>Timeout s</span><input id="sweep-timeout" type="number" value="1" step="0.1" min="0.01" max="5"></label>
+        </div>
+        <button id="sat-sweep">Run sweep</button>
+        <div class="chart tall" id="sweep-chart"></div>
+        <p class="hint" id="sweep-note">A rising curve is consistent with ETH; it is not a proof of ETH and says nothing about P = NP.</p>
+      </div>
+    </section>
+
+    <section class="view" id="view-evidence">
+      <div class="panel">
+        <div class="panel-head"><h3>r-io-7 — 25 measured jobs</h3><span class="tag" id="evidence-sha">sha</span></div>
+        <p class="lede">One backend, one day, 1000 shots per job. Circuits were SHA-256 pinned before submission.</p>
+        <div class="table-wrap" id="evidence-table"></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-research">
+      <div class="panel">
+        <div class="panel-head"><h3>Complexity and evidence</h3><span class="tag">updated 2026-10-30</span></div>
+        <h2 id="research-headline" class="lede"></h2>
+        <div class="grid two" id="research-sections"></div>
+        <details class="citations"><summary>Citations</summary><ol id="citations"></ol></details>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span>CQ-HECS Studio</span>
+      <span id="foot-version"></span>
+      <span>Classical simulation. No P = NP claim. No hardware claim.</span>
+    </footer>
+  </main>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>
