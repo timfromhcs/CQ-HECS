@@ -1,0 +1,7 @@
+node_modules/
+dist/
+wasm/target/
+tests/*.bundle.mjs
+# The root .gitignore drops core.* (core dumps); these are source files.
+!src/core.ts
+!tests/core.test.ts

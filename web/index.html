@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>CQ-HECS Web · Exakter Quanten-Emulator im Browser</title>
+  <meta name="description" content="Exakter Quantenschaltungs-Emulator im Browser: WebAssembly f64 Zustandsvektor und WebGPU, mit Geräte-Check und sicheren Qubit-Limits. Made with love by timfromhcs & hcsmedia." />
+  <meta name="theme-color" content="#0b0d14" />
+  <meta property="og:title" content="CQ-HECS Web · Quanten-Emulator" />
+  <meta property="og:description" content="So viele Qubits, wie dein Gerät exakt rechnen kann. WebAssembly + WebGPU, direkt im Browser." />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <a class="skip" href="#app">Zum Inhalt springen</a>
+
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="CQ-HECS Web Startseite">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent-2)"/></linearGradient></defs>
+        <circle cx="16" cy="16" r="13" fill="none" stroke="url(#lg)" stroke-width="2.4"/>
+        <ellipse cx="16" cy="16" rx="13" ry="5" fill="none" stroke="url(#lg)" stroke-width="1.4" opacity=".7"/>
+        <line x1="16" y1="16" x2="23" y2="7" stroke="url(#lg)" stroke-width="2.4" stroke-linecap="round"/>
+        <circle cx="23" cy="7" r="2.6" fill="var(--accent-2)"/>
+      </svg>
+      <span>CQ-HECS <b>Web</b></span>
+    </a>
+    <nav class="tabs" role="tablist" aria-label="Ansicht">
+      <button role="tab" data-view="lab" aria-selected="true">Labor</button>
+      <button role="tab" data-view="code" aria-selected="false">Code</button>
+      <button role="tab" data-view="device" aria-selected="false">Gerät</button>
+      <button role="tab" data-view="about" aria-selected="false">Über</button>
+    </nav>
+    <div class="top-actions">
+      <span id="limit-chip" class="chip muted" title="Sicheres exaktes Limit auf diesem Gerät">prüfe Gerät …</span>
+      <button id="theme" class="icon-btn" aria-label="Farbschema umschalten" title="Hell/Dunkel">◐</button>
+    </div>
+  </header>
+
+  <div id="boot" class="boot" role="status" aria-live="polite">
+    <div class="boot-card">
+      <h1>Gerät wird geprüft</h1>
+      <p class="muted">Bevor etwas läuft, misst CQ-HECS, was dein Gerät exakt rechnen kann.</p>
+      <ol id="boot-steps" class="steps"></ol>
+    </div>
+  </div>
+
+  <main id="app" hidden>
+    <section class="view" data-view="lab">
+      <div class="toolbar card">
+        <label class="field">Qubits
+          <span class="stepper">
+            <button id="q-dec" aria-label="Qubit entfernen">−</button>
+            <input id="qubits" type="number" min="1" value="2" inputmode="numeric" />
+            <button id="q-inc" aria-label="Qubit hinzufügen">+</button>
+          </span>
+        </label>
+        <label class="field">Beispiel
+          <select id="preset"><option value="">— leer —</option></select>
+        </label>
+        <button id="clear" class="ghost">Leeren</button>
+        <span class="grow"></span>
+        <span id="preset-blurb" class="muted small"></span>
+      </div>
+
+      <div class="card composer-card">
+        <div id="palette" class="palette" role="toolbar" aria-label="Gatter"></div>
+        <div id="composer" class="composer" tabindex="0" aria-label="Schaltungs-Editor"></div>
+        <p class="hint muted small">Gatter wählen, dann auf eine Zelle tippen. Mehr-Qubit-Gatter: zuerst Kontrolle(n), dann Ziel. Rechtsklick oder Radierer löscht.</p>
+      </div>
+    </section>
+
+    <section class="view" data-view="code" hidden>
+      <div class="card code-card">
+        <div class="code-head">
+          <div class="seg" role="tablist" aria-label="Sprache">
+            <button data-lang="qasm" aria-selected="true">OpenQASM 2.0</button>
+            <button data-lang="js" aria-selected="false">JavaScript-API</button>
+          </div>
+          <span class="grow"></span>
+          <button id="to-lab" class="ghost small-btn">Ins Labor laden</button>
+          <button id="share" class="ghost small-btn">Link teilen</button>
+          <button id="download" class="ghost small-btn">.qasm laden</button>
+        </div>
+        <div id="editor" class="editor"><div class="muted pad">Editor wird geladen …</div></div>
+        <p id="code-error" class="error" role="alert" hidden></p>
+        <details class="api-help">
+          <summary>API-Referenz</summary>
+          <pre><code>// JavaScript: gib eine Schaltung zurück
+const qc = circuit(5);           // 5 Qubits
+qc.h(0);
+for (let q = 1; q &lt; 5; q++) qc.cx(q - 1, q);
+qc.rz(PI / 8, 2).mcz(0, 1, 2);    // Multi-Control
+return qc.measureAll();
+
+// Gatter: h x y z s sdg t tdg sx rx ry rz p u
+//         cx cy cz ch cp crz swap ccx cswap mcx mcz
+//         measure(q, c) measureAll() reset(q)
+// Konstanten: PI, Math. Strg/⌘ + Enter startet.</code></pre>
+        </details>
+      </div>
+    </section>
+
+    <section class="view" data-view="device" hidden>
+      <div class="card">
+        <h2>Dein Gerät</h2>
+        <dl id="device-list" class="kv"></dl>
+      </div>
+      <div class="card">
+        <h2>Sichere Limits</h2>
+        <dl id="limit-list" class="kv"></dl>
+        <p class="muted small">Ein exakter Zustandsvektor mit n Qubits braucht 16 · 2ⁿ Byte (f64). Erlaubt ist höchstens ein Viertel des gemeldeten Arbeitsspeichers und maximal 2 GiB im WebAssembly-Heap. Das Limit wird durch eine echte Speicher-Reservierung bestätigt. Läufe mit über 90 s geschätzter Laufzeit werden abgelehnt.</p>
+        <button id="reprobe" class="ghost">Limit erneut prüfen</button>
+      </div>
+    </section>
+
+    <section class="view" data-view="about" hidden>
+      <div class="card prose">
+        <h2>Was das ist – und was nicht</h2>
+        <p><b>CQ-HECS Web</b> simuliert Quantenschaltungen <b>exakt</b>: Jeder der 2ⁿ komplexen Amplituden wird in doppelter Genauigkeit gespeichert. Es wird nichts abgeschnitten oder komprimiert. Die einzige Abweichung ist die normale f64-Rundung (≈10⁻¹⁵).</p>
+        <p>Mit Shots, Messungen mitten in der Schaltung, Reset und einem optionalen Rauschmodell (Depolarisierung und Auslesefehler über Monte-Carlo-Trajektorien) verhält sich ein Lauf <b>statistisch</b> wie auf echter Hardware. Es bleibt aber eine klassische Simulation, <b>kein Quantencomputer</b>.</p>
+        <h3>Engines</h3>
+        <ul>
+          <li><b>WebAssembly f64 (exakt):</b> ein Rust-Kern, der mit SIMD128 kompiliert ist und in einem Web Worker läuft, damit die Oberfläche nie blockiert.</li>
+          <li><b>WebGPU f32 (schnell):</b> ein Compute-Shader auf deiner GPU. Der Browser übersetzt WebGPU auf Vulkan, Direct3D 12 oder Metal; Vulkan direkt gibt es im Browser nicht. WGSL kennt kein f64, deshalb ist dieser Pfad einfach genau. Er wird automatisch gegen den exakten Kern gegengeprüft (TV-Abstand).</li>
+        </ul>
+        <h3>Warum es ein Limit gibt</h3>
+        <p>Jedes zusätzliche Qubit verdoppelt den Speicher. 27 Qubits sind 2 GiB, 30 wären 16 GiB. Kein Browser-Trick umgeht das, ohne Genauigkeit zu verlieren. Deshalb zeigt die Seite das exakte Maximum deines Geräts, statt verlustbehaftet „mehr“ zu versprechen.</p>
+        <p>Teil des Open-Source-Projekts <a href="https://github.com/timfromhcs/CQ-HECS" rel="noopener">CQ-HECS</a> (Apache-2.0).</p>
+      </div>
+    </section>
+
+    <section class="run-panel card" aria-label="Ausführung">
+      <div class="run-controls">
+        <label class="field">Shots <input id="shots" type="number" min="1" max="1000000" value="1024" inputmode="numeric" /></label>
+        <label class="field">Engine
+          <select id="engine">
+            <option value="wasm">WebAssembly f64 · exakt</option>
+            <option value="webgpu">WebGPU f32 · schnell</option>
+          </select>
+        </label>
+        <label class="switch"><input id="noise-on" type="checkbox" /> <span>Hardware-Rauschen</span></label>
+        <span class="grow"></span>
+        <span id="estimate" class="muted small"></span>
+        <button id="stop" class="ghost" hidden>Stopp</button>
+        <button id="run" class="primary">▶ Ausführen <kbd>Strg+Enter</kbd></button>
+      </div>
+      <div id="noise-panel" class="noise" hidden>
+        <label>1-Qubit-Fehler <input id="p1" type="range" min="0" max="0.02" step="0.0005" value="0.001" /><output id="p1o"></output></label>
+        <label>2-Qubit-Fehler <input id="p2" type="range" min="0" max="0.1" step="0.001" value="0.01" /><output id="p2o"></output></label>
+        <label>Auslesefehler <input id="ro" type="range" min="0" max="0.1" step="0.001" value="0.02" /><output id="roo"></output></label>
+      </div>
+      <div id="progress" class="progress" hidden><div class="bar"></div><span class="label small"></span></div>
+    </section>
+
+    <section class="results card" aria-label="Ergebnisse" aria-live="polite">
+      <div class="results-head">
+        <div class="seg" role="tablist" aria-label="Ergebnisansicht">
+          <button data-res="hist" aria-selected="true">Histogramm</button>
+          <button data-res="table" aria-selected="false">Tabelle</button>
+          <button data-res="bloch" aria-selected="false">Bloch</button>
+          <button data-res="state" aria-selected="false">Zustand</button>
+        </div>
+        <span class="grow"></span>
+        <div id="stats" class="stats"></div>
+      </div>
+      <div id="res-hist" class="res"><p class="muted pad">Noch kein Lauf. Wähle ein Beispiel oder baue eine Schaltung und drücke ▶.</p></div>
+      <div id="res-table" class="res" hidden></div>
+      <div id="res-bloch" class="res" hidden></div>
+      <div id="res-state" class="res" hidden></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Made with <span class="heart" aria-label="Liebe">♥</span> by <b>timfromhcs</b> &amp; <b>hcsmedia</b></p>
+    <p class="muted small">Exakte klassische Simulation · kein Quantencomputer · <a href="https://github.com/timfromhcs/CQ-HECS" rel="noopener">CQ-HECS auf GitHub</a> · Apache-2.0</p>
+  </footer>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
