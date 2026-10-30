@@ -14,12 +14,40 @@
   - `RELEASE_NOTES_v2.4.0.md` (sha256 `6f72bf02ff41f8473d53cba7c8883d3d647b719fd4e24213fba71c95078ae8fd`)
   - `sha256sums.txt`.
 
-## 2. Next Candidate: v2.5.0
+## 2. Published Release: v2.5.0
 
-- Working branch: `agent/cq-hecs-v2.5.0-quantum-bridge`.
-- Scope: Hardware-Aware Quantum Bridge, versioned `BackendProfile`, narrow verified `NoiseModel` with Kraus completeness & density matrix engine, deterministic `FakeHardwareProvider` and fail-closed `RealHardwareProvider` boundary.
-- Candidate source SHA: PENDING.
-- Merged SHA: PENDING.
-- Pull Request: PENDING.
-- Cloud CI URL: PENDING.
-- Release assets and SHA-256 digests: PENDING.
+- Version/tag: `v2.5.0`.
+- Release status: `RELEASED` (Published 2026-10-30T00:00:04Z).
+- Release URL: https://github.com/timfromhcs/CQ-HECS/releases/tag/v2.5.0
+- Candidate branch: `agent/cq-hecs-v2.5.0-quantum-bridge`.
+- Candidate commit SHA: `f97249a888c3a504ef51590fcbf61f3640b39678`.
+- Merged SHA: `bd2a1142a546589ceb6a5163c300c594561e7177`.
+- Pull Request: #14 (https://github.com/timfromhcs/CQ-HECS/pull/14) - MERGED.
+- PR Cloud CI: https://github.com/timfromhcs/CQ-HECS/actions/runs/40975601400 (7/7 jobs passed).
+- Post-merge Required CI: https://github.com/timfromhcs/CQ-HECS/actions/runs/40976167682 (7/7 jobs passed).
+- Release Pipeline Run: https://github.com/timfromhcs/CQ-HECS/actions/runs/40976745534 (succeeded).
+- Published release assets:
+  - `cqhecs-2.5.0-py3-none-any.whl` (sha256 `ae69e7367d1ba62dd019f3f4330dfbf0207dd8bd418098eb93f9036fa6470874`)
+  - `cqhecs-2.5.0.tar.gz` (sha256 `92e31ca3717e97b8a1f2534ad857b832bb0c1b433f81f8d24a1f737ed7b558c6`)
+  - `cqhecs-sbom.spdx.json` (sha256 `6b6545008aad03cd7444f326627bf10a7f2d1bcdb9e405885f65cc4d1ed59552`)
+  - `RELEASE_NOTES_v2.5.0.md` (sha256 `eb5ea65e89ddfda3847060914b3c20b006e8613955ce7c7d29c6c09dd7c70c49`)
+  - `sha256sums.txt`.
+
+## 3. Scope & Capabilities Shipped in v2.5.0
+
+- **Hardware-Aware Quantum Bridge**:
+  - `ExecutionMode` hierarchy (`IDEAL_CLASSICAL`, `NOISY_CLASSICAL`, `REAL_HARDWARE`).
+  - Versioned `BackendProfile` schema capturing device coupling maps, gate errors, readout errors, and $T_1/T_2$.
+  - Mathematically verified `NoiseModel` with Kraus completeness ($\sum K_k^\dagger K_k = I_d$), trace preservation, Hermiticity, and positive semidefiniteness.
+  - `NoisyDensityMatrixBackend` exact float64 density matrix simulator for circuits <= 10 qubits with Hoeffding TV error bounds.
+  - Deterministic `FakeHardwareProvider` & `FakeHardwareBackend` with coupling map topology enforcement.
+  - Fail-closed `RealHardwareProvider` & `RealHardwareBackend` requiring explicit `authorized=True` and API tokens (never silently falling back to simulation).
+  - CLI commands `profile list`, `profile show <NAME>`, and `--profile <NAME>` / `--noisy` options on `run`.
+- **Quality Gates**:
+  - CTest: 19/19 passed (100%).
+  - Pytest: 452/452 passed (100%, 32 new tests including Qiskit Aer differential parity).
+  - Branch Coverage: 84% (threshold >= 70%).
+  - Mutation Testing: 16/16 mutants killed (100%, 2 new mutants).
+  - Flake8: 0 errors.
+  - Vulkan Shaders: 12/12 verified SPIR-V 1.3 shaders.
+  - Version Consistency: All 15 surfaces report `2.5.0`.
