@@ -26,12 +26,16 @@ Four classical simulation paths · one result contract · fail-closed by design
 
 ---
 
-> **Status: `v2.5.2` (2026-10-30).** This is a correction release, not a
-> performance claim. It fixes two wrong-result defects in exact paths, a
-> noise-parameter convention, and profile validation. The current tree passes
-> **553 Python tests** (4 skipped, 1 opt-in slow gate) in **~69 s**, **19/19
-> CTest**, **35/35 source mutants**, **86 % branch coverage**, and a **12-check
-> metamorphic self-test**.
+> **Status: `v3.0.0` Stable (2026-10-30).** Every v3 gate in
+> [`research/v3/RELEASE_PROCESS.md`](research/v3/RELEASE_PROCESS.md) passed
+> before tagging. v3 fixes two P0 SAT soundness defects (a timeout and a hash
+> collision could each be reported as a *verified* UNSAT), checks exact-ring
+> overflow, removes synthetic telemetry shown as live, adds the Google
+> Sycamore gate set and profile schema 2.0, and evaluates the noise model
+> against measured QPU counts. The release tree passes **594 Python tests**
+> (native build required, 0 skipped, 1 opt-in slow gate), **21/21 CTest**,
+> **40/40 source mutants**, **86 % branch coverage** and a **12-check
+> metamorphic self-test**. Upgrading from 2.x: [`docs/MIGRATION_V3.md`](docs/MIGRATION_V3.md).
 >
 > **First measured QPU data (complete):** all 25 preregistered `r-io-7` jobs
 > ran on `rigetti:cepheus-1-108q` on 2026-10-30. H-V3-8 returns
@@ -54,8 +58,10 @@ wählt den Pfad anhand der Schaltungsstruktur. Ergebnisse tragen getrennte
 Fehlerklassen und einen expliziten Zustand (`EXACT`, `CERTIFIED`, `UNRESOLVED`,
 `FAILED`). An Grenzen wird die Ausführung verweigert, statt ein plausibles
 Ergebnis zu erfinden. Die Python-Pfade laufen auf der CPU; der Vulkan-Dispatch
-wurde nur für native Primitiven auf einer AMD-Radeon-iGPU verifiziert. Es gibt
-keine echte QPU-Ausführung und keine Behauptung zu `P = NP`.
+wurde nur für native Primitiven auf einer AMD-Radeon-iGPU verifiziert. Das Paket
+selbst führt keine Jobs auf echter Hardware aus; die 25 echten QPU-Messungen
+(`r-io-7`, Rigetti, Hypothese H-V3-8 `SUPPORTED`) dienen nur als Referenzdaten.
+Keine Behauptung zu `P = NP`.
 
 </details>
 
@@ -112,7 +118,7 @@ That rule is enforced in code, not only in documentation:
 | **Public surfaces** | `cq-hecs` CLI, Qiskit `BackendV2`, Python API, C ABI |
 | **Simulation paths** | A: stabilizer tableau · B: stabilizer rank · C: untruncated MPS · D: sparse Pauli |
 | **Noise** | Typed profiles, Kraus channels, exact float64 density matrix up to 10 qubits |
-| **Verification** | 553 Python tests (~69 s), 19 CTest, 35 mutants, 12-check selftest, 12 SPIR-V shaders |
+| **Verification** | 594 Python tests, 21 CTest, 40 mutants, 12-check selftest, 12 SPIR-V shaders |
 | **Platforms** | Linux x64, Windows 10/11; Python 3.11–3.14 |
 | **License** | Apache-2.0 |
 
@@ -306,13 +312,13 @@ choco install vulkan-sdk cmake ninja -y --no-progress
 
 ```bash
 python -m build
-# dist/cqhecs-2.5.2-py3-none-any.whl
-# dist/cqhecs-2.5.2.tar.gz
+# dist/cqhecs-3.0.0-py3-none-any.whl
+# dist/cqhecs-3.0.0.tar.gz
 ```
 
 Published wheels, sdists, SHA-256 checksums, and the SPDX SBOM are attached to
 [GitHub Releases](https://github.com/timfromhcs/CQ-HECS/releases). The latest
-release is `v2.5.2`.
+release is `v3.0.0`.
 
 ---
 
@@ -436,7 +442,9 @@ measure q[0] -> c[0];
 ```
 
 Composite gates (`u3`, `ccx`, `cy`, `rzz`, `cswap`, `iswap`, `ecr`, `c3x`, …)
-are lowered exactly. Unknown gates, invalid angles, undeclared registers,
+are lowered exactly. Since v3 the Google Sycamore set (`fsim`, `syc`,
+`phased_x`, `sqrt_x`, `sqrt_y`, `sqrt_w`) is lowered the same way, checked
+against Cirq's matrices (the single-qubit ones up to a global phase). Unknown gates, invalid angles, undeclared registers,
 mid-circuit measurement, `reset`, and `if` are refused before execution. See
 [`docs/QASM_CONTRACT.md`](docs/QASM_CONTRACT.md) for the full matrix and the
 intentionally different gate ceilings of the two parsers.
@@ -488,19 +496,19 @@ A deeper component matrix is in [`ARCHITECTURE.md`](ARCHITECTURE.md) and
 
 ## Verification
 
-The numbers below are from the current `v2.5.2` tree. They are measurements,
-not performance claims. CI evidence for the exact pushed SHA is recorded in
-[`research/v3/TEST_MATRIX.md`](research/v3/TEST_MATRIX.md).
+The numbers below are from the Linux CI lane with the native build required
+(`CQ_HECS_REQUIRE_NATIVE=1`) on the `v3.0.0` tree. They are measurements, not
+performance claims. The release audit records the exact SHA and CI runs.
 
 | Gate | Result |
 | :--- | :--- |
-| Python suite | **553 passed**, 4 skipped, 1 opt-in `slow` gate (**~69 s**) |
-| Branch coverage | **86 %** (CI threshold 70 %) on this branch, which adds the real-data harness; `main` was 88 % |
-| CTest (native) | **19/19** |
-| Source mutation | **35/35** killed |
+| Python suite | **594 passed**, 0 skipped, 1 opt-in `slow` gate (~170 s on CI) |
+| Branch coverage | **86 %** (CI threshold 70 %) |
+| CTest (native) | **21/21**, including a `WILL_FAIL` meta-test proving checks run in Release builds |
+| Source mutation | **40/40** killed |
 | Metamorphic selftest | **12/12** |
 | SPIR-V shaders | **12/12** verified |
-| Version consistency | all surfaces report `2.5.2` |
+| Version consistency | all surfaces report `3.0.0` |
 | Lint | `flake8 --select=E9,F` clean on `cqhecs`, `python_bridge`, `scripts`, `tests` |
 | Silent-truncation audit | no patterns found |
 | Latest CI matrix | 7/7 jobs: Linux, Windows, ASan/UBSan, Python 3.12–3.14, static/package |
@@ -599,7 +607,10 @@ tied to a source SHA and records `PASS`, `FAIL`, `SKIP`, `BLOCKED`, and
 | [`research/v3/DATASETS.md`](research/v3/DATASETS.md) | real-data registry, licences, SHA-256 pins, reachability |
 | [`research/v3/HYPOTHESES.md`](research/v3/HYPOTHESES.md) | preregistered hypotheses and outcomes |
 | [`research/v3/OPENQUANTUM_RUN_PLAN.md`](research/v3/OPENQUANTUM_RUN_PLAN.md) | preregistered 25-job real-QPU suite via Open Quantum (`r-io-7`); **25/25 executed, 2026-10-30** |
-| [`research/v3/EMULATOR_BUILD_PLAN.md`](research/v3/EMULATOR_BUILD_PLAN.md) | emulator work packages derived from the measured `r-io-7` data; not implemented |
+| [`research/v3/EMULATOR_BUILD_PLAN.md`](research/v3/EMULATOR_BUILD_PLAN.md) | emulator work packages derived from the measured `r-io-7` data; W1/W3/W4/W5 implemented, outcome in §7 |
+| [`research/v3/RELEASE_PROCESS.md`](research/v3/RELEASE_PROCESS.md) | hypothesis protocol, v3 gate table with final status, PR and release rules |
+| [`research/v3/DEFECT_REGISTER.md`](research/v3/DEFECT_REGISTER.md) | v3 correctness audit: reproduced defects, fixes, regression evidence |
+| [`docs/MIGRATION_V3.md`](docs/MIGRATION_V3.md) | every caller-visible change from 2.x to 3.0 |
 | [`research/v3/TESTING_TECHNIQUES.md`](research/v3/TESTING_TECHNIQUES.md) | property-based, metamorphic, noise-aware, and fuzzing methods |
 | [`research/v3/COMPLEXITY_BOUNDARY.md`](research/v3/COMPLEXITY_BOUNDARY.md) | P vs NP status and claim boundaries |
 
@@ -761,7 +772,7 @@ exposes a “Cite this repository” entry from [`CITATION.cff`](CITATION.cff).
 @software{cqhecs2026,
   author  = {Stark, Tim Johann},
   title   = {CQ-HECS: Classical Quantum High-Efficiency Compute Simulator},
-  version = {2.5.2},
+  version = {3.0.0},
   year    = {2026},
   url     = {https://github.com/timfromhcs/CQ-HECS},
   license = {Apache-2.0}

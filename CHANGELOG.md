@@ -8,6 +8,11 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [3.0.0] — 2026-10-30
+
+v3 Stable. Gates and evidence: `research/v3/RELEASE_PROCESS.md`; breaking
+changes and migration: `docs/MIGRATION_V3.md`.
+
 ### Fixed (v3 correctness audit, `research/v3/DEFECT_REGISTER.md`)
 
 - **CQ-V3-01 (P0)** Python SAT: a timeout was reported as
@@ -31,8 +36,6 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 - **CQ-V3-07** Vulkan device selection is a tested pure policy with an
   explicit `CQ_HECS_VULKAN_DEVICE` override (no fallback) and reports
   vendor/device/driver/API identity and the selection reason.
-
-Work towards v3 (`research/v3/V3_STABLE_PLAN.md`). Not released.
 
 ### Added
 

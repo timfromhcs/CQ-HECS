@@ -66,7 +66,7 @@ or `INCONCLUSIVE`. **Status as of this document** (live audit, 2026-10-30):
 | V3-C | Sycamore gates (`fsim`, `√X`, `√Y`, `√W`, `phased_x`) differential-tested; mutation harness extended | PASS | `tests/test_sycamore_gates.py`; mutants 39–40 (40/40 killed) |
 | V3-D | ≥ 1 real I/O dataset with complete circuits, pinned, hypothesis outcome recorded | PASS — R-IO-7, H-V3-8 `SUPPORTED` (one backend, one day) | `evidence/openquantum/` |
 | V3-E | schema 2.0 documented, migration tested, CLI/JSON contract tests | PASS | `docs/MIGRATION_V3.md`, `tests/test_schema_migration.py` |
-| V3-F | CI 7/7 on the release SHA, release assets re-hashed, RELEASE_AUDIT | NOT RUN | release step |
+| V3-F | CI 7/7 on the release SHA, release assets re-hashed, RELEASE_AUDIT | IN PROGRESS | release-candidate PR; final status in `research/v3_0_0/RELEASE_AUDIT.md` |
 
 ### 2.2 Mission gates (`GEMINI.md` §16) and the §3 audit leads
 
@@ -88,8 +88,8 @@ or `INCONCLUSIVE`. **Status as of this document** (live audit, 2026-10-30):
 | Gate F UX/observability | PASS after CQ-V3-06/08 | |
 | Gate G software quality | PASS locally; CI on the PR | 38/38 mutants, CTest 21/21 |
 | Gate H performance | PASS by abstention: no performance claim | |
-| Gate I supply chain | PASS at v2.5.2 | re-check at release |
-| Gate J docs/release | NOT RUN | release step |
+| Gate I supply chain | IN PROGRESS | pinned actions unchanged; SBOM and checksums re-verified in the release audit |
+| Gate J docs/release | IN PROGRESS | README, CHANGELOG, RELEASE_NOTES, CITATION and all version surfaces on 3.0.0; wheel smoke-tested in a clean venv |
 
 **Hard stop:** any unresolved P0, false UNSAT, false hardware provenance,
 fake live telemetry, unguarded exact-arithmetic overflow, hidden
