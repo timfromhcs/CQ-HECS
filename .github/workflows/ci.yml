@@ -114,7 +114,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -c constraints/ci-py311.txt \
             numpy qiskit qiskit-aer stim pytest hypothesis psutil rich coverage flake8 \
-            nanobind setuptools wheel qiskit-ibm-runtime
+            nanobind setuptools wheel qiskit-ibm-runtime python-sat
           pip install -e . --no-deps
 
       - name: Verify shader sources
@@ -146,6 +146,7 @@ jobs:
         env:
           PYTHONPATH: .
           CQ_HECS_REQUIRE_NATIVE: "1"
+          CQ_HECS_REQUIRE_PYSAT: "1"
         run: |
           mkdir -p test-results
           python -m coverage run --branch --source=cqhecs \
