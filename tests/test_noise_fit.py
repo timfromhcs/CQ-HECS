@@ -45,9 +45,17 @@ def test_holdout_improves_post_hoc(fit):
     assert mfit2["ci95_high"] < 0.0
 
 
-def test_model_is_byte_deterministic_and_matches_artifact(fit):
-    assert fit.to_json() == ARTIFACT.read_text("utf-8")
+def test_model_is_deterministic_and_matches_artifact(fit):
+    # Byte-identical within a platform; the committed artifact is matched
+    # numerically so a different BLAS cannot fail the test at 1e-15.
     assert fit.to_json() == fit.to_json()
+    artifact = json.loads(ARTIFACT.read_text("utf-8"))
+    assert fit.p01 == pytest.approx(tuple(artifact["readout"]["p01"]), abs=1e-12)
+    assert fit.p10 == pytest.approx(tuple(artifact["readout"]["p10"]), abs=1e-12)
+    assert fit.x_bitflip == pytest.approx(tuple(artifact["x_bitflip"]), abs=1e-12)
+    assert fit.cx_depolarizing == pytest.approx(artifact["cx_depolarizing"], abs=1e-12)
+    assert fit.fit_tv == pytest.approx(artifact["fit"]["fit_tv"], abs=1e-9)
+    assert fit.mfit_tv == pytest.approx(artifact["fit"]["mfit_fit_tv"], abs=1e-9)
 
 
 def test_noise_model_uses_per_qubit_values(fit):
