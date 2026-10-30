@@ -1,0 +1,57 @@
+# Roadmap to v4.0.0
+
+v4.0.0 is a major release only if the evidence supports one: a noise model
+validated across vendors, and a SAT engine and simulators whose claims are
+checked by independent oracles. Each milestone ends in a gated minor release.
+
+## v3.3: third vendor (in progress)
+
+- **Run:** `r-iqm-1`, the full r-io-7 suite on IQM Garnet, 500 shots
+  (`PREREG_IQM_GARNET.md`).
+- **Test:** H-V3-8 verdict on a third vendor; M-FIT-2 vs M-FIT; readout/X
+  anomaly scan; a `tests/test_iqm_garnet.py` integrity test (digests, shots,
+  bit order, reproducible verdict), same as `test_ibm_10k.py`.
+- **Ship:** Studio Hardware lab and MCP list the row; the web emulator gets a
+  "device profile" preset fitted from the measured Garnet/IBM/Rigetti readout and
+  CX error, labelled as measured on a given date.
+- **Gate:** CI 8/8 green; verdict published whatever it is.
+
+## v3.4: emulator fidelity
+
+- **Web:** a noise profile from measured data (per-qubit readout p01/p10,
+  depolarizing CX), replacing the hand sliders when selected. Test: the
+  emulator's distribution vs the measured counts must give TV ≤ the M-FIT
+  value from the evaluation JSON (regression test per vendor).
+- **Web:** WASM threads (SharedArrayBuffer + COOP/COEP) for 2–8× on many-core
+  CPUs. Test: bitwise-identical state vs the single-thread core on 200
+  random circuits.
+- **Web:** a WebGPU f32 path with Kahan-compensated norm and an f64 recheck up to
+  20 qubits. Test: TV ≤ 1e-5 on the Qiskit fixtures.
+- **Python:** the exact density-matrix path gets the same measured profiles.
+
+## v3.5: SAT engine (handoff §6)
+
+- CDCL (watched literals, VSIDS, restarts, learning), with DPLL kept as the
+  oracle. Test: agreement with brute force on ≥ 5000 random formulas;
+  every SAT model verified.
+- DRAT proof emission. Test: `drat-trim` verifies every UNSAT in CI. Without
+  a checked proof, a result stays "exhaustive", not "proven".
+- Weighted partial MaxSAT (core-guided). Test: the ≤ 20-variable brute force
+  as oracle.
+
+## v4.0.0: release criteria
+
+1. H-V3-8 evaluated on ≥ 3 vendors (Rigetti ✓, IBM ✓, IQM pending), with
+   the result stated per vendor.
+2. Either M-FIT-2 is confirmed on a fresh preregistered run, or it is
+   retired in favour of M-FIT. Both outcomes are acceptable; an unresolved
+   status is not.
+3. CDCL + DRAT shipped, with every UNSAT checked in CI.
+4. Web emulator: exact limit, cross-checks and measured device profiles,
+   with a Playwright smoke test in CI.
+5. Release audit as for v3.2.0: hashes, clean-venv smoke, credential scan.
+
+## Non-goals
+
+No P = NP or ETH claim; no "lossless for arbitrary states"; no GPU speedup
+claim without before/after numbers on the same workload.
