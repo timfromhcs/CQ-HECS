@@ -1,0 +1,26 @@
+{
+  "dataset_id": "r-ibm-1",
+  "fixed_chain": [
+    110,
+    109,
+    118,
+    129,
+    128
+  ],
+  "job": {
+    "backend": "ibm_kingston",
+    "id": "dbie9go1h92s73839i8g",
+    "status": "Completed"
+  },
+  "metadata": {
+    "job_id": "OQ-24",
+    "name": "dj3_balanced",
+    "num_qubits": 4,
+    "qasm_sha256": "470e5399a1a7ac5d6cbb3257bbdf6a827b52961b93d952de1ea064cc25c000d7",
+    "transpiled_depth": 35,
+    "transpiled_qasm_sha256": "385fd2f958f5359397677c24c8efffce25009cd20b881d36391c7fa8a7cbba16",
+    "transpiled_size": 59
+  },
+  "shots": 10000,
+  "transpiled_qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[156];\ncreg c[4];\nrz(-pi) q[109];\nsx q[109];\nrz(pi/2) q[109];\nrz(pi/2) q[110];\nsx q[110];\nrz(pi/2) q[110];\nrz(-pi) q[118];\nsx q[118];\nrz(pi/2) q[118];\nsx q[129];\nrz(-pi/2) q[129];\ncz q[118],q[129];\nsx q[118];\nsx q[129];\ncz q[118],q[129];\nsx q[118];\nsx q[129];\ncz q[118],q[129];\nsx q[118];\ncz q[109],q[118];\nsx q[109];\nsx q[118];\ncz q[109],q[118];\nsx q[109];\nsx q[118];\ncz q[109],q[118];\nrz(pi/2) q[109];\nsx q[109];\nrz(pi/2) q[109];\ncz q[110],q[109];\nrz(pi/2) q[110];\nsx q[110];\nrz(pi/2) q[110];\ncz q[118],q[109];\nrz(-pi) q[109];\nsx q[109];\nrz(pi/2) q[109];\nrz(-pi) q[118];\nsx q[118];\nrz(pi/2) q[118];\ncz q[118],q[109];\nsx q[109];\nsx q[118];\ncz q[118],q[109];\nsx q[109];\nsx q[118];\ncz q[118],q[109];\nrz(pi/2) q[118];\nsx q[118];\nrz(pi/2) q[118];\ncz q[129],q[118];\nx q[118];\nrz(pi/2) q[129];\nsx q[129];\nrz(pi/2) q[129];\nmeasure q[110] -> c[0];\nmeasure q[109] -> c[1];\nmeasure q[129] -> c[2];\nmeasure q[118] -> c[3];"
+}

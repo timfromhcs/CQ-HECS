@@ -71,6 +71,27 @@ The per-qubit procedure did not transfer a benefit to a backend without the
 `X` anomaly. H-V3-9 remains not supported. Evidence:
 `research/v4/evidence/ibm/ibm_fez/`.
 
+## 2.2 Finite SAT and universal-oracle probes
+
+Eight 2–5 qubit universal probes ran on IBM `ibm_fez` and `ibm_marrakesh`:
+random Clifford+T, IQP, Grover-4, Simon-2, QFT-5, GHZ-5, a depth-30 mirror and
+a 3-variable SAT oracle. CQ-HECS's exact density-matrix distribution matches
+Qiskit `Statevector` for every probe at TV ≤ 5e-15, so these small circuits are
+exactly classically emulable at `O(4^n)` cost.
+
+Three SAT oracles were run on both backends: 3-variable unique `100`,
+3-variable two-model `100`/`011`, and 4-variable unique `1011`. The QPU's most
+frequent outcome is a valid CNF model on **every** run; model mass ranges from
+0.098 to 0.841. Strict MPS bit-losslessness fails for the two-model and
+4-variable circuits: the Path C state is `EXACT`, but the numerical-rank floor
+discards ~1e-15 / ~1e-13 of singular-value mass. This is a numerical statement,
+not a claim of lossless compression for arbitrary states.
+
+Evidence: `research/v4/evidence/pnp_emulability/` and
+`research/v4/evidence/pnp_sat_oracles/`. This is not a P-versus-NP result: the
+instances are 3–4 variables and the Grover oracle is not a polynomial-time SAT
+algorithm.
+
 ## 3. Independent oracle: 21/21 circuits agree with QuantumRings
 
 QuantumRings is a classical simulator (CPU backend here), not a QPU. It is used

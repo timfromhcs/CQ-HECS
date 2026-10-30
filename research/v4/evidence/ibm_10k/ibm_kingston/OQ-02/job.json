@@ -1,0 +1,26 @@
+{
+  "dataset_id": "r-ibm-1",
+  "fixed_chain": [
+    110,
+    109,
+    118,
+    129,
+    128
+  ],
+  "job": {
+    "backend": "ibm_kingston",
+    "id": "dbie9go1h92s73839i8g",
+    "status": "Completed"
+  },
+  "metadata": {
+    "job_id": "OQ-02",
+    "name": "readout_one_5",
+    "num_qubits": 5,
+    "qasm_sha256": "ad5800f335c3c1b22ba199e42727ecdbbdbcd5103b9d848f223e79fa1506080b",
+    "transpiled_depth": 2,
+    "transpiled_qasm_sha256": "4ca91ec07bd738abd423a55638d204e43b93a081645ac6c3da2476a9434877aa",
+    "transpiled_size": 10
+  },
+  "shots": 10000,
+  "transpiled_qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[156];\ncreg c[5];\nx q[109];\nx q[110];\nx q[118];\nx q[128];\nx q[129];\nmeasure q[110] -> c[0];\nmeasure q[109] -> c[1];\nmeasure q[118] -> c[2];\nmeasure q[129] -> c[3];\nmeasure q[128] -> c[4];"
+}

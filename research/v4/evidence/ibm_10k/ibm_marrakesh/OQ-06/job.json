@@ -1,0 +1,26 @@
+{
+  "dataset_id": "r-ibm-1",
+  "fixed_chain": [
+    44,
+    45,
+    46,
+    47,
+    57
+  ],
+  "job": {
+    "backend": "ibm_marrakesh",
+    "id": "dbie8l6ne4hc73bedhl0",
+    "status": "Completed"
+  },
+  "metadata": {
+    "job_id": "OQ-06",
+    "name": "bell",
+    "num_qubits": 2,
+    "qasm_sha256": "ae0cd142574796138ef95bd28378ae0a56b611999e3e31369cdacefe51a7b825",
+    "transpiled_depth": 8,
+    "transpiled_qasm_sha256": "260ba1f937908031f51c59c36910e07b36d2e6dec8ab1513e684aa3fb1c00431",
+    "transpiled_size": 12
+  },
+  "shots": 10000,
+  "transpiled_qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[156];\ncreg c[2];\nrz(pi/2) q[44];\nsx q[44];\nrz(pi/2) q[44];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[44],q[45];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nmeasure q[44] -> c[0];\nmeasure q[45] -> c[1];"
+}

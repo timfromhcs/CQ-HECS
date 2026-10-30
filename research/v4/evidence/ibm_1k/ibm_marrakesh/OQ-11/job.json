@@ -1,0 +1,26 @@
+{
+  "dataset_id": "r-ibm-1",
+  "fixed_chain": [
+    44,
+    45,
+    46,
+    47,
+    57
+  ],
+  "job": {
+    "backend": "ibm_marrakesh",
+    "id": "dbie73ohoj4c73b61a9g",
+    "status": "Completed"
+  },
+  "metadata": {
+    "job_id": "OQ-11",
+    "name": "qpe3_s",
+    "num_qubits": 4,
+    "qasm_sha256": "943abe986cec69fdc810f6a4aa4522adf067b1cdcebf2705a7d077a89aaafc66",
+    "transpiled_depth": 107,
+    "transpiled_qasm_sha256": "1593c064d447dd181b32751a5f226ed3e050513d47af99e5e6795a7f4755d11a",
+    "transpiled_size": 150
+  },
+  "shots": 1000,
+  "transpiled_qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[156];\ncreg c[4];\nrz(pi/2) q[44];\nsx q[44];\nrz(3*pi/4) q[44];\nrz(-pi/2) q[45];\nsx q[46];\nrz(-pi/2) q[46];\nrz(-pi) q[47];\nsx q[47];\nrz(-pi) q[47];\ncz q[46],q[47];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\nsx q[46];\ncz q[45],q[46];\nsx q[45];\nsx q[46];\ncz q[45],q[46];\nsx q[45];\nsx q[46];\ncz q[45],q[46];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[44],q[45];\nrz(-pi/2) q[45];\nsx q[45];\nrz(-3*pi/4) q[45];\nsx q[45];\nrz(-pi/2) q[45];\ncz q[44],q[45];\nsx q[44];\nrz(pi/2) q[45];\nsx q[45];\nrz(-3*pi/4) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[46],q[45];\nrz(-pi) q[45];\nsx q[45];\nrz(-pi) q[45];\ncz q[46],q[45];\nsx q[45];\nrz(-pi/4) q[46];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\ncz q[46],q[45];\nx q[45];\ncz q[46],q[45];\nsx q[45];\nrz(-pi/2) q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[45],q[46];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[46],q[45];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[45],q[46];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/4) q[46];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[45],q[46];\nrz(pi/2) q[46];\nsx q[46];\nrz(-3*pi/4) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[45],q[46];\nrz(-pi/4) q[45];\nrz(pi/2) q[47];\nsx q[47];\nrz(pi/2) q[47];\ncz q[46],q[47];\nrz(pi/2) q[47];\nsx q[47];\nrz(-3*pi/4) q[47];\nsx q[47];\nrz(pi/2) q[47];\ncz q[46],q[47];\nrz(-pi/4) q[46];\nsx q[46];\nrz(pi/2) q[47];\nsx q[47];\nrz(3*pi/8) q[47];\nsx q[47];\ncz q[46],q[47];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\nsx q[46];\nsx q[47];\ncz q[46],q[47];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[45],q[46];\nrz(pi/2) q[46];\nsx q[46];\nrz(-7*pi/8) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[45],q[46];\nrz(-pi/8) q[45];\nmeasure q[45] -> c[0];\nmeasure q[47] -> c[1];\nmeasure q[46] -> c[2];\nmeasure q[44] -> c[3];"
+}

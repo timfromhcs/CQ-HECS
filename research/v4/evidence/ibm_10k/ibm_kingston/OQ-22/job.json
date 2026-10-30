@@ -1,0 +1,26 @@
+{
+  "dataset_id": "r-ibm-1",
+  "fixed_chain": [
+    110,
+    109,
+    118,
+    129,
+    128
+  ],
+  "job": {
+    "backend": "ibm_kingston",
+    "id": "dbie9go1h92s73839i8g",
+    "status": "Completed"
+  },
+  "metadata": {
+    "job_id": "OQ-22",
+    "name": "grover2_mark11",
+    "num_qubits": 2,
+    "qasm_sha256": "1d3cd2a57c41f565a2fa1f8a461c053eded1ca7344635baa965b641ae8453a2e",
+    "transpiled_depth": 12,
+    "transpiled_qasm_sha256": "69aa0e46efcfc611a05603093bfb7771c3dadef779a628ca3e2a000127897ed7",
+    "transpiled_size": 22
+  },
+  "shots": 10000,
+  "transpiled_qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[156];\ncreg c[2];\nrz(pi/2) q[109];\nsx q[109];\nrz(pi/2) q[109];\nrz(pi/2) q[110];\nsx q[110];\nrz(pi/2) q[110];\ncz q[110],q[109];\nrz(-pi/2) q[109];\nsx q[109];\nrz(pi/2) q[109];\nrz(-pi/2) q[110];\nsx q[110];\nrz(pi/2) q[110];\ncz q[110],q[109];\nrz(pi/2) q[109];\nsx q[109];\nrz(-pi/2) q[109];\nrz(pi/2) q[110];\nsx q[110];\nrz(-pi/2) q[110];\nmeasure q[110] -> c[0];\nmeasure q[109] -> c[1];"
+}

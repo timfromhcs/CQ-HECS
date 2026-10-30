@@ -1,0 +1,26 @@
+{
+  "dataset_id": "r-ibm-1",
+  "fixed_chain": [
+    44,
+    45,
+    46,
+    47,
+    57
+  ],
+  "job": {
+    "backend": "ibm_marrakesh",
+    "id": "dbie73ohoj4c73b61a9g",
+    "status": "Completed"
+  },
+  "metadata": {
+    "job_id": "OQ-19",
+    "name": "clifford_t5_d30",
+    "num_qubits": 5,
+    "qasm_sha256": "a374f4e41917a4323b3c2e2a6237277463e66c59511bab878448ccc338a571ff",
+    "transpiled_depth": 52,
+    "transpiled_qasm_sha256": "f1db0eb929096c68c56d20149bedd4a6afbc35a1d1cf07e09b68d2f278440876",
+    "transpiled_size": 96
+  },
+  "shots": 1000,
+  "transpiled_qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[156];\ncreg c[5];\nrz(-pi) q[44];\nsx q[44];\nrz(-pi) q[44];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nrz(pi/2) q[46];\nsx q[46];\nrz(-pi/2) q[46];\ncz q[46],q[45];\nsx q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[44];\nsx q[45];\ncz q[45],q[44];\nsx q[45];\nrz(-pi/2) q[46];\nsx q[46];\ncz q[46],q[45];\nsx q[45];\nsx q[46];\ncz q[46],q[45];\nsx q[45];\nsx q[46];\ncz q[46],q[45];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\nrz(pi/4) q[47];\ncz q[47],q[46];\ncz q[45],q[46];\nsx q[45];\nrz(-pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\ncz q[46],q[45];\nsx q[45];\nsx q[46];\ncz q[46],q[45];\nsx q[45];\nsx q[46];\ncz q[46],q[45];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\ncz q[44],q[45];\nrz(pi/2) q[44];\nsx q[44];\nrz(pi/2) q[45];\nsx q[45];\nrz(pi/2) q[45];\nrz(pi/2) q[47];\nsx q[47];\nrz(pi/2) q[47];\ncz q[46],q[47];\nx q[46];\nrz(pi/2) q[47];\nsx q[47];\nrz(pi/2) q[47];\ncz q[46],q[47];\nrz(-pi/4) q[46];\nsx q[46];\ncz q[46],q[45];\nsx q[45];\nsx q[46];\ncz q[46],q[45];\nsx q[45];\nsx q[46];\ncz q[46],q[45];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\nsx q[57];\nrz(3*pi/4) q[57];\ncz q[57],q[47];\nrz(pi/2) q[47];\nsx q[47];\nrz(pi/2) q[47];\ncz q[47],q[46];\nrz(pi/2) q[46];\nsx q[46];\nrz(pi/2) q[46];\nrz(-pi) q[47];\nsx q[47];\nrz(pi/2) q[47];\ncz q[57],q[47];\nsx q[47];\nrz(pi/2) q[47];\nmeasure q[46] -> c[0];\nmeasure q[44] -> c[1];\nmeasure q[45] -> c[2];\nmeasure q[47] -> c[3];\nmeasure q[57] -> c[4];"
+}

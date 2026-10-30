@@ -669,6 +669,8 @@ tied to a source SHA and records `PASS`, `FAIL`, `SKIP`, `BLOCKED`, and
 | [`research/v4/COMPLEXITY_AND_ETH.md`](research/v4/COMPLEXITY_AND_ETH.md) | `P` vs `NP`, ETH/SETH, OpenAI math corpus, non-claims |
 | [`research/v4/evidence/quantumrings/`](research/v4/evidence/quantumrings/) | `r-qr-1`: 21/21 independent-engine cross-check |
 | [`research/v4/evidence/ibm/`](research/v4/evidence/ibm/) | the same 25 circuits on IBM `ibm_fez`; H-V3-8 SUPPORTED on a fresh backend |
+| [`research/v4/evidence/pnp_emulability/`](research/v4/evidence/pnp_emulability/) | exact CQ-HECS vs Qiskit Statevector on 8 universal probes; QPU comparison |
+| [`research/v4/evidence/pnp_sat_oracles/`](research/v4/evidence/pnp_sat_oracles/) | 3–4 variable SAT oracles on IBM; transfer and MPS losslessness |
 | [`research/v4/evidence/openquantum_pilot/`](research/v4/evidence/openquantum_pilot/) | `r-qpu-pilot-1`: IonQ probe batches and collection status |
 | [`research/v2_5_2/RELEASE_AUDIT.md`](research/v2_5_2/RELEASE_AUDIT.md) | v2.5.2 release audit and artifact hashes |
 | [`research/v3/V3_STABLE_PLAN.md`](research/v3/V3_STABLE_PLAN.md) | v3 plan, workstreams, gates |
@@ -787,6 +789,33 @@ model is slightly worse than the frozen mean on this healthy backend. H-V3-9
 remains not supported. Unlike the Rigetti run, IBM exposed backend properties;
 they are stored as `calibration.json`. Evidence:
 [`research/v4/evidence/ibm/`](research/v4/evidence/ibm/).
+
+### P versus NP: finite SAT and universal-oracle probes
+
+This is a **finite boundary check**, not a complexity result. Eight 2–5 qubit
+universal/algorithmic probes (random Clifford+T, IQP, Grover-4, Simon-2, QFT-5,
+GHZ-5, a depth-30 mirror, and a 3-variable SAT oracle) were run on IBM
+`ibm_fez` and `ibm_marrakesh` (10k shots; 50k on `ibm_marrakesh`).
+
+- CQ-HECS's exact density-matrix distribution matches Qiskit `Statevector`
+  for every probe at TV ≤ **5e-15**; these small circuits are exactly
+  classically emulable at `O(4^n)` cost.
+- The QPU median TV against ideal is 0.1275/0.1367/0.1399; the fitted M-FIT
+  and M-FIT-2 distributions are closer (≈0.096–0.105).
+- Three SAT oracles (3-variable unique `100`, 3-variable two-model
+  `100`/`011`, 4-variable unique `1011`) were run on both backends. The QPU's
+  most frequent outcome is a valid CNF model on **every** run; the model mass
+  ranges from 0.098 to 0.841 depending on backend and depth.
+- Exact classical emulation is possible; **strict MPS bit-losslessness is
+  not** for the two-model and four-variable circuits. The Path C state is
+  `EXACT`, but its numerical-rank floor discards ~1e-15 / ~1e-13 of
+  singular-value mass. That is reported, not hidden.
+
+Evidence:
+[`research/v4/evidence/pnp_emulability/`](research/v4/evidence/pnp_emulability/)
+and [`research/v4/evidence/pnp_sat_oracles/`](research/v4/evidence/pnp_sat_oracles/).
+The SAT probe is 3–4 variables; a Grover run is not a polynomial-time SAT
+algorithm and decides nothing about `P = NP`.
 
 A five-job, 100-shot IonQ pilot (`r-qpu-pilot-1`) spent the remaining 25 Spark
 credits on the qubit-0 question; a second batch (`OQ-01`/`OQ-03` at 200 shots,
