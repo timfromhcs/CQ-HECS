@@ -363,7 +363,7 @@ def write_suite(target: Path, seed: int = SUITE_SEED) -> Dict[str, Any]:
     jobs = build_suite(seed)
     manifest = suite_manifest(jobs, seed)
     for job, entry in zip(jobs, manifest["jobs"]):
-        (target / entry["qasm_file"]).write_text(job.qasm, "ascii")
+        (target / entry["qasm_file"]).write_bytes(job.qasm.encode("ascii"))
     (target / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", "utf-8")
     return manifest
 
@@ -560,7 +560,9 @@ def load_suite_run(root: Path, seed: int = SUITE_SEED) -> SuiteRun:
         result = folder / "result.json"
         if not qasm.is_file() or not result.is_file():
             raise IntegrityError(f"{folder} needs circuit.qasm and result.json")
-        digest = _sha256_file(qasm)
+        # Compare the text, not the platform's line endings: a Windows
+        # checkout or writer may store the preregistered file with CRLF.
+        digest = hashlib.sha256(qasm.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
         if digest != job.sha256:
             raise IntegrityError(f"{qasm} has SHA-256 {digest}, preregistered {job.sha256}")
         payload = json.loads(result.read_text("utf-8"))

@@ -157,7 +157,7 @@ def cmd_collect(args: argparse.Namespace) -> int:
         # write the preregistered text so the evaluation can check the digest.
         qasm = out / "circuit.qasm"
         if not qasm.is_file():
-            qasm.write_text(suite[job_id].qasm, "ascii")
+            qasm.write_bytes(suite[job_id].qasm.encode("ascii"))
         job["status"] = "Completed"
     _save_state(args, state)
     print(f"{pending} job(s) still pending" if pending else "all submitted jobs have results")

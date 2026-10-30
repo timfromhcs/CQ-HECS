@@ -1,3 +1,5 @@
 # Vendored reference data is content-addressed: Git must not rewrite bytes.
 tests/data/quantum_noise_transfer/*.json -text
 tests/data/quantum_noise_transfer/SHA256SUMS -text
+research/v3/openquantum_suite/*.qasm -text
+research/v3/openquantum_suite/manifest.json -text

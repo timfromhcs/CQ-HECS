@@ -51,7 +51,7 @@ def _write_synthetic_run(root: Path, *, shots: int = 4000, seed: int = 7, revers
                 counts[key[::-1] if reverse else key] = int(count)
         folder = root / job.job_id
         folder.mkdir(parents=True)
-        (folder / "circuit.qasm").write_text(job.qasm, "ascii")
+        (folder / "circuit.qasm").write_bytes(job.qasm.encode("ascii"))
         (folder / "result.json").write_text(json.dumps({"counts": counts}), "utf-8")
         (folder / "job.json").write_text(
             json.dumps({"job": {"id": f"synthetic-{job.job_id}"}, "quote": {"backend": "synthetic:test"}}),
@@ -137,6 +137,12 @@ class IngestAndEvaluationTests(unittest.TestCase):
         (self.tmp / "OQ-06" / "circuit.qasm").write_text("OPENQASM 2.0;\n", "ascii")
         with self.assertRaises(IntegrityError):
             load_suite_run(self.tmp)
+
+    def test_crlf_copy_of_a_preregistered_circuit_is_accepted(self):
+        _write_synthetic_run(self.tmp)
+        qasm = self.tmp / "OQ-06" / "circuit.qasm"
+        qasm.write_bytes(qasm.read_bytes().replace(b"\n", b"\r\n"))
+        self.assertIn("OQ-06", load_suite_run(self.tmp).counts)
 
     def test_wrong_width_is_an_integrity_error(self):
         _write_synthetic_run(self.tmp)
