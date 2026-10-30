@@ -70,6 +70,7 @@ secrets/
 # Provider credentials and local-only runners (never commit)
 quantumrings.conf
 sdk-key-*.json
+apikey*.json
 oq.py
 .local/
 

@@ -1,0 +1,26 @@
+{
+  "dataset_id": "r-ibm-1",
+  "fixed_chain": [
+    98,
+    111,
+    110,
+    109,
+    118
+  ],
+  "job": {
+    "backend": "ibm_fez",
+    "id": "dbidem5ep8hs73ankcvg",
+    "status": "Completed"
+  },
+  "metadata": {
+    "job_id": "OQ-06",
+    "name": "bell",
+    "num_qubits": 2,
+    "qasm_sha256": "ae0cd142574796138ef95bd28378ae0a56b611999e3e31369cdacefe51a7b825",
+    "transpiled_depth": 8,
+    "transpiled_qasm_sha256": "f98f31f487640a4c08f5f627cc75d446e359a42e1498c9a944360e35e30965bf",
+    "transpiled_size": 12
+  },
+  "shots": 1000,
+  "transpiled_qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[156];\ncreg c[2];\nrz(pi/2) q[98];\nsx q[98];\nrz(pi/2) q[98];\nrz(pi/2) q[111];\nsx q[111];\nrz(pi/2) q[111];\ncz q[98],q[111];\nrz(pi/2) q[111];\nsx q[111];\nrz(pi/2) q[111];\nmeasure q[98] -> c[0];\nmeasure q[111] -> c[1];"
+}

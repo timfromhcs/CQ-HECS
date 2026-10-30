@@ -86,6 +86,20 @@ Bernstein–Vazirani, Deutsch–Jozsa and a depth-30 mirror. Every total-variati
 distance is below the 99th percentile of 400 finite-shot resamples from the
 exact CQ-HECS distribution. QuantumRings is a classical simulator, not a QPU.
 
+## 5.1 Fresh backend: IBM `ibm_fez`
+
+The same 25 pinned circuits ran externally on IBM Quantum `ibm_fez` (job
+`dbidem5ep8hs73ankcvg`, 1000 shots, 9 s QPU time):
+
+- H-V3-8: **`SUPPORTED`**, median ΔTV −0.036642, 95 % CI [−0.045217, −0.027301],
+  20/20 EVAL jobs closer than ideal.
+- The corrected M-FIT-2 found **no anomaly**; qubit 0 is healthy
+  (`OQ-03 = 0.994`). The 0.531 flip is Rigetti-specific.
+- M-FIT-2 vs M-FIT: +0.001688, CI [+0.000327, +0.004045], 5/20 → slightly
+  worse than the frozen mean. H-V3-9 remains not supported.
+
+Evidence: `research/v4/evidence/ibm/`.
+
 ## 6. Verification
 
 Run by CI on the final commit: Python suite, CTest, source mutation gate,

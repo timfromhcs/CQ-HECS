@@ -1,0 +1,85 @@
+{
+  "backend": "ibm_kingston",
+  "circuits": [
+    {
+      "job_id": "OQ-01",
+      "name": "readout_zero_5",
+      "num_qubits": 5,
+      "qasm_sha256": "b65b54d3a7031b353a041788273202baa8e80c27df294de13b685228af9e4d84",
+      "transpiled_depth": 1,
+      "transpiled_qasm_sha256": "00808edee9e860e51b85faf2b71a721244878d025097c80cf2a54ce275a09e81",
+      "transpiled_size": 5
+    },
+    {
+      "job_id": "OQ-02",
+      "name": "readout_one_5",
+      "num_qubits": 5,
+      "qasm_sha256": "ad5800f335c3c1b22ba199e42727ecdbbdbcd5103b9d848f223e79fa1506080b",
+      "transpiled_depth": 2,
+      "transpiled_qasm_sha256": "4ca91ec07bd738abd423a55638d204e43b93a081645ac6c3da2476a9434877aa",
+      "transpiled_size": 10
+    },
+    {
+      "job_id": "OQ-03",
+      "name": "bitorder_q0_5",
+      "num_qubits": 5,
+      "qasm_sha256": "ddd4df5a558580621105ccf817bbd4cb8f3f3ef656828af82ac559ad301b8f50",
+      "transpiled_depth": 2,
+      "transpiled_qasm_sha256": "3ebc70c7d37b416481d334e07ab3ed863af9264f19b738658204e82f0849cdc6",
+      "transpiled_size": 6
+    },
+    {
+      "job_id": "OQ-09",
+      "name": "ghz5",
+      "num_qubits": 5,
+      "qasm_sha256": "1b3fe915e5bc20df69da445ce63878f08cd4479da656d743a5838f229753135e",
+      "transpiled_depth": 20,
+      "transpiled_qasm_sha256": "a936b86263815a0e9677fedc4eda12a293f18ac51841ea56f09a9d108ff2f607",
+      "transpiled_size": 36
+    }
+  ],
+  "dataset_id": "r-ibm-1",
+  "fixed_chain": [
+    110,
+    109,
+    118,
+    129,
+    128
+  ],
+  "generated_utc": "2026-10-30T17:42:33Z",
+  "job_id": "dbiddvohoj4c73b5vkhg",
+  "mode": "pilot",
+  "note": "External IBM Quantum run, not an execution by the cqhecs package. The 25 circuits are the SHA-256-pinned r-io-7 circuits; the fixed physical chain makes logical qubit q map to the same physical qubit in every job. Calibration is stored when the backend exposes it.",
+  "num_qubits_backend": 156,
+  "schema_version": "1.0",
+  "shots": 1000,
+  "usage_after": {
+    "instance_id": "crn:v1:bluemix:public:quantum-computing:us-east:a/2572464dc3cb461b9f4af9a375cdb5af:cc2dcabc-6799-4671-9a98-f04dc20da287::",
+    "plan_id": "850b21a7-71de-4e53-9441-1abdd202f35d",
+    "usage_consumed_ru": 0.045883,
+    "usage_consumed_seconds": 3,
+    "usage_limit_reached": false,
+    "usage_limit_ru": 10.0002,
+    "usage_limit_seconds": 600,
+    "usage_period": {
+      "end_time": "2026-10-30T17:42:32.041Z",
+      "start_time": "2026-10-02T17:42:32.041Z"
+    },
+    "usage_remaining_seconds": 597
+  },
+  "usage_before": {
+    "instance_id": "crn:v1:bluemix:public:quantum-computing:us-east:a/2572464dc3cb461b9f4af9a375cdb5af:cc2dcabc-6799-4671-9a98-f04dc20da287::",
+    "plan_id": "850b21a7-71de-4e53-9441-1abdd202f35d",
+    "usage_consumed_ru": 0,
+    "usage_consumed_seconds": 0,
+    "usage_limit_reached": false,
+    "usage_limit_ru": 10.0002,
+    "usage_limit_seconds": 600,
+    "usage_period": {
+      "end_time": "2026-10-30T17:42:18.424Z",
+      "start_time": "2026-10-02T17:42:18.424Z"
+    },
+    "usage_remaining_seconds": 600
+  },
+  "wall_seconds": 9.370779275894165
+}

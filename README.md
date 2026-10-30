@@ -46,10 +46,9 @@ Four classical simulation paths · one result contract · fail-closed by design
 >    comparison with `M-FIT` is −0.0265, CI [−0.0413, +0.0207], so H-V3-9
 >    remains not supported.
 >
-> The release tree passes **615 Python tests** in the Linux native CI lane
-> (611 locally on Windows with four optional skips), **21/21 CTest**,
-> **40/40 source mutants**, a **12-check metamorphic self-test**, and the
-> independent oracle **21/21**.
+> The release tree passes **618 Python tests** (0 skipped, 1 opt-in slow
+> gate), **21/21 CTest**, **40/40 source mutants**, a **12-check metamorphic
+> self-test**, and the independent oracle **21/21**.
 >
 > **First measured QPU data (complete):** all 25 preregistered `r-io-7` jobs
 > ran on `rigetti:cepheus-1-108q` on 2026-10-30. H-V3-8 returns
@@ -57,6 +56,14 @@ Four classical simulation paths · one result contract · fail-closed by design
 > A five-job, 100-shot IonQ pilot and a 200-shot identification batch spent the
 > two 25-credit Spark balances; both were **queued** as of 2026-10-30 and are
 > not confirmation runs.
+>
+> **Fresh backend (IBM):** the same 25 pinned circuits also ran on `ibm_fez`
+> (156 qubits, job `dbidem5ep8hs73ankcvg`, 1000 shots, 9 s QPU time). H-V3-8 is
+> **`SUPPORTED`** again: median ΔTV −0.036642, 95 % CI [−0.045217, −0.027301],
+> 20/20. The corrected `M-FIT-2` found **no anomaly** — `OQ-03` gives 0.994 on
+> qubit 0 — so the 0.531 flip is Rigetti-specific. On IBM it is slightly worse
+> than `M-FIT` (+0.001688, CI [+0.000327, +0.004045]); H-V3-9 remains not
+> supported.
 >
 > **Not claimed:** universal quantum simulation, real-QPU execution *by this
 > package*, cross-vendor GPU acceleration, SOTA performance, a proof of
@@ -133,7 +140,7 @@ That rule is enforced in code, not only in documentation:
 | **Public surfaces** | `cq-hecs` CLI, `cq-hecs studio`, Qiskit `BackendV2`, Python API, C ABI, SAT engine |
 | **Simulation paths** | A: stabilizer tableau · B: stabilizer rank · C: untruncated MPS · D: sparse Pauli |
 | **Noise** | Typed profiles, Kraus channels, exact float64 density matrix up to 10 qubits |
-| **Verification** | 615 Python tests (Linux native CI), 21 CTest, 40 mutants, 12-check selftest, 12 SPIR-V shaders, 21/21 independent oracle |
+| **Verification** | 618 Python tests, 21 CTest, 40 mutants, 12-check selftest, 12 SPIR-V shaders, 21/21 independent oracle |
 | **Platforms** | Linux x64, Windows 10/11; Python 3.11–3.14 |
 | **License** | Apache-2.0 |
 
@@ -557,7 +564,7 @@ performance claims. The release audit records the exact SHA and CI runs.
 
 | Gate | Result |
 | :--- | :--- |
-| Python suite | **615 passed**, 0 skipped, 1 opt-in `slow` gate (Linux native CI; 611 passed + 4 optional skips locally) |
+| Python suite | **618 passed**, 0 skipped, 1 opt-in `slow` gate |
 | Branch coverage | **84 %** measured locally on this tree (v3.0.0 release audit: 86 %) |
 | CTest (native) | **21/21**, including a `WILL_FAIL` meta-test proving checks run in Release builds |
 | Source mutation | **40/40** killed |
@@ -661,6 +668,7 @@ tied to a source SHA and records `PASS`, `FAIL`, `SKIP`, `BLOCKED`, and
 | [`research/v4/FINDINGS.md`](research/v4/FINDINGS.md) | corrected `OQ-02` identification, M-FIT-2, independent oracle, SAT surface |
 | [`research/v4/COMPLEXITY_AND_ETH.md`](research/v4/COMPLEXITY_AND_ETH.md) | `P` vs `NP`, ETH/SETH, OpenAI math corpus, non-claims |
 | [`research/v4/evidence/quantumrings/`](research/v4/evidence/quantumrings/) | `r-qr-1`: 21/21 independent-engine cross-check |
+| [`research/v4/evidence/ibm/`](research/v4/evidence/ibm/) | the same 25 circuits on IBM `ibm_fez`; H-V3-8 SUPPORTED on a fresh backend |
 | [`research/v4/evidence/openquantum_pilot/`](research/v4/evidence/openquantum_pilot/) | `r-qpu-pilot-1`: IonQ probe batches and collection status |
 | [`research/v2_5_2/RELEASE_AUDIT.md`](research/v2_5_2/RELEASE_AUDIT.md) | v2.5.2 release audit and artifact hashes |
 | [`research/v3/V3_STABLE_PLAN.md`](research/v3/V3_STABLE_PLAN.md) | v3 plan, workstreams, gates |
@@ -754,6 +762,32 @@ description, not a proven better predictor than the frozen mean on this suite.
 The model is post-hoc and exploratory; confirmation needs a fresh backend and a
 fresh split.
 
+### Fresh backend: the same suite on IBM `ibm_fez`
+
+After the Rigetti analysis, the same 25 pinned circuits were run externally on
+IBM Quantum `ibm_fez` (156 qubits, open plan, job
+`dbidem5ep8hs73ankcvg`, 1000 shots, 9 s QPU time). A fixed physical chain
+`[98, 111, 110, 109, 118]` keeps logical qubit q on the same physical qubit in
+every job, and the bit-order probe returned `00001`.
+
+| Quantity | IBM `ibm_fez` |
+| :--- | :--- |
+| H-V3-8 | **`SUPPORTED`** |
+| Median ΔTV (M-FIT − ideal) | **−0.036642** |
+| 95 % bootstrap CI | **[−0.045217, −0.027301]** |
+| EVAL jobs where M-FIT is closer | **20/20** |
+| Corrected M-FIT-2 anomalies | **none** |
+| M-FIT-2 vs ideal | −0.032766, CI [−0.044632, −0.023821], 20/20 |
+| M-FIT-2 vs M-FIT | +0.001688, CI [+0.000327, +0.004045], 5/20 |
+
+The 0.531 flip does **not** reproduce: `OQ-01` gives `P(1|0) = 0.001`, `OQ-02`
+gives `P(1) = 0.989`, `OQ-03` gives `P(1) = 0.994` and `OQ-09` gives
+`P(1) = 0.496`. The anomaly is Rigetti-specific, and the corrected per-qubit
+model is slightly worse than the frozen mean on this healthy backend. H-V3-9
+remains not supported. Unlike the Rigetti run, IBM exposed backend properties;
+they are stored as `calibration.json`. Evidence:
+[`research/v4/evidence/ibm/`](research/v4/evidence/ibm/).
+
 A five-job, 100-shot IonQ pilot (`r-qpu-pilot-1`) spent the remaining 25 Spark
 credits on the qubit-0 question; a second batch (`OQ-01`/`OQ-03` at 200 shots,
 `OQ-02` at 100) spent another 25. Both batches were **queued** as of
@@ -761,10 +795,12 @@ credits on the qubit-0 question; a second batch (`OQ-01`/`OQ-03` at 200 shots,
 See
 [`research/v4/evidence/openquantum_pilot/`](research/v4/evidence/openquantum_pilot/).
 
-No calibration snapshot was delivered for any job (`calibration_data_url` was
-null), so nothing here constrains T1/T2. The raw counts are pinned in
-[`research/v3/evidence/openquantum/`](research/v3/evidence/openquantum/), and
-the corrected fit is in
+No calibration snapshot was delivered for any Rigetti job
+(`calibration_data_url` was null), so nothing there constrains T1/T2. The IBM
+run does include backend properties. The raw counts are pinned in
+[`research/v3/evidence/openquantum/`](research/v3/evidence/openquantum/) and
+[`research/v4/evidence/ibm/`](research/v4/evidence/ibm/), and the corrected
+Rigetti fit is in
 [`research/v4/evidence/r-io-7/`](research/v4/evidence/r-io-7/).
 
 ---

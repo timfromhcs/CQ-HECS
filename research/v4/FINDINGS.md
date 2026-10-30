@@ -50,6 +50,27 @@ The fit does **not** claim a 1-qubit gate error: on the padded GHZ jobs a
 uniform 1q depolarizing term is collinear with the CX term. The model keeps it
 at zero and says so in `identifiability.one_qubit_gate_error`.
 
+## 2.1 Fresh backend: IBM `ibm_fez`
+
+The same 25 pinned circuits were run externally on IBM Quantum `ibm_fez`
+(156 qubits, open plan, job `dbidem5ep8hs73ankcvg`, 1000 shots, 9 s QPU time).
+A fixed physical chain `[98, 111, 110, 109, 118]` keeps logical qubit q on the
+same physical qubit in every job. The bit-order probe returned `00001`.
+
+- `H-V3-8`: **`SUPPORTED`**, median ΔTV −0.036642, 95 % CI
+  [−0.045217, −0.027301], **20/20** EVAL jobs closer than ideal.
+- Corrected `M-FIT-2`: **no anomaly** was detected. `OQ-01` gives
+  `P(1|0) = 0.001`, `OQ-02` gives `P(1) = 0.989`, `OQ-03` gives `P(1) = 0.994`
+  and `OQ-09` gives `P(1) = 0.496`. The 0.531 flip is **Rigetti-specific**,
+  not a universal readout property.
+- `M-FIT-2` vs ideal: −0.032766, CI [−0.044632, −0.023821], 20/20.
+- `M-FIT-2` vs `M-FIT`: **+0.001688**, CI [+0.000327, +0.004045], 5/20 →
+  `M-FIT-2` is slightly worse than the frozen mean on this healthy backend.
+
+The per-qubit procedure did not transfer a benefit to a backend without the
+`X` anomaly. H-V3-9 remains not supported. Evidence:
+`research/v4/evidence/ibm/ibm_fez/`.
+
 ## 3. Independent oracle: 21/21 circuits agree with QuantumRings
 
 QuantumRings is a classical simulator (CPU backend here), not a QPU. It is used

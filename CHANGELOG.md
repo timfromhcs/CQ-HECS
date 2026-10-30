@@ -28,6 +28,12 @@ verdict.
   widths 2-128, cross-checked against the independent QuantumRings simulator;
   21/21 pass within finite-shot noise.
 - `scripts/build_studio_data.py` writes the verified packaged Studio snapshot.
+- External IBM Quantum run of the same 25 pinned circuits on `ibm_fez`
+  (job `dbidem5ep8hs73ankcvg`, 1000 shots, 9 s QPU time): H-V3-8 is
+  `SUPPORTED` again (median ΔTV −0.036642, 95 % CI [−0.045217, −0.027301],
+  20/20). The corrected M-FIT-2 finds no anomaly and is slightly worse than
+  M-FIT on this backend; H-V3-9 remains not supported. Evidence:
+  `research/v4/evidence/ibm/`.
 - `scripts/collect_openquantum_pilot.py` and `r-qpu-pilot-1`: a five-job,
   100-shot IonQ pilot and a 200-shot identification batch that spent the two
   25-credit Spark balances. Both were queued as of 2026-10-30; they are not the
