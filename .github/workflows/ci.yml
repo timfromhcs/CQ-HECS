@@ -52,9 +52,6 @@ jobs:
       - name: Audit for silent truncation
         run: python scripts/verify_no_silent_truncation.py
 
-      - name: Metamorphic installation self-test
-        run: python -m cqhecs.cli selftest --cases 4
-
       - name: Build wheel and sdist
         run: |
           python -m build
@@ -160,6 +157,11 @@ jobs:
         env:
           PYTHONPATH: .
         run: python scripts/run_mutation_tests.py
+
+      - name: Metamorphic installation self-test
+        env:
+          PYTHONPATH: .
+        run: python -m cqhecs.cli selftest --cases 4
 
       - name: Upload Linux test evidence
         if: always()
