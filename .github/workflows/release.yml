@@ -4,13 +4,57 @@ on:
   push:
     tags:
       - 'v*'
+    # A push to main releases the canonical version once: when no tag
+    # v<scripts/version.py> exists yet, the release job creates it on the
+    # pushed commit after its CI is green. Otherwise the run is a no-op.
+    branches:
+      - main
 
 permissions:
   contents: read
 
+concurrency:
+  group: release-pipeline
+  cancel-in-progress: false
+
 jobs:
+  resolve-tag:
+    name: Resolve release tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      publish: ${{ steps.tag.outputs.publish }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Decide tag and whether to publish
+        id: tag
+        run: |
+          set -euo pipefail
+          VERSION="$(python3 scripts/version.py)"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          TAG="v${VERSION}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null; then
+            echo "${TAG} already exists; nothing to release from this push"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "${TAG} does not exist; releasing ${GITHUB_SHA}"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
   verify-required-ci:
     name: Require green CI for the tagged SHA
+    needs: resolve-tag
+    if: needs.resolve-tag.outputs.publish == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 75
     permissions:
@@ -83,7 +127,8 @@ jobs:
 
   release:
     name: Build and Publish Release
-    needs: verify-required-ci
+    needs: [resolve-tag, verify-required-ci]
+    if: needs.resolve-tag.outputs.publish == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -107,7 +152,7 @@ jobs:
         id: meta
         run: |
           set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
+          TAG="${{ needs.resolve-tag.outputs.tag }}"
           VERSION="$(python scripts/version.py)"
           echo "tag=$TAG canonical=$VERSION"
           if [ "$TAG" != "v$VERSION" ]; then
@@ -212,6 +257,10 @@ jobs:
             dist/sha256sums.txt
             dist/cqhecs-sbom.spdx.json
             dist/RELEASE_NOTES_v${{ steps.meta.outputs.version }}.md
+          # On a main push the tag does not exist yet; the release API creates
+          # it on exactly the commit whose CI was verified above.
+          tag_name: ${{ needs.resolve-tag.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           generate_release_notes: false
           draft: false
           prerelease: false

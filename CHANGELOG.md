@@ -46,6 +46,13 @@ recorded in `research/v2_5_1/FINDINGS.md`.
 - **CLI:** an unknown `--profile` name and a topology violation are usage
   errors (exit `2`, JSON `error` field) instead of a traceback with exit `1`.
 
+### Release pipeline
+
+- `release.yml` also runs on pushes to `main`. When no tag
+  `v<scripts/version.py>` exists, it waits for green `ci.yml` on the pushed
+  commit and then creates the tag and the release on exactly that commit;
+  when the tag exists the run does nothing. Tag pushes work as before.
+
 ### Tests
 
 - `tests/test_noisy_density_matrix_contract.py` (18 tests): exact differential
