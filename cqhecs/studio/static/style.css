@@ -228,7 +228,7 @@ pre { background: rgba(8, 12, 23, .7); border: 1px solid var(--line); border-rad
 .foot { display: flex; flex-wrap: wrap; gap: 18px; color: #5d7099; font-size: 11px; border-top: 1px solid var(--line); padding-top: 16px; margin-top: 8px; }
 
 .legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); font-size: 11px; margin: 4px 0 10px; }
-.legend span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; background: var(--cyan); }
+.legend span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; background: var(--c, var(--cyan)); }
 .legend span.mfit::before { background: var(--amber); }
 .legend span.ideal::before { background: #5d7099; }
 .legend span.measured::before { background: var(--green); }
