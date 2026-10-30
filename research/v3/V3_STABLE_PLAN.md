@@ -24,14 +24,29 @@ data is reported as such and blocks the claim, not the measurement.
 | **R-IO-3** | "Phase transition in Random Circuit Sampling", Zenodo 11663206 | Sycamore RCS circuits and `measurements_*.txt` bitstrings | to verify | **no** — `zenodo.org` denied | Second RCS reference |
 | R-IO-4 | IEEE DataPort (IBM Sherbrooke teleportation, 292 runs × 4096 shots; IBM/Rigetti histograms, 1183 runs) | Real counts, IBM job IDs | to verify; may need login | **no** — `ieee-dataport.org` denied | Optional |
 
+### Hugging Face Hub (searched 2026-10-30 via the Hub API)
+
+| ID | Dataset | Real content | Licence | Usable for |
+|---|---|---|---|---|
+| **R-IO-5** | [`sahilfarib/quantum-noise-transfer`](https://hf.co/datasets/sahilfarib/quantum-noise-transfer) (arXiv:2604.24397) | Real raw counts from `ibm_fez` (job `d7gh5li2khts739ogh20`, 2026-04-16) and `ibm_marrakesh`, 85 circuits each (40 random, 15 Bell, 15 GHZ, 15 QFT, 2–5 qubits), device calibration snapshots (`calibration_A/B.json`, 156 qubits), ideal distributions | MIT | **Partial only.** The circuits are not published: `circuit_meta.json` has gate *counts* only (no angles, no qubit assignment, no physical layout), QFT has no input state, and the "ideal" distributions are themselves sampled (values like 0.0003). Raw counts sum to 1024 per circuit although the README says 8192 shots. Only Bell/GHZ are reconstructible (ideal output known analytically); without the physical layout only device-mean calibration can be used. |
+| R-CAL-2 | [`phanerozoic/qiskit-calibration-drift`](https://hf.co/datasets/phanerozoic/qiskit-calibration-drift) | 30.1 M rows of IBM Heron calibration values (`backend.properties()` every 30 min, `is_failure_ceiling` flag, calibration age) joined with weather/space-weather data; updated daily | CC-BY-4.0 | Calibration history and staleness for W1 (choose the snapshot valid at a job's run time); no counts |
+| — | `LightRiderInc/random-quantum-circuits`, `…/random-circuits-8q-rigetti` | 500 circuits each (QASM + JSON); tagged `synthetic`, the hardware only provided a random seed | CC-BY-4.0 | Circuit families only; no measured outputs |
+| — | `merileijona/quantum-circuits-8k/21k`, `racineai/VDR_*`, `Neura-parse/*`, `Qiskit/qiskit_humaneval*` | text / code / image corpora for LLMs | various | not relevant |
+
+`huggingface.co` is also denied by this environment's network policy for
+direct downloads (the Hub API connector can read text excerpts only).
+
 Contents of R-IO-* are taken from search-result snippets of the record pages;
 they must be confirmed by downloading and reading the README before any use.
 The datasets are not committed to the repository unless their licence permits
 redistribution; otherwise tests download them by DOI/URL and pin SHA-256.
 
-**Blocker B-NET:** v3 Stable needs at least one R-IO dataset. The operator
-must add `zenodo.org` and `datadryad.org` to the environment's allowed
-domains (cloud environment settings → Network access).
+**Blocker B-NET:** v3 Stable needs at least one R-IO dataset with complete
+circuits. The operator must add `zenodo.org`, `datadryad.org` and
+`huggingface.co` to the environment's allowed domains (cloud environment
+settings → Network access). R-IO-5 alone is not sufficient for V3-D because
+its circuits are not published; it can serve as a supplementary Bell/GHZ
+check.
 
 ### Measured facts about R-CAL (drive the import design)
 
