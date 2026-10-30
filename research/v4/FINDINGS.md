@@ -71,20 +71,23 @@ The per-qubit procedure did not transfer a benefit to a backend without the
 `X` anomaly. H-V3-9 remains not supported. Evidence:
 `research/v4/evidence/ibm/ibm_fez/`.
 
-## 2.1b 10k-shot multi-backend rerun
+## 2.1.1 10,000-shot replication on three IBM backends
 
-The same 25 circuits were rerun at 10,000 shots on three IBM backends. No
-retuning was performed after the counts.
+The same 25 pinned circuits ran at 10,000 shots each on `ibm_fez`,
+`ibm_kingston` and `ibm_marrakesh` (fixed physical chain per backend; bit-order
+probe `00001` on all three). Same bootstrap as above (5000, seed 20261030).
 
-| backend | H-V3-8 | median ΔTV | 95 % CI | M-FIT-2 vs M-FIT |
-| :--- | :--- | ---: | ---: | :--- |
-| `ibm_fez` | SUPPORTED | −0.032936 | [−0.038172, −0.023337] | inconclusive (median −0.00048) |
-| `ibm_kingston` | SUPPORTED | −0.027127 | [−0.031653, −0.019508] | inconclusive (median +0.00030) |
-| `ibm_marrakesh` | SUPPORTED | −0.027340 | [−0.041416, −0.021543] | inconclusive (median −0.00055) |
+| backend | IBM job | H-V3-8 | median ΔTV | 95 % CI | closer | M-FIT-2 vs M-FIT |
+| :--- | :--- | :--- | ---: | ---: | ---: | :--- |
+| `ibm_fez` | `dbie7sg1h92s73839ekg` | SUPPORTED | −0.032936 | [−0.038172, −0.023337] | 20/20 | −0.000481, CI [−0.001603, +0.000856] |
+| `ibm_kingston` | `dbie9go1h92s73839i8g` | SUPPORTED | −0.027127 | [−0.031653, −0.019508] | 20/20 | +0.000296, CI [−0.000050, +0.001095] |
+| `ibm_marrakesh` | `dbie8l6ne4hc73bedhl0` | SUPPORTED | −0.027340 | [−0.041416, −0.021543] | 20/20 | −0.000550, CI [−0.003546, +0.001036] |
 
-No backend shows an anomalous qubit; M-FIT-2 is never significantly better than
-the frozen mean. Evidence:
-`research/v4/evidence/ibm_10k/summary_evaluation.json`.
+The frozen `M-FIT` beats the ideal model on every backend. `M-FIT-2` is
+indistinguishable from `M-FIT` on all three (every CI contains 0) and found no
+anomaly, consistent with the 1k `ibm_fez` run. H-V3-9 remains not supported.
+Reproduce with `python scripts/evaluate_ibm_10k.py`; evidence and the
+cross-backend `summary_evaluation.json` are in `research/v4/evidence/ibm_10k/`.
 
 ## 2.2 Finite SAT and universal-oracle probes
 

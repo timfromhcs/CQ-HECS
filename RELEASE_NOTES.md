@@ -1,11 +1,11 @@
 # CQ-HECS Release Notes
 
-**Version:** 3.1.0
+**Version:** 3.2.0
 **Release date:** 2026-10-30
 **License:** Apache 2.0
 **Repository:** [https://github.com/timfromhcs/CQ-HECS](https://github.com/timfromhcs/CQ-HECS)
 
-> The release workflow copies this file to `dist/RELEASE_NOTES_v3.1.0.md`,
+> The release workflow copies this file to `dist/RELEASE_NOTES_v3.2.0.md`,
 > prepends the exact source commit and required CI run, and appends the SHA256
 > values of the final assets.
 
@@ -13,80 +13,71 @@
 
 ## 1. What this release is
 
-`v3.1.0` is a feature release on the v3.0.0 Stable base. It adds four measured
-surfaces and does not change the frozen `M-FIT` verdict:
+`v3.2.0` is a stable feature release on the v3.1.0 base. It adds:
 
-1. **CQ-HECS Studio** — a loopback-only experiment UI (`cq-hecs studio`).
-2. **A standalone sound SAT surface** — `cq-hecs sat solve|sweep`.
-3. **An independent-engine cross-check** — 21 noiseless circuits against the
-   QuantumRings simulator; 21/21 pass within finite-shot noise.
-4. **A corrected `M-FIT-2` identification** — the 0.531 qubit-0 marginal in
-   `OQ-02` is an `X`-gate anomaly, not readout error.
+1. **An MCP server** — `cq-hecs mcp`, newline-delimited JSON-RPC over stdio,
+   no network listener, tools for run/analyze/SAT/models/hardware.
+2. **SAT model enumeration and exact MaxSAT** — `cq-hecs sat models|maxsat`.
+3. **A Studio Hardware lab** — every committed real-QPU evaluation and the
+   finite P-vs-NP probes in one view (`/api/hardware`).
+4. **A multi-backend 10,000-shot replication** — the pinned 25-circuit suite on
+   three IBM backends, all `H-V3-8 SUPPORTED`.
+5. **A standalone Windows build** — `cqhecs-3.2.0-windows-x64.zip`
+   (PyInstaller onedir), smoke-tested outside the repository.
 
-No new simulation path and no performance claim.
+No new simulation path and no performance claim. The frozen `M-FIT` verdicts
+are unchanged.
 
-## 2. The corrected noise finding
+## 2. Multi-backend 10,000-shot replication
 
-v3.0.0 installed `OQ-02`'s 0.531 qubit-0 marginal as a readout matrix. The
-probes disagree:
+The same 25 pinned `r-io-7` circuits ran externally on three IBM Quantum
+backends at 10,000 shots per circuit, on a fixed physical chain per backend.
+Every bit-order probe returned `00001`. Bootstrap: 5000 resamples, seed
+20261030, circuits resampled.
 
-| probe | circuit | qubit-0 marginal |
-| :--- | :--- | ---: |
-| `OQ-01` | `X` twice (identity) | `P(1) = 0.070` |
-| `OQ-02` | `X` on all five | `P(1) = 0.469` |
-| `OQ-03` | `X` on qubit 0 only | `P(1) = 0.507` |
-| `OQ-09` | GHZ-5, no `X` | `P(1) = 0.486` |
+| backend | IBM job | H-V3-8 | median ΔTV | 95 % CI | closer |
+| :--- | :--- | :--- | ---: | ---: | ---: |
+| `ibm_fez` | `dbie7sg1h92s73839ekg` | **SUPPORTED** | −0.032936 | [−0.038172, −0.023337] | 20/20 |
+| `ibm_kingston` | `dbie9go1h92s73839i8g` | **SUPPORTED** | −0.027127 | [−0.031653, −0.019508] | 20/20 |
+| `ibm_marrakesh` | `dbie8l6ne4hc73bedhl0` | **SUPPORTED** | −0.027340 | [−0.041416, −0.021543] | 20/20 |
 
-A readout matrix would depress `OQ-09`; it does not. The corrected fit uses
-`p10[0] = 0.03` and an `X` bit-flip of 0.536.
+Post-hoc `M-FIT-2` vs the frozen `M-FIT`: median −0.000481 / +0.000296 /
+−0.000550; every 95 % CI contains 0 → **inconclusive** on all three. No
+`X`-gate anomaly was detected on any IBM backend; the 0.531 flip remains
+Rigetti-specific. H-V3-9 (“M-FIT-2 beats M-FIT”) remains **not supported**.
 
-| model | FIT TV | EVAL ΔTV vs ideal | 95 % CI | jobs closer |
-| :--- | ---: | ---: | ---: | ---: |
-| `M-FIT` (frozen) | 0.228625 | −0.071905 | [−0.135899, −0.006703] | 14/20 |
-| `M-FIT-2` (corrected) | **0.120899** | **−0.105360** | [−0.132644, −0.042472] | **16/20** |
+Reproduce: `python scripts/evaluate_ibm_10k.py` (no QPU access needed).
+Evidence: `research/v4/evidence/ibm_10k/`.
 
-Against `M-FIT` the paired median is −0.026455, 95 % CI
-[−0.041286, +0.020742], so H-V3-9 (“M-FIT-2 beats M-FIT”) remains **not
-supported**. `M-FIT-2` is post-hoc and exploratory; confirmation needs a fresh
-backend and split.
-
-## 3. Studio
-
-```bash
-cq-hecs studio
-# http://127.0.0.1:8765/
-```
-
-- Circuit lab: QASM or preset, forced path, ideal / `M-FIT` / `M-FIT-2`.
-- Noise lab: per-qubit parameters, FIT residual, per-job measured-vs-model ΔTV,
-  and a CX override.
-- SAT lab: sound verdicts and a random-3-SAT sweep.
-- Evidence: all 25 `r-io-7` jobs with circuit digests and provider job IDs.
-- Research: `P` vs `NP`, ETH, OpenAI math, with non-claims.
-
-The server uses only the standard library and the existing package. It binds to
-loopback, serves only bundled files, and never reads credentials. See
-`docs/STUDIO.md`.
-
-## 4. SAT semantics
-
-The standalone surface (`cqhecs.sat`, `cq-hecs sat`) reports:
+## 3. SAT surface
 
 - `SAT`: a model was found and verified clause by clause;
 - `UNSAT`: exhaustive search finished; no proof object is produced;
 - `UNKNOWN`: timeout or node budget; never reported as `UNSAT`.
+- `models`: `COMPLETE` only when the solver showed no further model exists;
+  `LIMIT` and `TIMEOUT` are reported explicitly. Cross-checked against brute
+  force on random formulas.
+- `maxsat`: exact weighted MaxSAT by exhaustive enumeration, **refuses above
+  20 variables**. It is not a scalable MaxSAT solver.
 
-The native bridge (`python_bridge.sat_engine`) keeps its v3.0.0
-`SAT_VERIFIED`/`UNSAT_PROVEN`/`TIMEOUT_UNKNOWN` vocabulary.
+## 4. Standalone executable
 
-## 5. Independent oracle
+`cqhecs-3.2.0-windows-x64.zip` contains `cq-hecs/cq-hecs.exe` and its
+`_internal/` runtime (Python, NumPy, Qiskit, Qiskit Aer, Studio assets and the
+packaged `r-io-7` snapshot). It is a convenience build of the same package,
+not a second implementation. `scripts/build_exe.ps1` builds it and fails
+unless `version`, `sat solve`, `run name:bell` and the Studio `/api/health`
+smoke tests pass. The one-file mode is not used: a 518 MB one-file build failed
+to extract `bcrypt` at runtime.
+
+## 5. Independent oracle (from v3.1.0)
 
 `r-qr-1`: GHZ widths 2–128, QFT, Clifford+T, brickwork, Grover,
 Bernstein–Vazirani, Deutsch–Jozsa and a depth-30 mirror. Every total-variation
 distance is below the 99th percentile of 400 finite-shot resamples from the
 exact CQ-HECS distribution. QuantumRings is a classical simulator, not a QPU.
 
-## 5.1 Fresh backend: IBM `ibm_fez`
+## 5.1 First IBM run: `ibm_fez`, 1000 shots (from v3.1.0)
 
 The same 25 pinned circuits ran externally on IBM Quantum `ibm_fez` (job
 `dbidem5ep8hs73ankcvg`, 1000 shots, 9 s QPU time):
@@ -108,7 +99,10 @@ metamorphic self-test, static/package smoke, ASan/UBSan and the Python
 
 ## 7. Known limits
 
-- `M-FIT-2` is post-hoc; one backend, one day, 1000 shots per job.
+- `M-FIT-2` is post-hoc. The 10k replication is one suite, one day, on IBM
+  Heron backends only.
+- Exact MaxSAT refuses above 20 variables; `UNSAT` has no proof object.
+- The Windows build is x64 only and unsigned.
 - QuantumRings is a classical simulator, not a QPU.
 - The IonQ pilot is 100–200 shots and cannot evaluate H-V3-8.
 - No `P = NP` or ETH claim. A finite SAT sweep is not a lower bound.
@@ -117,14 +111,15 @@ metamorphic self-test, static/package smoke, ASan/UBSan and the Python
 ## 8. Install
 
 ```bash
-python -m pip install cqhecs-3.1.0-py3-none-any.whl
+python -m pip install cqhecs-3.2.0-py3-none-any.whl
 cq-hecs doctor
 cq-hecs studio
+cq-hecs mcp      # stdio MCP server
 ```
 
 ## 9. Documentation
 
-- `CHANGELOG.md` — `[3.1.0]` section.
+- `CHANGELOG.md` — `[3.2.0]` section.
 - `research/v4/FINDINGS.md` — corrected finding and reproductions.
 - `research/v4/COMPLEXITY_AND_ETH.md` — complexity boundaries.
 - `docs/STUDIO.md` — UI and HTTP API.

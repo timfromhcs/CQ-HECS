@@ -23,8 +23,16 @@ hardware lab in the Studio, and a standalone Windows executable.
   MaxSAT is deliberately capped at 20 variables and refuses above that.
 - Studio Hardware lab (`/api/hardware`): Rigetti, IBM `ibm_fez`, QuantumRings,
   exact-emulability and SAT-oracle evidence in one view.
-- Standalone `dist/cq-hecs.exe` build (`scripts/build_exe.ps1`) bundling the
-  CLI, Studio assets, MCP server and Qiskit backend.
+- Standalone Windows build (`scripts/build_exe.ps1`, PyInstaller onedir) shipped
+  as `cqhecs-3.2.0-windows-x64.zip`, bundling the CLI, Studio assets, MCP
+  server and Qiskit backend. The build fails unless its version, SAT, circuit
+  and Studio smoke tests pass.
+- 10,000-shot replication of the pinned 25-circuit suite on IBM `ibm_fez`,
+  `ibm_kingston` and `ibm_marrakesh`: H-V3-8 `SUPPORTED` on all three (20/20
+  EVAL jobs each); M-FIT-2 vs M-FIT inconclusive on all three; no anomaly.
+  `scripts/evaluate_ibm_10k.py` reproduces it from the committed counts.
+- Studio Hardware lab and the MCP `cqhecs_hardware` tool list every committed
+  evaluation with its shot count and jobs-closer ratio.
 - `scripts/run_ibm_universal_probes.py`, `scripts/run_ibm_sat_oracles.py`,
   `scripts/pnp_emulability_check.py`, `scripts/pnp_sat_oracle_report.py`.
 - Finite P-vs-NP evidence: 8 universal probes match Qiskit Statevector at
@@ -34,8 +42,10 @@ hardware lab in the Studio, and a standalone Windows executable.
 
 ### Tests
 
-- MCP stdio contract, SAT model enumeration/MaxSAT, Studio hardware endpoint,
-  and P-vs-NP evidence integrity tests.
+- MCP stdio contract (incl. `cqhecs_sat_models`, `cqhecs_hardware`), SAT model
+  enumeration/MaxSAT cross-checked against brute force, Studio hardware rows,
+  10k IBM evidence integrity/reproducibility, P-vs-NP evidence integrity, and
+  an opt-in executable smoke test (`CQ_HECS_EXE`).
 
 ## [3.1.0] - 2026-10-30
 
