@@ -1,0 +1,28 @@
+{
+  "job": {
+    "calibration_data_url": null,
+    "execution_plan_id": "072f7eb6-574b-4bae-aafa-d3399c4abe7a",
+    "extra": {
+      "name": "OQ-09_ghz5"
+    },
+    "id": "c6ffca4f-3618-4e3a-baae-6329d28f4992",
+    "input_data_url": null,
+    "job_preparation_id": "f742a774-afe5-4b1e-84dc-d57291c750cf",
+    "message": null,
+    "output_data_url": null,
+    "queue_priority_id": "0f7b91a3-d1bf-46fb-af9c-55b77fa72bed",
+    "status": "Created",
+    "submitted_at": "2026-10-30T15:47:26.934Z",
+    "transaction_id": null
+  },
+  "quote": {
+    "backend": "ionq:forte-1",
+    "base_price": 5,
+    "execution_plan_id": "072f7eb6-574b-4bae-aafa-d3399c4abe7a",
+    "plan": "Public Plan",
+    "price_increase": 0,
+    "priority": "Standard Queue",
+    "queue_priority_id": "0f7b91a3-d1bf-46fb-af9c-55b77fa72bed",
+    "total_cost": 5
+  }
+}

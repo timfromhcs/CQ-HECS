@@ -39,25 +39,28 @@ class PerQubitReadoutTests(unittest.TestCase):
     """W3: the density-matrix path applies each qubit's own readout matrix."""
 
     def test_ghz5_matches_the_analytic_per_qubit_prediction(self):
-        model = PerQubitModel(MEASURED_P01, MEASURED_P10, 0.0)
+        # Qubit 0's OQ-02 marginal is an X-gate anomaly, so the fitted readout
+        # is p10[0] = 0.03 (not 0.531) plus an X bit-flip of ~0.536.
+        corrected_p10 = (0.03, 0.060, 0.059, 0.093, 0.077)
+        model = PerQubitModel(MEASURED_P01, corrected_p10, 0.0)
         simulated = simulate(_ghz5(), model.noise_model(_ghz5()))
         expected = np.zeros(32)
         for index in range(32):
             bits = [(index >> q) & 1 for q in range(5)]
             from_zero = np.prod([MEASURED_P01[q] if b else 1 - MEASURED_P01[q] for q, b in enumerate(bits)])
-            from_one = np.prod([1 - MEASURED_P10[q] if b else MEASURED_P10[q] for q, b in enumerate(bits)])
+            from_one = np.prod([1 - corrected_p10[q] if b else corrected_p10[q] for q, b in enumerate(bits)])
             expected[index] = 0.5 * from_zero + 0.5 * from_one
         np.testing.assert_allclose(simulated, expected, atol=1e-12)
-        # With P(0|1) = 0.531 on qubit 0, misreading it beats reading 11111.
-        self.assertGreater(simulated[0b11110], simulated[0b11111])
+        self.assertGreater(simulated[0b11111], simulated[0b11110])
 
     def test_per_qubit_model_differs_from_its_device_mean(self):
-        per_qubit = PerQubitModel(MEASURED_P01, MEASURED_P10, 0.0)
-        mean = FittedModel(float(np.mean(MEASURED_P01)), float(np.mean(MEASURED_P10)), 0.0,
-                           MEASURED_P01, MEASURED_P10, 0.0, ())
+        corrected_p10 = (0.03, 0.060, 0.059, 0.093, 0.077)
+        per_qubit = PerQubitModel(MEASURED_P01, corrected_p10, 0.0)
+        mean = FittedModel(float(np.mean(MEASURED_P01)), float(np.mean(corrected_p10)), 0.0,
+                           MEASURED_P01, corrected_p10, 0.0, ())
         a = simulate(_ghz5(), per_qubit.noise_model(_ghz5()))
         b = simulate(_ghz5(), mean.noise_model(_ghz5()))
-        self.assertGreater(0.5 * np.abs(a - b).sum(), 0.05)
+        self.assertGreater(0.5 * np.abs(a - b).sum(), 0.03)
 
 
 _SHARED = {}
@@ -79,10 +82,19 @@ class MeasuredProfileTests(unittest.TestCase):
         cls.document = _measured()["profile"]
 
     def test_readout_reproduces_the_measured_probes(self):
-        for row, p01, p10 in zip(self.document["readout"], MEASURED_P01, MEASURED_P10):
+        # p10 observed on OQ-02 is recorded, but qubit 0 is not installed as a
+        # readout matrix: OQ-03 shows the flip follows the X gate.
+        rows = self.document["readout"]
+        for row, p01, observed in zip(rows, MEASURED_P01, MEASURED_P10):
             self.assertAlmostEqual(row["p01"], p01, places=12)
-            self.assertAlmostEqual(row["p10"], p10, places=12)
-            self.assertAlmostEqual(row["p10_se"], np.sqrt(p10 * (1 - p10) / 1000), places=12)
+            self.assertAlmostEqual(row["p10_observed"], observed, places=12)
+            self.assertAlmostEqual(row["p01_se"], np.sqrt(p01 * (1 - p01) / 1000), places=12)
+        self.assertLess(rows[0]["p10"], 0.10)
+        self.assertGreater(rows[0]["x_bitflip"], 0.30)
+        self.assertEqual(rows[0]["p10_source"], "GHZ ladder (OQ-02 marginal is an X-gate anomaly)")
+        for row, observed in zip(rows[1:], MEASURED_P10[1:]):
+            self.assertAlmostEqual(row["p10"], observed, places=12)
+            self.assertEqual(row["x_bitflip"], 0.0)
 
     def test_profile_is_byte_identical_on_refit(self):
         # evaluate_exploratory fitted the same data independently.
@@ -122,8 +134,11 @@ class ExploratoryEvaluationTests(unittest.TestCase):
         self.assertEqual(payload["status"], "EXPLORATORY_POST_HOC")
         self.assertEqual(payload["vs_ideal"]["n"], 20)
         self.assertEqual(payload["calibration"]["status"], "absent")
-        # On r-io-7 the per-qubit transfer does not beat the frozen device-mean
-        # model: the probe jobs and the GHZ jobs did not share a layout.
+        # The corrected per-qubit transfer beats the ideal distribution on the
+        # held-out jobs. Against the frozen mean model the paired interval still
+        # includes zero, so that comparison stays inconclusive.
+        self.assertEqual(payload["vs_ideal"]["direction"], "M-FIT-2 better")
+        self.assertEqual(payload["vs_ideal"]["n_negative"], 16)
         self.assertNotEqual(payload["vs_m_fit"]["direction"], "M-FIT-2 better")
 
 

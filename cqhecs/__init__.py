@@ -7,7 +7,7 @@ D) Certified Classical Approximation (Sparse-Pauli-Dynamics) with proven error b
 Hardware-Aware Quantum Bridge: Truthful backend profiles, Kraus noise models, and provider boundaries
 """
 
-__version__ = "3.0.0"
+__version__ = "3.1.0"
 
 from cqhecs.backend import CQHecsBackend
 from cqhecs.provider import (
@@ -28,6 +28,7 @@ from cqhecs.hardware_bridge import (
     NoiseModel,
     NoiseChannel,
     DepolarizingChannel,
+    BitFlipChannel,
     AmplitudeDampingChannel,
     PhaseDampingChannel,
     TwoQubitDepolarizingChannel,
@@ -89,6 +90,7 @@ __all__ = [
     "NoiseModel",
     "NoiseChannel",
     "DepolarizingChannel",
+    "BitFlipChannel",
     "AmplitudeDampingChannel",
     "PhaseDampingChannel",
     "TwoQubitDepolarizingChannel",

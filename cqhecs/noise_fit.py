@@ -1,22 +1,29 @@
-"""
+﻿"""
 Fit a per-qubit noise profile from measured counts (EMULATOR_BUILD_PLAN W1, W4, W5).
 
-``r-io-7`` showed that readout, not gate error, dominates the measured
-distributions, and that it is strongly qubit-dependent (P(0|1) from 0.059 to
-0.531). The preregistered model ``M-FIT`` averages readout over qubits and is
-frozen; this module builds ``M-FIT-2`` next to it:
+The original v3.0.0 reading of ``OQ-02`` treated its qubit-0 marginal (53.1 %
+zeros) as a readout error. The probe circuits contradict that:
 
-* per-qubit, per-direction readout from the FIT probes (OQ-01, OQ-02), each
-  with its binomial standard error;
-* one CX depolarizing parameter fitted twice on OQ-04/OQ-05: once *without* a
-  readout model (the "uncorrected" number, which absorbs readout error into
-  the gate term) and once *with* the per-qubit readout model applied first
-  (the "readout-corrected" number). Both are reported; the correction is an
-  assumption, stated as such.
+* ``OQ-01`` (``X`` twice, identity) gives ``P(1|0) = 0.070``;
+* ``OQ-02`` (``X`` on all five) gives ``P(1) = 0.469`` on qubit 0;
+* ``OQ-03`` (``X`` on qubit 0 only) gives ``P(1) = 0.507``;
+* ``OQ-09`` (GHZ-5, no ``X``) gives ``P(1) = 0.486``.
 
-Everything here is post-hoc: the model was written after the 25 jobs were
-measured. Its EVAL score is a mechanism check, labelled
-``EXPLORATORY_POST_HOC``, never a confirmation of anything.
+A readout matrix would depress ``OQ-09`` too. It does not. The defect follows
+the ``X`` gate, so installing 0.531 as a readout probability over-corrects every
+GHZ circuit.
+
+``M-FIT-2`` therefore:
+
+* takes ``p01`` from ``OQ-01`` (no ``X`` error contributes);
+* takes ``p10`` from ``OQ-02`` for ordinary qubits;
+* fits ``p10`` for anomalous qubits on the padded GHZ jobs instead;
+* fits one CX depolarizing parameter on ``OQ-04``/``OQ-05``;
+* solves an ``X`` bit-flip probability from ``OQ-02``/``OQ-03``.
+
+Every departure from a direct readout interpretation is written into the
+profile. The model is post-hoc: it was written after the 25 jobs existed, so its
+EVAL score is a mechanism check, not a confirmation.
 """
 
 from __future__ import annotations
@@ -29,7 +36,7 @@ from typing import Any, Callable, Dict, List, Mapping, Sequence, Tuple
 
 import numpy as np
 
-from cqhecs.hardware_bridge import NoiseModel, TwoQubitDepolarizingChannel
+from cqhecs.hardware_bridge import BitFlipChannel, NoiseModel, TwoQubitDepolarizingChannel
 from cqhecs.openquantum_suite import (
     SUITE_ID,
     SUITE_SEED,
@@ -50,7 +57,7 @@ from cqhecs.reference import (
     total_variation,
 )
 
-PROFILE_SCHEMA = "cqhecs.fitted_noise_profile/1.0"
+PROFILE_SCHEMA = "cqhecs.fitted_noise_profile/2.0"
 LAYOUT_ASSUMPTION = (
     "logical qubit q of every job is read with the readout matrix measured on "
     "logical qubit q of the 5-qubit probes; the provider's physical layout is "
@@ -73,11 +80,12 @@ def _grid_minimum(
 
 @dataclass(frozen=True)
 class PerQubitModel:
-    """``M-FIT-2``: per-qubit asymmetric readout and one CX depolarizing parameter."""
+    """``M-FIT-2``: per-qubit readout plus one CX and optional ``X`` error."""
 
     p01: Tuple[float, ...]
     p10: Tuple[float, ...]
     cx_depolarizing: float
+    x_bitflip: Tuple[float, ...] = ()
 
     def noise_model(self, job: SuiteCircuit) -> NoiseModel:
         if job.num_qubits > len(self.p01):
@@ -85,12 +93,17 @@ class PerQubitModel:
                 f"{job.job_id} uses {job.num_qubits} qubits; readout was measured on {len(self.p01)}"
             )
         model = NoiseModel(name=f"M-FIT-2[cx={self.cx_depolarizing:.8g}]")
-        model.metadata = {"layout_assumption": LAYOUT_ASSUMPTION}
+        model.metadata = {
+            "layout_assumption": LAYOUT_ASSUMPTION,
+            "x_bitflip": list(self.x_bitflip),
+        }
         if self.cx_depolarizing > 0.0:
             for pair in sorted({tuple(q) for name, q, _ in job.gates if name == "cx"}):
                 model.add_2q_channel("cx", pair, TwoQubitDepolarizingChannel(self.cx_depolarizing))
         for qubit in range(job.num_qubits):
             model.set_readout_error(qubit, self.p01[qubit], self.p10[qubit])
+            if qubit < len(self.x_bitflip) and self.x_bitflip[qubit] > 0.0:
+                model.add_1q_channel("x", qubit, BitFlipChannel(self.x_bitflip[qubit]))
         model.validate()
         return model
 
@@ -120,6 +133,20 @@ def _calibration_status(run: SuiteRun) -> Dict[str, Any]:
     return {"status": "absent", "files": {}}
 
 
+def _p1(counts: Mapping[str, int], num_qubits: int, qubit: int) -> float:
+    total = sum(counts.values())
+    if total <= 0:
+        raise IntegrityError("empty counts")
+    return sum(value for bits, value in counts.items() if bits[num_qubits - 1 - qubit] == "1") / total
+
+
+def _solve_x_flip(observed_p1: float, p01: float, p10: float) -> float:
+    denominator = p01 - (1.0 - p10)
+    if abs(denominator) < 1e-12:
+        return 0.0
+    return float(np.clip((observed_p1 - (1.0 - p10)) / denominator, 0.0, 1.0))
+
+
 def fit_profile(root: Path, *, seed: int = SUITE_SEED) -> Tuple[PerQubitModel, Dict[str, Any]]:
     """
     Fit ``M-FIT-2`` on the FIT split of a suite run and return it with a
@@ -131,30 +158,96 @@ def fit_profile(root: Path, *, seed: int = SUITE_SEED) -> Tuple[PerQubitModel, D
     if not order["little_endian"]:
         raise IntegrityError(f"bit-order probe returned {order['mode']!r}, expected '00001'")
     jobs = _jobs_by_name(seed)
-    _require(run, jobs, ("readout_zero_5", "readout_one_5", "ghz5_pad2", "ghz5_pad4"))
+    _require(
+        run,
+        jobs,
+        ("readout_zero_5", "readout_one_5", "bitorder_q0_5", "ghz5_pad2", "ghz5_pad4"),
+    )
 
-    zero, one = jobs["readout_zero_5"], jobs["readout_one_5"]
+    zero, one, probe = jobs["readout_zero_5"], jobs["readout_one_5"], jobs["bitorder_q0_5"]
     zero_shots = sum(run.counts[zero.job_id].values())
     one_shots = sum(run.counts[one.job_id].values())
     p01 = tuple(_marginal_flip_rates(run.counts[zero.job_id], 5, "0"))
-    p10 = tuple(_marginal_flip_rates(run.counts[one.job_id], 5, "1"))
+    p10_observed = tuple(_marginal_flip_rates(run.counts[one.job_id], 5, "1"))
+
+    median = float(np.median(p10_observed))
+    anomalies = tuple(q for q, value in enumerate(p10_observed) if abs(value - median) > 0.25)
+    p10 = list(p10_observed)
+    for q in anomalies:
+        p10[q] = median
 
     padded = [jobs["ghz5_pad2"], jobs["ghz5_pad4"]]
     real = [counts_vector(run.counts[job.job_id], job.num_qubits) for job in padded]
 
     def objective(readout: PerQubitModel) -> Callable[[float], float]:
         def score(p: float) -> float:
-            model = PerQubitModel(readout.p01, readout.p10, p)
+            model = PerQubitModel(readout.p01, readout.p10, p, readout.x_bitflip)
             return float(np.mean([
-                total_variation(r, simulate(job, model.noise_model(job))) for job, r in zip(padded, real)
+                total_variation(r, simulate(job, model.noise_model(job)))
+                for job, r in zip(padded, real)
             ]))
         return score
 
-    uncorrected_tv, uncorrected = _grid_minimum(objective(_readout_only(5)))
-    corrected_tv, corrected = _grid_minimum(objective(PerQubitModel(p01, p10, 0.0)))
-    model = PerQubitModel(p01, p10, corrected)
+    # Coordinate descent: the anomalous p10 and the CX term are fitted on the
+    # two padded GHZ jobs. Fixed grids keep the fit reproducible.
+    def score_at(p10_values: Sequence[float], cx_value: float) -> float:
+        model = PerQubitModel(p01, tuple(p10_values), float(cx_value))
+        return float(np.mean([
+            total_variation(r, simulate(job, model.noise_model(job)))
+            for job, r in zip(padded, real)
+        ]))
 
-    fit_jobs = [zero, one, jobs["ghz5_pad2"], jobs["ghz5_pad4"]]
+    cx = 0.0
+    for _ in range(3):
+        for q in anomalies:
+            best_value, best_tv = p10[q], score_at(p10, cx)
+            for candidate in np.linspace(0.0, 0.3, 31):
+                trial = list(p10)
+                trial[q] = float(candidate)
+                tv = score_at(trial, cx)
+                if tv < best_tv - 1e-12:
+                    best_value, best_tv = float(candidate), tv
+            p10[q] = best_value
+        best_cx, best_tv = cx, score_at(p10, cx)
+        for candidate in np.linspace(0.0, 0.03, 31):
+            tv = score_at(p10, float(candidate))
+            if tv < best_tv - 1e-12:
+                best_cx, best_tv = float(candidate), tv
+        cx = best_cx
+
+    uncorrected_tv, uncorrected = _grid_minimum(objective(_readout_only(5)))
+    corrected_tv = score_at(p10, cx)
+    corrected = cx
+
+    x_flip = [0.0] * 5
+    for q in anomalies:
+        estimates = []
+        if q == 0:
+            estimates.append(_solve_x_flip(_p1(run.counts[probe.job_id], 5, q), p01[q], p10[q]))
+        estimates.append(_solve_x_flip(_p1(run.counts[one.job_id], 5, q), p01[q], p10[q]))
+        x_flip[q] = float(np.mean(estimates)) if estimates else 0.0
+
+    model = PerQubitModel(p01, tuple(p10), corrected, tuple(x_flip))
+
+    fit_jobs = [zero, one, probe, jobs["ghz5_pad2"], jobs["ghz5_pad4"]]
+    readout_rows = []
+    for q in range(5):
+        row = {
+            "qubit": q,
+            "p01": p01[q],
+            "p01_se": _binomial_se(p01[q], zero_shots),
+            "p10": p10[q],
+            "p10_se": _binomial_se(p10[q], one_shots),
+            "p10_observed": p10_observed[q],
+            "p10_source": (
+                "GHZ ladder (OQ-02 marginal is an X-gate anomaly)"
+                if q in anomalies
+                else "OQ-02"
+            ),
+            "x_bitflip": x_flip[q],
+        }
+        readout_rows.append(row)
+
     document = {
         "schema": PROFILE_SCHEMA,
         "model": "M-FIT-2",
@@ -174,20 +267,29 @@ def fit_profile(root: Path, *, seed: int = SUITE_SEED) -> Tuple[PerQubitModel, D
                 }
                 for job in fit_jobs
             ],
-            "objective": "mean total variation over OQ-04/OQ-05, coarse-then-fine grid on [0, 0.3]",
+            "objective": (
+                "mean total variation over OQ-04/OQ-05; anomalous p10 on a "
+                "coarse grid over [0, 0.3], CX on a coarse-then-fine grid"
+            ),
             "calibration": _calibration_status(run),
             "bit_order": order,
             "layout_assumption": LAYOUT_ASSUMPTION,
         },
-        "readout": [
+        "readout": readout_rows,
+        "anomalies": [
             {
                 "qubit": q,
-                "p01": p01[q],
-                "p01_se": _binomial_se(p01[q], zero_shots),
-                "p10": p10[q],
-                "p10_se": _binomial_se(p10[q], one_shots),
+                "observed_p10_from_OQ02": p10_observed[q],
+                "fitted_p10": p10[q],
+                "x_bitflip": x_flip[q],
+                "evidence": (
+                    "OQ-03 reproduces the flip with a single X on qubit 0; "
+                    "OQ-09 (GHZ-5, no X) does not show it"
+                )
+                if q == 0
+                else "OQ-02 marginal is an outlier against the device median",
             }
-            for q in range(5)
+            for q in anomalies
         ],
         "cx_depolarizing": {
             "readout_corrected": corrected,
@@ -195,13 +297,26 @@ def fit_profile(root: Path, *, seed: int = SUITE_SEED) -> Tuple[PerQubitModel, D
             "uncorrected": uncorrected,
             "uncorrected_fit_tv": uncorrected_tv,
             "assumption": (
-                "the corrected value assumes the per-qubit readout matrices from OQ-01/OQ-02 "
-                "act after the circuit and independently per qubit; the uncorrected value "
-                "fits the gate term with no readout model and therefore absorbs readout error"
+                "the corrected value uses the fitted per-qubit readout matrices; "
+                "the uncorrected value fits the gate term with no readout model "
+                "and therefore absorbs readout error"
             ),
         },
-        "one_qubit_gate_error": "not modelled (0)",
+        "one_qubit_gate_error": (
+            "x bit-flip fitted for anomalous qubits; other 1q gates not modelled"
+        ),
         "relaxation": "not modelled (no calibration snapshot)",
+        "identifiability": {
+            "anomalous_qubits": list(anomalies),
+            "statement": (
+                "OQ-02's marginal on an anomalous qubit is not a readout probability: "
+                "OQ-03 reproduces the flip with a single X and OQ-09 (no X) does not."
+            ),
+            "assumption": (
+                "qubits without an anomaly are assumed to have no X-gate error; the "
+                "X bit-flip is therefore a lower bound there"
+            ),
+        },
     }
     return model, document
 
@@ -262,7 +377,7 @@ def evaluate_exploratory(
         }
 
     return {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "status": "EXPLORATORY_POST_HOC",
         "note": (
             "M-FIT-2 was written after the r-io-7 counts were known. These numbers check the "

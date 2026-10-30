@@ -151,18 +151,25 @@ floating-point digit of the bootstrap).
 * **Claim tested:** `M-FIT-2` (per-qubit asymmetric readout from OQ-01/OQ-02,
   CX term fitted after that readout) predicts the EVAL jobs better than the
   frozen device-mean `M-FIT`.
-* **Result:** median ΔTV(M-FIT-2 − M-FIT) **+0.055345**, 95 % CI
-  [−0.006595, +0.091789], 7/20 better; against ideal −0.001335,
-  CI [−0.139938, +0.043086]. Bell goes from TV 0.115 (M-FIT) to 0.243.
-* **Cause, from the counts:** the P(0|1) = 0.531 defect on logical qubit 0
-  appears only in the gate-free probes (OQ-02: 404 of 1000 shots read
-  `11110`); in the GHZ jobs logical qubit 0 is not special (15–24 shots). The
-  provider placed the probes and the entangling circuits on different
-  physical qubits. Per-qubit readout cannot be transferred without a layout
-  or a readout probe inside each job.
-* **Consequence:** the device mean was not "the wrong shape by accident"; it
-  is the better estimator when the layout is unknown. A per-qubit model needs
-  layout data (W3 of the v3 plan) or per-job readout calibration.
+* **Result after the v3.1 correction:** median ΔTV(M-FIT-2 − M-FIT)
+  **−0.026455**, 95 % CI [−0.041286, +0.020742], 12/20 better; against ideal
+  **−0.105360**, CI [−0.132644, −0.042472], 16/20 better, FIT TV 0.1209.
+  The paired interval still includes 0, so the claim is **not supported**.
+* **Correction to the v3.0.0 reading:** the original result (+0.055345,
+  CI [−0.006595, +0.091789], 7/20) installed `OQ-02`'s 0.531 qubit-0 marginal
+  as a readout matrix. `OQ-03` reproduces the same flip with a single `X`, and
+  `OQ-09` (GHZ-5, no `X`) does not, so 0.531 is an `X`-gate anomaly. The
+  corrected fit puts `p10[0] = 0.03` and an `X` bit-flip of 0.536.
+* **Cause, from the counts:** `OQ-02` is a state-preparation probe; it cannot
+  separate readout from an `X` error. The GHZ ladder can, and it says qubit 0
+  is unremarkable there.
+* **Consequence:** the device mean was not "the wrong shape by accident" for
+  this dataset; it is a better *predictor* than the corrected per-qubit model
+  on the paired EVAL comparison. The corrected per-qubit model is a better
+  physical description and is much closer to the measured distributions than
+  the ideal distribution, but H-V3-9's stronger claim remains rejected.
+  Confirmation needs per-job readout calibration or a published layout, and a
+  fresh backend.
 
 ## Experiment index
 

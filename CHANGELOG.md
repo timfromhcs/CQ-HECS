@@ -8,6 +8,48 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-10-30
+
+Feature release on the v3.0.0 base. It adds a local experiment UI, a standalone
+sound SAT surface, an independent-engine cross-check, and a corrected
+identification in the measured noise fit. No change to the frozen `M-FIT`
+verdict.
+
+### Added
+
+- `cqhecs.studio` / `cq-hecs studio`: loopback-only experiment UI (standard
+  library HTTP server + static app) for the circuit lab, noise comparison, SAT
+  lab, measured evidence and sourced research. No new runtime dependency.
+- `cqhecs.sat` / `cq-hecs sat solve|sweep`: standalone sound DIMACS DPLL.
+  `SAT` carries a verified model; `UNSAT` only after exhaustive search and
+  without a proof object; timeout or node budget is `UNKNOWN`. Random-3-SAT
+  phase-transition sweep with an explicit non-claim.
+- `scripts/quantumrings_crosscheck.py` and `r-qr-1`: 21 noiseless circuits,
+  widths 2-128, cross-checked against the independent QuantumRings simulator;
+  21/21 pass within finite-shot noise.
+- `scripts/build_studio_data.py` writes the verified packaged Studio snapshot.
+- `scripts/collect_openquantum_pilot.py` and `r-qpu-pilot-1`: a five-job,
+  100-shot IonQ pilot and a 200-shot identification batch that spent the two
+  25-credit Spark balances. Both were queued as of 2026-10-30; they are not the
+  preregistered suite and not a confirmation.
+
+### Fixed
+
+- **M-FIT-2 identification.** The v3.0.0 fit installed `OQ-02`'s 0.531
+  qubit-0 marginal as readout error. `OQ-03` reproduces the flip with one `X`
+  and `OQ-09` (no `X`) does not, so it is an `X`-gate anomaly. The corrected
+  fit uses `p10[0] = 0.03` and an `X` bit-flip of 0.536. FIT TV 0.2286 ->
+  0.1209; held-out dTV vs ideal -0.0719 -> -0.1054 (16/20). The paired
+  comparison with `M-FIT` is -0.0265, CI [-0.0413, +0.0207], so H-V3-9 remains
+  not supported.
+- `cqhecs.openquantum_suite.write_suite` writes `manifest.json` as bytes, so
+  `generate` is byte-identical on Windows and Linux.
+
+### Tests
+
+- Python suite, CTest, mutation gate and the metamorphic self-test are run by
+  CI on the v3.0.0 base plus the new tests.
+
 ## [3.0.0] — 2026-10-30
 
 v3 Stable. Gates and evidence: `research/v3/RELEASE_PROCESS.md`; breaking
