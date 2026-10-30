@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cqhecs"
-version = "2.5.2"
+version = "3.0.0"
 description = "CQ-HECS: Deterministic Classical Four-Path Quantum Circuit Simulation Engine"
 readme = "README.md"
 authors = [{ name = "timfromhcs" }]
@@ -15,7 +15,7 @@ dependencies = [
     "qiskit>=0.45.0",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
