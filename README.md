@@ -75,8 +75,11 @@ wählt den Pfad anhand der Schaltungsstruktur. Ergebnisse tragen getrennte
 Fehlerklassen und einen expliziten Zustand (`EXACT`, `CERTIFIED`, `UNRESOLVED`,
 `FAILED`). An Grenzen wird die Ausführung verweigert, statt ein plausibles
 Ergebnis zu erfinden. Die Python-Pfade laufen auf der CPU; der Vulkan-Dispatch
-wurde nur für native Primitiven auf einer AMD-Radeon-iGPU verifiziert. Es gibt
-keine echte QPU-Ausführung und keine Behauptung zu `P = NP`.
+wurde nur für native Primitiven auf einer AMD-Radeon-iGPU verifiziert. Das
+Paket selbst reicht keine QPU-Jobs ein; die `r-io-7`-Messwerte stammen aus
+externen, separat freigegebenen Einreichungen. v2.6.0 ergänzt `M-FIT-2`, die
+lokale Studio-UI und einen sound SAT-Solver. Keine Behauptung zu `P = NP` oder
+zur ETH.
 
 </details>
 
