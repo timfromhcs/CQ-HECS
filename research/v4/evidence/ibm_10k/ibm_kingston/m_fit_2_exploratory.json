@@ -1,0 +1,359 @@
+{
+  "backend": "ibm_kingston",
+  "bootstrap_samples": 5000,
+  "bootstrap_seed": 20261030,
+  "calibration": {
+    "files": {},
+    "status": "absent"
+  },
+  "circuits": [
+    {
+      "delta_m_fit_2_vs_ideal": -0.008160396019999999,
+      "delta_m_fit_2_vs_m_fit": -0.00010953152758752527,
+      "job_id": "OQ-06",
+      "name": "bell",
+      "num_qubits": 2,
+      "tv_ideal": 0.030100000000000012,
+      "tv_m_fit": 0.02204913550758754,
+      "tv_m_fit_2": 0.021939603980000014
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.015885245950069904,
+      "delta_m_fit_2_vs_m_fit": -3.2396771626128085e-06,
+      "job_id": "OQ-07",
+      "name": "ghz3",
+      "num_qubits": 3,
+      "tv_ideal": 0.034100000000000005,
+      "tv_m_fit": 0.018217993727092714,
+      "tv_m_fit_2": 0.0182147540499301
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.022423952580433407,
+      "delta_m_fit_2_vs_m_fit": -0.0005892905119629574,
+      "job_id": "OQ-08",
+      "name": "ghz4",
+      "num_qubits": 4,
+      "tv_ideal": 0.05480000000000001,
+      "tv_m_fit": 0.03296533793152956,
+      "tv_m_fit_2": 0.0323760474195666
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.02678274340337187,
+      "delta_m_fit_2_vs_m_fit": 0.00020104887368844332,
+      "job_id": "OQ-09",
+      "name": "ghz5",
+      "num_qubits": 5,
+      "tv_ideal": 0.06729999999999998,
+      "tv_m_fit": 0.04031620772293967,
+      "tv_m_fit_2": 0.040517256596628116
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.04547698355912638,
+      "delta_m_fit_2_vs_m_fit": -0.0035657309889047806,
+      "job_id": "OQ-10",
+      "name": "qpe3_t",
+      "num_qubits": 4,
+      "tv_ideal": 0.16689999999999997,
+      "tv_m_fit": 0.12498874742977836,
+      "tv_m_fit_2": 0.12142301644087358
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.041605204842551535,
+      "delta_m_fit_2_vs_m_fit": 0.0002987052619456143,
+      "job_id": "OQ-11",
+      "name": "qpe3_s",
+      "num_qubits": 4,
+      "tv_ideal": 0.17449999999999993,
+      "tv_m_fit": 0.13259608989550278,
+      "tv_m_fit_2": 0.1328947951574484
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.05438480528701435,
+      "delta_m_fit_2_vs_m_fit": 0.0010904997938734201,
+      "job_id": "OQ-12",
+      "name": "qft4_roundtrip",
+      "num_qubits": 4,
+      "tv_ideal": 0.17289999999999983,
+      "tv_m_fit": 0.11742469491911206,
+      "tv_m_fit_2": 0.11851519471298548
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.027711270726191756,
+      "delta_m_fit_2_vs_m_fit": 0.0006765326356616835,
+      "job_id": "OQ-13",
+      "name": "mirror4_d10",
+      "num_qubits": 4,
+      "tv_ideal": 0.0927,
+      "tv_m_fit": 0.06431219663814657,
+      "tv_m_fit_2": 0.06498872927380825
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.031186172686683042,
+      "delta_m_fit_2_vs_m_fit": 0.0012590398693102106,
+      "job_id": "OQ-14",
+      "name": "mirror4_d20",
+      "num_qubits": 4,
+      "tv_ideal": 0.1168,
+      "tv_m_fit": 0.08435478744400675,
+      "tv_m_fit_2": 0.08561382731331696
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.061318875505626036,
+      "delta_m_fit_2_vs_m_fit": 0.003061014753082708,
+      "job_id": "OQ-15",
+      "name": "mirror4_d40",
+      "num_qubits": 4,
+      "tv_ideal": 0.21960000000000002,
+      "tv_m_fit": 0.15522010974129127,
+      "tv_m_fit_2": 0.15828112449437398
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.011142159470117687,
+      "delta_m_fit_2_vs_m_fit": 0.0013028285197893494,
+      "job_id": "OQ-16",
+      "name": "clifford_t3_d12",
+      "num_qubits": 3,
+      "tv_ideal": 0.03160000000000004,
+      "tv_m_fit": 0.019155012010093002,
+      "tv_m_fit_2": 0.02045784052988235
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.023410441303595125,
+      "delta_m_fit_2_vs_m_fit": 0.001955457650038725,
+      "job_id": "OQ-17",
+      "name": "clifford_t4_d16",
+      "num_qubits": 4,
+      "tv_ideal": 0.08540000000000002,
+      "tv_m_fit": 0.06003410104636617,
+      "tv_m_fit_2": 0.06198955869640489
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.03562166627400737,
+      "delta_m_fit_2_vs_m_fit": 0.0005753225305427517,
+      "job_id": "OQ-18",
+      "name": "clifford_t5_d20",
+      "num_qubits": 5,
+      "tv_ideal": 0.12290000000000001,
+      "tv_m_fit": 0.08670301119544989,
+      "tv_m_fit_2": 0.08727833372599264
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.019722137034453482,
+      "delta_m_fit_2_vs_m_fit": 0.0010990122534869085,
+      "job_id": "OQ-19",
+      "name": "clifford_t5_d30",
+      "num_qubits": 5,
+      "tv_ideal": 0.096,
+      "tv_m_fit": 0.07517885071205961,
+      "tv_m_fit_2": 0.07627786296554652
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.013296871376104632,
+      "delta_m_fit_2_vs_m_fit": -0.00025175006596490565,
+      "job_id": "OQ-20",
+      "name": "brickwork4_l3",
+      "num_qubits": 4,
+      "tv_ideal": 0.041443927864366764,
+      "tv_m_fit": 0.028398806554227038,
+      "tv_m_fit_2": 0.028147056488262132
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.0041352015695487535,
+      "delta_m_fit_2_vs_m_fit": 0.00029417026594723283,
+      "job_id": "OQ-21",
+      "name": "brickwork5_l4",
+      "num_qubits": 5,
+      "tv_ideal": 0.035744287772753076,
+      "tv_m_fit": 0.03131491593725709,
+      "tv_m_fit_2": 0.03160908620320432
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.01829155400620032,
+      "delta_m_fit_2_vs_m_fit": -9.656268486290392e-05,
+      "job_id": "OQ-22",
+      "name": "grover2_mark11",
+      "num_qubits": 2,
+      "tv_ideal": 0.029200000000000004,
+      "tv_m_fit": 0.011005008678662588,
+      "tv_m_fit_2": 0.010908445993799684
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.03334709787098468,
+      "delta_m_fit_2_vs_m_fit": -0.0024861560156996115,
+      "job_id": "OQ-23",
+      "name": "bv4_1011",
+      "num_qubits": 5,
+      "tv_ideal": 0.1314,
+      "tv_m_fit": 0.10053905814471492,
+      "tv_m_fit_2": 0.09805290212901531
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.027690653809681998,
+      "delta_m_fit_2_vs_m_fit": 0.0013254185831496762,
+      "job_id": "OQ-24",
+      "name": "dj3_balanced",
+      "num_qubits": 4,
+      "tv_ideal": 0.1284,
+      "tv_m_fit": 0.09938392760716831,
+      "tv_m_fit_2": 0.10070934619031799
+    },
+    {
+      "delta_m_fit_2_vs_ideal": -0.026982596510503047,
+      "delta_m_fit_2_vs_m_fit": 0.00028853349886055063,
+      "job_id": "OQ-25",
+      "name": "ghz5_repeat",
+      "num_qubits": 5,
+      "tv_ideal": 0.0696,
+      "tv_m_fit": 0.0423288699906364,
+      "tv_m_fit_2": 0.04261740348949695
+    }
+  ],
+  "dataset_id": "r-io-7",
+  "dataset_sha256": "057e7d41442ee64fd2d10ebfd3b5b2ac5e205b6b0fa28cbf8825cd44f3b59510",
+  "note": "M-FIT-2 was written after the r-io-7 counts were known. These numbers check the mechanism; they do not confirm it. Confirmation needs a fresh suite on another backend.",
+  "profile": {
+    "anomalies": [],
+    "cx_depolarizing": {
+      "assumption": "the corrected value uses the fitted per-qubit readout matrices; the uncorrected value fits the gate term with no readout model and therefore absorbs readout error",
+      "readout_corrected": 0.002,
+      "readout_corrected_fit_tv": 0.02021368436169941,
+      "uncorrected": 0.0035,
+      "uncorrected_fit_tv": 0.030147385617851956
+    },
+    "identifiability": {
+      "anomalous_qubits": [],
+      "assumption": "qubits without an anomaly are assumed to have no X-gate error; the X bit-flip is therefore a lower bound there",
+      "statement": "OQ-02's marginal on an anomalous qubit is not a readout probability: OQ-03 reproduces the flip with a single X and OQ-09 (no X) does not."
+    },
+    "model": "M-FIT-2",
+    "one_qubit_gate_error": "x bit-flip fitted for anomalous qubits; other 1q gates not modelled",
+    "provenance": {
+      "backend": "ibm_kingston",
+      "bit_order": {
+        "expected": "00001",
+        "job_id": "OQ-03",
+        "little_endian": true,
+        "mode": "00001"
+      },
+      "calibration": {
+        "files": {},
+        "status": "absent"
+      },
+      "dataset_id": "r-io-7",
+      "dataset_sha256": "057e7d41442ee64fd2d10ebfd3b5b2ac5e205b6b0fa28cbf8825cd44f3b59510",
+      "fit_jobs": [
+        {
+          "job_id": "OQ-01",
+          "name": "readout_zero_5",
+          "provider_job_id": "dbie9go1h92s73839i8g",
+          "qasm_sha256": "b65b54d3a7031b353a041788273202baa8e80c27df294de13b685228af9e4d84",
+          "shots": 10000
+        },
+        {
+          "job_id": "OQ-02",
+          "name": "readout_one_5",
+          "provider_job_id": "dbie9go1h92s73839i8g",
+          "qasm_sha256": "ad5800f335c3c1b22ba199e42727ecdbbdbcd5103b9d848f223e79fa1506080b",
+          "shots": 10000
+        },
+        {
+          "job_id": "OQ-03",
+          "name": "bitorder_q0_5",
+          "provider_job_id": "dbie9go1h92s73839i8g",
+          "qasm_sha256": "ddd4df5a558580621105ccf817bbd4cb8f3f3ef656828af82ac559ad301b8f50",
+          "shots": 10000
+        },
+        {
+          "job_id": "OQ-04",
+          "name": "ghz5_pad2",
+          "provider_job_id": "dbie9go1h92s73839i8g",
+          "qasm_sha256": "d27474c78eb8ba2f89acf94e221328e1f58022031046295ce6dd23786f5e1b88",
+          "shots": 10000
+        },
+        {
+          "job_id": "OQ-05",
+          "name": "ghz5_pad4",
+          "provider_job_id": "dbie9go1h92s73839i8g",
+          "qasm_sha256": "493ca804ad5d6e6e7bca54b9162fb1d03fb3e35e8cce8fb3af60c537bd4188cc",
+          "shots": 10000
+        }
+      ],
+      "layout_assumption": "logical qubit q of every job is read with the readout matrix measured on logical qubit q of the 5-qubit probes; the provider's physical layout is not published and may differ between jobs",
+      "objective": "mean total variation over OQ-04/OQ-05; anomalous p10 on a coarse grid over [0, 0.3], CX on a coarse-then-fine grid",
+      "suite_seed": 20261030
+    },
+    "readout": [
+      {
+        "p01": 0.0021,
+        "p01_se": 0.0004577761461675346,
+        "p10": 0.0097,
+        "p10_observed": 0.0097,
+        "p10_se": 0.0009800974441350207,
+        "p10_source": "OQ-02",
+        "qubit": 0,
+        "x_bitflip": 0.0
+      },
+      {
+        "p01": 0.0021,
+        "p01_se": 0.0004577761461675346,
+        "p10": 0.0057,
+        "p10_observed": 0.0057,
+        "p10_se": 0.0007528286657666537,
+        "p10_source": "OQ-02",
+        "qubit": 1,
+        "x_bitflip": 0.0
+      },
+      {
+        "p01": 0.0021,
+        "p01_se": 0.0004577761461675346,
+        "p10": 0.0066,
+        "p10_observed": 0.0066,
+        "p10_se": 0.0008097184695929814,
+        "p10_source": "OQ-02",
+        "qubit": 2,
+        "x_bitflip": 0.0
+      },
+      {
+        "p01": 0.0015,
+        "p01_se": 0.0003870077518603471,
+        "p10": 0.0101,
+        "p10_observed": 0.0101,
+        "p10_se": 0.0009998994949493674,
+        "p10_source": "OQ-02",
+        "qubit": 3,
+        "x_bitflip": 0.0
+      },
+      {
+        "p01": 0.0017,
+        "p01_se": 0.00041195994950965806,
+        "p10": 0.0057,
+        "p10_observed": 0.0057,
+        "p10_se": 0.0007528286657666537,
+        "p10_source": "OQ-02",
+        "qubit": 4,
+        "x_bitflip": 0.0
+      }
+    ],
+    "relaxation": "not modelled (no calibration snapshot)",
+    "schema": "cqhecs.fitted_noise_profile/2.0",
+    "status": "EXPLORATORY_POST_HOC"
+  },
+  "schema_version": "2.0",
+  "status": "EXPLORATORY_POST_HOC",
+  "vs_ideal": {
+    "ci95_high": -0.0190068455203269,
+    "ci95_low": -0.03226663527883386,
+    "direction": "M-FIT-2 better",
+    "median": -0.026882669956937458,
+    "n": 20,
+    "n_negative": 20
+  },
+  "vs_m_fit": {
+    "ci95_high": 0.0010947560236801643,
+    "ci95_low": -4.9901181012758367e-05,
+    "direction": "inconclusive",
+    "median": 0.00029643776394642357,
+    "n": 20,
+    "n_negative": 7
+  }
+}

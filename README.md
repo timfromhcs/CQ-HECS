@@ -26,27 +26,37 @@ Four classical simulation paths · one result contract · fail-closed by design
 
 ---
 
-> **Status: `v3.1.0` (2026-10-30).** A feature release on the v3.0.0 Stable
+> **Status: `v3.2.0` (2026-10-30).** A feature release on the v3.0.0 Stable
 > base. It adds:
 >
-> 1. **CQ-HECS Studio** — a local `cq-hecs studio` UI for circuits, the measured
->    noise comparison, a sound SAT lab and the evidence ledger. Standard-library
->    HTTP server, no new runtime dependency, loopback only.
-> 2. **A standalone sound SAT surface** — `cq-hecs sat solve|sweep`. `SAT`
->    carries a verified model; `UNSAT` only after exhaustive search and without
->    a proof object; a timeout or node budget is `UNKNOWN`.
-> 3. **An independent-engine cross-check** — 21 noiseless circuits (GHZ widths
+> 1. **CQ-HECS Studio** — `cq-hecs studio`, a loopback-only UI for circuits,
+>    measured noise, the SAT lab, the evidence ledger and a new **Hardware**
+>    lab comparing Rigetti, IBM `ibm_fez`, QuantumRings and the finite P-vs-NP
+>    probes.
+> 2. **MCP server** — `cq-hecs mcp`, a stdio JSON-RPC server exposing circuit
+>    execution, analysis, SAT solving/model enumeration and hardware evidence.
+> 3. **A standalone sound SAT surface** — `cq-hecs sat solve|models|maxsat|sweep`.
+>    `SAT` carries a verified model; `UNSAT` only after exhaustive search and
+>    without a proof object; a timeout or node budget is `UNKNOWN`. Exact MaxSAT
+>    is capped at 20 variables and refuses above that.
+> 4. **An independent-engine cross-check** — 21 noiseless circuits (GHZ widths
 >    2–128, QFT, Clifford+T, brickwork, Grover, BV, DJ, mirror) agree with the
 >    QuantumRings simulator within finite-shot noise: **21/21 PASS**.
-> 4. **A corrected `M-FIT-2` identification.** v3.0.0 installed `OQ-02`'s 0.531
+> 5. **A corrected `M-FIT-2` identification.** v3.0.0 installed `OQ-02`'s 0.531
 >    qubit-0 marginal as readout error. `OQ-03` reproduces the flip with one `X`
 >    and `OQ-09` (no `X`) does not, so it is an `X`-gate anomaly. The corrected
 >    fit uses `p10[0] = 0.03` and an `X` bit-flip of 0.536: FIT TV 0.2286 →
 >    0.1209, held-out ΔTV vs ideal −0.0719 → −0.1054 (16/20). The paired
 >    comparison with `M-FIT` is −0.0265, CI [−0.0413, +0.0207], so H-V3-9
 >    remains not supported.
+> 6. **A standalone Windows executable** — `scripts/build_exe.ps1` builds
+>    `dist/cq-hecs.exe` with the CLI, Studio assets, MCP server and Qiskit
+>    backend. The release wheel and exe are built from the same tree.
+> 7. **Finite P-vs-NP probes** — 8 universal circuits match Qiskit Statevector
+>    at TV ≤ 5e-15; 3–4 variable SAT oracles on IBM return a valid DPLL model
+>    as the top outcome on every run. This is not a complexity result.
 >
-> The release tree passes **618 Python tests** (0 skipped, 1 opt-in slow
+> The release tree passes **626 Python tests** (0 skipped, 1 opt-in slow
 > gate), **21/21 CTest**, **40/40 source mutants**, a **12-check metamorphic
 > self-test**, and the independent oracle **21/21**.
 >
@@ -140,7 +150,7 @@ That rule is enforced in code, not only in documentation:
 | **Public surfaces** | `cq-hecs` CLI, `cq-hecs studio`, Qiskit `BackendV2`, Python API, C ABI, SAT engine |
 | **Simulation paths** | A: stabilizer tableau · B: stabilizer rank · C: untruncated MPS · D: sparse Pauli |
 | **Noise** | Typed profiles, Kraus channels, exact float64 density matrix up to 10 qubits |
-| **Verification** | 618 Python tests, 21 CTest, 40 mutants, 12-check selftest, 12 SPIR-V shaders, 21/21 independent oracle |
+| **Verification** | 626 Python tests, 21 CTest, 40 mutants, 12-check selftest, 12 SPIR-V shaders, 21/21 independent oracle |
 | **Platforms** | Linux x64, Windows 10/11; Python 3.11–3.14 |
 | **License** | Apache-2.0 |
 
@@ -239,6 +249,10 @@ equivariance, zero-noise identity, and channel composition order.
   tested).
 - **Studio:** a local browser UI for circuits, noise, SAT and the measured
   evidence (`cq-hecs studio`).
+- **MCP:** `cq-hecs mcp`, a stdio JSON-RPC server for agents (run, analyze,
+  SAT solve/models, hardware evidence).
+- **Standalone:** `scripts/build_exe.ps1` builds `dist/cq-hecs.exe` with the
+  CLI, Studio assets and MCP server.
 
 ### CQ-HECS Studio
 
@@ -268,6 +282,9 @@ The supported standalone surface is `cqhecs/sat.py` and `cq-hecs sat`:
 cq-hecs sat solve benchmarks/sat/pigeonhole_6_5.cnf
 cq-hecs sat solve --random 30 --ratio 4.26 --timeout 5
 cq-hecs sat sweep --sizes 10,15,20,25 --ratios 3.0,4.26,6.0 --trials 5
+cq-hecs sat models --cnf "p cnf 3 2\n1 2 0\n-1 3 0\n" --limit 5
+cq-hecs sat maxsat --cnf "p cnf 2 2\n1 0\n-1 0\n" --weights 1,2
+cq-hecs mcp
 ```
 
 `SAT` means a model was found and verified clause by clause. `UNSAT` means the
@@ -374,13 +391,13 @@ choco install vulkan-sdk cmake ninja -y --no-progress
 
 ```bash
 python -m build
-# dist/cqhecs-3.1.0-py3-none-any.whl
-# dist/cqhecs-3.1.0.tar.gz
+# dist/cqhecs-3.2.0-py3-none-any.whl
+# dist/cqhecs-3.2.0.tar.gz
 ```
 
 Published wheels, sdists, SHA-256 checksums, and the SPDX SBOM are attached to
 [GitHub Releases](https://github.com/timfromhcs/CQ-HECS/releases). The latest
-release is `v3.1.0`.
+release is `v3.2.0`.
 
 ---
 
@@ -559,18 +576,18 @@ A deeper component matrix is in [`ARCHITECTURE.md`](ARCHITECTURE.md) and
 ## Verification
 
 The numbers below are from the Linux CI lane with the native build required
-(`CQ_HECS_REQUIRE_NATIVE=1`) on the `v3.1.0` tree. They are measurements, not
+(`CQ_HECS_REQUIRE_NATIVE=1`) on the `v3.2.0` tree. They are measurements, not
 performance claims. The release audit records the exact SHA and CI runs.
 
 | Gate | Result |
 | :--- | :--- |
-| Python suite | **618 passed**, 0 skipped, 1 opt-in `slow` gate |
+| Python suite | **626 passed**, 0 skipped, 1 opt-in `slow` gate |
 | Branch coverage | **84 %** measured locally on this tree (v3.0.0 release audit: 86 %) |
 | CTest (native) | **21/21**, including a `WILL_FAIL` meta-test proving checks run in Release builds |
 | Source mutation | **40/40** killed |
 | Metamorphic selftest | **12/12** |
 | SPIR-V shaders | **12/12** verified |
-| Version consistency | all surfaces report `3.1.0` |
+| Version consistency | all surfaces report `3.2.0` |
 | Lint | `flake8 --select=E9,F` clean on `cqhecs`, `python_bridge`, `scripts`, `tests` |
 | Silent-truncation audit | no patterns found |
 | Latest CI matrix | 7/7 jobs: Linux, Windows, ASan/UBSan, Python 3.12–3.14, static/package |
@@ -915,7 +932,7 @@ exposes a “Cite this repository” entry from [`CITATION.cff`](CITATION.cff).
 @software{cqhecs2026,
   author  = {Stark, Tim Johann},
   title   = {CQ-HECS: Classical Quantum High-Efficiency Compute Simulator},
-  version = {3.1.0},
+  version = {3.2.0},
   year    = {2026},
   url     = {https://github.com/timfromhcs/CQ-HECS},
   license = {Apache-2.0}

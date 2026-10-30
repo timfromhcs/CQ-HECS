@@ -541,6 +541,57 @@ def cmd_sat(args: argparse.Namespace) -> int:
                 print("Model      :", " ".join(f"{k}={'1' if v else '0'}" for k, v in sorted(result.assignment.items())))
         return EXIT_OK
 
+    if args.sat_command in ("models", "maxsat"):
+        from cqhecs.sat import enumerate_models, max_sat
+
+        try:
+            if args.file:
+                formula = parse_dimacs(Path(args.file).read_text("utf-8"), source=args.file)
+            elif args.cnf:
+                formula = parse_dimacs(args.cnf, source="argument")
+            elif args.random is not None:
+                ratio = args.ratio if args.ratio is not None else 4.26
+                formula = random_3sat(args.random, int(round(ratio * args.random)), seed=args.seed)
+            else:
+                LOG.error("provide a DIMACS file, --cnf TEXT, or --random N")
+                return EXIT_USAGE
+        except (OSError, ValueError) as exc:
+            LOG.error("%s", exc)
+            return EXIT_USAGE
+        if args.sat_command == "models":
+            payload = enumerate_models(formula, limit=args.limit, timeout_seconds=args.timeout)
+            payload = {
+                "schema_version": JSON_SCHEMA_VERSION,
+                "version": __version__,
+                "formula": {"num_vars": formula.num_vars, "num_clauses": formula.num_clauses, "sha256": formula.sha256},
+                **payload,
+            }
+        else:
+            weights = [float(w) for w in args.weights.split(",")] if args.weights else None
+            payload = max_sat(formula, weights)
+            payload = {
+                "schema_version": JSON_SCHEMA_VERSION,
+                "version": __version__,
+                "formula": {"num_vars": formula.num_vars, "num_clauses": formula.num_clauses, "sha256": formula.sha256},
+                **payload,
+            }
+        if args.json_out:
+            Path(args.json_out).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.json_out).write_text(json.dumps(payload, indent=2) + "\n", "utf-8")
+        if args.format == "json":
+            _emit_json(payload)
+        else:
+            if args.sat_command == "models":
+                print(f"Status     : {payload['status']} ({payload['count']}/{payload['limit']} models)")
+                for index, model in enumerate(payload["models"], 1):
+                    print(f"  {index}:", " ".join(f"{k}={'1' if v else '0'}" for k, v in sorted(model.items())))
+            else:
+                print(f"Status     : {payload['status']}")
+                print(f"Score      : {payload['satisfied_weight']} / {payload['total_weight']}")
+                print(f"Unsatisfied: {payload['unsatisfied_clauses']}")
+                print("Model      :", " ".join(f"{k}={'1' if v else '0'}" for k, v in sorted(payload["assignment"].items())))
+        return EXIT_OK
+
     if args.sat_command == "sweep":
         try:
             payload = sweep(
@@ -570,6 +621,13 @@ def cmd_sat(args: argparse.Namespace) -> int:
             print(payload["non_claim"])
         return EXIT_OK
     return EXIT_USAGE
+
+
+def cmd_mcp(args: argparse.Namespace) -> int:
+    """Start the stdio MCP server."""
+    from cqhecs.mcp_server import main as mcp_main
+
+    return mcp_main()
 
 
 def cmd_studio(args: argparse.Namespace) -> int:
@@ -1110,6 +1168,26 @@ def build_parser() -> argparse.ArgumentParser:
     p_sat_solve.add_argument("--json-out", default=None, help="Write the full result JSON here")
     p_sat_solve.add_argument("--show-model", action="store_true", help="Print the satisfying assignment")
 
+    p_sat_models = sat_sub.add_parser("models", help="Enumerate up to N models")
+    p_sat_models.add_argument("file", nargs="?", help="DIMACS .cnf file")
+    p_sat_models.add_argument("--cnf", default=None, help="DIMACS text")
+    p_sat_models.add_argument("--random", type=int, default=None, metavar="N")
+    p_sat_models.add_argument("--ratio", type=float, default=None)
+    p_sat_models.add_argument("--limit", type=int, default=10)
+    p_sat_models.add_argument("--timeout", type=float, default=10.0)
+    p_sat_models.add_argument("--seed", type=int, default=20261030)
+    p_sat_models.add_argument("--json-out", default=None)
+
+    p_sat_max = sat_sub.add_parser("maxsat", help="Exact weighted MaxSAT for <=20 variables")
+    p_sat_max.add_argument("file", nargs="?", help="DIMACS .cnf file")
+    p_sat_max.add_argument("--cnf", default=None, help="DIMACS text")
+    p_sat_max.add_argument("--random", type=int, default=None, metavar="N")
+    p_sat_max.add_argument("--ratio", type=float, default=None)
+    p_sat_max.add_argument("--weights", default=None, help="Comma-separated clause weights")
+    p_sat_max.add_argument("--timeout", type=float, default=10.0)
+    p_sat_max.add_argument("--seed", type=int, default=20261030)
+    p_sat_max.add_argument("--json-out", default=None)
+
     p_sat_sweep = sat_sub.add_parser("sweep", help="Empirical random-3-SAT phase-transition sweep")
     p_sat_sweep.add_argument("--sizes", type=_csv_ints, default=[10, 15, 20, 25], help="Comma-separated variable counts")
     p_sat_sweep.add_argument("--ratios", type=_csv_floats, default=[3.0, 3.5, 4.0, 4.26, 4.5, 5.0], help="Comma-separated clause ratios")
@@ -1117,6 +1195,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_sat_sweep.add_argument("--timeout", type=float, default=2.0, help="Per-instance timeout in seconds")
     p_sat_sweep.add_argument("--seed", type=int, default=20261030, help="Random seed")
     p_sat_sweep.add_argument("--json-out", default=None, help="Write the full result JSON here")
+
+    sub.add_parser("mcp", help="Start the stdio MCP server")
 
     p_studio = sub.add_parser("studio", help="Start the local CQ-HECS experiment UI")
     p_studio.add_argument("--host", default="127.0.0.1", help="Bind address (default: 127.0.0.1)")
@@ -1155,6 +1235,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "reference": cmd_reference,
         "noise-fit": cmd_noise_fit,
         "sat": cmd_sat,
+        "mcp": cmd_mcp,
         "studio": cmd_studio,
         "selftest": cmd_selftest,
         "analyze": cmd_analyze,

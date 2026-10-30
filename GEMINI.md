@@ -1,5 +1,13 @@
 # CQ-HECS V3 STABLE — Autonomous Research, Engineering, Verification and Release Mission
 
+> **ACTIVE HANDOFF (2026-10-30): read [`GEMINI_HANDOFF.md`](GEMINI_HANDOFF.md) first.**
+> The tree is mid-flight on v3.2.0: MCP server, SAT models/MaxSAT, Studio
+> hardware lab and a standalone exe build are uncommitted; the one-file exe
+> currently fails on `bcrypt` extraction; the IBM 10k-shot runs still need
+> evaluation. The v3.0.0 mission text below is historical context, not the
+> current task.
+
+
 **Repository:** https://github.com/timfromhcs/CQ-HECS  
 **Mission target:** Deliver the next genuinely stable major release, `v3.0.0`, only when the evidence supports a major-version release.  
 **Prepared against the public repository state observed on:** 2026-10-30 (Europe/Berlin).  

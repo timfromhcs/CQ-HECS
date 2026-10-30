@@ -8,6 +8,35 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-10-30
+
+Stable feature release. Adds the MCP server, SAT model enumeration/MaxSAT, a
+hardware lab in the Studio, and a standalone Windows executable.
+
+### Added
+
+- `cqhecs.mcp_server` / `cq-hecs mcp`: newline-delimited JSON-RPC MCP server
+  with tools for circuit execution, analysis, sound SAT solving, model
+  enumeration and hardware evidence.
+- `cqhecs.sat.enumerate_models` / `max_sat` and `cq-hecs sat models|maxsat`.
+  Model enumeration is sound and reports `COMPLETE`/`LIMIT`/`TIMEOUT`; exact
+  MaxSAT is deliberately capped at 20 variables and refuses above that.
+- Studio Hardware lab (`/api/hardware`): Rigetti, IBM `ibm_fez`, QuantumRings,
+  exact-emulability and SAT-oracle evidence in one view.
+- Standalone `dist/cq-hecs.exe` build (`scripts/build_exe.ps1`) bundling the
+  CLI, Studio assets, MCP server and Qiskit backend.
+- `scripts/run_ibm_universal_probes.py`, `scripts/run_ibm_sat_oracles.py`,
+  `scripts/pnp_emulability_check.py`, `scripts/pnp_sat_oracle_report.py`.
+- Finite P-vs-NP evidence: 8 universal probes match Qiskit Statevector at
+  TV <= 5e-15; 3 SAT oracles on IBM have a valid DPLL model as the QPU top
+  outcome on every run; strict MPS bit-losslessness is reported false where
+  the numerical-rank floor discards ~1e-15/1e-13.
+
+### Tests
+
+- MCP stdio contract, SAT model enumeration/MaxSAT, Studio hardware endpoint,
+  and P-vs-NP evidence integrity tests.
+
 ## [3.1.0] - 2026-10-30
 
 Feature release on the v3.0.0 base. It adds a local experiment UI, a standalone

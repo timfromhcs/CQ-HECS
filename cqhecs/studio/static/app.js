@@ -6,6 +6,7 @@ const state = {
   suite: null,
   noise: null,
   research: null,
+  hardware: null,
   presetQasm: {},
 };
 
@@ -16,6 +17,7 @@ const TITLES = {
   sat: ["SAT lab", "Sound DPLL: SAT with a verified model, UNSAT only after exhaustion."],
   evidence: ["Evidence", "The 25 pinned jobs, their digests and their measured distributions."],
   research: ["Research", "P versus NP, ETH, and what a finite experiment can actually say."],
+  hardware: ["Hardware", "External QPU runs, independent oracles, and finite P-vs-NP probes."],
 };
 
 function el(tag, className, text) {
@@ -620,6 +622,75 @@ function renderEvidence() {
   $("#evidence-table").append(table);
 }
 
+/* ---------------------------------------------------------------- hardware */
+
+function renderHardware() {
+  const data = state.hardware;
+  if (!data) return;
+  const datasets = data.datasets || [];
+  const cards = $("#hardware-datasets");
+  cards.innerHTML = "";
+  for (const item of datasets) {
+    cards.append(stat(item.id, `${fmt(item.median_delta_tv)}`, `${item.verdict} · ${item.n_eval} EVAL · ${item.backend || ""}`));
+  }
+  const qr = data.quantumrings || {};
+  $("#hardware-qr").textContent = qr.verdict ? `QuantumRings ${qr.verdict} ${qr.passed}/${qr.n}` : "QuantumRings n/a";
+  const pnp = data.pnp || {};
+  const metrics = $("#hardware-pnp-metrics");
+  metrics.innerHTML = "";
+  metrics.append(
+    metric("verdict", pnp.verdict || "—", pnp.verdict === "EXACTLY_EMULABLE_AND_QPU_CONSISTENT" ? "ok" : "warn"),
+    metric("probes", (pnp.exact_emulation || []).length),
+    metric("QPU runs", (pnp.qpu_runs || []).length),
+    metric("SAT DPLL", pnp.sat?.dpll_model || "—"),
+  );
+  const table = el("table");
+  const head = el("tr");
+  ["probe", "q", "gates", "TV vs Statevector", "exact"].forEach((label, i) => head.append(el("th", i > 0 ? "num" : "", label)));
+  table.append(head);
+  for (const row of pnp.exact_emulation || []) {
+    const tr = el("tr");
+    tr.append(el("td", "", row.probe_id), el("td", "num", String(row.num_qubits)), el("td", "num", String(row.gate_count)), el("td", "num", fmt(row.cqhecs_vs_qiskit_statevector_tv, 2)), el("td", "", row.exact_classically_emulable ? "yes" : "no"));
+    table.append(tr);
+  }
+  $("#hardware-pnp-table").innerHTML = "";
+  $("#hardware-pnp-table").append(table);
+
+  const sat = data.sat_oracles || {};
+  const satMetrics = $("#hardware-sat-metrics");
+  satMetrics.innerHTML = "";
+  satMetrics.append(
+    metric("top is model", String(sat.all_qpu_top_outcomes_are_models)),
+    metric("strict MPS lossless", String(sat.all_mps_strictly_lossless), sat.all_mps_strictly_lossless ? "ok" : "warn"),
+    metric("runs", sat.runs ?? "—"),
+  );
+  const satTable = el("table");
+  const satHead = el("tr");
+  ["backend", "oracle", "top", "mass", "models"].forEach((label, i) => satHead.append(el("th", i === 3 ? "num" : "", label)));
+  satTable.append(satHead);
+  for (const run of data.sat_oracle_runs || []) {
+    for (const row of run.oracles || []) {
+      const tr = el("tr");
+      tr.append(el("td", "", run.backend), el("td", "", row.probe_id), el("td", "", row.top_outcome), el("td", "num", fmt(row.model_mass, 3)), el("td", "", (row.dpll_models || []).join(", ")));
+      satTable.append(tr);
+    }
+  }
+  $("#hardware-sat-table").innerHTML = "";
+  $("#hardware-sat-table").append(satTable);
+
+  const dsTable = el("table");
+  const dsHead = el("tr");
+  ["dataset", "backend", "verdict", "median ΔTV", "CI"].forEach((label, i) => dsHead.append(el("th", i === 3 ? "num" : "", label)));
+  dsTable.append(dsHead);
+  for (const item of datasets) {
+    const tr = el("tr");
+    tr.append(el("td", "", item.id), el("td", "", item.backend || "—"), el("td", "", item.verdict || "—"), el("td", "num", fmt(item.median_delta_tv)), el("td", "num", `[${fmt(item.ci95_low)}, ${fmt(item.ci95_high)}]`));
+    dsTable.append(tr);
+  }
+  $("#hardware-dataset-table").innerHTML = "";
+  $("#hardware-dataset-table").append(dsTable);
+}
+
 /* ---------------------------------------------------------------- research */
 
 function renderResearch() {
@@ -644,21 +715,24 @@ function renderResearch() {
 
 async function init() {
   try {
-    const [health, suite, noise, research] = await Promise.all([
+    const [health, suite, noise, research, hardware] = await Promise.all([
       api("/api/health"),
       api("/api/suite"),
       api("/api/noise"),
       api("/api/research"),
+      api("/api/hardware"),
     ]);
     state.health = health;
     state.suite = suite;
     state.noise = noise;
     state.research = research;
+    state.hardware = hardware;
     renderHealth();
     renderOverviewEvidence();
     renderNoise();
     renderEvidence();
     renderResearch();
+    renderHardware();
     fillPresets();
     await loadPreset("bell");
     fillJobs();

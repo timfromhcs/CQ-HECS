@@ -443,6 +443,112 @@ def solve(
     )
 
 
+def enumerate_models(
+    formula: CNF,
+    limit: int = 10,
+    timeout_seconds: float = 10.0,
+) -> Dict[str, Any]:
+    """
+    Enumerate up to ``limit`` models by adding a blocking clause after each.
+
+    ``complete`` is true only when the solver proved that no further model
+    exists. Hitting the limit or the shared timeout is reported explicitly.
+    """
+    if limit <= 0:
+        raise ValueError("limit must be > 0")
+    started = time.perf_counter()
+    deadline = started + float(timeout_seconds)
+    clauses = list(formula.clauses)
+    models: List[Dict[int, bool]] = []
+    status = "UNKNOWN"
+    while len(models) < limit:
+        remaining = deadline - time.perf_counter()
+        if remaining <= 0:
+            status = "TIMEOUT"
+            break
+        current = CNF(num_vars=formula.num_vars, clauses=tuple(clauses), source=formula.source)
+        result = solve(current, timeout_seconds=remaining)
+        if result.status == UNSAT:
+            status = "COMPLETE"
+            break
+        if result.status != SAT or result.assignment is None:
+            status = "UNKNOWN"
+            break
+        models.append(dict(result.assignment))
+        # Block exactly this assignment.
+        clauses.append(tuple(-var if value else var for var, value in sorted(result.assignment.items())))
+    else:
+        status = "LIMIT"
+    return {
+        "status": status,
+        "complete": status == "COMPLETE",
+        "count": len(models),
+        "limit": limit,
+        "models": models,
+        "elapsed_ms": (time.perf_counter() - started) * 1000.0,
+        "formula_sha256": formula.sha256,
+    }
+
+
+def max_sat(
+    formula: CNF,
+    clause_weights: Optional[Sequence[float]] = None,
+    *,
+    max_vars: int = 20,
+) -> Dict[str, Any]:
+    """
+    Exact weighted MaxSAT by exhaustive enumeration for small formulas.
+
+    This is deliberately bounded: exact MaxSAT is NP-hard, and this function
+    refuses above ``max_vars`` instead of pretending to scale. A larger
+    instance needs a real MaxSAT solver, not this function.
+    """
+    if formula.num_vars > max_vars:
+        raise ValueError(
+            f"exact max_sat is limited to {max_vars} variables; got {formula.num_vars}"
+        )
+    if clause_weights is None:
+        weights = [1.0] * formula.num_clauses
+    else:
+        weights = [float(w) for w in clause_weights]
+        if len(weights) != formula.num_clauses:
+            raise ValueError("clause_weights must have one entry per clause")
+        if any(w < 0 for w in weights):
+            raise ValueError("clause_weights must be non-negative")
+    best_assignment: Dict[int, bool] = {}
+    best_score = -1.0
+    best_satisfied: List[int] = []
+    best_unsatisfied: List[int] = []
+    for bits in range(1 << formula.num_vars):
+        assignment = {
+            var: bool((bits >> (var - 1)) & 1) for var in range(1, formula.num_vars + 1)
+        }
+        satisfied = [
+            index
+            for index, clause in enumerate(formula.clauses)
+            if any(assignment[abs(lit)] == (lit > 0) for lit in clause)
+        ]
+        satisfied_set = set(satisfied)
+        score = sum(weights[index] for index in satisfied)
+        if score > best_score:
+            best_score = score
+            best_assignment = assignment
+            best_satisfied = satisfied
+            best_unsatisfied = [i for i in range(formula.num_clauses) if i not in satisfied_set]
+    return {
+        "status": "OPTIMAL",
+        "satisfied_weight": best_score,
+        "total_weight": sum(weights),
+        "assignment": best_assignment,
+        "satisfied_clauses": best_satisfied,
+        "unsatisfied_clauses": best_unsatisfied,
+        "num_vars": formula.num_vars,
+        "num_clauses": formula.num_clauses,
+        "method": f"exhaustive over 2^{formula.num_vars} assignments",
+        "formula_sha256": formula.sha256,
+    }
+
+
 def sweep(
     sizes: Sequence[int] = (10, 15, 20, 25, 30),
     ratios: Sequence[float] = (3.0, 3.5, 4.0, 4.26, 4.5, 5.0),

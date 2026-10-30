@@ -23,6 +23,7 @@
       <button data-view="sat"><span>03</span>SAT lab</button>
       <button data-view="evidence"><span>04</span>Evidence</button>
       <button data-view="research"><span>05</span>Research</button>
+      <button data-view="hardware"><span>06</span>Hardware</button>
     </nav>
     <div class="side-foot">
       <span class="dot" id="health-dot"></span>
@@ -197,6 +198,33 @@ p cnf 3 3
         <div class="panel-head"><h3>r-io-7 — 25 measured jobs</h3><span class="tag" id="evidence-sha">sha</span></div>
         <p class="lede">One backend, one day, 1000 shots per job. Circuits were SHA-256 pinned before submission.</p>
         <div class="table-wrap" id="evidence-table"></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-hardware">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Real hardware &amp; finite complexity probes</h3>
+          <span class="tag ok">measured</span>
+        </div>
+        <p class="lede">External QPU runs and independent oracles. Every verdict is narrow: one suite, one mapping, one day.</p>
+        <div class="grid three" id="hardware-datasets"></div>
+      </div>
+      <div class="grid two">
+        <div class="panel">
+          <div class="panel-head"><h3>P vs NP — exact emulability</h3><span class="tag">finite</span></div>
+          <div class="metrics" id="hardware-pnp-metrics"></div>
+          <div class="table-wrap" id="hardware-pnp-table"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>SAT oracles on IBM</h3><span class="tag">3–4 variables</span></div>
+          <div class="metrics" id="hardware-sat-metrics"></div>
+          <div class="table-wrap" id="hardware-sat-table"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>Backend comparison</h3><span class="tag" id="hardware-qr"></span></div>
+        <div class="table-wrap" id="hardware-dataset-table"></div>
       </div>
     </section>
 

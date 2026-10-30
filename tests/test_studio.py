@@ -136,6 +136,9 @@ def test_http_surface(server):
     status, body = _get(server, "/api/health")
     assert status == 200
     assert json.loads(body)["name"] == "CQ-HECS Studio"
+    status, body = _get(server, "/api/hardware")
+    assert status == 200
+    assert json.loads(body)["datasets"]
     status, payload = _post(server, "/api/simulate", {"source": "preset:bell", "shots": 32})
     assert status == 200
     assert payload["num_qubits"] == 2
