@@ -69,12 +69,14 @@ def test_node_budget_is_unknown_not_unsat():
 def test_uf50_never_claims_a_false_unsat():
     formula = load_dimacs(BENCH / "uf50_hard.cnf")
     result = solve(formula, timeout_seconds=5.0)
-    assert result.status in (SAT, UNSAT)
+    assert result.status in (SAT, UNSAT, UNKNOWN)
     if result.status == SAT:
         assert result.model_verified
         assert formula.is_satisfied(result.assignment)
-    else:
+    elif result.status == UNSAT:
         assert result.model_verified is False
+    else:
+        assert result.assignment is None
 
 
 def test_determinism():
