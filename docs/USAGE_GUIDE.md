@@ -166,6 +166,32 @@ measurement and `reset` are refused (exit 2). The JSON document has the same
 `schema_version` as the other commands; `result.values` maps each requested
 name to its value.
 
+### Hardware profiles and noisy emulation
+
+```bash
+cq-hecs profile list
+cq-hecs profile show fake_manila
+cq-hecs --format json run name:bell --profile fake_manila --shots 1000
+cq-hecs --format json run name:bell --profile fake_manila --no-noisy
+```
+
+`--profile` runs the circuit on the exact float64 density-matrix backend
+(at most 10 qubits) after checking every two-qubit gate against the profile's
+coupling map. The result carries `execution_mode` (`NOISY_CLASSICAL`, or
+`IDEAL_CLASSICAL` with `--no-noisy`), `backend_profile_id` and
+`noise_model_id`; it is never `REAL_HARDWARE`. Bitstrings follow the same
+convention as `run` without a profile: qubit 0 rightmost, measured qubits only.
+
+* A noise channel applies after each gate *as written* on the qubits the model
+  names. The circuit is not transpiled to the profile's basis gates, so a gate
+  the profile does not calibrate (for example `h` on `fake_manila`) stays
+  noiseless.
+* `fake_manila` and `linear_5q` are **synthetic**: `fake_manila` copies only
+  the Manila coupling topology, not IBM's calibration values. A
+  `BackendProfile` that claims real data (`is_synthetic=False`) must carry
+  `capture_timestamp` and `provenance_uri`.
+* An unknown profile name or a gate on a missing coupling edge exits with `2`.
+
 ## 4. Python API
 
 ```python

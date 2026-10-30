@@ -52,7 +52,11 @@ class TestHardwareBridge(unittest.TestCase):
         profile = create_fake_manila_profile()
         self.assertEqual(profile.name, "fake_manila")
         self.assertEqual(profile.num_qubits, 5)
-        self.assertFalse(profile.is_synthetic)
+        # The numbers are illustrative, not a provider calibration export, so
+        # the profile must not claim real provenance (CQ-V251-03).
+        self.assertTrue(profile.is_synthetic)
+        self.assertIsNone(profile.provenance_uri)
+        self.assertIsNone(profile.capture_timestamp)
         self.assertEqual(len(profile.coupling_map), 8)
         self.assertIn((0, 1), profile.coupling_map)
         profile.validate()

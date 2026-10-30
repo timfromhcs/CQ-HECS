@@ -32,6 +32,7 @@ from typing import Any, Dict, Optional, Sequence
 
 # Version is read from the package rather than duplicated here.
 from cqhecs import __version__
+from cqhecs.hardware_bridge import HardwareBridgeError
 
 LOG = logging.getLogger("cqhecs.cli")
 
@@ -338,7 +339,10 @@ def cmd_run(args: argparse.Namespace) -> int:
     if getattr(args, "profile", None):
         from cqhecs.hardware_bridge import FakeHardwareProvider, ExecutionMode
         provider = FakeHardwareProvider()
-        fake_backend = provider.get_backend(args.profile)
+        try:
+            fake_backend = provider.get_backend(args.profile)
+        except KeyError as exc:
+            raise ValueError(exc.args[0]) from exc
         exec_mode = (
             ExecutionMode.NOISY_CLASSICAL
             if getattr(args, "noisy", True)
@@ -779,7 +783,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if args.format == "json":
             _emit_json({"schema_version": JSON_SCHEMA_VERSION, "error": str(exc)})
         return EXIT_USAGE
-    except (ValueError, TypeError) as exc:
+    except (ValueError, TypeError, HardwareBridgeError) as exc:
         LOG.error("%s", exc)
         if args.format == "json":
             _emit_json({"schema_version": JSON_SCHEMA_VERSION, "error": str(exc)})

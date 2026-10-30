@@ -224,15 +224,7 @@ def parse_circuit(circuit: Any) -> Tuple[List[Instruction], int]:
             instruction list. Parsing never silently drops a gate.
         QASMParseError: For a QASM source that violates the documented subset.
     """
-    # Qiskit circuit duck-typing first, so QASM strings stay on the string path.
-    if hasattr(circuit, "data") and hasattr(circuit, "num_qubits"):
-        instructions, num_qubits = _parse_qiskit(circuit)
-    elif isinstance(circuit, str):
-        instructions, num_qubits = _parse_qasm(circuit)
-    elif isinstance(circuit, (list, tuple)):
-        instructions, num_qubits = _parse_instruction_list(circuit)
-    else:
-        _raise_unsupported_input(circuit)
+    instructions, num_qubits = parse_source_circuit(circuit)
     # Composite gates (u3, ccx, cy, rzz, ...) are rewritten exactly into the
     # native gate set here, once, so every later stage sees the same circuit.
     from cqhecs.gate_lowering import GateLoweringError, lower_instructions
@@ -241,6 +233,25 @@ def parse_circuit(circuit: Any) -> Tuple[List[Instruction], int]:
         return lower_instructions(instructions), num_qubits
     except GateLoweringError as exc:
         raise UnsupportedCircuitInputError(str(exc)) from exc
+
+
+def parse_source_circuit(circuit: Any) -> Tuple[List[Instruction], int]:
+    """
+    Same validation as :func:`parse_circuit`, but gates keep the names they
+    were written with (no composite-gate lowering).
+
+    Callers that attach meaning to a gate *as written* -- such as a noise
+    model calibrated on ``sx`` -- need this form; everything that executes
+    gates should lower each instruction with ``lower_instructions``.
+    """
+    # Qiskit circuit duck-typing first, so QASM strings stay on the string path.
+    if hasattr(circuit, "data") and hasattr(circuit, "num_qubits"):
+        return _parse_qiskit(circuit)
+    if isinstance(circuit, str):
+        return _parse_qasm(circuit)
+    if isinstance(circuit, (list, tuple)):
+        return _parse_instruction_list(circuit)
+    _raise_unsupported_input(circuit)
 
 
 def _raise_unsupported_input(circuit: Any) -> None:

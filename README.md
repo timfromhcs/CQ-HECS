@@ -41,7 +41,7 @@ Schaltungsklasse den passenden Pfad wählt — und an der Grenze lieber
 | **Fail-closed statt fail-open** | Ungültiges OpenQASM, unbekannte Gates und Ressourcenüberschreitungen führen zu strukturierten Fehlern — nie zu einer Teilausführung. |
 | **Ehrliche Hardware-Aussagen** | Alle vier Python-Pfade rechnen auf der CPU. Vulkan-Compute-Dispatch wurde auf einer AMD-Radeon-iGPU verifiziert; eine herstellerübergreifende oder End-to-End-GPU-Beschleunigung wird **nicht** behauptet. |
 
-> **Status:** `v2.5.0` ist ein Feature-Release auf `v2.4.0`. Neu ist die **Hardware-Aware Quantum Bridge** (`cqhecs.hardware_bridge`: typisierte Backend-Profile, verifiziert vollständige Kraus-Rauschkanäle, exakter float64-Dichtematrix-Simulator bis 10 Qubits, offline Fake-Hardware mit Topologie-Prüfung und Fail-Closed-Schutz für echte QPU-Provider). Es gibt **keine universelle Beschleunigungsbehauptung und keine heimlichen Fallbacks**. Details: [Release Notes](RELEASE_NOTES.md) · [Changelog](CHANGELOG.md).
+> **Status:** `v2.5.1` ist ein Korrektur-Release auf `v2.5.0`: Der Dichtematrix-Rauschpfad gab Bitstrings gespiegelt aus (Qubit 0 links statt rechts), ignorierte Teilmessungen und hängte auf `sx` kalibriertes Rauschen nie an; das Profil `fake_manila` war fälschlich als echte IBM-Kalibrierung ausgewiesen. Details: [Release Notes](RELEASE_NOTES.md). `v2.5.0` brachte die **Hardware-Aware Quantum Bridge** (`cqhecs.hardware_bridge`: typisierte Backend-Profile, verifiziert vollständige Kraus-Rauschkanäle, exakter float64-Dichtematrix-Simulator bis 10 Qubits, offline Fake-Hardware mit Topologie-Prüfung und Fail-Closed-Schutz für echte QPU-Provider). Es gibt **keine universelle Beschleunigungsbehauptung und keine heimlichen Fallbacks**. Details: [Release Notes](RELEASE_NOTES.md) · [Changelog](CHANGELOG.md).
 
 ---
 
@@ -327,12 +327,12 @@ pip install -e .
 
 ```bash
 python -m build
-# dist/cqhecs-2.5.0-py3-none-any.whl
-# dist/cqhecs-2.5.0.tar.gz
+# dist/cqhecs-2.5.1-py3-none-any.whl
+# dist/cqhecs-2.5.1.tar.gz
 ```
 
 Die veröffentlichten Artefakte, Checksums und die SPDX-SBOM stehen unter
-[GitHub-Releases](https://github.com/timfromhcs/CQ-HECS/releases) (aktuell veröffentlicht: `v2.3.0`; `v2.4.0` nach Tag).
+[GitHub-Releases](https://github.com/timfromhcs/CQ-HECS/releases) (zuletzt veröffentlicht: `v2.5.0`; `v2.5.1` erst nach Merge und Tag).
 
 ---
 
@@ -345,7 +345,7 @@ Die veröffentlichten Artefakte, Checksums und die SPDX-SBOM stehen unter
 | `cq-hecs version` | Version und Laufzeitumgebung |
 | `cq-hecs doctor` | OS, Python, Native-Binding, Vulkan-Stufen |
 | `cq-hecs backend list` | Fähigkeiten und Gate-Sets der Pfade A–D |
-| `cq-hecs profile list` | Hardware-Profile (z. B. fake_manila, linear_5q) und Topologien anzeigen |
+| `cq-hecs profile list` | synthetische Hardware-Profile (fake_manila, linear_5q) und Topologien anzeigen |
 | `cq-hecs analyze name:ghz8` | statische Analyse und Pfadempfehlung |
 | `cq-hecs run name:bell --shots 1000` | Schaltung ausführen |
 | `cq-hecs run name:bell --profile fake_manila` | Schaltung mit Hardware-Topologie und Rauschmodell ausführen |
@@ -482,20 +482,21 @@ erfundenen 50/50-Counts.
 
 ## ✅ Verifikation
 
-Die folgenden Zahlen sind lokale Messungen für den `v2.5.0`-Kandidaten, keine
-Leistungsbenchmarks. CI-Ergebnisse werden für den exakt gepushten SHA separat
-in [`research/v2_5/TEST_MATRIX.md`](research/v2_5/TEST_MATRIX.md)
-festgehalten; frühere Release-Audit-Pfade bleiben als historische Nachweise erhalten.
+Die folgenden Zahlen sind lokale Messungen für den `v2.5.1`-Kandidaten
+(Linux x64, GCC 13.3, CPython 3.13, gepinnte Abhängigkeiten), keine
+Leistungsbenchmarks. CI-Ergebnisse für den exakt gepushten SHA stehen in
+[`research/v2_5_1/TEST_MATRIX.md`](research/v2_5_1/TEST_MATRIX.md);
+frühere Release-Audit-Pfade bleiben als historische Nachweise erhalten.
 
 | Gate | Ergebnis |
 | :--- | :--- |
-| CTest (MSVC Release) | **19/19 bestanden** |
-| Python-Suite (CPython 3.14 + Nativkern) | **452 bestanden** (0 übersprungen) |
+| CTest (GCC Release, Linux) | **19/19 bestanden** |
+| Python-Suite (CPython 3.13 + Nativkern, `CQ_HECS_REQUIRE_NATIVE=1`) | **470 bestanden** (0 übersprungen) |
 | Python-Suite (CPython 3.11, gepinnte Abhängigkeiten, ohne Nativkern) | im CI-Matrixjob; native Tests skippen dort sichtbar |
-| Mutation-Harness | **16/16 Mutanten erkannt**, Baseline sauber |
-| Branch-Coverage | **84 %** lokal; CI-Schwelle **70 %** |
+| Mutation-Harness | **20/20 Mutanten erkannt**, Baseline sauber |
+| Branch-Coverage | **85 %** lokal; CI-Schwelle **70 %** |
 | Shader-Verifikation | **12/12** SPIR-V-Shader |
-| Version-Konsistenz | alle Flächen melden `2.5.0` |
+| Version-Konsistenz | alle Flächen melden `2.5.1` |
 | Lint | `flake8 --select=E9,F` sauber auf `cqhecs`, `python_bridge`, `scripts`, `tests` |
 | Silent-Truncation-Audit | keine Muster gefunden |
 | GitHub Actions | Linux/Windows nativ, ASan/UBSan, Python 3.12–3.14, Package-Smoke |
@@ -521,7 +522,7 @@ python scripts/run_mutation_tests.py
 
 > Ein grüner Lauf auf einem älteren Commit ist kein Beweis für einen späteren
 > Commit. Die vollständige Evidenz steht in
-> [`research/v2_2/TEST_MATRIX.md`](research/v2_2/TEST_MATRIX.md).
+> [`research/v2_5_1/TEST_MATRIX.md`](research/v2_5_1/TEST_MATRIX.md).
 
 ---
 
@@ -572,6 +573,16 @@ python scripts/run_mutation_tests.py
 - **Python- und Native-Parser haben unterschiedliche Gate-Obergrenzen.**
   Beide lehnen nicht implementierte Gates ab; die Python-Seite kennt zusätzlich
   die Path-C-Gates und zerlegt Composite-Gates exakt. Details: [`docs/QASM_CONTRACT.md`](docs/QASM_CONTRACT.md) §6.
+- **Rauschmodelle sind Modelle, keine Hardware.** `NOISY_CLASSICAL` liefert
+  eine modellierte Verteilung aus einem exakten float64-Dichtematrix-Lauf
+  (≤ 10 Qubits). Rauschkanäle hängen am Gate *wie geschrieben* und an genau den
+  kalibrierten Qubits; Schaltungen werden nicht auf die Basis-Gates des Profils
+  transpiliert, unkalibrierte Gates (z. B. `h` in `fake_manila`) bleiben
+  rauschfrei. Beide mitgelieferten Profile sind **synthetisch**: `fake_manila`
+  übernimmt nur die Manila-Topologie, nicht deren Kalibrierwerte.
+- **Keine echte QPU-Ausführung.** `RealHardwareBackend` ist eine
+  Fail-Closed-Grenze ohne Provider-Anbindung; es wurde kein Job auf echter
+  Hardware ausgeführt.
 - **Kein Cloud-Build-Nachweis in diesem Audit.** `cloudbuild.yaml` ist
   vorhanden, wurde aber ohne verifizierten Projekt-/Credential-Zugang nicht
   beobachtet.
