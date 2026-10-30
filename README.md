@@ -602,6 +602,7 @@ tied to a source SHA and records `PASS`, `FAIL`, `SKIP`, `BLOCKED`, and
 
 | Record | Content |
 | :--- | :--- |
+| [`research/v3_0_0/RELEASE_AUDIT.md`](research/v3_0_0/RELEASE_AUDIT.md) | v3.0.0 release audit: tag SHA, CI runs, independently recomputed asset hashes, final gates |
 | [`research/v2_5_2/RELEASE_AUDIT.md`](research/v2_5_2/RELEASE_AUDIT.md) | v2.5.2 release audit and artifact hashes |
 | [`research/v3/V3_STABLE_PLAN.md`](research/v3/V3_STABLE_PLAN.md) | v3 plan, workstreams, gates |
 | [`research/v3/DATASETS.md`](research/v3/DATASETS.md) | real-data registry, licences, SHA-256 pins, reachability |
