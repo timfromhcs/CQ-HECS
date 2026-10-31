@@ -346,7 +346,13 @@ async function ensureEditor() {
   const host = $("#editor");
   const { createEditor } = await import("./editor");
   host.replaceChildren();
-  editor = createEditor(host, drafts[codeLang], codeLang, runCurrent);
+  let pending = 0;
+  // Re-estimate (limits, memory, runtime) as the user types, debounced.
+  editor = createEditor(host, drafts[codeLang], codeLang, runCurrent, () => {
+    clearTimeout(pending);
+    pending = window.setTimeout(updateEstimate, 250);
+  });
+  updateEstimate();
 }
 
 function switchLang(lang: "qasm" | "js") {
@@ -498,6 +504,11 @@ async function runCurrent() {
   try { p = plan(); } catch (e) { showCodeError(e); return; }
   if (!p.est.safe) { $("#estimate").textContent = `⚠ ${t("run.refused", { reason: estimateReason(p) })}`; return; }
   setRunning(true);
+  try {
+    lastRunInput = { qasm: toQasm(p.c), shots: p.shots, engine: p.engine, noise: p.noise };
+  } catch {
+    lastRunInput = { qasm: "", shots: p.shots, engine: p.engine, noise: p.noise };
+  }
   const bar = $("#progress .bar"), label = $("#progress .label");
   bar.style.width = "0";
   label.textContent = t("run.starting");
@@ -532,6 +543,7 @@ function showResult(r: RunResult) {
   if (r.mode === "trajectories") chips.push(t("res.traj", { n: r.trajectories }));
   if (r.crossCheckTv !== undefined) chips.push(t("res.tv", { v: r.crossCheckTv.toExponential(1) }));
   $("#stats").innerHTML = chips.map((c) => `<span class="chip">${esc(c)}</span>`).join("");
+  renderProvenance(r);
   renderHistogram($("#res-hist"), r);
   renderTable($("#res-table"), r);
   renderState($("#res-state"), r);
@@ -539,7 +551,46 @@ function showResult(r: RunResult) {
   else $("#res-bloch").replaceChildren();
 }
 
+let lastRunInput: { qasm: string; shots: number; engine: EngineKind; noise: Noise } | null = null;
+
+function renderProvenance(r: RunResult) {
+  const extra = r as RunResult & { profile?: string };
+  const profile = extra.profile ? profiles.find((p) => p.id === extra.profile) : undefined;
+  const noise = lastRunInput?.noise;
+  const noiseLine = profile
+    ? t("prov.noise.profile", { id: profile.label, path: profile.evidence })
+    : noise && (noise.p1 > 0 || noise.p2 > 0 || noise.readout > 0) ? t("prov.noise.custom") : t("prov.noise.none");
+  const items = [
+    t(r.engine === "wasm" ? "prov.engine.wasm" : "prov.engine.webgpu"),
+    noiseLine,
+    t("prov.sampling"),
+    t("prov.not"),
+    t("prov.build", { version: __APP_VERSION__, sha: __SOURCE_SHA__.slice(0, 12) }),
+  ];
+  $("#prov-list").innerHTML = items.map((x) => `<li>${esc(x)}</li>`).join("");
+  $("#res-details").hidden = false;
+}
+
+function exportResult() {
+  if (!lastResult) return;
+  const document_ = {
+    schema: "cqhecs.web.run/1.0",
+    app_version: __APP_VERSION__,
+    source_revision: __SOURCE_SHA__,
+    created_at: new Date().toISOString(),
+    input: lastRunInput,
+    engine: { kind: lastResult.engine, precision: lastResult.engine === "wasm" ? "f64" : "f32" },
+    result: lastResult,
+    limitations: [t("prov.not")],
+  };
+  const blob = new Blob([JSON.stringify(document_, null, 2)], { type: "application/json" });
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `cqhecs-run-${Date.now()}.json` });
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 function setupRun() {
+  $("#res-export").addEventListener("click", exportResult);
   $("#run").addEventListener("click", runCurrent);
   $("#stop").addEventListener("click", stopRun);
   $<HTMLInputElement>("#shots").addEventListener("input", updateEstimate);
@@ -555,7 +606,8 @@ function setupRun() {
 }
 
 function setupEngineOptions() {
-  if (!engineInfo?.gpu.ok) {
+  // Offer WebGPU only if both the page's own adapter check and the worker found it.
+  if (!engineInfo?.gpu.ok || !device?.webgpu) {
     const opt = $<HTMLSelectElement>("#engine").querySelector<HTMLOptionElement>('option[value="webgpu"]')!;
     opt.disabled = true;
     opt.dataset.i18n = "run.gpuNo";
@@ -583,9 +635,24 @@ function setupSat() {
     const r = m.result;
     const cls = r.status === "SAT" ? "ok" : r.status === "UNSAT" ? "bad" : "warn";
     const model = r.model ? r.model.slice(1).map((v, i) => (v ? i + 1 : -(i + 1))).join(" ") : "";
-    out.innerHTML = `<p><span class="status ${cls}">${r.status}</span> <span class="muted small">${m.numVars} vars · ${m.numClauses} clauses · ${esc(r.note)}</span></p>
+    out.innerHTML = `<p><span class="status ${cls}">${r.status}</span> <span class="muted small">${m.numVars} vars · ${m.numClauses} clauses</span></p>
+      <p class="cert ${r.certification === "UNCERTIFIED" ? "warn" : ""}">${esc(t(`sat.cert.${r.certification}`, { n: r.certificateSteps }))}</p>
       <p class="small">${esc(t("sat.stats", { d: r.decisions, p: r.propagations, c: r.conflicts, t: r.elapsedMs.toFixed(1) }))}</p>
+      <p class="muted small">${esc(r.note)}</p>
       ${model ? `<details><summary>${esc(t("sat.model"))}</summary><pre class="model">${esc(model)}</pre></details>` : ""}`;
+  });
+  $("#sat-count").addEventListener("click", async () => {
+    const out = $("#sat-result");
+    out.innerHTML = `<p class="muted">…</p>`;
+    const id = ++reqId;
+    const m = await ask({ type: "count", id, dimacs: input.value, timeoutMs: Number($<HTMLInputElement>("#sat-timeout").value) || 5000 }, "count", id);
+    if (m.type !== "count") { out.innerHTML = `<p class="error">${esc(m.message)}</p>`; return; }
+    const r = m.result;
+    out.innerHTML = r.status === "COUNTED"
+      ? `<p><span class="status ok">#SAT</span> <span class="muted small">${m.numVars} vars · ${m.numClauses} clauses</span></p>
+         <p class="count-value">${esc(t("sat.countResult", { n: r.count ?? "" }))}</p>
+         <p class="muted small">${r.nodes} nodes · ${r.cacheHits} cache hits · ${r.elapsedMs.toFixed(1)} ms · ${esc(r.note)}</p>`
+      : `<p><span class="status warn">UNKNOWN</span></p><p class="cert warn">${esc(t("sat.countUnknown"))}</p>`;
   });
   $("#sat-sweep").addEventListener("click", async () => {
     const chart = $("#sat-chart");

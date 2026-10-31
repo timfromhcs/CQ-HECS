@@ -129,9 +129,9 @@
         </div>
         <div class="view-code card">
           <div class="code-head">
-            <div class="seg" role="tablist">
-              <button data-lang="qasm" aria-selected="true">OpenQASM 2.0</button>
-              <button data-lang="js" aria-selected="false">JavaScript</button>
+            <div class="seg" role="tablist" aria-label="Language">
+              <button role="tab" data-lang="qasm" aria-selected="true">OpenQASM 2.0</button>
+              <button role="tab" data-lang="js" aria-selected="false">JavaScript</button>
             </div>
             <span class="grow"></span>
             <button id="to-lab" class="btn ghost small-btn" data-i18n="code.toLab"></button>
@@ -179,10 +179,10 @@ return qc.measureAll();
       <section class="results card" aria-live="polite">
         <div class="results-head">
           <div class="seg" role="tablist">
-            <button data-res="hist" aria-selected="true" data-i18n="res.hist"></button>
-            <button data-res="table" aria-selected="false" data-i18n="res.table"></button>
-            <button data-res="bloch" aria-selected="false" data-i18n="res.bloch"></button>
-            <button data-res="state" aria-selected="false" data-i18n="res.state"></button>
+            <button role="tab" data-res="hist" aria-selected="true" data-i18n="res.hist"></button>
+            <button role="tab" data-res="table" aria-selected="false" data-i18n="res.table"></button>
+            <button role="tab" data-res="bloch" aria-selected="false" data-i18n="res.bloch"></button>
+            <button role="tab" data-res="state" aria-selected="false" data-i18n="res.state"></button>
           </div>
           <div id="stats" class="stats"></div>
         </div>
@@ -190,6 +190,12 @@ return qc.measureAll();
         <div id="res-table" class="res" hidden></div>
         <div id="res-bloch" class="res" hidden></div>
         <div id="res-state" class="res" hidden></div>
+        <details id="res-details" class="res-details" hidden>
+          <summary data-i18n="res.details"></summary>
+          <h3 data-i18n="prov.title"></h3>
+          <ul id="prov-list" class="prov"></ul>
+          <button id="res-export" class="btn ghost small-btn" data-i18n="res.export"></button>
+        </details>
       </section>
     </section>
 
@@ -212,7 +218,10 @@ return qc.measureAll();
 -2 -3 0
 1 -3 0
 </textarea>
-          <button id="sat-solve" class="btn primary" data-i18n="sat.solve"></button>
+          <div class="toolbar">
+            <button id="sat-solve" class="btn primary" data-i18n="sat.solve"></button>
+            <button id="sat-count" class="btn ghost" data-i18n="sat.count"></button>
+          </div>
           <div id="sat-result" class="sat-result" aria-live="polite"></div>
         </div>
         <div class="card">

@@ -174,3 +174,13 @@ def test_devices_endpoint_and_device_noise(state, server):
     assert result["noise"]["model"] == "device:rigetti_cepheus (M-FIT-2)"
     status, payload = _post(server, "/api/simulate", {"source": "preset:bell", "noise": "device:nope"})
     assert status == 400 and payload["error"]["code"] == "unknown_device"
+
+
+def test_sat_count_endpoint_and_certification_fields(server):
+    status, payload = _post(server, "/api/sat/count", {"cnf": "p cnf 3 1\n1 2 0\n", "timeout": 2})
+    assert status == 200 and payload["result"]["count"] == "6"
+    status, payload = _post(server, "/api/sat/solve", {"cnf": "p cnf 1 2\n1 0\n-1 0\n", "timeout": 2})
+    assert payload["result"]["status"] == "UNSAT"
+    assert payload["result"]["certification"] == "TREE_RESOLUTION_CHECKED"
+    status, payload = _post(server, "/api/sat/solve", {"cnf": "p cnf 1 1\n1 0\n", "engine": "nope"})
+    assert status == 400 and payload["error"]["code"] == "invalid_engine"

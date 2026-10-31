@@ -8,6 +8,70 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-10-31
+
+Proof-carrying SAT across all surfaces, exact model counting, a pinned audit of the
+October 2026 ETH claims, and browser E2E/accessibility gates. All changes are
+additive (SemVer minor); see `research/v5/DECISIONS.md` D-01.
+
+### Added
+
+- `cqhecs.drat`: an independent forward DRAT checker (RUP/RAT, honours deletions,
+  budget exhaustion is undecided, not accepted). It shares no code with any solver
+  and is not formally verified.
+- `cqhecs.sat_external`: an optional CaDiCaL 1.9.5 backend via `python-sat`
+  (`pip install cqhecs[sat]`, `cq-hecs sat solve --engine cadical`, Studio and MCP
+  `engine`). SAT models are re-checked against the original CNF; UNSAT proofs are
+  DRAT-checked; a missing backend raises `BackendUnavailable` instead of falling back.
+- `cqhecs.sat.count_models`, `cq-hecs sat count`, Studio `/api/sat/count`, MCP
+  `cqhecs_sat_count`: exact #SAT with unit propagation, component decomposition and
+  caching. Counts are exact integers serialized as strings; a budget that runs out
+  gives `UNKNOWN`.
+- SAT result contract `1.1`: `certification` (`MODEL_VERIFIED`,
+  `TREE_RESOLUTION_CHECKED`, `DRAT_CHECKED`, `UNCERTIFIED`, `NONE`), `proof_system`,
+  `engine` and `contract_version`. Nothing was removed.
+- Web: the browser DPLL records a tree-resolution certificate and an independent
+  checker (`web/src/satcert.ts`) replays it, so browser `UNSAT` is certified the same
+  way as in Python. Also an exact `countModels` (BigInt), a "what ran" panel (engine,
+  precision, noise provenance, build version and source SHA) and a JSON result export.
+- Web E2E: Playwright + axe (`web/e2e/`) in CI, covering every route, deep-link
+  reloads, EN/DE/FR, a Bell run and export, the WebGPU-unavailable fallback, the
+  safe-limit refusal, SAT/UNSAT/#SAT evidence, no overflow at six viewports
+  (360–1920 px, screenshots uploaded) and no serious/critical WCAG 2.2 AA violations.
+- `research/v5/`: baseline, task list, decisions, blockers, the ETH claim audit
+  (OpenAI `4eaee87`, Anthropic `16a5ce4`), hypotheses and an evidence ledger.
+  `research/v5/prototypes/gf2_counting.py` is a research-only GF(2) prototype with an
+  exhaustive oracle.
+- `docs/DESIGN_SYSTEM.md`.
+
+### Changed
+
+- ETH texts (Studio research view, web guide chapter 10 in EN/DE/FR,
+  `research/v4/COMPLEXITY_AND_ETH.md`) now state the two refutation claims, their
+  formal scope, that SETH falls with ETH, and that P vs NP stays open.
+- `cq-hecs sat solve` text output reports the evidence (`certification`). It used to
+  print "no checkable certificate" even when v3.3.0's certificate had been checked.
+- `GEMINI.md` and `GEMINI_HANDOFF.md` are marked historical.
+
+### Fixed (found by the new E2E suite)
+
+- Code view: the memory/runtime/safe-limit estimate did not update while typing.
+- 360 px: the guide page overflowed horizontally by 7 px (implicit `auto` grid
+  tracks); the same pattern was fixed in all grid containers.
+- Accessibility: segmented controls used `aria-selected` without `role="tab"`; the
+  code editor had no accessible name; three editor colours were below 4.5:1.
+- WebGPU is offered only when both the page's and the worker's adapter checks
+  succeed.
+
+### Tests
+
+- `tests/test_drat.py`, `tests/test_sat_count.py`, `tests/test_sat_external.py`
+  (40 random formulas: CaDiCaL agrees with the DPLL reference, and every UNSAT is
+  DRAT-checked), `tests/test_research_gf2.py` (301 exhaustive cases).
+- Mutation gate: 49/49 (five new mutants for the DRAT checker and #SAT).
+- Web: 16 unit tests (certificate replay and corruption, #SAT vs brute force) and
+  13 Playwright tests.
+
 ## [3.4.0] - 2026-10-30
 
 Measured QPU noise from three vendors, available in every surface, and a new

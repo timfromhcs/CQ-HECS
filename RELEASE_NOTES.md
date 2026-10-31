@@ -1,17 +1,37 @@
 # CQ-HECS Release Notes
 
-**Version:** 3.4.0
-**Release date:** 2026-10-30
+**Version:** 3.5.0
+**Release date:** 2026-10-31
 **License:** Apache 2.0
 **Repository:** [https://github.com/timfromhcs/CQ-HECS](https://github.com/timfromhcs/CQ-HECS)
 
-> The release workflow copies this file to `dist/RELEASE_NOTES_v3.4.0.md`,
+> The release workflow copies this file to `dist/RELEASE_NOTES_v3.5.0.md`,
 > prepends the exact source commit and required CI run, and appends the SHA256
 > values of the final assets.
 
 ---
 
-## 1. What this release is
+## 0. What v3.5.0 adds
+
+`v3.5.0` is an additive minor release (no field or command removed):
+
+1. **SAT evidence on every surface.** Results carry `certification`
+   (`MODEL_VERIFIED`, `TREE_RESOLUTION_CHECKED`, `DRAT_CHECKED`, `UNCERTIFIED`, `NONE`).
+   The new optional CaDiCaL engine (`pip install cqhecs[sat]`) has its UNSAT proofs
+   checked by the in-repo DRAT checker `cqhecs.drat`. That checker is independent of
+   the solver but not formally verified. The browser SAT lab now records and replays
+   tree-resolution certificates as well.
+2. **Exact #SAT** (`cq-hecs sat count`, Python, MCP, Studio, web): exact integers,
+   and `UNKNOWN` when the budget runs out.
+3. **ETH claim audit** (`research/v5/COMPLEXITY_CLAIM_AUDIT.md`): the OpenAI and
+   Anthropic artifacts were read at pinned revisions. ETH, and with it SETH, is
+   *claimed refuted* (Lean-formalized, not peer-reviewed, not re-run here), and
+   P vs NP stays open.
+4. **Web quality gates:** Playwright E2E and axe (WCAG 2.2 AA) in CI, screenshots at
+   six viewports, a "what ran" provenance panel and a JSON result export. The new
+   suite found five defects, all fixed (CHANGELOG `[3.5.0]`).
+
+## 1. What v3.4.0 added
 
 `v3.4.0` adds measured noise from three QPU vendors and makes it usable in
 every surface: CLI, Studio, MCP, the Windows build and the new web emulator.
@@ -116,7 +136,7 @@ CDCL proofs; this is a correctness check, not a speed claim.
 
 ## 4. Standalone executable
 
-`cqhecs-3.4.0-windows-x64.zip` contains `cq-hecs/cq-hecs.exe` and its
+`cqhecs-3.5.0-windows-x64.zip` contains `cq-hecs/cq-hecs.exe` and its
 `_internal/` runtime (Python, NumPy, Qiskit, Qiskit Aer, Studio assets and the
 packaged `r-io-7` snapshot). It is a convenience build of the same package,
 not a second implementation. `scripts/build_exe.ps1` builds it and fails
@@ -167,7 +187,7 @@ metamorphic self-test, static/package smoke, ASan/UBSan and the Python
 ## 8. Install
 
 ```bash
-python -m pip install cqhecs-3.4.0-py3-none-any.whl
+python -m pip install cqhecs-3.5.0-py3-none-any.whl
 cq-hecs doctor
 cq-hecs studio
 cq-hecs mcp      # stdio MCP server
@@ -176,7 +196,8 @@ cq-hecs devices  # measured QPU noise profiles
 
 ## 9. Documentation
 
-- `CHANGELOG.md` — `[3.4.0]` and `[3.3.0]` sections.
+- `CHANGELOG.md` — `[3.5.0]`, `[3.4.0]` and `[3.3.0]` sections.
+- `research/v5/` — baseline, ETH audit, decisions, blockers, evidence ledger.
 - `research/v4/ROADMAP_V4.md` — the path to v4.0.0.
 - `research/v4/FINDINGS.md` — corrected finding and reproductions.
 - `research/v4/COMPLEXITY_AND_ETH.md` — complexity boundaries.

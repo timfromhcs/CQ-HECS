@@ -508,7 +508,16 @@ def cmd_sat(args: argparse.Namespace) -> int:
         except (OSError, ValueError) as exc:
             LOG.error("%s", exc)
             return EXIT_USAGE
-        result = solve(formula, timeout_seconds=args.timeout)
+        if getattr(args, "engine", "dpll") == "cadical":
+            from cqhecs.sat_external import BackendUnavailable, solve_external
+
+            try:
+                result = solve_external(formula, timeout_seconds=args.timeout)
+            except BackendUnavailable as exc:
+                LOG.error("%s", exc)
+                return EXIT_USAGE
+        else:
+            result = solve(formula, timeout_seconds=args.timeout)
         payload = {
             "schema_version": JSON_SCHEMA_VERSION,
             "version": __version__,
@@ -528,17 +537,48 @@ def cmd_sat(args: argparse.Namespace) -> int:
         else:
             print(f"Formula    : {formula.num_vars} vars, {formula.num_clauses} clauses")
             print(f"Status     : {result.status}")
-            if result.status == "SAT":
-                print(f"Model      : verified clause by clause ({result.model_verified})")
-            elif result.status == "UNSAT":
-                print("Proof      : none (exhaustive DPLL search; no checkable certificate)")
-            else:
-                print("Proof      : not decided")
+            print(f"Engine     : {result.engine}")
+            labels = {
+                "MODEL_VERIFIED": "model verified clause by clause",
+                "TREE_RESOLUTION_CHECKED": "tree-resolution certificate replayed by check_refutation",
+                "DRAT_CHECKED": "DRAT proof checked by cqhecs.drat (independent of the solver)",
+                "UNCERTIFIED": "none checked (UNSAT is the solver's verdict only)",
+                "NONE": "not decided",
+            }
+            print(f"Evidence   : {result.certification} - {labels[result.certification]}")
             print(f"Decisions  : {result.decisions}  conflicts {result.conflicts}  nodes {result.nodes}")
             print(f"Time (ms)  : {result.elapsed_ms:.2f}")
             print(f"Note       : {result.note}")
             if result.assignment is not None and args.show_model:
                 print("Model      :", " ".join(f"{k}={'1' if v else '0'}" for k, v in sorted(result.assignment.items())))
+        return EXIT_OK
+
+    if args.sat_command == "count":
+        from cqhecs.sat import count_models
+
+        try:
+            if args.file:
+                formula = parse_dimacs(Path(args.file).read_text("utf-8"), source=args.file)
+            elif args.cnf:
+                formula = parse_dimacs(args.cnf, source="argument")
+            else:
+                LOG.error("provide a DIMACS file or --cnf TEXT")
+                return EXIT_USAGE
+        except (OSError, ValueError) as exc:
+            LOG.error("%s", exc)
+            return EXIT_USAGE
+        counted = count_models(formula, timeout_seconds=args.timeout)
+        payload = {"schema_version": JSON_SCHEMA_VERSION, "version": __version__, "result": counted}
+        if args.format == "json":
+            _emit_json(payload)
+        else:
+            print(f"Formula    : {formula.num_vars} vars, {formula.num_clauses} clauses")
+            print(f"Status     : {counted['status']}")
+            print(f"#Models    : {counted['count'] if counted['count'] is not None else 'not determined'}")
+            print(f"Method     : {counted['method']}")
+            print(f"Nodes      : {counted['nodes']}  cache hits {counted['cache_hits']}")
+            print(f"Time (ms)  : {counted['elapsed_ms']:.2f}")
+            print(f"Note       : {counted['note']}")
         return EXIT_OK
 
     if args.sat_command in ("models", "maxsat"):
@@ -1206,6 +1246,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_sat_solve.add_argument("--seed", type=int, default=20261030, help="Random seed")
     p_sat_solve.add_argument("--json-out", default=None, help="Write the full result JSON here")
     p_sat_solve.add_argument("--show-model", action="store_true", help="Print the satisfying assignment")
+    p_sat_solve.add_argument(
+        "--engine", choices=["dpll", "cadical"], default="dpll",
+        help="dpll (built-in reference) or cadical (optional extra: pip install cqhecs[sat])",
+    )
+    p_sat_count = sat_sub.add_parser("count", help="Exact model count (#SAT)")
+    p_sat_count.add_argument("file", nargs="?", help="DIMACS .cnf file")
+    p_sat_count.add_argument("--cnf", default=None, help="DIMACS text")
+    p_sat_count.add_argument("--timeout", type=float, default=10.0, help="Timeout in seconds")
 
     p_sat_models = sat_sub.add_parser("models", help="Enumerate up to N models")
     p_sat_models.add_argument("file", nargs="?", help="DIMACS .cnf file")

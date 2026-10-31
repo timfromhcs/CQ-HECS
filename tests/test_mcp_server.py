@@ -93,3 +93,15 @@ def test_devices_tool_and_device_noise_run():
     assert "ibm_fez" in ids
     payload = json.loads(run["result"]["content"][0]["text"])
     assert sum(payload["result"]["counts"].values()) == 2000
+
+
+def test_sat_count_tool_and_certification():
+    counted, solved = _session([
+        {"jsonrpc": "2.0", "id": 10, "method": "tools/call",
+         "params": {"name": "cqhecs_sat_count", "arguments": {"cnf": "p cnf 4 1\n1 2 0\n"}}},
+        {"jsonrpc": "2.0", "id": 11, "method": "tools/call",
+         "params": {"name": "cqhecs_sat_solve", "arguments": {"cnf": "p cnf 1 2\n1 0\n-1 0\n"}}},
+    ])
+    assert json.loads(counted["result"]["content"][0]["text"])["result"]["count"] == "12"
+    result = json.loads(solved["result"]["content"][0]["text"])["result"]
+    assert result["certification"] == "TREE_RESOLUTION_CHECKED" and result["contract_version"] == "1.1"

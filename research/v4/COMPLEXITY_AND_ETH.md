@@ -35,8 +35,13 @@ Facts that matter for reading the lab:
 
 - ETH implies `P != NP`. A proof of ETH would therefore settle `P` versus `NP`;
   the converse is not known.
-- ETH is a hypothesis, not a theorem. Conditional lower bounds are statements of
-  the form “if ETH, then problem X needs …”.
+- ETH was a hypothesis. **Update (2026-10-30):** two AI-generated, Lean-formalized
+  artifacts claim to refute it: OpenAI's *The Exponential Time Hypothesis is False* and
+  Anthropic's *A 2^{o(n)} Time Algorithm for 3-SAT*. Neither is peer-reviewed, and this
+  project has not re-run their proofs. SETH falls with ETH, and P versus NP stays open.
+  The statements, the formalized scopes and the status are in
+  `research/v5/COMPLEXITY_CLAIM_AUDIT.md`. Conditional lower bounds of the form “if
+  ETH, then …” lose their hypothesis if the claims hold.
 - An empirical curve that looks exponential is **consistent with** ETH. It is
   not evidence that no polynomial algorithm exists; the algorithm might simply
   not be the one on the screen.
@@ -95,15 +100,18 @@ exact paths. Neither is a quantum-advantage claim.
 - **Noise lab:** ΔTV is a distance to the measured counts on one job. A lower
   number is a better prediction on that job, not proof of the physical model.
   `M-FIT-2` is post-hoc; its hold-out score is exploratory.
-- **SAT lab:** `SAT` has a verified model; `UNSAT` has no proof object and says
-  so; `UNKNOWN` is a timeout. A sweep is one solver's runtime curve.
+- **SAT lab:** `SAT` has a verified model. Since v3.3, `UNSAT` from the built-in
+  DPLL carries a replay-checked tree-resolution certificate. Since v3.5, the
+  optional CaDiCaL engine's `UNSAT` is DRAT-checked by `cqhecs.drat`, and the
+  `certification` field names the evidence. `UNKNOWN` is a timeout. A sweep is one solver's runtime curve.
 - **Evidence:** the digest and provider job IDs are shown so that a reader can
   check the data instead of trusting the chart.
 
 ## 6. Non-claims
 
 - No `P = NP` or `P != NP` result.
-- No proof or refutation of ETH or SETH.
+- No proof or refutation of ETH or SETH **by this project**; the external refutation
+  claims are recorded with their status, not adopted as fact.
 - No claim that the emulator is nature or that noise cleaning recovers the true
   state.
 - No claim that QuantumRings is quantum hardware.

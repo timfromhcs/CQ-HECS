@@ -58,6 +58,24 @@ TOOLS: List[Dict[str, Any]] = [
                 "cnf": {"type": "string"},
                 "timeout": {"type": "number", "default": 5.0},
                 "node_budget": {"type": "integer"},
+                "engine": {
+                    "type": "string",
+                    "enum": ["dpll", "cadical"],
+                    "default": "dpll",
+                    "description": "cadical needs the optional python-sat extra; UNSAT is DRAT-checked",
+                },
+            },
+            "required": ["cnf"],
+        },
+    },
+    {
+        "name": "cqhecs_sat_count",
+        "description": "Exact model count (#SAT) of a DIMACS CNF; UNKNOWN when the budget runs out.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "cnf": {"type": "string"},
+                "timeout": {"type": "number", "default": 5.0},
             },
             "required": ["cnf"],
         },
@@ -134,11 +152,16 @@ def _tool_sat(arguments: Dict[str, Any]) -> Dict[str, Any]:
     from cqhecs.sat import parse_dimacs, solve
 
     formula = parse_dimacs(arguments["cnf"], source="mcp")
-    result = solve(
-        formula,
-        timeout_seconds=float(arguments.get("timeout", 5.0)),
-        node_budget=arguments.get("node_budget"),
-    )
+    if arguments.get("engine", "dpll") == "cadical":
+        from cqhecs.sat_external import solve_external
+
+        result = solve_external(formula, timeout_seconds=float(arguments.get("timeout", 5.0)))
+    else:
+        result = solve(
+            formula,
+            timeout_seconds=float(arguments.get("timeout", 5.0)),
+            node_budget=arguments.get("node_budget"),
+        )
     return {
         "formula": {"num_vars": formula.num_vars, "num_clauses": formula.num_clauses},
         "result": result.to_dict(),
@@ -194,6 +217,11 @@ def _call(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         return _text(_tool_sat(arguments))
     if name == "cqhecs_sat_models":
         return _text(_tool_models(arguments))
+    if name == "cqhecs_sat_count":
+        from cqhecs.sat import count_models, parse_dimacs
+
+        formula = parse_dimacs(arguments["cnf"], source="mcp")
+        return _text({"result": count_models(formula, timeout_seconds=float(arguments.get("timeout", 5.0)))})
     if name == "cqhecs_devices":
         from cqhecs.device_profiles import list_profiles, summary
 

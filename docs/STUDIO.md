@@ -89,7 +89,8 @@ credentials.
 | `GET` | `/api/devices` | — | measured M-FIT-2 device profiles |
 | `POST` | `/api/simulate` | `{source, shots, seed, path, noise}` (`noise`: `ideal`, `mfit`, `mfit2`, `custom`, `device:<id>`) | circuit result |
 | `POST` | `/api/noise/compare` | `{job_id, overrides?}` | measured vs models |
-| `POST` | `/api/sat/solve` | `{cnf}` or `{random:{...}}` | sound SAT result |
+| `POST` | `/api/sat/solve` | `{cnf}` or `{random:{...}}`, optional `engine` (`dpll`, `cadical`) | sound SAT result with `certification` |
+| `POST` | `/api/sat/count` | `{cnf, timeout}` | exact #SAT count |
 | `POST` | `/api/sat/sweep` | `{sizes, ratios, trials, timeout}` | empirical sweep |
 | `POST` | `/api/reload` | — | reload evidence from disk |
 

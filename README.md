@@ -26,8 +26,26 @@ Four classical simulation paths · one result contract · fail-closed by design
 
 ---
 
-> **Status: `v3.4.0` (2026-10-30).** Measured noise from three QPU vendors,
-> usable everywhere:
+> **Status: `v3.5.0` (2026-10-31).** Proof-carrying SAT, exact model counting, and a
+> research audit of the October 2026 ETH claims:
+>
+> - **SAT evidence everywhere.** Every SAT result now names its evidence
+>   (`certification`): `MODEL_VERIFIED`, `TREE_RESOLUTION_CHECKED`, `DRAT_CHECKED`,
+>   `UNCERTIFIED` or `NONE`. The optional CaDiCaL engine (`pip install cqhecs[sat]`,
+>   `cq-hecs sat solve --engine cadical`) has its UNSAT proofs checked by an
+>   in-repo DRAT checker (`cqhecs.drat`) that shares no code with the solver. The
+>   browser SAT lab now records and replays tree-resolution certificates too.
+> - **Exact #SAT** (`cq-hecs sat count`, `count_models`, MCP, Studio, web).
+>   Counts are exact big integers; a budget that runs out gives `UNKNOWN`.
+> - **ETH audit.** `research/v5/COMPLEXITY_CLAIM_AUDIT.md` reads the OpenAI and
+>   Anthropic artifacts at pinned revisions. ETH (and with it SETH) is *claimed
+>   refuted*, formalized in Lean, and not peer-reviewed. The proofs were not re-run
+>   here, and P vs NP stays open.
+> - **Web quality gates.** Playwright E2E and axe (WCAG 2.2 AA, no serious
+>   violations) run in CI, with screenshots at six viewports. A result panel shows
+>   engine, precision, noise provenance and build SHA, with JSON export.
+>
+> **v3.4.0** added measured noise from three QPU vendors:
 >
 > - **Third vendor.** The pinned 25-circuit suite ran on **IQM Garnet**. The run
 >   was preregistered and used 500 shots per circuit. H-V3-8 is **SUPPORTED**:
@@ -283,7 +301,7 @@ equivariance, zero-noise identity, and channel composition order.
   live at https://cq-hecs-web.vercel.app; source in [`web/`](web/).
 - **MCP:** `cq-hecs mcp`, a stdio JSON-RPC server for agents (run, analyze,
   SAT solve/models, hardware evidence).
-- **Standalone:** `cqhecs-3.4.0-windows-x64.zip` on the release page; unzip
+- **Standalone:** `cqhecs-3.5.0-windows-x64.zip` on the release page; unzip
   and run `cq-hecs\cq-hecs.exe`. `scripts/build_exe.ps1` rebuilds it.
 
 ### CQ-HECS Studio
@@ -316,6 +334,8 @@ cq-hecs sat solve --random 30 --ratio 4.26 --timeout 5
 cq-hecs sat sweep --sizes 10,15,20,25 --ratios 3.0,4.26,6.0 --trials 5
 cq-hecs sat models --cnf "p cnf 3 2\n1 2 0\n-1 3 0\n" --limit 5
 cq-hecs sat maxsat --cnf "p cnf 2 2\n1 0\n-1 0\n" --weights 1,2
+cq-hecs sat count --cnf "p cnf 200 1\n1 2 0\n"     # exact #SAT
+cq-hecs sat solve pigeonhole_6_5.cnf --engine cadical  # optional extra, DRAT-checked
 cq-hecs mcp
 ```
 
@@ -325,10 +345,32 @@ tree-resolution refutation that a separate checker (`check_refutation`) replays;
 `certified` is true only after that check, and a missing or failed certificate is
 reported as such (disagreement between the two searches yields `UNKNOWN`). The
 native C++ solver and `python_bridge.sat_engine` still give no proof object.
-A timeout or node budget is `UNKNOWN`, never `UNSAT`. The older
+A timeout or node budget is `UNKNOWN`, never `UNSAT`.
+
+Since v3.5.0 every result carries `certification`:
+
+| `certification` | Meaning |
+| :--- | :--- |
+| `MODEL_VERIFIED` | `SAT`, and the model satisfies every clause of the original CNF |
+| `TREE_RESOLUTION_CHECKED` | `UNSAT` from the built-in DPLL; its refutation was replayed by `check_refutation` |
+| `DRAT_CHECKED` | `UNSAT` from CaDiCaL (`--engine cadical`); its DRAT proof passed `cqhecs.drat` (independent of the solver, not formally verified) |
+| `UNCERTIFIED` | `UNSAT` without a checked proof: the solver's verdict only |
+| `NONE` | `UNKNOWN` |
+
+Exact model counting is a separate problem with its own result (`COUNTED` with an
+exact integer serialized as a string, or `UNKNOWN`). The older
 `python_bridge.sat_engine` is the native bridge; it was fixed in v3.0.0 and uses
 the `SAT_VERIFIED`/`UNSAT_PROVEN`/`TIMEOUT_UNKNOWN` vocabulary. The Studio and
 `cq-hecs sat` use the standalone engine.
+
+### Which engine runs where
+
+| Surface | Quantum engine | SAT engine |
+| :--- | :--- | :--- |
+| Python / CLI / Qiskit / MCP / Studio | routed paths A–D (CPU), density matrix ≤ 10 qubits for noise | `cqhecs.sat` DPLL (+ optional CaDiCaL), `count_models` |
+| Native C++20 / C ABI | the C++20 core behind the C ABI (CTest 21/21); 12 SPIR-V shaders validated and dispatched on a software ICD in CI, **no end-to-end GPU circuit simulator** | `cq_solve_sat` (no proof object) |
+| Web (browser) | its own state vector: WASM f64 (exact up to rounding), WebGPU f32 (single precision, cross-checked ≤ 20 qubits); **not** paths A–D | its own TS DPLL with replay-checked tree-resolution certificates, `countModels`; no CaDiCaL |
+| Windows build (`cq-hecs.exe`) | same as Python/CLI | same as Python (CaDiCaL only if built with `python-sat`) |
 
 ---
 
@@ -427,13 +469,13 @@ choco install vulkan-sdk cmake ninja -y --no-progress
 
 ```bash
 python -m build
-# dist/cqhecs-3.4.0-py3-none-any.whl
-# dist/cqhecs-3.4.0.tar.gz
+# dist/cqhecs-3.5.0-py3-none-any.whl
+# dist/cqhecs-3.5.0.tar.gz
 ```
 
 Published wheels, sdists, SHA-256 checksums, and the SPDX SBOM are attached to
 [GitHub Releases](https://github.com/timfromhcs/CQ-HECS/releases). The latest
-release is `v3.4.0`.
+release is `v3.5.0`.
 
 ---
 
@@ -612,7 +654,7 @@ A deeper component matrix is in [`ARCHITECTURE.md`](ARCHITECTURE.md) and
 ## Verification
 
 The numbers below are from the Linux CI lane with the native build required
-(`CQ_HECS_REQUIRE_NATIVE=1`) on the `v3.4.0` tree. They are measurements, not
+(`CQ_HECS_REQUIRE_NATIVE=1`) on the `v3.5.0` tree. They are measurements, not
 performance claims. The release audit records the exact SHA and CI runs.
 
 | Gate | Result |
@@ -623,7 +665,7 @@ performance claims. The release audit records the exact SHA and CI runs.
 | Source mutation | **44/44** killed |
 | Metamorphic selftest | **12/12** |
 | SPIR-V shaders | **12/12** verified |
-| Version consistency | all surfaces report `3.4.0` |
+| Version consistency | all surfaces report `3.5.0` |
 | Lint | `flake8 --select=E9,F` clean on `cqhecs`, `python_bridge`, `scripts`, `tests` |
 | Silent-truncation audit | no patterns found |
 | Latest CI matrix | 7/7 jobs: Linux, Windows, ASan/UBSan, Python 3.12–3.14, static/package |
@@ -969,7 +1011,7 @@ exposes a “Cite this repository” entry from [`CITATION.cff`](CITATION.cff).
 @software{cqhecs2026,
   author  = {Stark, Tim Johann},
   title   = {CQ-HECS: Classical Quantum High-Efficiency Compute Simulator},
-  version = {3.4.0},
+  version = {3.5.0},
   year    = {2026},
   url     = {https://github.com/timfromhcs/CQ-HECS},
   license = {Apache-2.0}

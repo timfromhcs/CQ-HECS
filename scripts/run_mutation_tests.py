@@ -506,6 +506,41 @@ def check_sat_timeout_unknown() -> bool:
     return CQSATSolver().solve(formula, timeout_seconds=-1.0).status != TIMEOUT_UNKNOWN
 
 
+def check_drat_checker() -> bool:
+    """True if the independent DRAT checker accepts something it must reject."""
+    from cqhecs.drat import check_drat
+
+    formula = [(1, 2), (-1, 2), (1, -2), (-1, -2)]
+    if check_drat(formula, ["2 0", "0"]).valid is not True:
+        return True  # a valid proof is no longer accepted
+    if check_drat([(1, 2, 3), (-1, 2), (1, -2)], ["-3 0", "0"]).valid is not False:
+        return True  # a lemma that is neither RUP nor RAT got through
+    if check_drat(formula, ["d 5 6 0", "2 0", "0"]).valid is not False:
+        return True  # deleting an absent clause got through
+    return check_drat(formula, ["2 0"]).valid is not False  # truncated proof
+
+
+def check_sat_count() -> bool:
+    """True if the exact #SAT counter disagrees with brute force."""
+    import itertools
+
+    from cqhecs.sat import CNF, count_models
+
+    cases = [
+        CNF(5, ((1, 2), (3, 4))),           # two components and one free variable
+        CNF(4, ((1, -2), (2, 3), (-3, 4))),  # one component
+        CNF(3, ((1,), (-1, 2))),             # unit propagation
+    ]
+    for formula in cases:
+        brute = sum(
+            formula.is_satisfied({v: bits[v - 1] for v in range(1, formula.num_vars + 1)})
+            for bits in itertools.product((False, True), repeat=formula.num_vars)
+        )
+        if count_models(formula)["count"] != str(brute):
+            return True
+    return False
+
+
 def check_sat_certificate() -> bool:
     """True if the certificate checker or the certifying search is defective."""
     from cqhecs.sat import CNF, check_refutation, solve
@@ -632,6 +667,8 @@ CHECKS: Dict[str, Callable[[], bool]] = {
     "sat_timeout_unknown": check_sat_timeout_unknown,
     "sat_exact_memo": check_sat_exact_memo,
     "sat_certificate": check_sat_certificate,
+    "drat_checker": check_drat_checker,
+    "sat_count": check_sat_count,
     "dimacs_empty_clause": check_dimacs_empty_clause,
     "fsim_definition": check_fsim_definition,
     "sqrt_w_axis": check_sqrt_w_axis,
@@ -994,6 +1031,46 @@ MUTANTS: List[SourceMutant] = [
         replacement="        self._kraus = _prune([a @ b for a in first.kraus_operators for b in second.kraus_operators])\n",
         check="selftest_composition_property",
         mechanism="applies the second channel before the first",
+    ),
+    SourceMutant(
+        name="DRAT lemma accepted without RUP or RAT",
+        target="cqhecs/drat.py",
+        original='                if not checker.rat(clause):\n                    return done(False, f"lemma {lemmas} is neither RUP nor RAT: {list(clause)}")\n',
+        replacement="                pass\n",
+        check="drat_checker",
+        mechanism="every lemma is trusted, so any proof that ends in 0 certifies UNSAT",
+    ),
+    SourceMutant(
+        name="DRAT deletion of an absent clause accepted",
+        target="cqhecs/drat.py",
+        original='                if checker.db[key] == 0:\n                    return done(False, f"deletion of a clause that is not present: {list(clause)}")\n',
+        replacement="",
+        check="drat_checker",
+        mechanism="a proof may delete clauses that do not exist",
+    ),
+    SourceMutant(
+        name="DRAT proof without the empty clause accepted",
+        target="cqhecs/drat.py",
+        original='        return done(False, "the proof never derives the empty clause")\n',
+        replacement='        return done(True, "accepted")\n',
+        check="drat_checker",
+        mechanism="a truncated proof certifies UNSAT",
+    ),
+    SourceMutant(
+        name="#SAT components added instead of multiplied",
+        target="cqhecs/sat.py",
+        original="                total *= part\n",
+        replacement="                total += part\n",
+        check="sat_count",
+        mechanism="independent components combine by sum, so counts of split formulas are wrong",
+    ),
+    SourceMutant(
+        name="#SAT free variables dropped",
+        target="cqhecs/sat.py",
+        original="            return 1 << len(variables)\n",
+        replacement="            return 1\n",
+        check="sat_count",
+        mechanism="unconstrained variables no longer double the count",
     ),
     SourceMutant(
         name="Refutation leaf accepted without a conflict",

@@ -439,6 +439,7 @@ async function satSolve(random = false) {
       ? { random: { num_vars: Number($("#sat-n").value), ratio: Number($("#sat-ratio").value), seed: Date.now() % 2147483647 }, timeout }
       : { cnf: $("#cnf").value, timeout };
     if (Number.isFinite(budget) && budget > 0) body.node_budget = budget;
+    body.engine = $("#sat-engine").value;
     const payload = await api("/api/sat/solve", { method: "POST", body: JSON.stringify(body) });
     renderSAT(payload);
   } catch (error) {
@@ -462,6 +463,9 @@ function renderSAT(payload) {
     metric("nodes", result.nodes),
     metric("time ms", fmt(result.elapsed_ms, 2)),
     metric("model verified", String(result.model_verified), result.model_verified ? "ok" : "warn"),
+    metric("engine", result.engine || "dpll"),
+    metric("evidence", result.certification || "NONE",
+      ["MODEL_VERIFIED", "TREE_RESOLUTION_CHECKED", "DRAT_CHECKED"].includes(result.certification) ? "ok" : "warn"),
   );
   const assignment = $("#sat-assignment");
   assignment.innerHTML = "";
@@ -768,6 +772,32 @@ $("#apply-override").addEventListener("click", () =>
   inspectJob({ cx_depolarizing: Number($("#cx-override").value) })
 );
 $("#sat-solve").addEventListener("click", () => satSolve(false));
+$("#sat-count").addEventListener("click", async () => {
+  try {
+    const payload = await api("/api/sat/count", {
+      method: "POST",
+      body: JSON.stringify({ cnf: $("#cnf").value, timeout: Number($("#sat-timeout").value) }),
+    });
+    const r = payload.result;
+    const tag = $("#sat-status");
+    tag.textContent = r.status === "COUNTED" ? `#models = ${r.count}` : "UNKNOWN";
+    tag.className = `tag ${r.status === "COUNTED" ? "ok" : "bad"}`;
+    const metrics = $("#sat-metrics");
+    metrics.innerHTML = "";
+    metrics.append(
+      metric("vars", payload.formula.num_vars),
+      metric("clauses", payload.formula.num_clauses),
+      metric("nodes", r.nodes),
+      metric("cache hits", r.cache_hits),
+      metric("time ms", fmt(r.elapsed_ms, 2)),
+    );
+    $("#sat-assignment").innerHTML = "";
+    $("#sat-assignment").append(el("p", "hint", `${r.method}. ${r.note}`));
+    $("#sat-table").innerHTML = "";
+  } catch (error) {
+    toast(error.message);
+  }
+});
 $("#sat-random").addEventListener("click", () => satSolve(true));
 $("#sat-sweep").addEventListener("click", satSweep);
 

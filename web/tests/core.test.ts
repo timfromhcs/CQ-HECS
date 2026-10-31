@@ -261,3 +261,45 @@ test("i18n: every UI key and guide section exists in EN, DE and FR", async () =>
   assert.deepEqual(Object.keys(GUIDE_UI).sort(), ["de", "en", "fr"]);
   for (const p of PRESETS) for (const l of ["en", "de", "fr"] as const) assert.ok(p.title[l] && p.blurb[l], `${p.id}:${l}`);
 });
+
+test("SAT certificates: every UNSAT is replay-checked; corrupted certificates are rejected", async () => {
+  const { solve, random3Sat, pigeonhole } = await import("../src/sat");
+  const { checkRefutation } = await import("../src/satcert");
+  let unsat = 0;
+  for (let seed = 0; seed < 200; seed++) {
+    const f = random3Sat(10, 45 + (seed % 20), seed);
+    const r = solve(f, 5000);
+    if (r.status === "UNSAT") { unsat++; assert.equal(r.certification, "TREE_RESOLUTION_CHECKED", `seed ${seed}`); }
+    if (r.status === "SAT") assert.equal(r.certification, "MODEL_VERIFIED");
+  }
+  assert.ok(unsat > 20, `enough UNSAT cases (${unsat})`);
+  const php = solve(pigeonhole(4));
+  assert.equal(php.certification, "TREE_RESOLUTION_CHECKED");
+  // Corruptions: wrong formula, dropped step, flipped resolve literal, empty.
+  const f: number[][] = [[1, 2], [-1, 2], [1, -2], [-1, -2]];
+  const good = [["leaf", [2]], ["leaf", [-2]], ["resolve", 2]] as Parameters<typeof checkRefutation>[1];
+  assert.equal(checkRefutation(f, good), true);
+  assert.equal(checkRefutation(f.slice(0, 3), good), false);
+  assert.equal(checkRefutation(f, good!.slice(0, 2)), false);
+  assert.equal(checkRefutation(f, [["leaf", [2]], ["leaf", [-2]], ["resolve", -2]]), false);
+  assert.equal(checkRefutation(f, []), false);
+});
+
+test("#SAT: exact counts against brute force, BigInt range, budgets", async () => {
+  const { countModels, random3Sat, satisfies, parseDimacs } = await import("../src/sat");
+  for (let seed = 0; seed < 120; seed++) {
+    const n = 4 + (seed % 9);
+    const f = random3Sat(n, 2 + ((seed * 7) % (5 * n)), seed);
+    let brute = 0;
+    for (let bits = 0; bits < 1 << n; bits++) {
+      if (satisfies(f, [false, ...Array.from({ length: n }, (_, i) => ((bits >> i) & 1) === 1)])) brute++;
+    }
+    assert.equal(countModels(f).count, String(brute), `seed ${seed}`);
+  }
+  assert.equal(countModels(parseDimacs("p cnf 200 1\n1 2 0\n")).count, (3n * (1n << 198n)).toString());
+  assert.equal(countModels(parseDimacs("p cnf 1 2\n1 0\n-1 0\n")).count, "0");
+  const big = random3Sat(60, 200, 4);
+  const r = countModels(big, 5000, 3);
+  assert.equal(r.status, "UNKNOWN");
+  assert.equal(r.count, null);
+});

@@ -7,7 +7,7 @@ import { Core, bitsOf } from "./core";
 import { GpuEngine } from "./gpu";
 import type { EngineInfo, RunRequest, RunResult, WorkerRequest, WorkerResponse } from "./protocol";
 import { measurementMap, readoutPair, run } from "./simulate";
-import { parseDimacs, solve, sweep } from "./sat";
+import { countModels, parseDimacs, solve, sweep } from "./sat";
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -125,6 +125,13 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     try {
       const f = parseDimacs(msg.dimacs);
       post({ type: "sat", id: msg.id, result: solve(f, msg.timeoutMs), numVars: f.numVars, numClauses: f.clauses.length });
+    } catch (e) {
+      post({ type: "error", id: msg.id, message: String((e as Error).message ?? e) });
+    }
+  } else if (msg.type === "count") {
+    try {
+      const f = parseDimacs(msg.dimacs);
+      post({ type: "count", id: msg.id, result: countModels(f, msg.timeoutMs), numVars: f.numVars, numClauses: f.clauses.length });
     } catch (e) {
       post({ type: "error", id: msg.id, message: String((e as Error).message ?? e) });
     }
