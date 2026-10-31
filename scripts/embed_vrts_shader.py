@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-Compile one compute shader with glslc and (re)write its SPIR-V array in
+Compile one compute shader with glslangValidator (the same compiler and flags as
+``scripts/verify_vulkan_shaders.py``, so the tracked ``.spv`` and the embedded
+array stay byte-identical) and (re)write its SPIR-V array in
 ``src/vulkan/shaders_vrts_embedded.hpp``.
 
     python scripts/embed_vrts_shader.py omniwave_bcp
@@ -26,9 +28,13 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     comp = ROOT / "shaders" / "compute" / f"{args.name}.comp"
     spv = comp.with_suffix(".spv")
-    res = subprocess.run(["glslc", "--target-env=vulkan1.3", str(comp), "-o", str(spv)], capture_output=True, text=True)
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from verify_vulkan_shaders import find_glslang_validator
+
+    res = subprocess.run([find_glslang_validator(), "--target-env", "vulkan1.3", "-V", str(comp), "-o", str(spv)],
+                         capture_output=True, text=True)
     if res.returncode != 0:
-        print(res.stderr, file=sys.stderr)
+        print(res.stderr or res.stdout, file=sys.stderr)
         return 1
     data = spv.read_bytes()
     if len(data) % 4 or int.from_bytes(data[:4], "little") != 0x07230203:
