@@ -62,6 +62,12 @@ CQ_API int cq_omniwave_device_name(char* out, uint32_t capacity) {
     return 0;
 }
 
+CQ_API void cq_omniwave_shutdown(void) {
+    std::lock_guard<std::mutex> lock(g_omniwave_mutex);
+    g_omniwave_ctx.reset();
+    g_omniwave_tried = false;
+}
+
 CQ_API int cq_omniwave_bcp_eval(const uint32_t* offsets, const uint32_t* codes, uint32_t num_clauses,
                                 const uint32_t* assigned, const uint32_t* values, uint32_t num_fronts,
                                 uint32_t words, uint32_t* out_status) {

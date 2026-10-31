@@ -66,6 +66,10 @@ CQ_API int cq_omniwave_bcp_eval(const uint32_t* offsets, const uint32_t* codes, 
                                 uint32_t words, uint32_t* out_status);
 /* Name of the Vulkan device used by the OMNIWAVE kernels; -2 if none. */
 CQ_API int cq_omniwave_device_name(char* out, uint32_t capacity);
+/* Release the lazily created OMNIWAVE Vulkan context. Safe to call repeatedly.
+ * Call before process/library teardown so Vulkan objects are destroyed while the
+ * loader and driver are still mapped. */
+CQ_API void cq_omniwave_shutdown(void);
 
 #ifdef __cplusplus
 }
