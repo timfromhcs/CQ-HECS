@@ -45,8 +45,8 @@ Every task points to evidence in `EVIDENCE_LEDGER.md` or `TEST_MATRIX.md`.
 | T6-M10-02 | M10 | Responsive screenshots at 360/390/768/1024/1440/1920 | lead | PASS |
 | T6-M11-01 | M11 | Secret scan, dependency/licence audit, workflow permissions | lead | PASS |
 | T6-M11-02 | M11 | Clean wheel/sdist install smoke | lead | PASS |
-| T6-M12-01 | M12 | Local release-candidate gate L0–L10 | lead | TODO |
-| T6-M13-01 | M13 | Push feature branch, PR, exact-SHA CI | lead | TODO |
-| T6-M13-02 | M13 | Vercel Preview exact-SHA smoke | lead | TODO |
-| T6-M14-01 | M14 | Merge, Production, release asset verification | lead | TODO |
-| T6-M15-01 | M15 | Post-release audit and backlog | lead | TODO |
+| T6-M12-01 | M12 | Local release-candidate gate L0–L10 | lead | PASS |
+| T6-M13-01 | M13 | Push feature branch, PR, exact-SHA CI | lead | PASS (PR #39, CI exact SHA) |
+| T6-M13-02 | M13 | Vercel Preview exact-SHA smoke | lead | BLOCKED (Vercel auth; production E2E PASS) |
+| T6-M14-01 | M14 | Merge, Production, release asset verification | lead | PASS (release published; assets verified) |
+| T6-M15-01 | M15 | Post-release audit and backlog | lead | PASS (post-release audit) |
