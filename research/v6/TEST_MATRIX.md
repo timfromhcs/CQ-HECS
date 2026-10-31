@@ -80,3 +80,18 @@ CMake 4.4.0, Node 22.23.1, Rust 1.96.0.
 | Lean build | `lake build` | 9768 jobs, standard axioms | PASS |
 | Comparator + nanoda | `comparator-check.sh` | `Your solution is okay!`; nanoda accepts | PASS |
 | External proof | drat-trim / lrat-check / cake_lpr | DRAT and LRAT verified; CakeML `VERIFIED UNSAT` | PASS |
+
+## v3.7.0 release verification
+
+| Gate | Command / source | Observed | Status |
+| :--- | :--- | :--- | :--- |
+| Full pytest | `python -m pytest tests/ -q` | 1968 passed, 9 skipped, 1 deselected, exit 0 | PASS |
+| OMNIWAVE branch tests | `tests/test_omniwave.py` | 488 passed; JW vs BFS front counts | PASS |
+| CTest | `ctest --test-dir build -C Release` | 21/21 | PASS |
+| Mutation | `scripts/run_mutation_tests.py` | 54/54 | PASS |
+| Web | `npm test`, `npm run build`, `npm run e2e` | 17/17, build, 13/13 | PASS |
+| Feature-SHA CI | `gh pr checks 41` | both CI run sets success | PASS |
+| Merge-SHA CI | `gh run watch 41192709602` | all jobs success | PASS |
+| Production E2E | `E2E_BASE_URL=https://cq-hecs-web.vercel.app npm run e2e` | 13/13; bundle 3.7.0 / 6c18ad7 | PASS |
+| Release assets | `gh release download v3.7.0` + SHA-256 | all match `sha256sums.txt` | PASS |
+| Clean wheel | fresh venv from downloaded wheel | version/selftest/OMNIWAVE branch PASS | PASS |
