@@ -193,6 +193,77 @@ bool test_tensor_contract(VulkanContext& ctx) {
     return ok;
 }
 
+// CPU reference for the OMNIWAVE BCP pass (same contract as
+// cqhecs.omniwave.bcp.evaluate_batch): 0 SAT, 1 CONFLICT, 2|(code<<2) UNIT, 3 OPEN.
+uint32_t bcp_reference(const std::vector<uint32_t>& offsets, const std::vector<uint32_t>& codes,
+                       const std::vector<uint32_t>& assigned, const std::vector<uint32_t>& values,
+                       uint32_t words, uint32_t front, uint32_t clause) {
+    uint32_t open = 0, unit = 0;
+    for (uint32_t i = offsets[clause]; i < offsets[clause + 1]; ++i) {
+        uint32_t code = codes[i], v = code >> 1, w = front * words + (v >> 5), bit = 1u << (v & 31u);
+        if ((assigned[w] & bit) == 0) { ++open; unit = code; continue; }
+        bool val = (values[w] & bit) != 0;
+        if (val != ((code & 1u) == 1u)) return 0u;
+    }
+    if (open == 0) return 1u;
+    if (open == 1) return 2u | (unit << 2);
+    return 3u;
+}
+
+bool test_omniwave_bcp(VulkanContext& ctx) {
+    // 40 variables (two words), 300 clauses, 97 fronts from a fixed LCG.
+    const uint32_t vars = 40, num_clauses = 300, fronts = 97, words = 2;
+    uint32_t state = 12345u;
+    auto next = [&]() { state = state * 1103515245u + 12345u; return (state >> 8) & 0xFFFFFFu; };
+    std::vector<uint32_t> offsets{0}, codes;
+    for (uint32_t c = 0; c < num_clauses; ++c) {
+        uint32_t len = 1 + next() % 4;
+        for (uint32_t k = 0; k < len; ++k) codes.push_back(2 * (next() % vars) + (next() & 1u));
+        offsets.push_back(static_cast<uint32_t>(codes.size()));
+    }
+    std::vector<uint32_t> assigned(fronts * words), values(fronts * words);
+    for (uint32_t f = 0; f < fronts; ++f) {
+        for (uint32_t w = 0; w < words; ++w) {
+            uint32_t mask = w == 1 ? 0xFFu : 0xFFFFFFFFu;  // only 40 variables exist
+            assigned[f * words + w] = (next() | (next() << 16)) & mask;
+            values[f * words + w] = (next() | (next() << 16)) & mask;
+        }
+    }
+    VulkanBuffer b_off, b_codes, b_assigned, b_values, b_status;
+    if (!allocate_host_visible(ctx, b_off, offsets.size() * 4) ||
+        !allocate_host_visible(ctx, b_codes, codes.size() * 4) ||
+        !allocate_host_visible(ctx, b_assigned, assigned.size() * 4) ||
+        !allocate_host_visible(ctx, b_values, values.size() * 4) ||
+        !allocate_host_visible(ctx, b_status, fronts * num_clauses * 4)) {
+        std::cerr << "FAIL: omniwave buffer allocation\n";
+        return false;
+    }
+    b_off.copy_to_buffer(offsets.data(), offsets.size() * 4);
+    b_codes.copy_to_buffer(codes.data(), codes.size() * 4);
+    b_assigned.copy_to_buffer(assigned.data(), assigned.size() * 4);
+    b_values.copy_to_buffer(values.data(), values.size() * 4);
+    if (!ctx.dispatch_omniwave_bcp(b_off, b_codes, b_assigned, b_values, b_status, num_clauses, fronts, words)) {
+        std::cerr << "FAIL: dispatch_omniwave_bcp returned false\n";
+        return false;
+    }
+    std::vector<uint32_t> got(fronts * num_clauses);
+    b_status.copy_from_buffer(got.data(), got.size() * 4);
+    uint32_t mismatches = 0, kinds[4] = {0, 0, 0, 0};
+    for (uint32_t f = 0; f < fronts; ++f) {
+        for (uint32_t c = 0; c < num_clauses; ++c) {
+            uint32_t want = bcp_reference(offsets, codes, assigned, values, words, f, c);
+            ++kinds[want & 3u];
+            if (got[f * num_clauses + c] != want) ++mismatches;
+        }
+    }
+    bool every_kind = kinds[0] && kinds[1] && kinds[2] && kinds[3];
+    bool ok = mismatches == 0 && every_kind;
+    std::cout << (ok ? "PASS" : "FAIL") << " omniwave BCP on GPU (" << fronts * num_clauses
+              << " cells, " << mismatches << " mismatches, SAT/CONFLICT/UNIT/OPEN = " << kinds[0] << "/"
+              << kinds[1] << "/" << kinds[2] << "/" << kinds[3] << ")\n";
+    return ok;
+}
+
 bool env_flag(const char* name) {
 #ifdef _MSC_VER
     char* value = nullptr;
@@ -243,6 +314,7 @@ int main() {
     ok &= test_state_reset(ctx);
     ok &= test_cordic_phase_and_pauli_x(ctx);
     ok &= test_tensor_contract(ctx);
+    ok &= test_omniwave_bcp(ctx);
 
     if (!ok) {
         std::cerr << "Vulkan GPU compute contract FAILED\n";

@@ -1,0 +1,60 @@
+#version 450
+// OMNIWAVE batched Boolean constraint propagation: one evaluation pass.
+//
+// For every (front, clause) pair this writes one status word, bit-identical to
+// cqhecs.omniwave.bcp.evaluate_batch (the trusted CPU reference):
+//   0 SAT        some literal is true
+//   1 CONFLICT   all literals assigned and false
+//   2 UNIT       exactly one literal open, the rest false; bits 2.. hold its code
+//   3 OPEN       otherwise
+// Literal code: 2*(v-1) + (negative ? 1 : 0). A front is two bit vectors over
+// the variables (assigned, value), packed into `words` 32-bit words.
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(std430, binding = 0) readonly buffer ClauseOffsets { uint offsets[]; };
+layout(std430, binding = 1) readonly buffer ClauseLits    { uint codes[]; };
+layout(std430, binding = 2) readonly buffer Assigned      { uint assigned[]; };
+layout(std430, binding = 3) readonly buffer Values        { uint values[]; };
+layout(std430, binding = 4) writeonly buffer Status       { uint status[]; };
+
+layout(push_constant) uniform BcpConstants {
+    uint num_clauses;
+    uint num_fronts;
+    uint words;
+} pc;
+
+void main() {
+    uint clause = gl_GlobalInvocationID.x;
+    uint front = gl_GlobalInvocationID.y;
+    if (clause >= pc.num_clauses || front >= pc.num_fronts) return;
+
+    uint base = front * pc.words;
+    uint open_count = 0u;
+    uint unit_code = 0u;
+    uint result = 3u;
+    bool satisfied = false;
+
+    for (uint i = offsets[clause]; i < offsets[clause + 1u]; ++i) {
+        uint code = codes[i];
+        uint v = code >> 1u;              // 0-based variable index
+        bool negative = (code & 1u) == 1u;
+        uint word = base + (v >> 5u);
+        uint bit = 1u << (v & 31u);
+        if ((assigned[word] & bit) == 0u) {
+            open_count += 1u;
+            unit_code = code;
+        } else {
+            bool val = (values[word] & bit) != 0u;
+            if (val != negative) { satisfied = true; break; }
+        }
+    }
+
+    if (satisfied) {
+        result = 0u;
+    } else if (open_count == 0u) {
+        result = 1u;
+    } else if (open_count == 1u) {
+        result = 2u | (unit_code << 2u);
+    }
+    status[front * pc.num_clauses + clause] = result;
+}

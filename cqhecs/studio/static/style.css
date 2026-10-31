@@ -192,6 +192,12 @@ textarea { font-family: var(--mono); font-size: 12px; line-height: 1.55; resize:
 
 .chart { min-height: 170px; display: grid; align-content: start; gap: 7px; margin: 8px 0 14px; }
 .chart.tall { min-height: 300px; }
+.bars { display: grid; gap: 6px; }
+.bar-row { display: grid; grid-template-columns: 74px minmax(0, 1fr) 70px; gap: 10px; align-items: center; font-size: 12px; }
+.bar-label { color: var(--muted); }
+.bar-value { text-align: right; font-family: var(--mono, monospace); }
+.bar-track { height: 10px; border-radius: 5px; background: #16213a; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 5px; background: var(--cyan); }
 .bar-row { display: grid; grid-template-columns: 200px minmax(0, 1fr) 96px; gap: 9px; align-items: center; font-size: 11px; }
 .bar-row .label { font-family: var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bar-track { height: 16px; border-radius: 6px; background: rgba(255, 255, 255, .04); overflow: hidden; }

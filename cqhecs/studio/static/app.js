@@ -18,6 +18,7 @@ const TITLES = {
   evidence: ["Evidence", "The 25 pinned jobs, their digests and their measured distributions."],
   research: ["Research", "P versus NP, ETH, and what a finite experiment can actually say."],
   hardware: ["Hardware", "External QPU runs, independent oracles, and finite P-vs-NP probes."],
+  omniwave: ["OMNIWAVE lab", "Multi-front exact search: live data, DRAT-checked UNSAT, verified GPU propagation."],
 };
 
 function el(tag, className, text) {
@@ -587,6 +588,152 @@ function drawSweep(rows) {
   container.append(legend);
 }
 
+/* ---------------------------------------------------------------- OMNIWAVE lab */
+
+const lab = { timer: null };
+
+function owRequest() {
+  const body = {
+    waves: Number($("#ow-waves").value),
+    workers: Number($("#ow-workers").value),
+    bcp: $("#ow-bcp").value,
+    batch_size: Number($("#ow-batch").value),
+    timeout: Number($("#ow-timeout").value),
+    max_fronts: Number($("#ow-fronts").value),
+    seed: Number($("#ow-seed").value),
+  };
+  const cnf = $("#ow-cnf").value.trim();
+  if (cnf) body.cnf = cnf;
+  else body.random = { num_vars: Number($("#ow-n").value), ratio: Number($("#ow-ratio").value), seed: body.seed };
+  return body;
+}
+
+function owBars(container, counts, prefix) {
+  container.innerHTML = "";
+  const entries = Object.entries(counts || {}).sort((a, b) => Number(a[0]) - Number(b[0]));
+  const max = Math.max(1, ...entries.map(([, v]) => v));
+  for (const [key, value] of entries) {
+    const row = el("div", "bar-row");
+    const track = el("div", "bar-track");
+    const fill = el("div", "bar-fill");
+    fill.style.width = `${(100 * value) / max}%`;
+    track.append(fill);
+    row.append(el("span", "bar-label", `${prefix} ${key}`), track, el("span", "bar-value", fmt(value)));
+    container.append(row);
+  }
+  if (!entries.length) container.append(el("p", "hint", "No data yet."));
+}
+
+function owChart(timeline) {
+  const container = $("#ow-chart");
+  container.innerHTML = "";
+  if (!timeline || timeline.length < 2) return;
+  const ns = "http://www.w3.org/2000/svg";
+  const W = 560, H = 200, L = 46, R = 46, T = 12, B = 26;
+  const tMax = Math.max(1, timeline[timeline.length - 1].t_ms);
+  const fMax = Math.max(1, ...timeline.map((s) => s.fronts_processed));
+  const x = (t) => L + (t / tMax) * (W - L - R);
+  const yF = (v) => H - B - (v / fMax) * (H - T - B);
+  const yC = (v) => H - B - v * (H - T - B);
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("width", "100%");
+  const line = (points, color) => {
+    const pl = document.createElementNS(ns, "polyline");
+    pl.setAttribute("fill", "none");
+    pl.setAttribute("stroke", color);
+    pl.setAttribute("stroke-width", "2");
+    pl.setAttribute("points", points);
+    svg.append(pl);
+  };
+  const text = (tx, ty, value, anchor, color) => {
+    const t = document.createElementNS(ns, "text");
+    t.setAttribute("x", tx); t.setAttribute("y", ty);
+    t.setAttribute("text-anchor", anchor); t.setAttribute("fill", color);
+    t.setAttribute("font-size", "10");
+    t.textContent = value;
+    svg.append(t);
+  };
+  const axis = document.createElementNS(ns, "line");
+  axis.setAttribute("x1", L); axis.setAttribute("x2", W - R);
+  axis.setAttribute("y1", H - B); axis.setAttribute("y2", H - B);
+  axis.setAttribute("stroke", "#22314f");
+  svg.append(axis);
+  line(timeline.map((s) => `${x(s.t_ms)},${yF(s.fronts_processed)}`).join(" "), "#55d7ff");
+  line(timeline.map((s) => `${x(s.t_ms)},${yC(s.covered)}`).join(" "), "#46e39a");
+  text(L - 6, T + 8, fmt(fMax), "end", "#55d7ff");
+  text(L - 6, H - B, "0", "end", "#93a3c4");
+  text(W - R + 6, T + 8, "100%", "start", "#46e39a");
+  text(W - R, H - 8, `${fmt(tMax / 1000, 2)} s`, "end", "#93a3c4");
+  container.append(svg);
+  const legend = el("div", "legend");
+  for (const [label, color] of [["fronts processed", "#55d7ff"], ["coverage", "#46e39a"]]) {
+    const item = el("span", "", label);
+    item.style.setProperty("--c", color);
+    legend.append(item);
+  }
+  container.append(legend);
+}
+
+function owRender(data) {
+  const active = data.state === "running" || data.state === "paused";
+  $("#ow-start").disabled = active;
+  $("#ow-pause").disabled = data.state !== "running";
+  $("#ow-resume").disabled = data.state !== "paused";
+  $("#ow-cancel").disabled = !active;
+  const result = data.result;
+  const tag = $("#ow-state");
+  tag.textContent = result ? `${result.status} · ${result.certification}` : data.state;
+  tag.className = `tag ${result ? (result.status === "UNKNOWN" ? "bad" : "ok") : ""}`;
+  const live = data.live || {};
+  const metrics = $("#ow-metrics");
+  metrics.innerHTML = "";
+  metrics.append(
+    metric("fronts", fmt(live.fronts_processed ?? 0)),
+    metric("queue", fmt(live.queue ?? 0)),
+    metric("conflicts", fmt(live.conflicts ?? 0)),
+    metric("shared nogoods", fmt(live.shared_nogoods ?? 0)),
+    metric("duplicates skipped", fmt(live.duplicates_skipped ?? 0)),
+    metric("proof lemmas", fmt(data.proof_lemmas ?? 0)),
+    metric("coverage", `${((live.covered ?? 0) * 100).toFixed(3)}%`),
+    metric("elapsed s", fmt((data.elapsed_ms ?? 0) / 1000, 2)),
+  );
+  $("#ow-verdict").textContent = data.error ? `Error: ${data.error}` : result ? result.note : "";
+  $("#ow-starts").textContent = live.wave_starts ? `starts ${live.wave_starts.join(", ")}` : "starts -";
+  owBars($("#ow-waves-bars"), live.per_wave, "wave");
+  owBars($("#ow-workers-bars"), live.per_worker, "worker");
+  owChart(data.timeline);
+  const gpu = data.gpu || {};
+  $("#ow-gpu").textContent = gpu.available
+    ? `GPU: ${gpu.device}${gpu.software_icd ? " (software ICD)" : ""}. Every Vulkan pass is checked against the CPU result.`
+    : `GPU: unavailable (${gpu.reason || "unknown"}). Scalar and batch modes still work.`;
+  $("#ow-bcp").querySelector('option[value="vulkan"]').disabled = !gpu.available;
+  if (!active && lab.timer) {
+    clearInterval(lab.timer);
+    lab.timer = null;
+  }
+}
+
+async function owPoll() {
+  try {
+    owRender(await api("/api/omniwave/status"));
+  } catch (error) {
+    toast(error.message);
+  }
+}
+
+async function owAction(action, body = {}) {
+  try {
+    const data = await api(`/api/omniwave/${action}`, { method: "POST", body: JSON.stringify(body) });
+    owRender(data);
+    if ((data.state === "running" || data.state === "paused") && !lab.timer) {
+      lab.timer = setInterval(owPoll, 250);
+    }
+  } catch (error) {
+    toast(error.message);
+  }
+}
+
 /* ---------------------------------------------------------------- evidence */
 
 function renderEvidence() {
@@ -800,6 +947,11 @@ $("#sat-count").addEventListener("click", async () => {
 });
 $("#sat-random").addEventListener("click", () => satSolve(true));
 $("#sat-sweep").addEventListener("click", satSweep);
+$("#ow-start").addEventListener("click", () => owAction("start", owRequest()));
+$("#ow-pause").addEventListener("click", () => owAction("pause"));
+$("#ow-resume").addEventListener("click", () => owAction("resume"));
+$("#ow-cancel").addEventListener("click", () => owAction("cancel"));
+owPoll();
 
 const initial = location.hash.replace("#", "");
 if (initial && TITLES[initial]) setView(initial);

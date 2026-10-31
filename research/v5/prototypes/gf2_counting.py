@@ -19,46 +19,13 @@ exhaustive checker. It makes no performance claim and is not a solver.
 from __future__ import annotations
 
 import itertools
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, Optional, Sequence, Tuple
 
 Clause = Tuple[int, ...]
 
 
-@dataclass(frozen=True)
-class XorSystem:
-    """Rows ``(mask, parity)``: bit i of ``mask`` is variable i+1; Σ x_i = parity (mod 2)."""
-
-    num_vars: int
-    rows: Tuple[Tuple[int, int], ...]
-
-    def reduced(self) -> Tuple[Optional[List[Tuple[int, int]]], int]:
-        """Row-reduce. Returns ``(rows, rank)``; rows is None if the system is inconsistent."""
-        rows = [list(r) for r in self.rows]
-        rank = 0
-        for bit in range(self.num_vars):
-            pivot = next((i for i in range(rank, len(rows)) if rows[i][0] >> bit & 1), None)
-            if pivot is None:
-                continue
-            rows[rank], rows[pivot] = rows[pivot], rows[rank]
-            for i in range(len(rows)):
-                if i != rank and rows[i][0] >> bit & 1:
-                    rows[i][0] ^= rows[rank][0]
-                    rows[i][1] ^= rows[rank][1]
-            rank += 1
-        if any(mask == 0 and parity == 1 for mask, parity in rows[rank:]):
-            return None, rank
-        return [tuple(r) for r in rows[:rank]], rank
-
-    def count_solutions(self) -> int:
-        rows, rank = self.reduced()
-        return 0 if rows is None else 1 << (self.num_vars - rank)
-
-    def satisfied(self, x: Sequence[bool]) -> bool:
-        return all(
-            (sum(x[i] for i in range(self.num_vars) if mask >> i & 1) & 1) == parity
-            for mask, parity in self.rows
-        )
+# The XOR solver lives in the package (single source of truth); re-exported here.
+from cqhecs.omniwave.gf2 import XorSystem  # noqa: E402,F401
 
 
 def satisfies_cnf(clauses: Sequence[Clause], x: Sequence[bool]) -> bool:

@@ -30,6 +30,13 @@
 4. **Web quality gates:** Playwright E2E and axe (WCAG 2.2 AA) in CI, screenshots at
    six viewports, a "what ran" provenance panel and a JSON result export. The new
    suite found five defects, all fixed (CHANGELOG `[3.5.0]`).
+5. **OMNIWAVE (experimental).** A multi-front exact SAT search
+   (`--engine omniwave`, MCP, Studio) with a live **OMNIWAVE lab** in Studio. Its
+   UNSAT answers carry a DRAT proof that `cqhecs.drat` checks before the answer is
+   given; otherwise the answer is `UNKNOWN`. Propagation can run on Vulkan, where
+   every GPU pass is verified against the CPU. It is a research engine: it is not
+   faster than CaDiCaL, its threads share the Python GIL, and it makes no
+   complexity claim. Numbers: `research/v5/OMNIWAVE.md`.
 
 ## 1. What v3.4.0 added
 

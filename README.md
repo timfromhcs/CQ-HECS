@@ -44,6 +44,12 @@ Four classical simulation paths · one result contract · fail-closed by design
 > - **Web quality gates.** Playwright E2E and axe (WCAG 2.2 AA, no serious
 >   violations) run in CI, with screenshots at six viewports. A result panel shows
 >   engine, precision, noise provenance and build SHA, with JSON export.
+> - **OMNIWAVE (experimental).** A multi-front exact SAT search
+>   (`--engine omniwave`, MCP, Studio **OMNIWAVE lab** with live data and
+>   pause/resume/cancel). UNSAT only with a DRAT proof accepted by `cqhecs.drat`;
+>   propagation can run on Vulkan, verified against the CPU on every pass. It is a
+>   research engine, slower than CaDiCaL, with no speedup or complexity claim
+>   (`research/v5/OMNIWAVE.md`).
 >
 > **v3.4.0** added measured noise from three QPU vendors:
 >
@@ -198,7 +204,7 @@ That rule is enforced in code, not only in documentation:
 | **Public surfaces** | `cq-hecs` CLI, `cq-hecs studio`, Qiskit `BackendV2`, Python API, C ABI, SAT engine |
 | **Simulation paths** | A: stabilizer tableau · B: stabilizer rank · C: untruncated MPS · D: sparse Pauli |
 | **Noise** | Typed profiles, Kraus channels, exact float64 density matrix up to 10 qubits |
-| **Verification** | 698 Python tests, 21 CTest, 44 mutants, 12-check selftest, 12 SPIR-V shaders, 21/21 independent oracle |
+| **Verification** | 698 Python tests, 21 CTest, 44 mutants, 12-check selftest, 13 SPIR-V shaders, 21/21 independent oracle |
 | **Platforms** | Linux x64, Windows 10/11; Python 3.11–3.14 |
 | **License** | Apache-2.0 |
 
@@ -367,8 +373,8 @@ the `SAT_VERIFIED`/`UNSAT_PROVEN`/`TIMEOUT_UNKNOWN` vocabulary. The Studio and
 
 | Surface | Quantum engine | SAT engine |
 | :--- | :--- | :--- |
-| Python / CLI / Qiskit / MCP / Studio | routed paths A–D (CPU), density matrix ≤ 10 qubits for noise | `cqhecs.sat` DPLL (+ optional CaDiCaL), `count_models` |
-| Native C++20 / C ABI | the C++20 core behind the C ABI (CTest 21/21); 12 SPIR-V shaders validated and dispatched on a software ICD in CI, **no end-to-end GPU circuit simulator** | `cq_solve_sat` (no proof object) |
+| Python / CLI / Qiskit / MCP / Studio | routed paths A–D (CPU), density matrix ≤ 10 qubits for noise | `cqhecs.sat` DPLL (+ optional CaDiCaL), `count_models`, experimental OMNIWAVE (`cqhecs.omniwave`) |
+| Native C++20 / C ABI | the C++20 core behind the C ABI (CTest 21/21); 13 SPIR-V shaders validated and dispatched on a software ICD in CI, **no end-to-end GPU circuit simulator** | `cq_solve_sat` (no proof object); `cq_omniwave_bcp_eval` (one batched BCP pass for OMNIWAVE, CPU-verified) |
 | Web (browser) | its own state vector: WASM f64 (exact up to rounding), WebGPU f32 (single precision, cross-checked ≤ 20 qubits); **not** paths A–D | its own TS DPLL with replay-checked tree-resolution certificates, `countModels`; no CaDiCaL |
 | Windows build (`cq-hecs.exe`) | same as Python/CLI | same as Python (CaDiCaL only if built with `python-sat`) |
 

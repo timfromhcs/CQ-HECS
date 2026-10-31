@@ -60,10 +60,15 @@ TOOLS: List[Dict[str, Any]] = [
                 "node_budget": {"type": "integer"},
                 "engine": {
                     "type": "string",
-                    "enum": ["dpll", "cadical"],
+                    "enum": ["dpll", "cadical", "omniwave"],
                     "default": "dpll",
-                    "description": "cadical needs the optional python-sat extra; UNSAT is DRAT-checked",
+                    "description": "cadical needs the optional python-sat extra; omniwave is the experimental "
+                    "multi-front engine. For both, UNSAT is reported only with a DRAT proof checked by cqhecs.drat",
                 },
+                "waves": {"type": "integer", "default": 4, "description": "omniwave only"},
+                "workers": {"type": "integer", "default": 2, "description": "omniwave only"},
+                "bcp": {"type": "string", "enum": ["scalar", "batch", "vulkan"], "default": "scalar",
+                        "description": "omniwave only; vulkan results are verified against the CPU reference"},
             },
             "required": ["cnf"],
         },
@@ -156,6 +161,19 @@ def _tool_sat(arguments: Dict[str, Any]) -> Dict[str, Any]:
         from cqhecs.sat_external import solve_external
 
         result = solve_external(formula, timeout_seconds=float(arguments.get("timeout", 5.0)))
+    elif arguments.get("engine") == "omniwave":
+        from cqhecs.omniwave import OmniwaveConfig, OmniwaveEngine
+
+        engine = OmniwaveEngine(formula, OmniwaveConfig(
+            waves=int(arguments.get("waves", 4)), workers=int(arguments.get("workers", 2)),
+            timeout_seconds=float(arguments.get("timeout", 5.0)), bcp=str(arguments.get("bcp", "scalar")),
+        ))
+        result = engine.run()
+        return {
+            "formula": {"num_vars": formula.num_vars, "num_clauses": formula.num_clauses},
+            "result": result.to_dict(),
+            "omniwave": engine.snapshot(),
+        }
     else:
         result = solve(
             formula,

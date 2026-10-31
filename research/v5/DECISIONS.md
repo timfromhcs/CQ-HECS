@@ -37,3 +37,22 @@ large counts survive JSON, or `UNKNOWN` on budget. It never reuses `SAT`/`UNSAT`
 ## D-05 Research prototypes live under `research/v5/prototypes/`
 
 Nothing there is imported by `cqhecs`. Each prototype has its own exhaustive-oracle test.
+
+## D-06 OMNIWAVE ships in v3.5.0 as an experimental engine
+
+The add-on asked for OMNIWAVE in the same stable release. It is additive (a new
+`engine` value, a new module, new endpoints), so it fits a minor release. It is marked
+experimental (`cqhecs.omniwave.EXPERIMENTAL = True`, docs, Studio tag) because its
+performance is far behind CaDiCaL and its representation modules may change. Its
+correctness contract is not experimental: SAT needs a verified model and UNSAT needs a
+DRAT proof accepted by `cqhecs.drat`. The GF(2) prototype from D-05 moved into
+`cqhecs.omniwave.gf2`; `research/v5/prototypes/gf2_counting.py` re-exports it.
+
+## D-07 The Vulkan BCP kernel is verified by default, not trusted
+
+`evaluate_batch_vulkan(..., verify=True)` compares every GPU pass with the CPU
+reference and raises on a difference; the engine uses it by default
+(`OmniwaveConfig.verify_gpu`). A wrong GPU answer would cost soundness only through
+the search order (the DRAT check would still reject a bad UNSAT), but a silent kernel
+bug must not reach users. CTest checks the kernel against a C++ reference so CI with
+lavapipe covers it without Python. No GPU speedup is claimed.

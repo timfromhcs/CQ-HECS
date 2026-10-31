@@ -139,6 +139,30 @@ CQ_API const char* cq_get_version(void);
 
 ---
 
+### 2.8 `cq_omniwave_device_name` (3.5.0)
+```c
+CQ_API int cq_omniwave_device_name(char* out, uint32_t capacity);
+```
+- **Description**: Writes the Vulkan device name used by the OMNIWAVE kernel
+  (NUL-terminated, truncated to `capacity`). The device is created lazily once.
+- **Return Value**: `0` on success, `-2` when no Vulkan device is available.
+
+### 2.9 `cq_omniwave_bcp_eval` (3.5.0)
+```c
+CQ_API int cq_omniwave_bcp_eval(const uint32_t* offsets, const uint32_t* codes, uint32_t num_clauses,
+                                const uint32_t* assigned, const uint32_t* values, uint32_t num_fronts,
+                                uint32_t words, uint32_t* out_status);
+```
+- **Description**: One batched clause-evaluation pass of OMNIWAVE on the GPU
+  (`shaders/compute/omniwave_bcp.comp`). Clauses are CSR (`offsets`, literal
+  codes `2(v-1)+neg`); each front is `words` 32-bit words of assigned bits and
+  value bits. `out_status[f*num_clauses+c]` is `0` SAT, `1` CONFLICT,
+  `2|(code<<2)` UNIT or `3` OPEN, identical to `cqhecs.omniwave.bcp.evaluate_batch`.
+- **Return Value**: `0`, `-2` (no device), `-3` (allocation) or `-4` (dispatch).
+  Python verifies every pass against the CPU reference unless told otherwise.
+
+---
+
 ## 3. Python surfaces added in 3.1.0
 
 These are not C-ABI symbols. They are documented here because the C ABI's
@@ -152,8 +176,16 @@ These are not C-ABI symbols. They are documented here because the C ABI's
 | `cq-hecs sat solve --engine cadical` | Optional CaDiCaL backend (`pip install cqhecs[sat]`). The SAT model is re-checked; the UNSAT DRAT proof is checked by `cqhecs.drat`; a missing backend is an error, never a fallback. (3.5.0) |
 | `cq-hecs sat count` | Exact model count (#SAT): `COUNTED` with an exact integer string, or `UNKNOWN` on budget. (3.5.0) |
 
-SAT result dictionaries carry `contract_version` `1.1` (3.5.0), which adds `certification`, `proof_system` and `engine`; no field was removed.
+| `cq-hecs sat solve --engine omniwave` | Experimental multi-front search (`--waves`, `--workers`, `--bcp scalar|batch|vulkan`, `--batch-size`, `--proof-out`). UNSAT only with a DRAT proof accepted by `cqhecs.drat`; JSON output adds an `omniwave` stats object. (3.5.0) |
 | `cq-hecs studio` | Local experiment UI; see [`STUDIO.md`](STUDIO.md). |
+
+SAT result dictionaries carry `contract_version` `1.1` (3.5.0), which adds `certification`, `proof_system` and `engine`; no field was removed.
+
+Python API (3.5.0, experimental): `cqhecs.omniwave.solve_omniwave(cnf, **config)`
+returns a `SATResult`; `OmniwaveEngine(cnf, OmniwaveConfig(...))` adds `run(on_tick)`,
+`snapshot()`, `proof()`, `pause()`, `resume()` and `cancel()`. The representation
+modules (`field`, `gf2`, `quadratic`, `boundary`, `bcp`, `gpu`) are research APIs
+and may change in a minor release.
 
 The `cq_solve_sat` C entry point and `python_bridge.sat_engine` use the v3.0.0
 `SAT_VERIFIED`/`UNSAT_PROVEN`/`TIMEOUT_UNKNOWN` vocabulary. The standalone

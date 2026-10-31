@@ -1,0 +1,383 @@
+{
+  "h1_work_by_config": [
+    {
+      "family": "pigeonhole",
+      "source": "D:\\Quantum EMU\\CQ-HECS\\benchmarks\\sat\\pigeonhole_6_5.cnf",
+      "configs": {
+        "1 wave, no sharing": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 945,
+          "shared_nogoods": 0,
+          "ms": 221.5
+        },
+        "1 wave, sharing <= 8": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 945,
+          "shared_nogoods": 282,
+          "ms": 281.2
+        },
+        "4 waves, no sharing": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 777,
+          "shared_nogoods": 0,
+          "ms": 162.0
+        },
+        "4 waves, sharing <= 8": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 777,
+          "shared_nogoods": 246,
+          "ms": 223.9
+        },
+        "4 waves, 2 workers, sharing <= 8": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 777,
+          "shared_nogoods": 246,
+          "ms": 212.7
+        }
+      }
+    },
+    {
+      "family": "parity",
+      "source": "tseitin_torus(3x3,seed=3009)",
+      "configs": {
+        "1 wave, no sharing": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 2047,
+          "shared_nogoods": 0,
+          "ms": 586.2
+        },
+        "1 wave, sharing <= 8": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 2047,
+          "shared_nogoods": 510,
+          "ms": 713.4
+        },
+        "4 waves, no sharing": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 2047,
+          "shared_nogoods": 0,
+          "ms": 899.8
+        },
+        "4 waves, sharing <= 8": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 2047,
+          "shared_nogoods": 510,
+          "ms": 1063.8
+        },
+        "4 waves, 2 workers, sharing <= 8": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 2047,
+          "shared_nogoods": 510,
+          "ms": 1087.6
+        }
+      }
+    },
+    {
+      "family": "random",
+      "source": "random:3sat:n=30:m=128:seed=1510",
+      "configs": {
+        "1 wave, no sharing": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "fronts": 46,
+          "shared_nogoods": 0,
+          "ms": 4.7
+        },
+        "1 wave, sharing <= 8": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "fronts": 46,
+          "shared_nogoods": 13,
+          "ms": 5.7
+        },
+        "4 waves, no sharing": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "fronts": 46,
+          "shared_nogoods": 0,
+          "ms": 5.2
+        },
+        "4 waves, sharing <= 8": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "fronts": 46,
+          "shared_nogoods": 13,
+          "ms": 5.5
+        },
+        "4 waves, 2 workers, sharing <= 8": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "fronts": 46,
+          "shared_nogoods": 13,
+          "ms": 4.7
+        }
+      }
+    },
+    {
+      "family": "random",
+      "source": "random:3sat:n=30:m=128:seed=1511",
+      "configs": {
+        "1 wave, no sharing": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 255,
+          "shared_nogoods": 0,
+          "ms": 59.0
+        },
+        "1 wave, sharing <= 8": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 255,
+          "shared_nogoods": 110,
+          "ms": 57.5
+        },
+        "4 waves, no sharing": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 241,
+          "shared_nogoods": 0,
+          "ms": 49.9
+        },
+        "4 waves, sharing <= 8": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 241,
+          "shared_nogoods": 132,
+          "ms": 53.4
+        },
+        "4 waves, 2 workers, sharing <= 8": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 241,
+          "shared_nogoods": 132,
+          "ms": 59.4
+        }
+      }
+    },
+    {
+      "family": "random",
+      "source": "random:3sat:n=30:m=128:seed=1512",
+      "configs": {
+        "1 wave, no sharing": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 183,
+          "shared_nogoods": 0,
+          "ms": 34.8
+        },
+        "1 wave, sharing <= 8": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 183,
+          "shared_nogoods": 142,
+          "ms": 45.1
+        },
+        "4 waves, no sharing": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 135,
+          "shared_nogoods": 0,
+          "ms": 26.6
+        },
+        "4 waves, sharing <= 8": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 135,
+          "shared_nogoods": 124,
+          "ms": 30.2
+        },
+        "4 waves, 2 workers, sharing <= 8": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 135,
+          "shared_nogoods": 124,
+          "ms": 36.2
+        }
+      }
+    },
+    {
+      "family": "random",
+      "source": "random:3sat:n=40:m=170:seed=1680",
+      "configs": {
+        "1 wave, no sharing": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "fronts": 12,
+          "shared_nogoods": 0,
+          "ms": 2.3
+        },
+        "1 wave, sharing <= 8": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "fronts": 12,
+          "shared_nogoods": 5,
+          "ms": 2.2
+        },
+        "4 waves, no sharing": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "fronts": 12,
+          "shared_nogoods": 0,
+          "ms": 1.9
+        },
+        "4 waves, sharing <= 8": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "fronts": 12,
+          "shared_nogoods": 5,
+          "ms": 1.9
+        },
+        "4 waves, 2 workers, sharing <= 8": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "fronts": 12,
+          "shared_nogoods": 5,
+          "ms": 2.4
+        }
+      }
+    },
+    {
+      "family": "random",
+      "source": "random:3sat:n=40:m=170:seed=1681",
+      "configs": {
+        "1 wave, no sharing": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 299,
+          "shared_nogoods": 0,
+          "ms": 79.4
+        },
+        "1 wave, sharing <= 8": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 299,
+          "shared_nogoods": 146,
+          "ms": 90.6
+        },
+        "4 waves, no sharing": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 131,
+          "shared_nogoods": 0,
+          "ms": 33.4
+        },
+        "4 waves, sharing <= 8": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 131,
+          "shared_nogoods": 104,
+          "ms": 35.9
+        },
+        "4 waves, 2 workers, sharing <= 8": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 131,
+          "shared_nogoods": 104,
+          "ms": 35.7
+        }
+      }
+    },
+    {
+      "family": "random",
+      "source": "random:3sat:n=40:m=170:seed=1682",
+      "configs": {
+        "1 wave, no sharing": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 137,
+          "shared_nogoods": 0,
+          "ms": 37.0
+        },
+        "1 wave, sharing <= 8": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 137,
+          "shared_nogoods": 98,
+          "ms": 43.2
+        },
+        "4 waves, no sharing": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 217,
+          "shared_nogoods": 0,
+          "ms": 60.9
+        },
+        "4 waves, sharing <= 8": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 217,
+          "shared_nogoods": 170,
+          "ms": 67.5
+        },
+        "4 waves, 2 workers, sharing <= 8": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "fronts": 217,
+          "shared_nogoods": 170,
+          "ms": 67.9
+        }
+      }
+    }
+  ],
+  "h2_signature_compression": [
+    {
+      "left_vars": 12,
+      "separator_width": 5,
+      "consistent_left_states": 148,
+      "distinct_signatures": 4,
+      "source": "banded_3sat(n=24,m=60,w=5,seed=5000)",
+      "separator_count": "1464",
+      "sharpsat_count": "1464"
+    },
+    {
+      "left_vars": 12,
+      "separator_width": 5,
+      "consistent_left_states": 952,
+      "distinct_signatures": 9,
+      "source": "banded_3sat(n=24,m=60,w=5,seed=5001)",
+      "separator_count": "5692",
+      "sharpsat_count": "5692"
+    },
+    {
+      "left_vars": 12,
+      "separator_width": 5,
+      "consistent_left_states": 1020,
+      "distinct_signatures": 14,
+      "source": "banded_3sat(n=24,m=60,w=5,seed=5002)",
+      "separator_count": "7200",
+      "sharpsat_count": "7200"
+    },
+    {
+      "left_vars": 12,
+      "separator_width": 5,
+      "consistent_left_states": 240,
+      "distinct_signatures": 11,
+      "source": "banded_3sat(n=24,m=60,w=5,seed=5003)",
+      "separator_count": "1512",
+      "sharpsat_count": "1512"
+    },
+    {
+      "left_vars": 12,
+      "separator_width": 5,
+      "consistent_left_states": 302,
+      "distinct_signatures": 7,
+      "source": "banded_3sat(n=24,m=60,w=5,seed=5004)",
+      "separator_count": "4436",
+      "sharpsat_count": "4436"
+    }
+  ],
+  "schema_version": "1.0",
+  "cqhecs_version": "3.5.0",
+  "failures": [],
+  "generated": "2026-10-31T05:55:41Z"
+}

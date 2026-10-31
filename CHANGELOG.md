@@ -11,8 +11,9 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 ## [3.5.0] - 2026-10-31
 
 Proof-carrying SAT across all surfaces, exact model counting, a pinned audit of the
-October 2026 ETH claims, and browser E2E/accessibility gates. All changes are
-additive (SemVer minor); see `research/v5/DECISIONS.md` D-01.
+October 2026 ETH claims, browser E2E/accessibility gates, and the experimental
+OMNIWAVE multi-front engine. All changes are additive (SemVer minor); see
+`research/v5/DECISIONS.md` D-01.
 
 ### Added
 
@@ -43,6 +44,35 @@ additive (SemVer minor); see `research/v5/DECISIONS.md` D-01.
   `research/v5/prototypes/gf2_counting.py` is a research-only GF(2) prototype with an
   exhaustive oracle.
 - `docs/DESIGN_SYSTEM.md`.
+- **OMNIWAVE (experimental)**, `cqhecs.omniwave`: an exact multi-front SAT search.
+  Several waves start from spread-out variables and expand cubes by exhaustive
+  x / not-x splits through a shared deepest-first queue. Every refuted cube is
+  logged as a DRAT lemma before its short nogood is shared with other workers;
+  UNSAT is reported only when `cqhecs.drat` accepts the whole proof, otherwise the
+  result is `UNKNOWN`. Exact dedup (sorted cube tuples, never a hash), exact
+  coverage (sum of 2^-depth), pause/resume/cancel, and a pause-aware time budget.
+  - Unified sparse representation (`omniwave.field.ProblemField`): CSR incidence,
+    exact XOR/GF(2) view, a model-count-preserving quadratic GF(2) encoding
+    (`omniwave.quadratic`), GF(2) rank factorization (`omniwave.gf2`), tensor
+    bucket counting, separator counting (`omniwave.boundary`) and parity-hash
+    cells (an empty cell is never an UNSAT proof). Each has an exhaustive oracle test.
+  - Propagation backends: `scalar`, `batch` (bit-packed fronts, CPU) and `vulkan`
+    (new shader `shaders/compute/omniwave_bcp.comp`, C ABI `cq_omniwave_bcp_eval` /
+    `cq_omniwave_device_name`). The Vulkan result is checked bit-for-bit against
+    the CPU reference on every pass by default; CTest compares the kernel with a
+    C++ reference (29,100 cells, 0 mismatches on an AMD Radeon iGPU).
+  - Surfaces: `cq-hecs sat solve --engine omniwave [--waves --workers --bcp
+    --batch-size --proof-out]`, MCP `cqhecs_sat_solve` `engine: "omniwave"`, Studio
+    SAT engine option and the new **OMNIWAVE lab** view (live fronts, queue,
+    conflicts, nogoods, proof lemmas, coverage over time, per-wave and per-worker
+    work, GPU status; start/pause/resume/cancel; `/api/omniwave/*`).
+  - `scripts/omniwave_benchmark.py`: DPLL vs CaDiCaL vs OMNIWAVE scalar/batch/vulkan
+    on random, planted, parity (Tseitin), pigeonhole and low-treewidth families,
+    with fixed seeds and JSON output; it fails on any disagreement or unchecked
+    UNSAT. Report: `research/v5/OMNIWAVE.md`.
+  - Non-claims: worker threads share the Python GIL, so no speedup is claimed;
+    the Vulkan path is a verified kernel, not a GPU acceleration claim; nothing
+    here bears on P vs NP or ETH.
 
 ### Changed
 
@@ -68,7 +98,13 @@ additive (SemVer minor); see `research/v5/DECISIONS.md` D-01.
 - `tests/test_drat.py`, `tests/test_sat_count.py`, `tests/test_sat_external.py`
   (40 random formulas: CaDiCaL agrees with the DPLL reference, and every UNSAT is
   DRAT-checked), `tests/test_research_gf2.py` (301 exhaustive cases).
-- Mutation gate: 49/49 (five new mutants for the DRAT checker and #SAT).
+- Mutation gate: 54/54 (five mutants for the DRAT checker and #SAT, five for
+  OMNIWAVE: a dropped split branch, hash-only dedup, an over-strong shared nogood,
+  an undecided proof check accepted as UNSAT, and a batched-BCP conflict lost).
+- `tests/test_omniwave.py`: OMNIWAVE against brute force and DPLL for every BCP
+  mode, proof tampering, races between workers, pause/resume/cancel, CLI; Vulkan
+  parity on real hardware when a device is present. Studio and MCP tests for the
+  Lab endpoints and the `omniwave` engine.
 - Web: 16 unit tests (certificate replay and corruption, #SAT vs brute force) and
   13 Playwright tests.
 

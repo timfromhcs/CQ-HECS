@@ -159,6 +159,7 @@ class StudioState:
         self.by_id = {job.job_id: job for job in self.jobs}
         self.dataset = self._load_dataset()
         self._router = EntanglementAdaptiveRouter()
+        self._lab = None
 
     # -- loading --------------------------------------------------------
     def _load_json(self, path: Path) -> Optional[Dict[str, Any]]:
@@ -648,8 +649,12 @@ class StudioState:
                 raise StudioError(str(exc), status=503, code="backend_unavailable") from exc
         elif engine == "dpll":
             result = solve(formula, timeout_seconds=timeout, node_budget=node_budget)
+        elif engine == "omniwave":
+            from cqhecs.omniwave import solve_omniwave
+
+            result = solve_omniwave(formula, timeout_seconds=timeout)
         else:
-            raise StudioError("engine must be dpll or cadical", code="invalid_engine")
+            raise StudioError("engine must be dpll, cadical or omniwave", code="invalid_engine")
         return {
             "schema_version": "1.0",
             "formula": self._formula_summary(formula),
@@ -671,6 +676,30 @@ class StudioState:
             "result": count_models(formula, timeout_seconds=timeout),
             "non_claim": "An exact count for this formula; UNKNOWN means the budget ran out, not zero.",
         }
+
+    # -- OMNIWAVE Research Lab --------------------------------------------
+    @property
+    def lab(self):
+        if self._lab is None:
+            from cqhecs.studio.omniwave_lab import OmniwaveLab
+
+            self._lab = OmniwaveLab()
+        return self._lab
+
+    def omniwave(self, action: str, request: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
+        from cqhecs.studio.omniwave_lab import LabError
+
+        try:
+            if action == "status":
+                return self.lab.status()
+            if action == "start":
+                formula = self._formula_from_request(request or {})
+                return self.lab.start(formula, request or {}, self._formula_summary)
+            if action in ("pause", "resume", "cancel"):
+                return getattr(self.lab, action)()
+        except LabError as exc:
+            raise StudioError(str(exc), status=exc.status, code=exc.code) from exc
+        raise StudioError(f"unknown OMNIWAVE action {action!r}", status=404, code="not_found")
 
     @staticmethod
     def _formula_summary(formula: CNF) -> Dict[str, Any]:
@@ -968,6 +997,8 @@ class StudioHandler(BaseHTTPRequestHandler):
                 return self._json(HTTPStatus.OK, {"devices": [summary(p) for p in list_profiles()]})
             if path == "/api/hardware":
                 return self._json(HTTPStatus.OK, self.server.state.hardware())
+            if path == "/api/omniwave/status":
+                return self._json(HTTPStatus.OK, self.server.state.omniwave("status"))
             if path == "/api/reference":
                 return self._json(HTTPStatus.OK, self.server.state.reference())
             if path == "/api/preset":
@@ -994,6 +1025,9 @@ class StudioHandler(BaseHTTPRequestHandler):
                 return self._json(HTTPStatus.OK, self.server.state.sat_count(body))
             if path == "/api/sat/sweep":
                 return self._json(HTTPStatus.OK, self.server.state.sat_sweep(body))
+            if path.startswith("/api/omniwave/"):
+                action = path[len("/api/omniwave/"):]
+                return self._json(HTTPStatus.OK, self.server.state.omniwave(action, body))
             if path == "/api/reload":
                 self.server.state.reload()
                 return self._json(HTTPStatus.OK, self.server.state.health())
