@@ -84,3 +84,20 @@ contracts between Python and Web before it is implemented and tested.
 v3.5.0 does not contain it; `gpu.py` then skips the hook and the old unload crash
 can still occur. Release artifacts must be rebuilt from this source, and the
 process-exit regression test should run against the built artifact in CI.
+
+## F-09 - python-sat 1.9.dev17/CaDiCaL aborts the Python 3.14 process at exit (CONFIRMED, EXTERNAL)
+
+On this Windows/Python 3.14.6 machine, importing and closing `pysat.solvers` with
+CaDiCaL terminates the interpreter with `0xC0000409` after the work has finished
+(a minimal `Solver(name="cadical195")` script reproduces it). The SAT tests
+themselves pass; the exit code is the problem. The same adapter is exercised in
+the Linux CI lane, where python-sat is a pinned optional dependency.
+
+- Impact: a local full-suite run with python-sat installed reports a spurious
+  non-zero exit after 2016 passing tests.
+- Mitigation: run the full local suite without python-sat (the optional tests
+  skip), and run `tests/test_sat_external.py` in a dedicated process while
+  recording the external exit-code defect.
+- This is not a CQ-HECS native crash and must not be hidden in release evidence.
+- Next: pin/test a python-sat build that exits cleanly on Python 3.14, or keep
+  the external adapter in a subprocess boundary.

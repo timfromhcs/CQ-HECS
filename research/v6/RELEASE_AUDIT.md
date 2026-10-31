@@ -1,46 +1,55 @@
-# v6 release audit
+# v3.6.0 release audit
 
-**Status:** NOT A RELEASE CANDIDATE (increment 1 only).
-**Audited:** 2026-10-31.
-**Branch:** `agent/v3.6.0-sat-core`, based on `origin/main` `33723dd`.
-**Version:** still `3.5.0`; no tag, no GitHub release, no Vercel production action.
+**Status:** LOCAL RELEASE CANDIDATE — cloud publication pending.
+**Candidate version:** `3.6.0`
+**Candidate source:** the commit recorded in `research/v6/DEPLOYMENTS.md` (filled
+after the final local commit; do not use a floating branch name as provenance).
+**Previous stable:** `v3.5.0`, tag `725d2c35615b9ccf6f7fdc77cf0992bbc890b66c`.
 
-## What this increment contains
+## 1. Scope
 
-- Opt-in two-watched-literal SAT propagation with differential and benchmark
-  evidence (`research/v6/evidence/sat_propagation_benchmark.json`).
-- SAT contract `1.2` with original/canonical DIMACS digests and duplicate-literal
-  normalization.
-- Fixes for partial-assignment model checking, certificate budget composition, and
-  a Windows Vulkan teardown abort.
-- v6 research/state documents under `research/v6/`.
+Additive minor release:
 
-## Gates checked locally
+- opt-in two-watched-literal SAT propagation with differential and benchmark
+  evidence;
+- SAT contract 1.2 (`formula_original_sha256`, repeated-literal normalization);
+- partial-assignment predicate fix and certificate-deadline cap;
+- Windows Vulkan teardown fix;
+- web SAT input/canonical digest and normalization parity;
+- external DRAT/LRAT/CakeLPR proof evidence;
+- research-only separator counter prototype;
+- refreshed docs, changelog and release notes.
 
-| Gate | Status |
+No public field or command was removed. `P = NP` / `P ≠ NP` remains untouched
+and open.
+
+## 2. Local gates
+
+| Gate | Result |
 | :--- | :--- |
-| L0 repository state | PASS |
-| L1 version + compileall | PASS |
-| L2 full pytest | PASS: 1758 passed, 6 skipped, 1 deselected, exit 0 (201.16 s) |
-| L3 CTest | PASS 21/21 |
-| L4 SAT differential/benchmark | PASS (finite suite) |
-| L8 web unit/build | PASS (baseline; web code untouched) |
-| L6 mutation | PASS 54/54 (watched engine not yet in the mutant list) |
-| L7 physical GPU end-to-end | NOT RUN |
-| L10 secret/dependency audit | TODO |
-| L11 cloud/release | NOT RUN |
+| L0 repository/provenance | PASS (branch from `origin/main` `33723dd`) |
+| L1 version + compileall | PASS, `3.6.0` on all checked surfaces |
+| L2 full pytest | see final run in `TEST_MATRIX.md` |
+| L3 native build + CTest | PASS 21/21 |
+| L4 SAT correctness / external proof | PASS (differential, benchmark, DRAT/LRAT/CakeLPR) |
+| L5 counting prototype | PASS (204 oracle cases, research-only) |
+| L6 mutation | PASS 54/54 (watched engine not yet in mutant list) |
+| L7 shaders / Vulkan primitive | PASS 13/13 shaders; physical-device primitive dispatch |
+| L8 web unit/build/E2E/a11y | PASS 17/17, build, 13/13 Playwright+axe |
+| L9 Studio/CLI/MCP | PASS targeted tests |
+| L10 security/supply chain | PASS secret scan, pip-audit, pinned actions, clean wheel |
+| L11 cloud/release | pending PR CI, tag and asset upload |
 
-## Open blockers
+## 3. Artifact policy for this release
 
-- B-01 Lean/elan not installed.
-- B-02 no formally verified proof checker.
-- B-03 SAT Competition licensing.
-- B-06 Vercel state not re-verified.
-- B-07 Windows release artifact not re-downloaded here.
+The user requested a **locally built** release with no extra cloud build.
+Artifacts are built on the release machine and uploaded to the GitHub release;
+the tag-triggered release workflow is disabled for the publication window and
+re-enabled afterwards. The exact source SHA is recorded in the release notes,
+`DEPLOYMENTS.md` and the SBOM.
 
-## Decision
+## 4. Decision
 
-No release. Merge/PR/preview/production require the remaining P0/P1 gates,
-version decision, docs/claims audit, security audit, clean package install and an
-explicit authorization. The current evidence supports only “increment tested
-locally”, not “stable release”.
+GO only if the final full local suite, clean-install smoke, exact-SHA CI and
+Vercel preview pass. Production/release publication must not silently rebuild
+different artifacts.

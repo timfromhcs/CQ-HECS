@@ -12,15 +12,15 @@ CMake 4.4.0, Node 22.23.1, Rust 1.96.0.
 | Gate | Command | Expected | Observed | Duration | Status |
 | :--- | :--- | :--- | :--- | ---: | :--- |
 | L0 | `git status --short --branch` | user files preserved | only `PLAN-v3.6.0.md`, `.claude/launch.json` untracked | — | PASS |
-| L1 | `python scripts/check_version.py` | 3.5.0 everywhere | `Version consistency OK` | <1 s | PASS |
+| L1 | `python scripts/check_version.py` | 3.6.0 everywhere | `Version consistency OK` | <1 s | PASS |
 | L1 | `python -m compileall -q cqhecs tests scripts python_bridge` | no syntax error | exit 0 | <1 s | PASS |
 | L2 | `python -m pytest tests/ -q` (baseline) | no regression | 1617 passed, 6 skipped, 1 deselected in 190.44 s; process exit was the F-05 crash | PASS (counts) |
-| L2 | `python -m pytest tests/ -q` (after changes) | no regression | **1758 passed, 6 skipped, 1 deselected** in 201.16 s, exit 0 (`.local/v36/pytest-final3.log`) | PASS |
-| L3 | `ctest --test-dir build -C Release --output-on-failure` | 21/21 | 21/21 passed | 65.42 s | PASS |
-| L8 | `cd web && npm test` | all pass | 16/16 | 5.1 s | PASS |
+| L2 | `python -m pytest tests/ -q` (final, no optional python-sat) | no regression | **1964 passed, 9 skipped, 1 deselected** in 248.62 s, exit 0 (`.local/v36/pytest-360c.log`) | PASS |
+| L3 | `ctest --test-dir build -C Release --output-on-failure` | 21/21 | 21/21 passed | 153.25 s | PASS |
+| L8 | `cd web && npm test` | all pass | 17/17 | 5.1 s | PASS |
 | L8 | `cd web && npm run build` | tsc + vite build | built successfully | 1.5 s | PASS |
-| L7 | physical Vulkan/WebGPU dispatch | device-specific result | not attempted | — | NOT RUN |
-| L4 | external LRAT/CakeLPR | verified checker | not installed | — | BLOCKED (B-02) |
+| L7 | physical Vulkan primitive dispatch | CPU parity | OMNIWAVE BCP on AMD Radeon iGPU, CPU-verified; no end-to-end simulator claim | PASS (primitive) |
+| L4 | external LRAT/CakeLPR | verified checker | CakeLPR `s VERIFIED UNSAT` on the committed LRAT vector | PASS |
 | L6 | mutation suite | ≥ CI history | 54/54 killed, exit 0 | PASS |
 | L6 | watched-engine mutants | new mutation targets | not yet added to the harness | TODO |
 
@@ -35,7 +35,7 @@ CMake 4.4.0, Node 22.23.1, Rust 1.96.0.
 | L9 | `python -m pytest tests/test_cli_contract.py -q` | 33 pass | 33 passed | PASS |
 | L9 | `python -m pytest tests/test_studio.py -q` | all pass, clean exit | 16 passed, exit 0 | PASS |
 | L7 | `python -m pytest tests/test_omniwave_gpu_shutdown.py -q` | clean process exit | 1 passed, exit 0 | PASS |
-| L2 | full `pytest` after changes | no regression | 1758 passed, 6 skipped, 1 deselected, exit 0 | PASS |
+| L2 | full `pytest` after changes | no regression | 1964 passed, 9 skipped, 1 deselected, exit 0 | PASS |
 
 ## Classification of failures
 
@@ -47,3 +47,22 @@ CMake 4.4.0, Node 22.23.1, Rust 1.96.0.
 - `security`: secret, unsafe endpoint, resource exhaustion.
 - `docs`: claim not backed by code/test/evidence.
 - `research`: hypothesis result, including negative results.
+
+## v3.6.0 final local gates
+
+| Gate | Command | Observed | Status |
+| :--- | :--- | :--- | :--- |
+| L2 | `python -m pytest tests/ -q` (no optional python-sat) | 1964 passed, 9 skipped, 1 deselected, exit 0 | PASS |
+| L2 | `python -m pytest tests/test_sat_external.py -q` (python-sat installed) | 44 passed; process exit `0xC0000409` (F-09, external CaDiCaL) | PASS tests / external exit defect |
+| L8 | `cd web && npm test` | 17/17 | PASS |
+| L8 | `cd web && npm run build` | tsc + Vite | PASS |
+| L8 | `cd web && npm run e2e` | 13/13 Playwright + axe | PASS |
+| L3 | CTest | 21/21 | PASS |
+| L7 | `python scripts/verify_vulkan_shaders.py` | 13/13 | PASS |
+| L6 | `python scripts/run_mutation_tests.py` | 54/54 killed | PASS |
+| L10 | `pip-audit -r requirements.txt` | no known vulnerabilities | PASS |
+| L10 | secret pattern scan | no matches in tracked files | PASS |
+| L11 | wheel/sdist + clean venv | twine PASS; CLI/SAT watched smoke PASS | PASS |
+| M5 | CakeLPR / lrat-check / drat-trim | LRAT and DRAT accepted | PASS |
+| M5 | Lean 4.33.1 `lake build` + `PrintAxioms` | 9768 jobs; three standard axioms | PASS |
+| M5 | Comparator + nanoda | running/recorded in `evidence/COMPARATOR_ETH.md` | see file |

@@ -134,7 +134,7 @@ CQ_API double cq_get_active_vram_mb(cq_context_t* ctx);
 CQ_API const char* cq_get_version(void);
 ```
 - **Description**: Queries semantic version string.
-- **Return Value**: Constant string `"3.5.0"`, derived from the package
+- **Return Value**: Constant string `"3.6.0"`, derived from the package
   version (`scripts/version.py`); it must not drift.
 
 ---
@@ -161,7 +161,7 @@ CQ_API int cq_omniwave_bcp_eval(const uint32_t* offsets, const uint32_t* codes, 
 - **Return Value**: `0`, `-2` (no device), `-3` (allocation) or `-4` (dispatch).
   Python verifies every pass against the CPU reference unless told otherwise.
 
-### 2.10 `cq_omniwave_shutdown` (unreleased)
+### 2.10 `cq_omniwave_shutdown` (3.6.0)
 ```c
 CQ_API void cq_omniwave_shutdown(void);
 ```
@@ -185,11 +185,11 @@ These are not C-ABI symbols. They are documented here because the C ABI's
 | `cq-hecs sat sweep` | Empirical random-3-SAT phase-transition sweep. Not an ETH proof. |
 | `cq-hecs sat solve --engine cadical` | Optional CaDiCaL backend (`pip install cqhecs[sat]`). The SAT model is re-checked; the UNSAT DRAT proof is checked by `cqhecs.drat`; a missing backend is an error, never a fallback. (3.5.0) |
 | `cq-hecs sat count` | Exact model count (#SAT): `COUNTED` with an exact integer string, or `UNKNOWN` on budget. (3.5.0) |
-| `cq-hecs sat solve --engine watched` | Built-in DPLL with two-watched-literal unit propagation. Same decision order, polarity and pure-literal rule as the default scan engine; UNSAT certificates still come from the independent scan-based certifying search. (unreleased, opt-in) |
+| `cq-hecs sat solve --engine watched` | Built-in DPLL with two-watched-literal unit propagation. Same decision order, polarity and pure-literal rule as the default scan engine; UNSAT certificates still come from the independent scan-based certifying search. (3.6.0, opt-in) |
 | `cq-hecs sat solve --engine omniwave` | Experimental multi-front search (`--waves`, `--workers`, `--bcp scalar|batch|vulkan`, `--batch-size`, `--proof-out`). UNSAT only with a DRAT proof accepted by `cqhecs.drat`; JSON output adds an `omniwave` stats object. (3.5.0) |
 | `cq-hecs studio` | Local experiment UI; see [`STUDIO.md`](STUDIO.md). |
 
-SAT result dictionaries carry `contract_version` `1.2` (unreleased), which adds `formula_original_sha256` and the `dpll-watched` engine label. `1.1` (3.5.0) added `certification`, `proof_system` and `engine`; no field was removed.
+SAT result dictionaries carry `contract_version` `1.2` (3.6.0), which adds `formula_original_sha256` and the `dpll-watched` engine label. `1.1` (3.5.0) added `certification`, `proof_system` and `engine`; no field was removed.
 
 Python API (3.5.0, experimental): `cqhecs.omniwave.solve_omniwave(cnf, **config)`
 returns a `SATResult`; `OmniwaveEngine(cnf, OmniwaveConfig(...))` adds `run(on_tick)`,

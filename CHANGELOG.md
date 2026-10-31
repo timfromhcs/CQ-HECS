@@ -8,6 +8,8 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-10-31
+
 ### Added
 
 - `cqhecs.sat`: opt-in two-watched-literal propagation via
@@ -21,6 +23,14 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   input text while `formula_sha256` remains the canonical normalized digest.
 - `parse_dimacs` now normalizes repeated literals (`1 1 0` → `1`), matching the
   native parser; direct `CNF(...)` construction remains strict.
+- Web SAT lab shows the original and canonical input SHA-256; its parser normalizes
+  repeated literals like Python. E2E covers the digest line and all six viewports.
+- Evidence: a CaDiCaL DRAT proof and its LRAT conversion are checked by
+  `cqhecs.drat`, `drat-trim`, `lrat-check` and the CakeML-verified `cake_lpr`
+  (`research/v6/evidence/DRAT_EXTERNAL.md`).
+- Research-only separator/bucket-elimination exact counter with a table budget
+  (`research/v6/prototypes/separator_count.py`, 204 oracle tests). Not wired into
+  the default path.
 
 ### Fixed
 

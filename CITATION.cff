@@ -5,8 +5,8 @@ authors:
     given-names: "Tim Johann"
     alias: "timfromhcs"
 title: "CQ-HECS: Classical Quantum High-Efficiency Compute Simulator & Four-Path Engine"
-version: 3.5.0
-date-released: 2026-10-30
+version: 3.6.0
+date-released: 2026-10-31
 license: "Apache-2.0"
 url: "https://github.com/timfromhcs/CQ-HECS"
 keywords:

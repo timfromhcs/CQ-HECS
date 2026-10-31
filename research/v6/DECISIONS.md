@@ -48,3 +48,27 @@ next measurable step is a correct CPU engine with evidence, not more workers.
 `research/v5/` stays immutable historical evidence. New findings go in
 `research/v6/`. The root `PLAN.md` is not overwritten; the supplied v3.6 plan is
 referenced from `research/v6/PLAN.md`.
+
+## D6-07 — OMNIWAVE stays research-only; no primitive is promoted to the default path
+
+The reproduced quick benchmark shows the same picture as v3.5: OMNIWAVE scalar
+is close to DPLL on easy cases but slower on UNSAT, and batch/Vulkan modes are
+slower end-to-end. The watched engine is the production-relevant improvement for
+now. OMNIWAVE remains `experimental`; its field/GF(2)/boundary modules are not a
+reusable library contract until a workload-specific win is demonstrated.
+
+## D6-08 — CakeLPR is an optional verification tool, not a runtime dependency
+
+`cake_lpr` (CakeML-verified assembly) accepted the LRAT proof generated from a
+CaDiCaL DRAT proof for the pigeonhole vector. It is kept outside the package and
+invoked through an optional test/env hook (`CQ_CAKE_LPR`). The project's Python
+checker remains independent but not formally verified. The phrase “formally
+verified” may refer only to the CakeML checker check on the stated proof/CNF,
+not to the whole pipeline.
+
+## D6-09 — GF(2) extraction is not wired into the production solver
+
+The existing `cqhecs.omniwave.gf2` algebra is exact and exhaustively tested, but
+there is no sound CNF-to-XOR extraction with an implication witness in the
+production path. It stays research-only; no UNSAT may be reported from a parity
+pattern unless the extraction and certificate are checkable.

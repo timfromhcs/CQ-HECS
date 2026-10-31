@@ -59,6 +59,7 @@ code, pre, kbd { font-family: var(--mono); }
 pre { background: var(--bg-2); border: 1px solid var(--line); padding: .9rem; border-radius: 12px; overflow: auto; font-size: .82rem; }
 .muted { color: var(--muted); }
 .small { font-size: .84rem; }
+.digest { word-break: break-all; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
 .pad { padding: 1rem; }
 .grow { flex: 1; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

@@ -87,7 +87,16 @@ production path.
 
 ## H-SAT-06 — Separator DP provides exact counts for low-width formulas
 
-**Status:** PROPOSED. Requires an exact-count oracle and `UNKNOWN` on width growth.
+**Status:** SUPPORTED_IN_SCOPE for correctness and budget behavior; no performance claim.
+**Evidence:** `research/v6/prototypes/separator_count.py`,
+`tests/test_research_separator_count.py` (204 cases).
+
+The prototype performs bucket elimination over CNF factors with a min-fill
+order, exact Python integers and a table-size limit. It matches brute force on
+200 random formulas (n <= 10) and the shipped counter; a 40-variable chain with
+a 16-entry table limit is counted exactly, and a forced table overflow returns
+`UNKNOWN`, never a partial count. It is not wired into `cqhecs.sat` and no
+speed/width advantage over `count_models` is claimed.
 
 ## H-UX-01 — Provenance-first results improve interpretability
 
