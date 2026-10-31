@@ -102,8 +102,8 @@ Four classical simulation paths · one result contract · fail-closed by design
 >    at TV ≤ 5e-15; 3–4 variable SAT oracles on IBM return a valid DPLL model
 >    as the top outcome on every run. This is not a complexity result.
 >
-> The release tree passes **698 Python tests** on the Linux CI lane (4 opt-in exe
-> tests skipped, 1 opt-in slow gate), **21/21 CTest**, **44/44 source mutants**, a **12-check metamorphic
+> The release tree passes **1669 Python tests** on the Linux CI lane (4 opt-in exe
+> tests skipped, 1 opt-in slow gate), **21/21 CTest**, **54/54 source mutants**, a **12-check metamorphic
 > self-test**, and the independent oracle **21/21**.
 >
 > **First measured QPU data (complete):** all 25 preregistered `r-io-7` jobs
@@ -204,7 +204,7 @@ That rule is enforced in code, not only in documentation:
 | **Public surfaces** | `cq-hecs` CLI, `cq-hecs studio`, Qiskit `BackendV2`, Python API, C ABI, SAT engine |
 | **Simulation paths** | A: stabilizer tableau · B: stabilizer rank · C: untruncated MPS · D: sparse Pauli |
 | **Noise** | Typed profiles, Kraus channels, exact float64 density matrix up to 10 qubits |
-| **Verification** | 698 Python tests, 21 CTest, 44 mutants, 12-check selftest, 13 SPIR-V shaders, 21/21 independent oracle |
+| **Verification** | 1669 Python tests, 21 CTest, 54 mutants, 12-check selftest, 13 SPIR-V shaders, 21/21 independent oracle |
 | **Platforms** | Linux x64, Windows 10/11; Python 3.11–3.14 |
 | **License** | Apache-2.0 |
 
@@ -665,12 +665,12 @@ performance claims. The release audit records the exact SHA and CI runs.
 
 | Gate | Result |
 | :--- | :--- |
-| Python suite | **698 passed**, 4 opt-in exe skips, 1 opt-in `slow` gate |
-| Branch coverage | **83 %** on the Linux CI lane (v3.0.0 release audit: 86 %) |
-| CTest (native) | **21/21**, including a `WILL_FAIL` meta-test proving checks run in Release builds |
-| Source mutation | **44/44** killed |
+| Python suite | **1669 passed**, 4 opt-in exe skips, 1 opt-in `slow` gate |
+| Branch coverage | **84 %** on the Linux CI lane (v3.0.0 release audit: 86 %) |
+| CTest (native) | **21/21**, including a `WILL_FAIL` meta-test proving checks run in Release builds and the OMNIWAVE BCP kernel against a C++ reference on llvmpipe (0 mismatches) |
+| Source mutation | **54/54** killed |
 | Metamorphic selftest | **12/12** |
-| SPIR-V shaders | **12/12** verified |
+| SPIR-V shaders | **13/13** verified |
 | Version consistency | all surfaces report `3.5.0` |
 | Lint | `flake8 --select=E9,F` clean on `cqhecs`, `python_bridge`, `scripts`, `tests` |
 | Silent-truncation audit | no patterns found |
