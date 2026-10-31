@@ -292,6 +292,18 @@ class TestCliSatEngines(unittest.TestCase):
         self.assertEqual(code, EXIT_OK)
         self.assertEqual(json.loads(out)["result"]["engine"], "dpll")
 
+    def test_omniwave_branch_mode_is_wired(self):
+        code, out, err = run_cli(
+            "--format", "json",
+            "sat", "solve", "--cnf", "p cnf 3 2\n1 2 0\n-1 3 0\n",
+            "--engine", "omniwave", "--branch", "jw",
+        )
+        self.assertEqual(code, EXIT_OK, msg=err)
+        result = json.loads(out)["result"]
+        self.assertEqual(result["status"], "SAT")
+        self.assertEqual(result["engine"], "omniwave")
+        self.assertEqual(json.loads(out)["omniwave"]["branch"], "jw")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -523,7 +523,7 @@ def cmd_sat(args: argparse.Namespace) -> int:
             try:
                 engine = OmniwaveEngine(formula, OmniwaveConfig(
                     waves=args.waves, workers=args.workers, seed=args.seed, timeout_seconds=args.timeout,
-                    bcp=args.bcp, batch_size=args.batch_size,
+                    bcp=args.bcp, batch_size=args.batch_size, branch=args.branch,
                 ))
             except (ValueError, RuntimeError) as exc:
                 LOG.error("%s", exc)
@@ -1285,6 +1285,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_sat_solve.add_argument("--workers", type=int, default=2, help="OMNIWAVE: worker threads")
     p_sat_solve.add_argument("--bcp", choices=["scalar", "batch", "vulkan"], default="scalar",
                              help="OMNIWAVE: propagation backend (vulkan is verified against the CPU)")
+    p_sat_solve.add_argument("--branch", choices=["auto", "jw", "bfs"], default="auto",
+                             help="OMNIWAVE: branching order (auto uses BFS on parity-heavy formulas, JW elsewhere)")
     p_sat_solve.add_argument("--batch-size", type=int, default=64, help="OMNIWAVE: fronts per batch")
     p_sat_solve.add_argument("--proof-out", default=None, help="OMNIWAVE: write the checked DRAT proof here")
     p_sat_count = sat_sub.add_parser("count", help="Exact model count (#SAT)")

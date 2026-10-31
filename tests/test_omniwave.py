@@ -7,6 +7,7 @@ import json
 import random
 import threading
 import time
+from pathlib import Path
 
 import pytest
 
@@ -61,6 +62,34 @@ def test_pigeonhole_is_unsat_with_a_checked_proof():
     assert snap["covered"] == 1.0
     # The proof is independently checkable again from outside the engine.
     assert check_drat(php.clauses, engine.proof()).valid is True
+
+
+def test_branch_heuristic_cuts_the_pigeonhole_tree():
+    php = parse_dimacs((Path(__file__).resolve().parent.parent / "benchmarks/sat/pigeonhole_6_5.cnf").read_text("utf-8"))
+    jw = OmniwaveEngine(php, OmniwaveConfig(waves=4, workers=1, timeout_seconds=120, branch="jw")).run()
+    bfs = OmniwaveEngine(php, OmniwaveConfig(waves=4, workers=1, timeout_seconds=120, branch="bfs")).run()
+    auto = OmniwaveEngine(php, OmniwaveConfig(waves=4, workers=1, timeout_seconds=120, branch="auto")).run()
+    assert jw.status == bfs.status == auto.status == UNSAT
+    assert jw.certification == bfs.certification == auto.certification == "DRAT_CHECKED"
+    assert jw.nodes < bfs.nodes
+    assert auto.nodes == jw.nodes  # auto selects JW on this non-parity formula
+
+
+def test_auto_branch_keeps_bfs_on_parity_heavy_formulas():
+    clauses = []
+    for bits in itertools.product((0, 1), repeat=3):
+        if sum(bits) % 2 == 0:
+            clauses.append(tuple((i + 1) if b == 0 else -(i + 1) for i, b in enumerate(bits)))
+    formula = CNF(3, tuple(clauses))
+    auto = OmniwaveEngine(formula, OmniwaveConfig(waves=2, workers=1, timeout_seconds=30))
+    bfs = OmniwaveEngine(formula, OmniwaveConfig(waves=2, workers=1, timeout_seconds=30, branch="bfs"))
+    assert auto._use_jw is False
+    assert auto.run().nodes == bfs.run().nodes
+
+
+def test_invalid_branch_mode_is_refused():
+    with pytest.raises(ValueError, match="branch"):
+        OmniwaveEngine(parse_dimacs("p cnf 1 1\n1 0\n"), OmniwaveConfig(branch="magic"))
 
 
 def test_coverage_is_complete_and_exact_on_unsat():

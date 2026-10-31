@@ -116,7 +116,7 @@ credentials.
 | `POST` | `/api/sat/count` | `{cnf, timeout}` | exact #SAT count |
 | `POST` | `/api/sat/sweep` | `{sizes, ratios, trials, timeout}` | empirical sweep |
 | `GET` | `/api/omniwave/status` | — | live OMNIWAVE state, timeline, result, GPU status |
-| `POST` | `/api/omniwave/start` | `{cnf}` or `{random:{...}}`, `waves`, `workers`, `bcp`, `batch_size`, `seed`, `timeout`, `max_fronts` | start one background run (409 while one is active) |
+| `POST` | `/api/omniwave/start` | `{cnf}` or `{random:{...}}`, `waves`, `workers`, `bcp`, `branch` (`auto`, `jw`, `bfs`), `batch_size`, `seed`, `timeout`, `max_fronts` | start one background run (409 while one is active) |
 | `POST` | `/api/omniwave/pause` · `resume` · `cancel` | `{}` | control the active run |
 | `POST` | `/api/reload` | — | reload evidence from disk |
 

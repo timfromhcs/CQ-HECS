@@ -61,6 +61,7 @@ class OmniwaveLab:
             timeout_seconds=_float(request.get("timeout"), "timeout", 0.1, 120.0, 10.0),
             max_fronts=_int(request.get("max_fronts"), "max_fronts", 1, 5_000_000, 200_000),
             bcp=_choice(request.get("bcp"), "bcp", ("scalar", "batch", "vulkan"), "scalar"),
+            branch=_choice(request.get("branch"), "branch", ("auto", "jw", "bfs"), "auto"),
             batch_size=_int(request.get("batch_size"), "batch_size", 1, 4096, 64),
         )
         with self._lock:
@@ -78,7 +79,7 @@ class OmniwaveLab:
             self._config = {
                 "waves": config.waves, "workers": config.workers, "seed": config.seed,
                 "timeout_seconds": config.timeout_seconds, "max_fronts": config.max_fronts,
-                "bcp": config.bcp, "batch_size": config.batch_size,
+                "bcp": config.bcp, "branch": config.branch, "batch_size": config.batch_size,
             }
             self._formula = summary(formula)
             self._timeline = []
@@ -105,6 +106,12 @@ class OmniwaveLab:
 
         try:
             result = engine.run(on_tick=tick)
+            # A run can finish between two tick boundaries; record one final
+            # sample so the timeline is never empty on fast instances.
+            try:
+                tick(engine.snapshot())
+            except Exception:  # pragma: no cover - display-only
+                pass
             payload: Optional[Dict[str, Any]] = result.to_dict()
             error = None
         except Exception as exc:  # noqa: BLE001 - reported to the Lab, never swallowed silently

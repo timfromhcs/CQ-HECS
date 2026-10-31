@@ -103,6 +103,9 @@ class OmniwaveConfig:
     #: "scalar" (one front at a time), "batch" (CPU batched BCP) or "vulkan" (GPU pass,
     #: every pass verified bit-for-bit against the CPU reference when verify_gpu is set).
     bcp: str = "scalar"
+    #: "auto" (BFS order on parity-heavy formulas, Jeroslow-Wang elsewhere),
+    #: "jw" or "bfs". The branch order is deterministic in every mode.
+    branch: str = "auto"
     batch_size: int = 64
     verify_gpu: bool = True
 
@@ -113,6 +116,8 @@ class OmniwaveEngine:
             raise ValueError("waves and workers must be >= 1")
         if config.bcp not in ("scalar", "batch", "vulkan"):
             raise ValueError("bcp must be scalar, batch or vulkan")
+        if config.branch not in ("auto", "jw", "bfs"):
+            raise ValueError("branch must be auto, jw or bfs")
         if config.bcp == "vulkan":
             from cqhecs.omniwave import gpu
 
@@ -141,6 +146,13 @@ class OmniwaveEngine:
         starts = self._wave_starts()
         self._orders = [self.field.bfs_order(s) if n else [] for s in starts]
         self.wave_starts = starts
+        if config.branch == "auto":
+            # Parity/Tseitin formulas have many exact XOR rows; the BFS order is
+            # better there. Pigeonhole/random formulas have almost none; JW wins.
+            parity_rows = len(self.field.xor_view().rows)
+            self._use_jw = parity_rows < max(1, n // 4)
+        else:
+            self._use_jw = config.branch == "jw"
 
     # ------------------------------------------------------------------ setup
 
@@ -279,10 +291,46 @@ class OmniwaveEngine:
     # ------------------------------------------------------------------ worker
 
     def _branch_var(self, node: _Node, value: Dict[int, bool]) -> int:
-        for v in self._orders[node.wave]:
-            if v not in value:
-                return v
-        return 0
+        """
+        Jeroslow-Wang-style branch variable over the clauses still open under
+        ``value``, with the wave's BFS order as a deterministic tie-break.
+
+        ``branch="auto"`` keeps the BFS order on parity-heavy formulas (where it
+        is better) and uses JW elsewhere. The previous implementation always took
+        the first unassigned variable in BFS order, which produced much larger
+        trees on pigeonhole/random instances.
+        """
+        if not self._use_jw:
+            for variable in self._orders[node.wave]:
+                if variable not in value:
+                    return variable
+            return 0
+        with self._lock:
+            clauses = list(self.formula.clauses) + list(self._nogoods)
+        scores: Dict[int, float] = {}
+        for clause in clauses:
+            open_literals = []
+            satisfied = False
+            for literal in clause:
+                current = value.get(abs(literal))
+                if current is None:
+                    open_literals.append(literal)
+                elif current == (literal > 0):
+                    satisfied = True
+                    break
+            if satisfied or not open_literals:
+                continue
+            weight = 2.0 ** (-len(clause))
+            for literal in open_literals:
+                variable = abs(literal)
+                scores[variable] = scores.get(variable, 0.0) + weight
+        if not scores:
+            return 0
+        best_score = max(scores.values())
+        for variable in self._orders[node.wave]:
+            if scores.get(variable) == best_score:
+                return variable
+        return max(scores.items(), key=lambda item: (item[1], -item[0]))[0]
 
     def _worker(self, wid: int, deadline: float) -> None:
         while not self._stop.is_set():
@@ -409,6 +457,7 @@ class OmniwaveEngine:
                 "per_wave": dict(s.per_wave),
                 "per_worker": dict(s.per_worker),
                 "wave_starts": list(self.wave_starts),
+                "branch": self.config.branch,
                 "paused": not self._resume.is_set(),
             }
 

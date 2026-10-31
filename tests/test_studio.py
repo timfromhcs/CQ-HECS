@@ -217,6 +217,7 @@ def test_omniwave_lab_runs_to_a_checked_proof(server):
     assert done["live"]["covered"] == 1.0 and done["proof_lemmas"] > 0
     assert done["timeline"] and done["timeline"][-1]["fronts_processed"] <= done["live"]["fronts_processed"]
     assert done["config"]["waves"] == 4 and done["formula"]["num_vars"] == 30
+    assert done["config"]["branch"] == "auto"
     assert "available" in done["gpu"] and "GIL" in done["non_claim"]
 
 

@@ -24,6 +24,7 @@ let profiles: DeviceProfile[] = [];
 let worker: Worker;
 let reqId = 0;
 let lastResult: RunResult | null = null;
+let lastSatExport: Record<string, unknown> | null = null;
 let route: Route = "home";
 let codeLang: "qasm" | "js" = "qasm";
 let editor: CodeEditor | null = null;
@@ -633,6 +634,12 @@ function setupSat() {
     const m = await ask({ type: "sat", id, dimacs: input.value, timeoutMs: Number($<HTMLInputElement>("#sat-timeout").value) || 5000 }, "sat", id);
     if (m.type !== "sat") { out.innerHTML = `<p class="error">${esc(m.message)}</p>`; return; }
     const r = m.result;
+    lastSatExport = {
+      schema_version: "1.2", engine: "browser-dpll", dimacs: input.value,
+      numVars: m.numVars, numClauses: m.numClauses,
+      originalSha256: m.originalSha256, canonicalSha256: m.canonicalSha256, result: r,
+    };
+    $<HTMLButtonElement>("#sat-export").disabled = false;
     const cls = r.status === "SAT" ? "ok" : r.status === "UNSAT" ? "bad" : "warn";
     const model = r.model ? r.model.slice(1).map((v, i) => (v ? i + 1 : -(i + 1))).join(" ") : "";
     out.innerHTML = `<p><span class="status ${cls}">${r.status}</span> <span class="muted small">${m.numVars} vars · ${m.numClauses} clauses</span></p>
@@ -649,12 +656,28 @@ function setupSat() {
     const m = await ask({ type: "count", id, dimacs: input.value, timeoutMs: Number($<HTMLInputElement>("#sat-timeout").value) || 5000 }, "count", id);
     if (m.type !== "count") { out.innerHTML = `<p class="error">${esc(m.message)}</p>`; return; }
     const r = m.result;
+    lastSatExport = {
+      schema_version: "1.2", engine: "browser-dpll", dimacs: input.value,
+      numVars: m.numVars, numClauses: m.numClauses,
+      originalSha256: m.originalSha256, canonicalSha256: m.canonicalSha256, result: r,
+    };
+    $<HTMLButtonElement>("#sat-export").disabled = false;
     out.innerHTML = r.status === "COUNTED"
       ? `<p><span class="status ok">#SAT</span> <span class="muted small">${m.numVars} vars · ${m.numClauses} clauses</span></p>
          <p class="count-value">${esc(t("sat.countResult", { n: r.count ?? "" }))}</p>
          <p class="muted small">${r.nodes} nodes · ${r.cacheHits} cache hits · ${r.elapsedMs.toFixed(1)} ms · ${esc(r.note)}</p>
          <p class="muted small digest">${esc(t("sat.digest", { original: m.originalSha256, canonical: m.canonicalSha256 }))}</p>`
       : `<p><span class="status warn">UNKNOWN</span></p><p class="cert warn">${esc(t("sat.countUnknown"))}</p>`;
+  });
+  $("#sat-export").addEventListener("click", () => {
+    if (!lastSatExport) return;
+    const blob = new Blob([JSON.stringify(lastSatExport, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "cqhecs-sat-result.json";
+    link.click();
+    URL.revokeObjectURL(url);
   });
   $("#sat-sweep").addEventListener("click", async () => {
     const chart = $("#sat-chart");

@@ -102,3 +102,28 @@ speed/width advantage over `count_models` is claimed.
 
 **Status:** PROPOSED. Any change must name a task and a measurable misinterpretation
 rate; “looks clearer” is not evidence.
+
+## H-SAT-09 — Structure-aware branching reduces the OMNIWAVE front tree
+
+**Status:** SUPPORTED_IN_SCOPE (pigeonhole/random UNSAT; parity neutral)
+**Evidence:** `research/v6/evidence/OMNIWAVE_BRANCHING.md`,
+`omniwave_branching_auto_quick.json`, `tests/test_omniwave.py`.
+
+**Claim:** replacing OMNIWAVE's first-unassigned-BFS branch variable with a
+Jeroslow-Wang score over open clauses, while retaining BFS for parity-heavy
+formulas, reduces the number of processed fronts on pigeonhole/random UNSAT
+instances without changing verdicts or proof checks.
+
+**Null:** front counts and wall time are unchanged or worse on the declared
+families.
+
+**Scope:** six quick families, fixed seeds, one machine; scalar propagation,
+four waves, one/two workers. Parity is deliberately held to BFS because the
+heuristic regressed there.
+
+**Result:** pigeonhole fronts 777 → 239 (5.0× wall), random-30 UNSAT 241 → 49
+(4.3×), random-20 UNSAT 2.2×; parity 2047 → 2047; small SAT formulas 0.5–0.9×
+(scoring overhead). All verdicts and DRAT checks agree.
+
+**Falsification:** any verdict/proof disagreement, or no family with a
+repeatable front reduction. Neither occurred.
