@@ -1,7 +1,7 @@
 #ifndef CQ_HECS_API_H
 #define CQ_HECS_API_H
 
-#define CQ_HECS_VERSION "3.4.0"
+#define CQ_HECS_VERSION "3.5.0"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -56,6 +56,16 @@ CQ_API void cq_destroy_context(cq_context_t* ctx);
 
 CQ_API const char* cq_get_version(void);
 CQ_API double cq_get_active_vram_mb(cq_context_t* ctx);
+
+/* OMNIWAVE (experimental): one batched BCP evaluation pass on the Vulkan device.
+ * Status word per (front, clause): 0 SAT, 1 CONFLICT, 2|(code<<2) UNIT, 3 OPEN;
+ * bit-identical to cqhecs.omniwave.bcp.evaluate_batch. Returns 0 on success,
+ * -2 if no Vulkan device is available, other values on invalid input or failure. */
+CQ_API int cq_omniwave_bcp_eval(const uint32_t* offsets, const uint32_t* codes, uint32_t num_clauses,
+                                const uint32_t* assigned, const uint32_t* values, uint32_t num_fronts,
+                                uint32_t words, uint32_t* out_status);
+/* Name of the Vulkan device used by the OMNIWAVE kernels; -2 if none. */
+CQ_API int cq_omniwave_device_name(char* out, uint32_t capacity);
 
 #ifdef __cplusplus
 }

@@ -159,6 +159,7 @@ class StudioState:
         self.by_id = {job.job_id: job for job in self.jobs}
         self.dataset = self._load_dataset()
         self._router = EntanglementAdaptiveRouter()
+        self._lab = None
 
     # -- loading --------------------------------------------------------
     def _load_json(self, path: Path) -> Optional[Dict[str, Any]]:
@@ -631,6 +632,86 @@ class StudioState:
     # -- SAT ------------------------------------------------------------
     def sat_solve(self, request: Mapping[str, Any]) -> Dict[str, Any]:
         timeout = _float(request.get("timeout"), "timeout", 0.01, 30.0, 5.0)
+        formula = self._formula_from_request(request)
+        budget_value = request.get("node_budget")
+        node_budget = (
+            _int(budget_value, "node_budget", 1, 10_000_000, 1)
+            if budget_value not in (None, 0, "0", "")
+            else None
+        )
+        engine = str(request.get("engine", "dpll"))
+        if engine == "cadical":
+            from cqhecs.sat_external import BackendUnavailable, solve_external
+
+            try:
+                result = solve_external(formula, timeout_seconds=timeout)
+            except BackendUnavailable as exc:
+                raise StudioError(str(exc), status=503, code="backend_unavailable") from exc
+        elif engine == "dpll":
+            result = solve(formula, timeout_seconds=timeout, node_budget=node_budget)
+        elif engine == "omniwave":
+            from cqhecs.omniwave import solve_omniwave
+
+            result = solve_omniwave(formula, timeout_seconds=timeout)
+        else:
+            raise StudioError("engine must be dpll, cadical or omniwave", code="invalid_engine")
+        return {
+            "schema_version": "1.0",
+            "formula": self._formula_summary(formula),
+            "result": result.to_dict(),
+            "non_claim": (
+                "SAT/UNSAT refers to this formula only. UNKNOWN is a timeout, not a "
+                "negative answer; UNSAT is certified only when `certified` is true."
+            ),
+        }
+
+    def sat_count(self, request: Mapping[str, Any]) -> Dict[str, Any]:
+        from cqhecs.sat import count_models
+
+        timeout = _float(request.get("timeout"), "timeout", 0.01, 30.0, 5.0)
+        formula = self._formula_from_request(request)
+        return {
+            "schema_version": "1.0",
+            "formula": self._formula_summary(formula),
+            "result": count_models(formula, timeout_seconds=timeout),
+            "non_claim": "An exact count for this formula; UNKNOWN means the budget ran out, not zero.",
+        }
+
+    # -- OMNIWAVE Research Lab --------------------------------------------
+    @property
+    def lab(self):
+        if self._lab is None:
+            from cqhecs.studio.omniwave_lab import OmniwaveLab
+
+            self._lab = OmniwaveLab()
+        return self._lab
+
+    def omniwave(self, action: str, request: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
+        from cqhecs.studio.omniwave_lab import LabError
+
+        try:
+            if action == "status":
+                return self.lab.status()
+            if action == "start":
+                formula = self._formula_from_request(request or {})
+                return self.lab.start(formula, request or {}, self._formula_summary)
+            if action in ("pause", "resume", "cancel"):
+                return getattr(self.lab, action)()
+        except LabError as exc:
+            raise StudioError(str(exc), status=exc.status, code=exc.code) from exc
+        raise StudioError(f"unknown OMNIWAVE action {action!r}", status=404, code="not_found")
+
+    @staticmethod
+    def _formula_summary(formula: CNF) -> Dict[str, Any]:
+        return {
+            "num_vars": formula.num_vars,
+            "num_clauses": formula.num_clauses,
+            "sha256": formula.sha256,
+            "source": formula.source,
+            "clause_widths": _width_histogram(formula),
+        }
+
+    def _formula_from_request(self, request: Mapping[str, Any]) -> CNF:
         if "cnf" in request:
             text = str(request["cnf"])
             if len(text) > 200_000:
@@ -655,28 +736,7 @@ class StudioState:
                 "provide 'cnf', 'random' or 'num_vars' + 'clauses'",
                 code="invalid_formula",
             )
-        budget_value = request.get("node_budget")
-        node_budget = (
-            _int(budget_value, "node_budget", 1, 10_000_000, 1)
-            if budget_value not in (None, 0, "0", "")
-            else None
-        )
-        result = solve(formula, timeout_seconds=timeout, node_budget=node_budget)
-        return {
-            "schema_version": "1.0",
-            "formula": {
-                "num_vars": formula.num_vars,
-                "num_clauses": formula.num_clauses,
-                "sha256": formula.sha256,
-                "source": formula.source,
-                "clause_widths": _width_histogram(formula),
-            },
-            "result": result.to_dict(),
-            "non_claim": (
-                "SAT/UNSAT refers to this formula only. UNKNOWN is a timeout, not a "
-                "negative answer; UNSAT is certified only when `certified` is true."
-            ),
-        }
+        return formula
 
     def sat_sweep(self, request: Mapping[str, Any]) -> Dict[str, Any]:
         sizes = [int(v) for v in request.get("sizes", [10, 15, 20])]
@@ -764,7 +824,7 @@ def _research_payload() -> Dict[str, Any]:
     return {
         "schema_version": "1.0",
         "updated": "2026-10-30",
-        "headline": "P versus NP is open. ETH is a hypothesis. A simulator is not a proof.",
+        "headline": "P versus NP is open. ETH is claimed refuted, not yet peer-reviewed. A simulator is not a proof.",
         "sections": [
             {
                 "id": "pnp",
@@ -786,17 +846,24 @@ def _research_payload() -> Dict[str, Any]:
             {
                 "id": "eth",
                 "title": "Exponential Time Hypothesis",
-                "status": "hypothesis",
+                "status": "claimed refuted (formalized, not peer-reviewed)",
                 "body": (
                     "ETH (Impagliazzo and Paturi, 2001) conjectures that 3-SAT needs "
-                    "2^(Omega(n)) time in the worst case. SETH strengthens it. ETH implies "
-                    "P != NP, so a proof of ETH would settle P versus NP; the converse is "
-                    "not true. Conditional lower bounds (for example for Weisfeiler-Leman "
-                    "refinement) often assume ETH or SETH rather than prove them."
+                    "2^(Omega(n)) time in the worst case; SETH strengthens it. In October 2026 "
+                    "two AI-generated research artifacts claim to refute ETH. OpenAI "
+                    "(openai/math) gives exact #k-SAT in (n+m)^O_k(1) 2^O_k(n log log n / sqrt "
+                    "log n) time; its Lean files formalize a weaker 2^O_k(n (log log n)^2 / "
+                    "sqrt log n) counting bound. Anthropic (anthropics/formal-math/eth) states "
+                    "ETHIsFalse in Lean and reports a check with a second kernel. Neither is "
+                    "peer-reviewed, and this project has not re-run the proofs. Because SETH "
+                    "implies ETH, SETH falls with it. These bounds are subexponential but still "
+                    "superpolynomial: P versus NP stays open."
                 ),
                 "what_this_repo_does": (
-                    "The SAT lab plots median decisions and wall time against clause ratio. "
-                    "An exponential-looking curve is consistent with ETH; it is not a proof."
+                    "It records the claims, their exact statements and their status in "
+                    "research/v5/COMPLEXITY_CLAIM_AUDIT.md. The SAT lab's runtime curves are "
+                    "finite measurements of one DPLL solver; they neither support nor refute "
+                    "an asymptotic bound."
                 ),
             },
             {
@@ -930,6 +997,8 @@ class StudioHandler(BaseHTTPRequestHandler):
                 return self._json(HTTPStatus.OK, {"devices": [summary(p) for p in list_profiles()]})
             if path == "/api/hardware":
                 return self._json(HTTPStatus.OK, self.server.state.hardware())
+            if path == "/api/omniwave/status":
+                return self._json(HTTPStatus.OK, self.server.state.omniwave("status"))
             if path == "/api/reference":
                 return self._json(HTTPStatus.OK, self.server.state.reference())
             if path == "/api/preset":
@@ -952,8 +1021,13 @@ class StudioHandler(BaseHTTPRequestHandler):
                 return self._json(HTTPStatus.OK, self.server.state.compare_noise(body))
             if path == "/api/sat/solve":
                 return self._json(HTTPStatus.OK, self.server.state.sat_solve(body))
+            if path == "/api/sat/count":
+                return self._json(HTTPStatus.OK, self.server.state.sat_count(body))
             if path == "/api/sat/sweep":
                 return self._json(HTTPStatus.OK, self.server.state.sat_sweep(body))
+            if path.startswith("/api/omniwave/"):
+                action = path[len("/api/omniwave/"):]
+                return self._json(HTTPStatus.OK, self.server.state.omniwave(action, body))
             if path == "/api/reload":
                 self.server.state.reload()
                 return self._json(HTTPStatus.OK, self.server.state.health())

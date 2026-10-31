@@ -1,0 +1,1447 @@
+{
+  "schema_version": "1.0",
+  "cqhecs_version": "3.5.0",
+  "generated": "2026-10-31T06:05:26Z",
+  "machine": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.14.6",
+    "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD"
+  },
+  "settings": {
+    "quick": false,
+    "timeout_seconds": 20.0,
+    "waves": 4,
+    "workers": 2
+  },
+  "backends": {
+    "cadical": true,
+    "gpu": {
+      "available": true,
+      "device": "AMD Radeon(TM) Graphics",
+      "software_icd": false
+    }
+  },
+  "instances": [
+    {
+      "family": "random",
+      "source": "random:3sat:n=20:m=85:seed=1340",
+      "num_vars": 20,
+      "num_clauses": 85,
+      "sha256": "1056ba63a3c1c7f7ccfce5cf29ac20a797454df6ec768ff4b660a694badcd7ab",
+      "engines": {
+        "dpll": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 21,
+          "proof_lemmas": null,
+          "note": "model verified clause by clause",
+          "wall_ms": 4.98,
+          "peak_traced_kib": 8.5
+        },
+        "cadical": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 11,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; model verified clause by clause",
+          "wall_ms": 3.33,
+          "peak_traced_kib": 148.7
+        },
+        "omniwave-scalar": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 12,
+          "proof_lemmas": 2,
+          "shared_nogoods": 2,
+          "duplicates_skipped": 0,
+          "coverage": 0.03515625,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 5.75,
+          "peak_traced_kib": 32.5
+        },
+        "omniwave-batch": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 45,
+          "proof_lemmas": 18,
+          "shared_nogoods": 18,
+          "duplicates_skipped": 0,
+          "coverage": 0.8125,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 17.76,
+          "peak_traced_kib": 52.0
+        },
+        "omniwave-vulkan": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 45,
+          "proof_lemmas": 18,
+          "shared_nogoods": 18,
+          "duplicates_skipped": 0,
+          "coverage": 0.8125,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 88.02,
+          "peak_traced_kib": 161.4
+        }
+      },
+      "algebraic": {}
+    },
+    {
+      "family": "random",
+      "source": "random:3sat:n=20:m=85:seed=1341",
+      "num_vars": 20,
+      "num_clauses": 85,
+      "sha256": "43d1ab47e73482fdaef833b78df55ae1ef1598d3d5e7d066185fd7989bcafb1c",
+      "engines": {
+        "dpll": {
+          "status": "UNSAT",
+          "certification": "TREE_RESOLUTION_CHECKED",
+          "work": 19,
+          "proof_lemmas": null,
+          "note": "exhaustive DPLL search; tree-resolution certificate checked (19 steps)",
+          "wall_ms": 7.15,
+          "peak_traced_kib": 7.6
+        },
+        "cadical": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 14,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; DRAT proof checked by cqhecs.drat (25 lemmas)",
+          "wall_ms": 5.94,
+          "peak_traced_kib": 152.0
+        },
+        "omniwave-scalar": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 69,
+          "proof_lemmas": 69,
+          "shared_nogoods": 64,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (69 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 8.55,
+          "proof_recheck_valid": true,
+          "wall_ms": 26.27,
+          "peak_traced_kib": 45.6
+        },
+        "omniwave-batch": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 69,
+          "proof_lemmas": 69,
+          "shared_nogoods": 64,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (69 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 8.32,
+          "proof_recheck_valid": true,
+          "wall_ms": 41.69,
+          "peak_traced_kib": 46.9
+        },
+        "omniwave-vulkan": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 69,
+          "proof_lemmas": 69,
+          "shared_nogoods": 64,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (69 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 8.51,
+          "proof_recheck_valid": true,
+          "wall_ms": 122.32,
+          "peak_traced_kib": 176.7
+        }
+      },
+      "algebraic": {}
+    },
+    {
+      "family": "random",
+      "source": "random:3sat:n=20:m=85:seed=1342",
+      "num_vars": 20,
+      "num_clauses": 85,
+      "sha256": "6e680952e8a5996bf1bb4df04484168b1415442823b6d2c9b883a53a7cbf1301",
+      "engines": {
+        "dpll": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 21,
+          "proof_lemmas": null,
+          "note": "model verified clause by clause",
+          "wall_ms": 5.02,
+          "peak_traced_kib": 8.2
+        },
+        "cadical": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 0,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; model verified clause by clause",
+          "wall_ms": 3.17,
+          "peak_traced_kib": 143.5
+        },
+        "omniwave-scalar": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 34,
+          "proof_lemmas": 30,
+          "shared_nogoods": 30,
+          "duplicates_skipped": 0,
+          "coverage": 0.75,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 6.77,
+          "peak_traced_kib": 27.7
+        },
+        "omniwave-batch": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 15,
+          "proof_lemmas": 3,
+          "shared_nogoods": 3,
+          "duplicates_skipped": 0,
+          "coverage": 0.25,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 7.09,
+          "peak_traced_kib": 29.7
+        },
+        "omniwave-vulkan": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 15,
+          "proof_lemmas": 3,
+          "shared_nogoods": 3,
+          "duplicates_skipped": 0,
+          "coverage": 0.25,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 39.39,
+          "peak_traced_kib": 40.9
+        }
+      },
+      "algebraic": {}
+    },
+    {
+      "family": "random",
+      "source": "random:3sat:n=30:m=128:seed=1510",
+      "num_vars": 30,
+      "num_clauses": 128,
+      "sha256": "4255cb631c28f2c011e58a3d34ddf095f65506aaaea701f6cc1ae74b62293161",
+      "engines": {
+        "dpll": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 18,
+          "proof_lemmas": null,
+          "note": "model verified clause by clause",
+          "wall_ms": 7.0,
+          "peak_traced_kib": 13.1
+        },
+        "cadical": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 7,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; model verified clause by clause",
+          "wall_ms": 2.86,
+          "peak_traced_kib": 147.2
+        },
+        "omniwave-scalar": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 46,
+          "proof_lemmas": 37,
+          "shared_nogoods": 13,
+          "duplicates_skipped": 0,
+          "coverage": 0.03125,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 9.96,
+          "peak_traced_kib": 43.7
+        },
+        "omniwave-batch": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 53,
+          "proof_lemmas": 19,
+          "shared_nogoods": 19,
+          "duplicates_skipped": 0,
+          "coverage": 0.625,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 27.91,
+          "peak_traced_kib": 79.4
+        },
+        "omniwave-vulkan": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 53,
+          "proof_lemmas": 19,
+          "shared_nogoods": 19,
+          "duplicates_skipped": 0,
+          "coverage": 0.625,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 102.28,
+          "peak_traced_kib": 151.1
+        }
+      },
+      "algebraic": {}
+    },
+    {
+      "family": "random",
+      "source": "random:3sat:n=30:m=128:seed=1511",
+      "num_vars": 30,
+      "num_clauses": 128,
+      "sha256": "170677191c32b9914250e28d657bdbdc97ebf6ab9a38965172bb359f8f255579",
+      "engines": {
+        "dpll": {
+          "status": "UNSAT",
+          "certification": "TREE_RESOLUTION_CHECKED",
+          "work": 57,
+          "proof_lemmas": null,
+          "note": "exhaustive DPLL search; tree-resolution certificate checked (53 steps)",
+          "wall_ms": 31.63,
+          "peak_traced_kib": 12.2
+        },
+        "cadical": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 28,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; DRAT proof checked by cqhecs.drat (51 lemmas)",
+          "wall_ms": 12.45,
+          "peak_traced_kib": 154.8
+        },
+        "omniwave-scalar": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 241,
+          "proof_lemmas": 241,
+          "shared_nogoods": 132,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (241 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 63.77,
+          "proof_recheck_valid": true,
+          "wall_ms": 158.67,
+          "peak_traced_kib": 170.6
+        },
+        "omniwave-batch": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 241,
+          "proof_lemmas": 241,
+          "shared_nogoods": 132,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (241 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 64.37,
+          "proof_recheck_valid": true,
+          "wall_ms": 277.08,
+          "peak_traced_kib": 219.9
+        },
+        "omniwave-vulkan": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 241,
+          "proof_lemmas": 241,
+          "shared_nogoods": 132,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (241 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 63.76,
+          "proof_recheck_valid": true,
+          "wall_ms": 493.98,
+          "peak_traced_kib": 518.5
+        }
+      },
+      "algebraic": {}
+    },
+    {
+      "family": "random",
+      "source": "random:3sat:n=30:m=128:seed=1512",
+      "num_vars": 30,
+      "num_clauses": 128,
+      "sha256": "6660efd62bc6b8c5ed8ab845c20e0e78ade5e572a618bd789ddf50bf6dcc16be",
+      "engines": {
+        "dpll": {
+          "status": "UNSAT",
+          "certification": "TREE_RESOLUTION_CHECKED",
+          "work": 49,
+          "proof_lemmas": null,
+          "note": "exhaustive DPLL search; tree-resolution certificate checked (47 steps)",
+          "wall_ms": 28.04,
+          "peak_traced_kib": 12.2
+        },
+        "cadical": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 30,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; DRAT proof checked by cqhecs.drat (45 lemmas)",
+          "wall_ms": 11.1,
+          "peak_traced_kib": 155.7
+        },
+        "omniwave-scalar": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 135,
+          "proof_lemmas": 135,
+          "shared_nogoods": 124,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (135 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 27.33,
+          "proof_recheck_valid": true,
+          "wall_ms": 78.73,
+          "peak_traced_kib": 58.0
+        },
+        "omniwave-batch": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 135,
+          "proof_lemmas": 135,
+          "shared_nogoods": 124,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (135 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 27.31,
+          "proof_recheck_valid": true,
+          "wall_ms": 140.97,
+          "peak_traced_kib": 118.0
+        },
+        "omniwave-vulkan": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 135,
+          "proof_lemmas": 135,
+          "shared_nogoods": 124,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (135 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 28.07,
+          "proof_recheck_valid": true,
+          "wall_ms": 349.32,
+          "peak_traced_kib": 300.1
+        }
+      },
+      "algebraic": {}
+    },
+    {
+      "family": "random",
+      "source": "random:3sat:n=40:m=170:seed=1680",
+      "num_vars": 40,
+      "num_clauses": 170,
+      "sha256": "f8078256e37637e193d324c6e8e9dfac4f3f48f7803d141d2484855d2cc6b3c4",
+      "engines": {
+        "dpll": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 13,
+          "proof_lemmas": null,
+          "note": "model verified clause by clause",
+          "wall_ms": 8.39,
+          "peak_traced_kib": 16.5
+        },
+        "cadical": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 29,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; model verified clause by clause",
+          "wall_ms": 3.45,
+          "peak_traced_kib": 151.4
+        },
+        "omniwave-scalar": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 12,
+          "proof_lemmas": 5,
+          "shared_nogoods": 5,
+          "duplicates_skipped": 0,
+          "coverage": 0.03125,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 8.93,
+          "peak_traced_kib": 52.6
+        },
+        "omniwave-batch": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 89,
+          "proof_lemmas": 23,
+          "shared_nogoods": 23,
+          "duplicates_skipped": 0,
+          "coverage": 0.546875,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 84.89,
+          "peak_traced_kib": 133.1
+        },
+        "omniwave-vulkan": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 89,
+          "proof_lemmas": 23,
+          "shared_nogoods": 23,
+          "duplicates_skipped": 0,
+          "coverage": 0.546875,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 228.26,
+          "peak_traced_kib": 267.9
+        }
+      },
+      "algebraic": {}
+    },
+    {
+      "family": "random",
+      "source": "random:3sat:n=40:m=170:seed=1681",
+      "num_vars": 40,
+      "num_clauses": 170,
+      "sha256": "48c6b28c8b4238cec9965d571a44de7ba3213b692a2bce0fbafb8b9de3812add",
+      "engines": {
+        "dpll": {
+          "status": "UNSAT",
+          "certification": "TREE_RESOLUTION_CHECKED",
+          "work": 33,
+          "proof_lemmas": null,
+          "note": "exhaustive DPLL search; tree-resolution certificate checked (33 steps)",
+          "wall_ms": 27.3,
+          "peak_traced_kib": 15.5
+        },
+        "cadical": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 26,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; DRAT proof checked by cqhecs.drat (35 lemmas)",
+          "wall_ms": 12.87,
+          "peak_traced_kib": 159.7
+        },
+        "omniwave-scalar": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 131,
+          "proof_lemmas": 131,
+          "shared_nogoods": 104,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (131 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 34.4,
+          "proof_recheck_valid": true,
+          "wall_ms": 93.79,
+          "peak_traced_kib": 58.3
+        },
+        "omniwave-batch": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 131,
+          "proof_lemmas": 131,
+          "shared_nogoods": 104,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (131 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 33.52,
+          "proof_recheck_valid": true,
+          "wall_ms": 232.67,
+          "peak_traced_kib": 122.9
+        },
+        "omniwave-vulkan": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 131,
+          "proof_lemmas": 131,
+          "shared_nogoods": 104,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (131 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 33.36,
+          "proof_recheck_valid": true,
+          "wall_ms": 488.02,
+          "peak_traced_kib": 300.4
+        }
+      },
+      "algebraic": {}
+    },
+    {
+      "family": "random",
+      "source": "random:3sat:n=40:m=170:seed=1682",
+      "num_vars": 40,
+      "num_clauses": 170,
+      "sha256": "a46feacafe965660d4fe6fff0ad1c2b6d01fecce30d4fe17f37493ccb2d0f260",
+      "engines": {
+        "dpll": {
+          "status": "UNSAT",
+          "certification": "TREE_RESOLUTION_CHECKED",
+          "work": 49,
+          "proof_lemmas": null,
+          "note": "exhaustive DPLL search; tree-resolution certificate checked (49 steps)",
+          "wall_ms": 38.89,
+          "peak_traced_kib": 15.5
+        },
+        "cadical": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 41,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; DRAT proof checked by cqhecs.drat (65 lemmas)",
+          "wall_ms": 19.56,
+          "peak_traced_kib": 159.7
+        },
+        "omniwave-scalar": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 217,
+          "proof_lemmas": 217,
+          "shared_nogoods": 170,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (217 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 65.66,
+          "proof_recheck_valid": true,
+          "wall_ms": 179.06,
+          "peak_traced_kib": 107.1
+        },
+        "omniwave-batch": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 217,
+          "proof_lemmas": 217,
+          "shared_nogoods": 170,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (217 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 63.51,
+          "proof_recheck_valid": true,
+          "wall_ms": 444.18,
+          "peak_traced_kib": 219.2
+        },
+        "omniwave-vulkan": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 217,
+          "proof_lemmas": 217,
+          "shared_nogoods": 170,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (217 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 63.86,
+          "proof_recheck_valid": true,
+          "wall_ms": 701.52,
+          "peak_traced_kib": 507.9
+        }
+      },
+      "algebraic": {}
+    },
+    {
+      "family": "random",
+      "source": "random:3sat:n=50:m=213:seed=1850",
+      "num_vars": 50,
+      "num_clauses": 213,
+      "sha256": "0dfdf6dbf8bfc9a99072179b5534772d877e9e8d1d2a9072c52f0845dc2a7b40",
+      "engines": {
+        "dpll": {
+          "status": "UNSAT",
+          "certification": "TREE_RESOLUTION_CHECKED",
+          "work": 55,
+          "proof_lemmas": null,
+          "note": "exhaustive DPLL search; tree-resolution certificate checked (55 steps)",
+          "wall_ms": 64.52,
+          "peak_traced_kib": 19.6
+        },
+        "cadical": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 76,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; DRAT proof checked by cqhecs.drat (110 lemmas)",
+          "wall_ms": 42.58,
+          "peak_traced_kib": 163.8
+        },
+        "omniwave-scalar": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 227,
+          "proof_lemmas": 227,
+          "shared_nogoods": 154,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (227 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 82.62,
+          "proof_recheck_valid": true,
+          "wall_ms": 220.2,
+          "peak_traced_kib": 110.3
+        },
+        "omniwave-batch": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 227,
+          "proof_lemmas": 227,
+          "shared_nogoods": 154,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (227 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 80.58,
+          "proof_recheck_valid": true,
+          "wall_ms": 510.58,
+          "peak_traced_kib": 220.3
+        },
+        "omniwave-vulkan": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 227,
+          "proof_lemmas": 227,
+          "shared_nogoods": 154,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (227 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 80.7,
+          "proof_recheck_valid": true,
+          "wall_ms": 898.38,
+          "peak_traced_kib": 489.1
+        }
+      },
+      "algebraic": {}
+    },
+    {
+      "family": "random",
+      "source": "random:3sat:n=50:m=213:seed=1851",
+      "num_vars": 50,
+      "num_clauses": 213,
+      "sha256": "2886da2d938f6101c52361d285409a30d071f8740aae616f0b2b4d7627fa87bf",
+      "engines": {
+        "dpll": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 69,
+          "proof_lemmas": null,
+          "note": "model verified clause by clause",
+          "wall_ms": 38.73,
+          "peak_traced_kib": 21.3
+        },
+        "cadical": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 60,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; model verified clause by clause",
+          "wall_ms": 3.66,
+          "peak_traced_kib": 155.6
+        },
+        "omniwave-scalar": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 39,
+          "proof_lemmas": 21,
+          "shared_nogoods": 14,
+          "duplicates_skipped": 0,
+          "coverage": 0.13623046875,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 16.26,
+          "peak_traced_kib": 73.3
+        },
+        "omniwave-batch": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 343,
+          "proof_lemmas": 157,
+          "shared_nogoods": 122,
+          "duplicates_skipped": 0,
+          "coverage": 0.787109375,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 533.01,
+          "peak_traced_kib": 492.5
+        },
+        "omniwave-vulkan": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 341,
+          "proof_lemmas": 130,
+          "shared_nogoods": 109,
+          "duplicates_skipped": 0,
+          "coverage": 0.7841796875,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 803.78,
+          "peak_traced_kib": 881.5
+        }
+      },
+      "algebraic": {}
+    },
+    {
+      "family": "random",
+      "source": "random:3sat:n=50:m=213:seed=1852",
+      "num_vars": 50,
+      "num_clauses": 213,
+      "sha256": "1bc3067a6dcebe09563d2d611cb22308316e7434389c5d8b648642065fae5500",
+      "engines": {
+        "dpll": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 35,
+          "proof_lemmas": null,
+          "note": "model verified clause by clause",
+          "wall_ms": 23.25,
+          "peak_traced_kib": 21.3
+        },
+        "cadical": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 0,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; model verified clause by clause",
+          "wall_ms": 4.01,
+          "peak_traced_kib": 155.5
+        },
+        "omniwave-scalar": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 50,
+          "proof_lemmas": 34,
+          "shared_nogoods": 17,
+          "duplicates_skipped": 0,
+          "coverage": 0.0634765625,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 17.5,
+          "peak_traced_kib": 72.7
+        },
+        "omniwave-batch": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 519,
+          "proof_lemmas": 137,
+          "shared_nogoods": 93,
+          "duplicates_skipped": 0,
+          "coverage": 0.5703125,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 856.48,
+          "peak_traced_kib": 771.0
+        },
+        "omniwave-vulkan": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 455,
+          "proof_lemmas": 68,
+          "shared_nogoods": 64,
+          "duplicates_skipped": 0,
+          "coverage": 0.4921875,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 977.88,
+          "peak_traced_kib": 1386.0
+        }
+      },
+      "algebraic": {}
+    },
+    {
+      "family": "planted",
+      "source": "planted_3sat(n=40,m=170,seed=2040)",
+      "num_vars": 40,
+      "num_clauses": 170,
+      "sha256": "a35e360df2f5f1f3535fc005df7145f99d2bb95a802f56c63c8cc85f4c3dfe8a",
+      "engines": {
+        "dpll": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 15,
+          "proof_lemmas": null,
+          "note": "model verified clause by clause",
+          "wall_ms": 8.22,
+          "peak_traced_kib": 16.2
+        },
+        "cadical": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 13,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; model verified clause by clause",
+          "wall_ms": 3.31,
+          "peak_traced_kib": 151.3
+        },
+        "omniwave-scalar": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 36,
+          "proof_lemmas": 17,
+          "shared_nogoods": 7,
+          "duplicates_skipped": 0,
+          "coverage": 0.0330810546875,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 12.67,
+          "peak_traced_kib": 56.4
+        },
+        "omniwave-batch": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 319,
+          "proof_lemmas": 58,
+          "shared_nogoods": 58,
+          "duplicates_skipped": 0,
+          "coverage": 0.4765625,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 416.82,
+          "peak_traced_kib": 506.8
+        },
+        "omniwave-vulkan": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 339,
+          "proof_lemmas": 62,
+          "shared_nogoods": 62,
+          "duplicates_skipped": 0,
+          "coverage": 0.4921875,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 585.35,
+          "peak_traced_kib": 772.1
+        }
+      },
+      "algebraic": {}
+    },
+    {
+      "family": "planted",
+      "source": "planted_3sat(n=80,m=341,seed=2080)",
+      "num_vars": 80,
+      "num_clauses": 341,
+      "sha256": "42a4a84637d8eb3d80f85c0d8eb1849c65d29e8d67869b11d14ec523aeb0bab4",
+      "engines": {
+        "dpll": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 324,
+          "proof_lemmas": null,
+          "note": "model verified clause by clause",
+          "wall_ms": 420.37,
+          "peak_traced_kib": 33.7
+        },
+        "cadical": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 86,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; model verified clause by clause",
+          "wall_ms": 4.59,
+          "peak_traced_kib": 167.2
+        },
+        "omniwave-scalar": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 130,
+          "proof_lemmas": 103,
+          "shared_nogoods": 0,
+          "duplicates_skipped": 0,
+          "coverage": 0.00389862060546875,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 60.18,
+          "peak_traced_kib": 120.2
+        },
+        "omniwave-batch": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 1853,
+          "proof_lemmas": 819,
+          "shared_nogoods": 43,
+          "duplicates_skipped": 0,
+          "coverage": 0.264862060546875,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 5542.6,
+          "peak_traced_kib": 1845.2
+        },
+        "omniwave-vulkan": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 1277,
+          "proof_lemmas": 382,
+          "shared_nogoods": 46,
+          "duplicates_skipped": 0,
+          "coverage": 0.2674560546875,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 4228.85,
+          "peak_traced_kib": 2197.8
+        }
+      },
+      "algebraic": {}
+    },
+    {
+      "family": "planted",
+      "source": "planted_3sat(n=120,m=511,seed=2120)",
+      "num_vars": 120,
+      "num_clauses": 511,
+      "sha256": "9dbff4241bdae0a5cf1169cf274dae04ae882efd382180e85b18d5433ecd8a4b",
+      "engines": {
+        "dpll": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 50,
+          "proof_lemmas": null,
+          "note": "model verified clause by clause",
+          "wall_ms": 109.71,
+          "peak_traced_kib": 52.3
+        },
+        "cadical": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 36,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; model verified clause by clause",
+          "wall_ms": 6.35,
+          "peak_traced_kib": 183.6
+        },
+        "omniwave-scalar": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 19879,
+          "proof_lemmas": 19848,
+          "shared_nogoods": 11,
+          "duplicates_skipped": 0,
+          "coverage": 0.028460025787353516,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 12201.95,
+          "peak_traced_kib": 9463.3
+        },
+        "omniwave-batch": {
+          "status": "UNKNOWN",
+          "certification": "NONE",
+          "work": 4287,
+          "proof_lemmas": 2890,
+          "shared_nogoods": 8,
+          "duplicates_skipped": 0,
+          "coverage": 0.04497800022363663,
+          "note": "timeout after 20 s; coverage 4.498%",
+          "wall_ms": 20220.47,
+          "peak_traced_kib": 2946.2
+        },
+        "omniwave-vulkan": {
+          "status": "UNKNOWN",
+          "certification": "NONE",
+          "work": 3583,
+          "proof_lemmas": 2108,
+          "shared_nogoods": 1,
+          "duplicates_skipped": 0,
+          "coverage": 0.024704087525606155,
+          "note": "timeout after 20 s; coverage 2.470%",
+          "wall_ms": 20226.58,
+          "peak_traced_kib": 3438.4
+        }
+      },
+      "algebraic": {}
+    },
+    {
+      "family": "parity",
+      "source": "tseitin_torus(3x3,seed=3009)",
+      "num_vars": 18,
+      "num_clauses": 72,
+      "sha256": "4313bd80aa5d23c46ccba82d318536cec060fdfff25ee275e5fafe2a99d5164b",
+      "engines": {
+        "dpll": {
+          "status": "UNSAT",
+          "certification": "TREE_RESOLUTION_CHECKED",
+          "work": 3071,
+          "proof_lemmas": null,
+          "note": "exhaustive DPLL search; tree-resolution certificate checked (3071 steps)",
+          "wall_ms": 806.14,
+          "peak_traced_kib": 319.6
+        },
+        "cadical": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 359,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; DRAT proof checked by cqhecs.drat (545 lemmas)",
+          "wall_ms": 145.21,
+          "peak_traced_kib": 211.2
+        },
+        "omniwave-scalar": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 2047,
+          "proof_lemmas": 2047,
+          "shared_nogoods": 510,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (2047 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 1924.38,
+          "proof_recheck_valid": true,
+          "wall_ms": 4091.41,
+          "peak_traced_kib": 1146.8
+        },
+        "omniwave-batch": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 2047,
+          "proof_lemmas": 2047,
+          "shared_nogoods": 510,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (2047 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 1862.5,
+          "proof_recheck_valid": true,
+          "wall_ms": 5785.81,
+          "peak_traced_kib": 1390.9
+        },
+        "omniwave-vulkan": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 2047,
+          "proof_lemmas": 2047,
+          "shared_nogoods": 510,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (2047 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 1796.95,
+          "proof_recheck_valid": true,
+          "wall_ms": 5987.01,
+          "peak_traced_kib": 2431.1
+        }
+      },
+      "algebraic": {
+        "gf2_rows": 9,
+        "gf2_solutions": 0,
+        "gf2_ms": 0.3
+      }
+    },
+    {
+      "family": "parity",
+      "source": "tseitin_torus(3x4,seed=3012)",
+      "num_vars": 24,
+      "num_clauses": 96,
+      "sha256": "e582c1ba472c855ddac6c07cf23c2b057230b0f6dfd27c8d006c66bf9f085c63",
+      "engines": {
+        "dpll": {
+          "status": "UNSAT",
+          "certification": "TREE_RESOLUTION_CHECKED",
+          "work": 32767,
+          "proof_lemmas": null,
+          "note": "exhaustive DPLL search; tree-resolution certificate checked (32767 steps)",
+          "wall_ms": 10587.91,
+          "peak_traced_kib": 5229.0
+        },
+        "cadical": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 2443,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; DRAT proof checked by cqhecs.drat (3200 lemmas)",
+          "wall_ms": 2788.29,
+          "peak_traced_kib": 1443.3
+        },
+        "omniwave-scalar": {
+          "status": "UNKNOWN",
+          "certification": "NONE",
+          "work": 16383,
+          "proof_lemmas": 16383,
+          "shared_nogoods": 510,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "search complete but the proof was not accepted (check budget exhausted; proof neither accepted nor rejected); UNKNOWN",
+          "wall_ms": 62475.97,
+          "peak_traced_kib": 10760.2
+        },
+        "omniwave-batch": {
+          "status": "UNKNOWN",
+          "certification": "NONE",
+          "work": 14399,
+          "proof_lemmas": 14073,
+          "shared_nogoods": 433,
+          "duplicates_skipped": 0,
+          "coverage": 0.859375,
+          "note": "timeout after 20 s; coverage 85.938%",
+          "wall_ms": 20214.49,
+          "peak_traced_kib": 4294.8
+        },
+        "omniwave-vulkan": {
+          "status": "UNKNOWN",
+          "certification": "NONE",
+          "work": 13439,
+          "proof_lemmas": 12922,
+          "shared_nogoods": 398,
+          "duplicates_skipped": 0,
+          "coverage": 0.7890625,
+          "note": "timeout after 20 s; coverage 78.906%",
+          "wall_ms": 20313.63,
+          "peak_traced_kib": 4885.9
+        }
+      },
+      "algebraic": {
+        "gf2_rows": 12,
+        "gf2_solutions": 0,
+        "gf2_ms": 0.34
+      }
+    },
+    {
+      "family": "parity",
+      "source": "tseitin_torus(4x4,seed=3016)",
+      "num_vars": 32,
+      "num_clauses": 128,
+      "sha256": "8174ed69c9c575a20627b5142e7204e6c9bb20dcaf46e828ebcf60630a7d3cfa",
+      "engines": {
+        "dpll": {
+          "status": "UNKNOWN",
+          "certification": "NONE",
+          "work": 90112,
+          "proof_lemmas": null,
+          "note": "timeout after 20 s; result not decided",
+          "wall_ms": 20120.22,
+          "peak_traced_kib": 14.3
+        },
+        "cadical": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 4857,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; DRAT proof checked by cqhecs.drat (5217 lemmas)",
+          "wall_ms": 5916.0,
+          "peak_traced_kib": 2955.2
+        },
+        "omniwave-scalar": {
+          "status": "UNKNOWN",
+          "certification": "NONE",
+          "work": 133219,
+          "proof_lemmas": 133202,
+          "shared_nogoods": 258,
+          "duplicates_skipped": 0,
+          "coverage": 0.508148193359375,
+          "note": "timeout after 20 s; coverage 50.815%",
+          "wall_ms": 20148.16,
+          "peak_traced_kib": 41137.4
+        },
+        "omniwave-batch": {
+          "status": "UNKNOWN",
+          "certification": "NONE",
+          "work": 15871,
+          "proof_lemmas": 15003,
+          "shared_nogoods": 25,
+          "duplicates_skipped": 0,
+          "coverage": 0.05725860595703125,
+          "note": "timeout after 20 s; coverage 5.726%",
+          "wall_ms": 20019.57,
+          "peak_traced_kib": 4348.2
+        },
+        "omniwave-vulkan": {
+          "status": "UNKNOWN",
+          "certification": "NONE",
+          "work": 15039,
+          "proof_lemmas": 14075,
+          "shared_nogoods": 23,
+          "duplicates_skipped": 0,
+          "coverage": 0.0537109375,
+          "note": "timeout after 20 s; coverage 5.371%",
+          "wall_ms": 20215.02,
+          "peak_traced_kib": 4229.7
+        }
+      },
+      "algebraic": {
+        "gf2_rows": 16,
+        "gf2_solutions": 0,
+        "gf2_ms": 0.47
+      }
+    },
+    {
+      "family": "pigeonhole",
+      "source": "D:\\Quantum EMU\\CQ-HECS\\benchmarks\\sat\\pigeonhole_6_5.cnf",
+      "num_vars": 30,
+      "num_clauses": 81,
+      "sha256": "7e5d017392eaa29f07649ef4d2383bd8472e0979a3c17c46e48c7f9442fe9610",
+      "engines": {
+        "dpll": {
+          "status": "UNSAT",
+          "certification": "TREE_RESOLUTION_CHECKED",
+          "work": 239,
+          "proof_lemmas": null,
+          "note": "exhaustive DPLL search; tree-resolution certificate checked (239 steps)",
+          "wall_ms": 63.32,
+          "peak_traced_kib": 15.4
+        },
+        "cadical": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 168,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; DRAT proof checked by cqhecs.drat (156 lemmas)",
+          "wall_ms": 27.54,
+          "peak_traced_kib": 156.6
+        },
+        "omniwave-scalar": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 777,
+          "proof_lemmas": 777,
+          "shared_nogoods": 246,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (777 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 303.63,
+          "proof_recheck_valid": true,
+          "wall_ms": 712.58,
+          "peak_traced_kib": 226.7
+        },
+        "omniwave-batch": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 777,
+          "proof_lemmas": 777,
+          "shared_nogoods": 246,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (777 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 305.13,
+          "proof_recheck_valid": true,
+          "wall_ms": 1221.21,
+          "peak_traced_kib": 531.4
+        },
+        "omniwave-vulkan": {
+          "status": "UNSAT",
+          "certification": "DRAT_CHECKED",
+          "work": 777,
+          "proof_lemmas": 777,
+          "shared_nogoods": 246,
+          "duplicates_skipped": 0,
+          "coverage": 1.0,
+          "note": "OMNIWAVE complete coverage; DRAT proof (777 lemmas) checked by cqhecs.drat",
+          "proof_recheck_ms": 326.26,
+          "proof_recheck_valid": true,
+          "wall_ms": 1545.51,
+          "peak_traced_kib": 1175.7
+        }
+      },
+      "algebraic": {}
+    },
+    {
+      "family": "low-treewidth",
+      "source": "banded_3sat(n=40,m=100,w=6,seed=4040)",
+      "num_vars": 40,
+      "num_clauses": 100,
+      "sha256": "32f48b31eda412a5e4c0ad9d4cc51dd6d218ac6c243b2af08d604ea6f32aeccb",
+      "engines": {
+        "dpll": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 20,
+          "proof_lemmas": null,
+          "note": "model verified clause by clause",
+          "wall_ms": 6.41,
+          "peak_traced_kib": 10.9
+        },
+        "cadical": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 26,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; model verified clause by clause",
+          "wall_ms": 2.63,
+          "peak_traced_kib": 144.4
+        },
+        "omniwave-scalar": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 17,
+          "proof_lemmas": 1,
+          "shared_nogoods": 0,
+          "duplicates_skipped": 0,
+          "coverage": 6.103515625e-05,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 5.73,
+          "peak_traced_kib": 36.8
+        },
+        "omniwave-batch": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 1115,
+          "proof_lemmas": 36,
+          "shared_nogoods": 27,
+          "duplicates_skipped": 0,
+          "coverage": 0.31695556640625,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 732.07,
+          "peak_traced_kib": 671.3
+        },
+        "omniwave-vulkan": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 1179,
+          "proof_lemmas": 36,
+          "shared_nogoods": 27,
+          "duplicates_skipped": 0,
+          "coverage": 0.31695556640625,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 1029.56,
+          "peak_traced_kib": 945.2
+        }
+      },
+      "algebraic": {
+        "tensor_count": "625192",
+        "tensor_ms": 3.54,
+        "sharpsat_count": "625192",
+        "sharpsat_ms": 31.42
+      }
+    },
+    {
+      "family": "low-treewidth",
+      "source": "banded_3sat(n=80,m=200,w=6,seed=4080)",
+      "num_vars": 80,
+      "num_clauses": 200,
+      "sha256": "31146a6118564adc9022b378fcfd93e9a9230d3288d4439e0b1ed1da24494034",
+      "engines": {
+        "dpll": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 25,
+          "proof_lemmas": null,
+          "note": "model verified clause by clause",
+          "wall_ms": 20.0,
+          "peak_traced_kib": 22.8
+        },
+        "cadical": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 37,
+          "proof_lemmas": null,
+          "note": "CaDiCaL 1.9.5 via python-sat 1.9.dev17; model verified clause by clause",
+          "wall_ms": 3.79,
+          "peak_traced_kib": 153.9
+        },
+        "omniwave-scalar": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 46,
+          "proof_lemmas": 9,
+          "shared_nogoods": 0,
+          "duplicates_skipped": 0,
+          "coverage": 9.5367431640625e-07,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 19.14,
+          "peak_traced_kib": 83.2
+        },
+        "omniwave-batch": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 3979,
+          "proof_lemmas": 831,
+          "shared_nogoods": 22,
+          "duplicates_skipped": 0,
+          "coverage": 0.46784741725423373,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 6627.17,
+          "peak_traced_kib": 4288.0
+        },
+        "omniwave-vulkan": {
+          "status": "SAT",
+          "certification": "MODEL_VERIFIED",
+          "work": 3979,
+          "proof_lemmas": 830,
+          "shared_nogoods": 22,
+          "duplicates_skipped": 0,
+          "coverage": 0.4677696991020639,
+          "note": "OMNIWAVE (4 waves); model verified clause by clause",
+          "wall_ms": 7791.78,
+          "peak_traced_kib": 4495.4
+        }
+      },
+      "algebraic": {
+        "tensor_count": "246521018752",
+        "tensor_ms": 7.44,
+        "sharpsat_count": "246521018752",
+        "sharpsat_ms": 2334.63
+      }
+    }
+  ],
+  "failures": [],
+  "non_claims": [
+    "Timings are one run on one machine; they are not a speedup claim.",
+    "OMNIWAVE worker threads share the Python GIL.",
+    "The Vulkan path checks every GPU pass against the CPU reference, so it measures correctness of the kernel, not GPU acceleration.",
+    "No complexity statement (P vs NP, ETH) follows from these numbers."
+  ]
+}

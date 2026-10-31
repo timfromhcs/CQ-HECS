@@ -174,3 +174,80 @@ def test_devices_endpoint_and_device_noise(state, server):
     assert result["noise"]["model"] == "device:rigetti_cepheus (M-FIT-2)"
     status, payload = _post(server, "/api/simulate", {"source": "preset:bell", "noise": "device:nope"})
     assert status == 400 and payload["error"]["code"] == "unknown_device"
+
+
+def test_sat_count_endpoint_and_certification_fields(server):
+    status, payload = _post(server, "/api/sat/count", {"cnf": "p cnf 3 1\n1 2 0\n", "timeout": 2})
+    assert status == 200 and payload["result"]["count"] == "6"
+    status, payload = _post(server, "/api/sat/solve", {"cnf": "p cnf 1 2\n1 0\n-1 0\n", "timeout": 2})
+    assert payload["result"]["status"] == "UNSAT"
+    assert payload["result"]["certification"] == "TREE_RESOLUTION_CHECKED"
+    status, payload = _post(server, "/api/sat/solve", {"cnf": "p cnf 1 1\n1 0\n", "engine": "nope"})
+    assert status == 400 and payload["error"]["code"] == "invalid_engine"
+
+
+# ---------------------------------------------------------------- OMNIWAVE Research Lab
+
+PHP = (ROOT / "benchmarks" / "sat" / "pigeonhole_6_5.cnf").read_text("utf-8")
+
+
+def _wait_lab(server, timeout=60.0):
+    import time
+
+    end = time.time() + timeout
+    while time.time() < end:
+        _, raw = _get(server, "/api/omniwave/status")
+        data = json.loads(raw)
+        if data["state"] not in ("running", "paused"):
+            return data
+        time.sleep(0.05)
+    raise AssertionError("OMNIWAVE run did not finish")
+
+
+def test_omniwave_lab_runs_to_a_checked_proof(server):
+    status, data = _post(server, "/api/omniwave/start", {"cnf": PHP, "waves": 4, "workers": 2, "timeout": 60})
+    assert status == 200 and data["state"] in ("running", "finished")
+    done = _wait_lab(server)
+    assert done["state"] == "finished"
+    assert done["result"]["status"] == "UNSAT" and done["result"]["certification"] == "DRAT_CHECKED"
+    assert done["live"]["covered"] == 1.0 and done["proof_lemmas"] > 0
+    assert done["timeline"] and done["timeline"][-1]["fronts_processed"] <= done["live"]["fronts_processed"]
+    assert done["config"]["waves"] == 4 and done["formula"]["num_vars"] == 30
+    assert "available" in done["gpu"] and "GIL" in done["non_claim"]
+
+
+def test_omniwave_lab_pause_resume_cancel(server):
+    import time
+
+    hard = {"random": {"num_vars": 120, "ratio": 4.26, "seed": 7}, "timeout": 60, "max_fronts": 5_000_000}
+    status, _ = _post(server, "/api/omniwave/start", hard)
+    assert status == 200
+    status, again = _post(server, "/api/omniwave/start", hard)
+    assert status == 409 and again["error"]["code"] == "run_active"
+    status, paused = _post(server, "/api/omniwave/pause", {})
+    assert status == 200 and paused["state"] == "paused"
+    time.sleep(0.3)  # let in-flight fronts drain
+    _, raw = _get(server, "/api/omniwave/status")
+    before = json.loads(raw)["live"]["fronts_processed"]
+    time.sleep(0.4)
+    _, raw = _get(server, "/api/omniwave/status")
+    assert json.loads(raw)["live"]["fronts_processed"] == before  # paused means no work
+    status, resumed = _post(server, "/api/omniwave/resume", {})
+    assert status == 200 and resumed["state"] == "running"
+    status, cancelled = _post(server, "/api/omniwave/cancel", {})
+    assert status == 200 and cancelled["state"] == "finished"
+    assert cancelled["result"]["status"] in ("UNKNOWN", "SAT")
+    assert cancelled["result"]["status"] != "UNSAT"
+
+
+def test_omniwave_lab_refuses_bad_requests(server):
+    status, data = _post(server, "/api/omniwave/pause", {})
+    assert status == 409 and data["error"]["code"] == "not_running"
+    status, data = _post(server, "/api/omniwave/start", {"cnf": PHP, "waves": 0})
+    assert status == 400 and data["error"]["code"] == "invalid_parameter"
+    status, data = _post(server, "/api/omniwave/start", {"cnf": PHP, "bcp": "cuda"})
+    assert status == 400
+    status, data = _post(server, "/api/omniwave/explode", {})
+    assert status == 404
+    status, data = _post(server, "/api/sat/solve", {"cnf": "p cnf 1 2\n1 0\n-1 0\n", "engine": "omniwave"})
+    assert status == 200 and data["result"]["certification"] == "DRAT_CHECKED"

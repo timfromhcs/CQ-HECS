@@ -35,6 +35,8 @@ $Exe = ".\dist\cq-hecs\cq-hecs.exe"
 if ($LASTEXITCODE -ne 0) { throw "standalone binary failed its version smoke test" }
 & $Exe sat solve "benchmarks\sat\pigeonhole_6_5.cnf" | Out-Host
 if ($LASTEXITCODE -ne 0) { throw "standalone binary failed its SAT smoke test" }
+& $Exe sat solve "benchmarks\sat\pigeonhole_6_5.cnf" --engine omniwave | Out-Host
+if ($LASTEXITCODE -ne 0) { throw "standalone binary failed its OMNIWAVE smoke test" }
 & $Exe --format json run name:bell --shots 64 | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "standalone binary failed its circuit smoke test" }
 & $Exe --format json run name:bell --device iqm_garnet --shots 64 | Out-Null

@@ -364,9 +364,9 @@ jobs:
           if-no-files-found: warn
 
   web-emulator:
-    name: Web emulator (WASM core, tests, build)
+    name: Web emulator (WASM core, tests, build, E2E)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: web
@@ -395,3 +395,16 @@ jobs:
 
       - name: Type check and production build
         run: npm run build
+
+      - name: Browser E2E + accessibility (Playwright, axe)
+        run: |
+          npx playwright install --with-deps chromium
+          npm run e2e
+
+      - name: Upload E2E screenshots and traces
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: web-e2e
+          path: web/e2e-results/
+          if-no-files-found: warn

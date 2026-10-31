@@ -49,6 +49,11 @@ public:
     bool dispatch_cordic(VulkanBuffer& buffer, uint32_t gate_type, uint32_t phase_angle, uint32_t is_inverse, uint32_t total_pairs);
     bool dispatch_state_reset(VulkanBuffer& buffer, uint32_t total_elements, uint32_t target_basis);
     bool dispatch_tensor_contract(VulkanBuffer& buf_a, VulkanBuffer& buf_b, VulkanBuffer& buf_c, uint32_t m, uint32_t k, uint32_t n);
+    /// OMNIWAVE batched BCP: one evaluation pass over num_fronts x num_clauses.
+    /// Buffers: clause offsets, literal codes, assigned bits, value bits, status out.
+    bool dispatch_omniwave_bcp(VulkanBuffer& offsets, VulkanBuffer& codes, VulkanBuffer& assigned,
+                               VulkanBuffer& values, VulkanBuffer& status,
+                               uint32_t num_clauses, uint32_t num_fronts, uint32_t words);
 
 private:
     bool create_instance();
@@ -78,6 +83,7 @@ private:
     VulkanPipeline m_pipeline_contract;
     VulkanPipeline m_pipeline_bond_svd;
     VulkanPipeline m_pipeline_state_reset;
+    VulkanPipeline m_pipeline_omniwave_bcp;
 
     std::mutex m_dispatch_mutex;
 };

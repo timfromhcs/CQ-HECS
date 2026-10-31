@@ -38,6 +38,13 @@ SAT = "SAT"
 UNSAT = "UNSAT"
 UNKNOWN = "UNKNOWN"
 
+#: Version of the SAT result dictionary. 1.1 adds ``certification``,
+#: ``proof_system``, ``engine`` and this field; nothing was removed.
+RESULT_CONTRACT_VERSION = "1.1"
+
+#: Values of ``SATResult.certification``.
+CERTIFICATIONS = ("MODEL_VERIFIED", "TREE_RESOLUTION_CHECKED", "DRAT_CHECKED", "UNCERTIFIED", "NONE")
+
 _CLAUSE_SEPARATORS = {"0"}
 
 
@@ -199,8 +206,24 @@ class SATResult:
     note: str
     #: Tree-resolution refutation (see :func:`check_refutation`); only for UNSAT.
     certificate: Optional[Tuple[Tuple[Any, ...], ...]] = None
-    #: True only if ``certificate`` passed :func:`check_refutation`.
+    #: True only if ``certificate`` passed :func:`check_refutation`, or an
+    #: external DRAT proof passed :func:`cqhecs.drat.check_drat`.
     certified: bool = False
+    #: Proof system of a certified UNSAT: ``"tree-resolution"``, ``"DRAT"`` or None.
+    proof_system: Optional[str] = None
+    #: ``"dpll"`` (built-in) or ``"cadical"`` (:mod:`cqhecs.sat_external`).
+    engine: str = "dpll"
+
+    @property
+    def certification(self) -> str:
+        """How the verdict is backed: one of :data:`CERTIFICATIONS`."""
+        if self.status == SAT:
+            return "MODEL_VERIFIED" if self.model_verified else "NONE"
+        if self.status == UNSAT:
+            if not self.certified:
+                return "UNCERTIFIED"
+            return "DRAT_CHECKED" if self.proof_system == "DRAT" else "TREE_RESOLUTION_CHECKED"
+        return "NONE"
 
     @property
     def satisfiable(self) -> Optional[bool]:
@@ -228,6 +251,10 @@ class SATResult:
             "note": self.note,
             "certified": self.certified,
             "certificate_steps": len(self.certificate) if self.certificate else 0,
+            "certification": self.certification,
+            "proof_system": self.proof_system if self.certified else None,
+            "engine": self.engine,
+            "contract_version": RESULT_CONTRACT_VERSION,
         }
 
     def certificate_to_jsonable(self) -> Optional[List[List[Any]]]:
@@ -668,6 +695,7 @@ def solve(
         note=note,
         certificate=certificate if status == UNSAT else None,
         certified=bool(certified and status == UNSAT),
+        proof_system="tree-resolution" if (certified and status == UNSAT) else None,
     )
 
 
@@ -718,6 +746,139 @@ def enumerate_models(
         "models": models,
         "elapsed_ms": (time.perf_counter() - started) * 1000.0,
         "formula_sha256": formula.sha256,
+    }
+
+
+COUNTED = "COUNTED"
+
+
+class _CountBudget(Exception):
+    pass
+
+
+def count_models(
+    formula: CNF,
+    timeout_seconds: float = 10.0,
+    node_budget: Optional[int] = None,
+) -> Dict[str, Any]:
+    """
+    Exact model count ``#F`` over all ``2^num_vars`` assignments.
+
+    #SAT is its own problem, not SAT with a counter: the result is ``COUNTED`` with
+    an exact integer (serialized as a decimal string, so counts beyond 2^53
+    survive JSON) or ``UNKNOWN`` when the time or node budget runs out. The
+    method is exact DPLL counting: unit propagation, splitting into
+    variable-disjoint components whose counts multiply, a cache keyed by the
+    component's clause set, and ``2^k`` for the ``k`` unconstrained variables.
+    No sampling or approximation is involved.
+    """
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be > 0")
+    started = time.perf_counter()
+    deadline = started + float(timeout_seconds)
+    stats = {"nodes": 0, "cache_hits": 0}
+    cache: Dict[frozenset, int] = {}
+
+    def simplify(clauses: List[frozenset], lit: int) -> Optional[List[frozenset]]:
+        out = []
+        for clause in clauses:
+            if lit in clause:
+                continue
+            if -lit in clause:
+                reduced = clause - {-lit}
+                if not reduced:
+                    return None
+                out.append(reduced)
+            else:
+                out.append(clause)
+        return out
+
+    def count(clauses: List[frozenset], variables: frozenset) -> int:
+        stats["nodes"] += 1
+        if (node_budget is not None and stats["nodes"] > node_budget) or (
+            stats["nodes"] % 256 == 0 and time.perf_counter() > deadline
+        ):
+            raise _CountBudget()
+        # Unit propagation: fixed variables leave the count unchanged.
+        while True:
+            unit = next((next(iter(c)) for c in clauses if len(c) == 1), None)
+            if unit is None:
+                break
+            reduced = simplify(clauses, unit)
+            if reduced is None:
+                return 0
+            clauses = reduced
+            variables = variables - {abs(unit)}
+        if not clauses:
+            return 1 << len(variables)
+        key = frozenset(clauses)
+        constrained = frozenset(abs(lit) for c in clauses for lit in c)
+        free = len(variables - constrained)
+        if key in cache:
+            stats["cache_hits"] += 1
+            return cache[key] << free
+        # Split into variable-disjoint components; their counts multiply.
+        components: List[Tuple[List[frozenset], set]] = []
+        for clause in clauses:
+            vars_ = {abs(lit) for lit in clause}
+            merged = [comp for comp in components if comp[1] & vars_]
+            for comp in merged:
+                components.remove(comp)
+            new_clauses = [clause] + [c for comp in merged for c in comp[0]]
+            new_vars = set(vars_).union(*(comp[1] for comp in merged)) if merged else set(vars_)
+            components.append((new_clauses, new_vars))
+        if len(components) > 1:
+            total = 1
+            for comp_clauses, comp_vars in components:
+                part = count(comp_clauses, frozenset(comp_vars))
+                if part == 0:
+                    total = 0
+                    break
+                total *= part
+            cache[key] = total
+            return total << free
+        # Branch on the most frequent variable.
+        occurrences: Dict[int, int] = {}
+        for clause in clauses:
+            for lit in clause:
+                occurrences[abs(lit)] = occurrences.get(abs(lit), 0) + 1
+        var = max(occurrences, key=lambda v: (occurrences[v], -v))
+        rest = constrained - {var}
+        total = 0
+        for lit in (var, -var):
+            branch = simplify(clauses, lit)
+            if branch is not None:
+                total += count(branch, rest)
+        cache[key] = total
+        return total << free
+
+    status = COUNTED
+    value: Optional[int] = None
+    note = "exact DPLL counting with component decomposition and caching"
+    if any(len(c) == 0 for c in formula.clauses):
+        value, note = 0, "empty clause present; count is 0 without search"
+    else:
+        try:
+            value = count(
+                [frozenset(c) for c in formula.clauses],
+                frozenset(range(1, formula.num_vars + 1)),
+            )
+        except _CountBudget:
+            status, value = UNKNOWN, None
+            note = "time or node budget exhausted; no count claimed"
+    return {
+        "status": status,
+        "count": str(value) if value is not None else None,
+        "satisfiable": None if value is None else value > 0,
+        "num_vars": formula.num_vars,
+        "num_clauses": formula.num_clauses,
+        "nodes": stats["nodes"],
+        "cache_hits": stats["cache_hits"],
+        "elapsed_ms": (time.perf_counter() - started) * 1000.0,
+        "method": "exact (DPLL counting, components, cache)",
+        "note": note,
+        "formula_sha256": formula.sha256,
+        "contract_version": RESULT_CONTRACT_VERSION,
     }
 
 

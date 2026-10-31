@@ -26,6 +26,12 @@ struct PushConstantsContract {
     uint32_t dim_n;
 };
 
+struct PushConstantsBcp {
+    uint32_t num_clauses;
+    uint32_t num_fronts;
+    uint32_t words;
+};
+
 VulkanContext::VulkanContext() = default;
 
 VulkanContext::~VulkanContext() {
@@ -70,6 +76,7 @@ void VulkanContext::cleanup() {
 
         m_pipeline_cordic.destroy();
         m_pipeline_contract.destroy();
+        m_pipeline_omniwave_bcp.destroy();
         m_pipeline_bond_svd.destroy();
         m_pipeline_state_reset.destroy();
 
@@ -261,6 +268,15 @@ bool VulkanContext::init_pipelines() {
                                                embedded_vrts_shaders::spv_bond_svd_size,
                                                3,
                                                24)) {
+        return false;
+    }
+
+    // 5. OMNIWAVE batched BCP (5 SSBOs, sizeof(PushConstantsBcp))
+    if (!m_pipeline_omniwave_bcp.create_from_spirv(m_device,
+                                                   embedded_vrts_shaders::spv_omniwave_bcp,
+                                                   embedded_vrts_shaders::spv_omniwave_bcp_size,
+                                                   5,
+                                                   sizeof(PushConstantsBcp))) {
         return false;
     }
 
@@ -517,6 +533,85 @@ bool VulkanContext::dispatch_tensor_contract(VulkanBuffer& buf_a, VulkanBuffer& 
     vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &desc_set);
 
     return submit_result == VK_SUCCESS && wait_result == VK_SUCCESS;
+}
+
+
+bool VulkanContext::dispatch_omniwave_bcp(VulkanBuffer& offsets, VulkanBuffer& codes, VulkanBuffer& assigned,
+                                          VulkanBuffer& values, VulkanBuffer& status,
+                                          uint32_t num_clauses, uint32_t num_fronts, uint32_t words) {
+    if (!m_initialized || num_clauses == 0 || num_fronts == 0 || num_fronts > 65535u) return false;
+    VulkanBuffer* buffers[5] = {&offsets, &codes, &assigned, &values, &status};
+    for (VulkanBuffer* b : buffers) {
+        if (!b->is_valid()) return false;
+    }
+    std::lock_guard<std::mutex> lock(m_dispatch_mutex);
+
+    VkDescriptorSetAllocateInfo alloc_info{};
+    alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    alloc_info.descriptorPool = m_descriptor_pool;
+    alloc_info.descriptorSetCount = 1;
+    VkDescriptorSetLayout layout = m_pipeline_omniwave_bcp.get_descriptor_set_layout();
+    alloc_info.pSetLayouts = &layout;
+    VkDescriptorSet desc_set = VK_NULL_HANDLE;
+    if (vkAllocateDescriptorSets(m_device, &alloc_info, &desc_set) != VK_SUCCESS) return false;
+
+    VkDescriptorBufferInfo infos[5];
+    VkWriteDescriptorSet writes[5]{};
+    for (int i = 0; i < 5; ++i) {
+        infos[i] = {buffers[i]->get_buffer(), 0, buffers[i]->get_size()};
+        writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[i].dstSet = desc_set;
+        writes[i].dstBinding = static_cast<uint32_t>(i);
+        writes[i].descriptorCount = 1;
+        writes[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        writes[i].pBufferInfo = &infos[i];
+    }
+    vkUpdateDescriptorSets(m_device, 5, writes, 0, nullptr);
+
+    VkCommandBufferAllocateInfo cmd_alloc{};
+    cmd_alloc.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cmd_alloc.commandPool = m_command_pool;
+    cmd_alloc.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    cmd_alloc.commandBufferCount = 1;
+    VkCommandBuffer cmd = VK_NULL_HANDLE;
+    if (vkAllocateCommandBuffers(m_device, &cmd_alloc, &cmd) != VK_SUCCESS || cmd == VK_NULL_HANDLE) {
+        vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &desc_set);
+        return false;
+    }
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(cmd, &begin_info) != VK_SUCCESS) {
+        vkFreeCommandBuffers(m_device, m_command_pool, 1, &cmd);
+        vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &desc_set);
+        return false;
+    }
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline_omniwave_bcp.get_pipeline());
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline_omniwave_bcp.get_layout(), 0, 1,
+                            &desc_set, 0, nullptr);
+    PushConstantsBcp pc{num_clauses, num_fronts, words};
+    vkCmdPushConstants(cmd, m_pipeline_omniwave_bcp.get_layout(), VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pc), &pc);
+    vkCmdDispatch(cmd, (num_clauses + 63u) / 64u, num_fronts, 1);
+
+    VkMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_HOST_BIT, 0, 1, &barrier,
+                         0, nullptr, 0, nullptr);
+
+    bool ok = vkEndCommandBuffer(cmd) == VK_SUCCESS;
+    if (ok) {
+        VkSubmitInfo submit_info{};
+        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit_info.commandBufferCount = 1;
+        submit_info.pCommandBuffers = &cmd;
+        ok = vkQueueSubmit(m_compute_queue, 1, &submit_info, VK_NULL_HANDLE) == VK_SUCCESS &&
+             vkQueueWaitIdle(m_compute_queue) == VK_SUCCESS;
+    }
+    vkFreeCommandBuffers(m_device, m_command_pool, 1, &cmd);
+    vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &desc_set);
+    return ok;
 }
 
 } // namespace cq_hecs

@@ -1,4 +1,11 @@
-# ACTIVE HANDOFF — CQ-HECS v3.2.0 (2026-10-30)
+# HISTORICAL HANDOFF — CQ-HECS v3.2.0 (2026-10-30)
+
+> **HISTORICAL DOCUMENT (archived 2026-10-31).** Everything below describes an
+> earlier state: the v3.0.0 mission and the v3.2.0 handoff. v3.2.0, v3.3.0 and v3.4.0 have
+> shipped since. For the current state, read [`research/v5/BASELINE.md`](research/v5/BASELINE.md),
+> [`research/v5/TASKS.md`](research/v5/TASKS.md) and [`PLAN.md`](PLAN.md). Do not act on the
+> tasks below.
+
 
 **Read this first.** It supersedes the v3.0.0 mission text at the bottom of
 `GEMINI.md` for the current work. The repository is mid-flight: v3.1.0 is

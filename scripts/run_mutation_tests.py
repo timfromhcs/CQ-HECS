@@ -506,6 +506,41 @@ def check_sat_timeout_unknown() -> bool:
     return CQSATSolver().solve(formula, timeout_seconds=-1.0).status != TIMEOUT_UNKNOWN
 
 
+def check_drat_checker() -> bool:
+    """True if the independent DRAT checker accepts something it must reject."""
+    from cqhecs.drat import check_drat
+
+    formula = [(1, 2), (-1, 2), (1, -2), (-1, -2)]
+    if check_drat(formula, ["2 0", "0"]).valid is not True:
+        return True  # a valid proof is no longer accepted
+    if check_drat([(1, 2, 3), (-1, 2), (1, -2)], ["-3 0", "0"]).valid is not False:
+        return True  # a lemma that is neither RUP nor RAT got through
+    if check_drat(formula, ["d 5 6 0", "2 0", "0"]).valid is not False:
+        return True  # deleting an absent clause got through
+    return check_drat(formula, ["2 0"]).valid is not False  # truncated proof
+
+
+def check_sat_count() -> bool:
+    """True if the exact #SAT counter disagrees with brute force."""
+    import itertools
+
+    from cqhecs.sat import CNF, count_models
+
+    cases = [
+        CNF(5, ((1, 2), (3, 4))),           # two components and one free variable
+        CNF(4, ((1, -2), (2, 3), (-3, 4))),  # one component
+        CNF(3, ((1,), (-1, 2))),             # unit propagation
+    ]
+    for formula in cases:
+        brute = sum(
+            formula.is_satisfied({v: bits[v - 1] for v in range(1, formula.num_vars + 1)})
+            for bits in itertools.product((False, True), repeat=formula.num_vars)
+        )
+        if count_models(formula)["count"] != str(brute):
+            return True
+    return False
+
+
 def check_sat_certificate() -> bool:
     """True if the certificate checker or the certifying search is defective."""
     from cqhecs.sat import CNF, check_refutation, solve
@@ -593,6 +628,71 @@ def check_sqrt_w_axis() -> bool:
     return abs(probabilities.get("1", 0.0) - expected_p1) > 1e-9
 
 
+def check_omniwave_sound() -> bool:
+    """True if OMNIWAVE loses a model, misses an UNSAT, or reports UNSAT without a valid proof."""
+    from cqhecs.drat import check_drat
+    from cqhecs.omniwave import OmniwaveConfig, OmniwaveEngine
+    from cqhecs.sat import load_dimacs, random_3sat, solve
+
+    formulas = [load_dimacs(REPO_ROOT / "benchmarks" / "sat" / "pigeonhole_6_5.cnf")]
+    formulas += [random_3sat(14, 60, seed=s) for s in range(6)]
+    for formula in formulas:
+        engine = OmniwaveEngine(formula, OmniwaveConfig(waves=3, workers=2, timeout_seconds=60))
+        result = engine.run()
+        expected = solve(formula, timeout_seconds=60).status
+        if result.status != expected:
+            return True  # incomplete (UNKNOWN) or wrong verdict
+        if result.status == "SAT" and not formula.is_satisfied(result.assignment):
+            return True
+        if result.status == "UNSAT" and check_drat(formula.clauses, engine.proof()).valid is not True:
+            return True
+    return False
+
+
+def check_omniwave_proof_gate() -> bool:
+    """True if OMNIWAVE reports UNSAT although its proof check did not accept the proof."""
+    from cqhecs.omniwave import OmniwaveConfig, OmniwaveEngine
+    from cqhecs.sat import load_dimacs
+
+    formula = load_dimacs(REPO_ROOT / "benchmarks" / "sat" / "pigeonhole_6_5.cnf")
+    # A zero proof budget leaves the check undecided; that must be UNKNOWN, never UNSAT.
+    result = OmniwaveEngine(formula, OmniwaveConfig(timeout_seconds=60, proof_timeout_seconds=0.0)).run()
+    return result.status == "UNSAT"
+
+
+def check_omniwave_batch_bcp() -> bool:
+    """True if the batched BCP status words differ from a scalar clause-by-clause evaluation."""
+    import random
+
+    from cqhecs.omniwave import bcp
+
+    rng = random.Random(5)
+    n = 37
+    clauses = [tuple(rng.choice((1, -1)) * rng.randint(1, n) for _ in range(rng.randint(1, 4))) for _ in range(120)]
+    cubes = []
+    for _ in range(40):
+        vs = rng.sample(range(1, n + 1), rng.randint(0, n))
+        cubes.append(tuple(v if rng.random() < 0.5 else -v for v in vs))
+    fronts = bcp.Fronts.from_cubes(n, cubes)
+    statuses = bcp.evaluate_batch(clauses, fronts)
+    for f, cube in enumerate(cubes):
+        value = {abs(lit): lit > 0 for lit in cube}
+        for c, clause in enumerate(clauses):
+            if any(value.get(abs(lit)) == (lit > 0) for lit in clause):
+                want = 0
+            else:
+                open_lits = [lit for lit in clause if abs(lit) not in value]
+                if not open_lits:
+                    want = 1
+                elif len(open_lits) == 1:
+                    want = 2 | (bcp.lit_code(open_lits[0]) << 2)
+                else:
+                    want = 3
+            if statuses[f][c] != want:
+                return True
+    return False
+
+
 CHECKS: Dict[str, Callable[[], bool]] = {
     "qubit_bit_order": check_qubit_bit_order,
     "cz_conjugation": check_cz_conjugation,
@@ -632,9 +732,14 @@ CHECKS: Dict[str, Callable[[], bool]] = {
     "sat_timeout_unknown": check_sat_timeout_unknown,
     "sat_exact_memo": check_sat_exact_memo,
     "sat_certificate": check_sat_certificate,
+    "drat_checker": check_drat_checker,
+    "sat_count": check_sat_count,
     "dimacs_empty_clause": check_dimacs_empty_clause,
     "fsim_definition": check_fsim_definition,
     "sqrt_w_axis": check_sqrt_w_axis,
+    "omniwave_sound": check_omniwave_sound,
+    "omniwave_proof_gate": check_omniwave_proof_gate,
+    "omniwave_batch_bcp": check_omniwave_batch_bcp,
 }
 
 
@@ -996,6 +1101,46 @@ MUTANTS: List[SourceMutant] = [
         mechanism="applies the second channel before the first",
     ),
     SourceMutant(
+        name="DRAT lemma accepted without RUP or RAT",
+        target="cqhecs/drat.py",
+        original='                if not checker.rat(clause):\n                    return done(False, f"lemma {lemmas} is neither RUP nor RAT: {list(clause)}")\n',
+        replacement="                pass\n",
+        check="drat_checker",
+        mechanism="every lemma is trusted, so any proof that ends in 0 certifies UNSAT",
+    ),
+    SourceMutant(
+        name="DRAT deletion of an absent clause accepted",
+        target="cqhecs/drat.py",
+        original='                if checker.db[key] == 0:\n                    return done(False, f"deletion of a clause that is not present: {list(clause)}")\n',
+        replacement="",
+        check="drat_checker",
+        mechanism="a proof may delete clauses that do not exist",
+    ),
+    SourceMutant(
+        name="DRAT proof without the empty clause accepted",
+        target="cqhecs/drat.py",
+        original='        return done(False, "the proof never derives the empty clause")\n',
+        replacement='        return done(True, "accepted")\n',
+        check="drat_checker",
+        mechanism="a truncated proof certifies UNSAT",
+    ),
+    SourceMutant(
+        name="#SAT components added instead of multiplied",
+        target="cqhecs/sat.py",
+        original="                total *= part\n",
+        replacement="                total += part\n",
+        check="sat_count",
+        mechanism="independent components combine by sum, so counts of split formulas are wrong",
+    ),
+    SourceMutant(
+        name="#SAT free variables dropped",
+        target="cqhecs/sat.py",
+        original="            return 1 << len(variables)\n",
+        replacement="            return 1\n",
+        check="sat_count",
+        mechanism="unconstrained variables no longer double the count",
+    ),
+    SourceMutant(
         name="Refutation leaf accepted without a conflict",
         target="cqhecs/sat.py",
         original="            if not _unit_propagation_conflicts(clauses, decisions):\n                return False\n",
@@ -1066,6 +1211,46 @@ MUTANTS: List[SourceMutant] = [
         replacement='    return [("phased_x", [q[0]], [_PI / 2.0, 0.0])]\n',
         check="sqrt_w_axis",
         mechanism="drops the pi/4 axis phase, turning sqrt(W) into sqrt(X)",
+    ),
+    SourceMutant(
+        name="OMNIWAVE split drops the negative branch",
+        target="cqhecs/omniwave/engine.py",
+        original="        for k, lit in enumerate((var, -var)):\n",
+        replacement="        node.pending = 1\n        for k, lit in enumerate((var,)):\n",
+        check="omniwave_sound",
+        mechanism="only x is explored at each split, so half the space is skipped and a false UNSAT is attempted",
+    ),
+    SourceMutant(
+        name="OMNIWAVE dedup by a truncated hash",
+        target="cqhecs/omniwave/engine.py",
+        original="        key = tuple(sorted(node.cube))\n",
+        replacement="        key = hash(tuple(sorted(node.cube))) & 0xFF\n",
+        check="omniwave_sound",
+        mechanism="distinct fronts that collide in 8 bits are dropped as duplicates (hashing used as proof)",
+    ),
+    SourceMutant(
+        name="OMNIWAVE shares an over-strong nogood",
+        target="cqhecs/omniwave/engine.py",
+        original="                self._nogoods.append(tuple(-l for l in node.cube))\n",
+        replacement="                self._nogoods.append(tuple(-l for l in node.cube[:-1]) or tuple(-l for l in node.cube))\n",
+        check="omniwave_sound",
+        mechanism="the shared clause drops the last literal, so it cuts away assignments that were never refuted",
+    ),
+    SourceMutant(
+        name="OMNIWAVE accepts an undecided proof check",
+        target="cqhecs/omniwave/engine.py",
+        original="            if check.valid is True:\n",
+        replacement="            if check.valid is not False:\n",
+        check="omniwave_proof_gate",
+        mechanism="an undecided (budget-exhausted) DRAT check is treated as accepted, so UNSAT is unchecked",
+    ),
+    SourceMutant(
+        name="OMNIWAVE batch BCP treats a falsified clause as open",
+        target="cqhecs/omniwave/bcp.py",
+        original="                if open_count == 0:\n                    status = CONFLICT_\n",
+        replacement="                if open_count == 0:\n                    status = OPEN_\n",
+        check="omniwave_batch_bcp",
+        mechanism="the batched kernel stops seeing conflicts, so refuted fronts are split forever",
     ),
 ]
 

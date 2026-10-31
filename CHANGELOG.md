@@ -8,6 +8,106 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-10-31
+
+Proof-carrying SAT across all surfaces, exact model counting, a pinned audit of the
+October 2026 ETH claims, browser E2E/accessibility gates, and the experimental
+OMNIWAVE multi-front engine. All changes are additive (SemVer minor); see
+`research/v5/DECISIONS.md` D-01.
+
+### Added
+
+- `cqhecs.drat`: an independent forward DRAT checker (RUP/RAT, honours deletions,
+  budget exhaustion is undecided, not accepted). It shares no code with any solver
+  and is not formally verified.
+- `cqhecs.sat_external`: an optional CaDiCaL 1.9.5 backend via `python-sat`
+  (`pip install cqhecs[sat]`, `cq-hecs sat solve --engine cadical`, Studio and MCP
+  `engine`). SAT models are re-checked against the original CNF; UNSAT proofs are
+  DRAT-checked; a missing backend raises `BackendUnavailable` instead of falling back.
+- `cqhecs.sat.count_models`, `cq-hecs sat count`, Studio `/api/sat/count`, MCP
+  `cqhecs_sat_count`: exact #SAT with unit propagation, component decomposition and
+  caching. Counts are exact integers serialized as strings; a budget that runs out
+  gives `UNKNOWN`.
+- SAT result contract `1.1`: `certification` (`MODEL_VERIFIED`,
+  `TREE_RESOLUTION_CHECKED`, `DRAT_CHECKED`, `UNCERTIFIED`, `NONE`), `proof_system`,
+  `engine` and `contract_version`. Nothing was removed.
+- Web: the browser DPLL records a tree-resolution certificate and an independent
+  checker (`web/src/satcert.ts`) replays it, so browser `UNSAT` is certified the same
+  way as in Python. Also an exact `countModels` (BigInt), a "what ran" panel (engine,
+  precision, noise provenance, build version and source SHA) and a JSON result export.
+- Web E2E: Playwright + axe (`web/e2e/`) in CI, covering every route, deep-link
+  reloads, EN/DE/FR, a Bell run and export, the WebGPU-unavailable fallback, the
+  safe-limit refusal, SAT/UNSAT/#SAT evidence, no overflow at six viewports
+  (360–1920 px, screenshots uploaded) and no serious/critical WCAG 2.2 AA violations.
+- `research/v5/`: baseline, task list, decisions, blockers, the ETH claim audit
+  (OpenAI `4eaee87`, Anthropic `16a5ce4`), hypotheses and an evidence ledger.
+  `research/v5/prototypes/gf2_counting.py` is a research-only GF(2) prototype with an
+  exhaustive oracle.
+- `docs/DESIGN_SYSTEM.md`.
+- **OMNIWAVE (experimental)**, `cqhecs.omniwave`: an exact multi-front SAT search.
+  Several waves start from spread-out variables and expand cubes by exhaustive
+  x / not-x splits through a shared deepest-first queue. Every refuted cube is
+  logged as a DRAT lemma before its short nogood is shared with other workers;
+  UNSAT is reported only when `cqhecs.drat` accepts the whole proof, otherwise the
+  result is `UNKNOWN`. Exact dedup (sorted cube tuples, never a hash), exact
+  coverage (sum of 2^-depth), pause/resume/cancel, and a pause-aware time budget.
+  - Unified sparse representation (`omniwave.field.ProblemField`): CSR incidence,
+    exact XOR/GF(2) view, a model-count-preserving quadratic GF(2) encoding
+    (`omniwave.quadratic`), GF(2) rank factorization (`omniwave.gf2`), tensor
+    bucket counting, separator counting (`omniwave.boundary`) and parity-hash
+    cells (an empty cell is never an UNSAT proof). Each has an exhaustive oracle test.
+  - Propagation backends: `scalar`, `batch` (bit-packed fronts, CPU) and `vulkan`
+    (new shader `shaders/compute/omniwave_bcp.comp`, C ABI `cq_omniwave_bcp_eval` /
+    `cq_omniwave_device_name`). The Vulkan result is checked bit-for-bit against
+    the CPU reference on every pass by default; CTest compares the kernel with a
+    C++ reference (29,100 cells, 0 mismatches on an AMD Radeon iGPU).
+  - Surfaces: `cq-hecs sat solve --engine omniwave [--waves --workers --bcp
+    --batch-size --proof-out]`, MCP `cqhecs_sat_solve` `engine: "omniwave"`, Studio
+    SAT engine option and the new **OMNIWAVE lab** view (live fronts, queue,
+    conflicts, nogoods, proof lemmas, coverage over time, per-wave and per-worker
+    work, GPU status; start/pause/resume/cancel; `/api/omniwave/*`).
+  - `scripts/omniwave_benchmark.py`: DPLL vs CaDiCaL vs OMNIWAVE scalar/batch/vulkan
+    on random, planted, parity (Tseitin), pigeonhole and low-treewidth families,
+    with fixed seeds and JSON output; it fails on any disagreement or unchecked
+    UNSAT. Report: `research/v5/OMNIWAVE.md`.
+  - Non-claims: worker threads share the Python GIL, so no speedup is claimed;
+    the Vulkan path is a verified kernel, not a GPU acceleration claim; nothing
+    here bears on P vs NP or ETH.
+
+### Changed
+
+- ETH texts (Studio research view, web guide chapter 10 in EN/DE/FR,
+  `research/v4/COMPLEXITY_AND_ETH.md`) now state the two refutation claims, their
+  formal scope, that SETH falls with ETH, and that P vs NP stays open.
+- `cq-hecs sat solve` text output reports the evidence (`certification`). It used to
+  print "no checkable certificate" even when v3.3.0's certificate had been checked.
+- `GEMINI.md` and `GEMINI_HANDOFF.md` are marked historical.
+
+### Fixed (found by the new E2E suite)
+
+- Code view: the memory/runtime/safe-limit estimate did not update while typing.
+- 360 px: the guide page overflowed horizontally by 7 px (implicit `auto` grid
+  tracks); the same pattern was fixed in all grid containers.
+- Accessibility: segmented controls used `aria-selected` without `role="tab"`; the
+  code editor had no accessible name; three editor colours were below 4.5:1.
+- WebGPU is offered only when both the page's and the worker's adapter checks
+  succeed.
+
+### Tests
+
+- `tests/test_drat.py`, `tests/test_sat_count.py`, `tests/test_sat_external.py`
+  (40 random formulas: CaDiCaL agrees with the DPLL reference, and every UNSAT is
+  DRAT-checked), `tests/test_research_gf2.py` (301 exhaustive cases).
+- Mutation gate: 54/54 (five mutants for the DRAT checker and #SAT, five for
+  OMNIWAVE: a dropped split branch, hash-only dedup, an over-strong shared nogood,
+  an undecided proof check accepted as UNSAT, and a batched-BCP conflict lost).
+- `tests/test_omniwave.py`: OMNIWAVE against brute force and DPLL for every BCP
+  mode, proof tampering, races between workers, pause/resume/cancel, CLI; Vulkan
+  parity on real hardware when a device is present. Studio and MCP tests for the
+  Lab endpoints and the `omniwave` engine.
+- Web: 16 unit tests (certificate replay and corruption, #SAT vs brute force) and
+  13 Playwright tests.
+
 ## [3.4.0] - 2026-10-30
 
 Measured QPU noise from three vendors, available in every surface, and a new

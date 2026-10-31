@@ -58,6 +58,29 @@ TOOLS: List[Dict[str, Any]] = [
                 "cnf": {"type": "string"},
                 "timeout": {"type": "number", "default": 5.0},
                 "node_budget": {"type": "integer"},
+                "engine": {
+                    "type": "string",
+                    "enum": ["dpll", "cadical", "omniwave"],
+                    "default": "dpll",
+                    "description": "cadical needs the optional python-sat extra; omniwave is the experimental "
+                    "multi-front engine. For both, UNSAT is reported only with a DRAT proof checked by cqhecs.drat",
+                },
+                "waves": {"type": "integer", "default": 4, "description": "omniwave only"},
+                "workers": {"type": "integer", "default": 2, "description": "omniwave only"},
+                "bcp": {"type": "string", "enum": ["scalar", "batch", "vulkan"], "default": "scalar",
+                        "description": "omniwave only; vulkan results are verified against the CPU reference"},
+            },
+            "required": ["cnf"],
+        },
+    },
+    {
+        "name": "cqhecs_sat_count",
+        "description": "Exact model count (#SAT) of a DIMACS CNF; UNKNOWN when the budget runs out.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "cnf": {"type": "string"},
+                "timeout": {"type": "number", "default": 5.0},
             },
             "required": ["cnf"],
         },
@@ -134,11 +157,29 @@ def _tool_sat(arguments: Dict[str, Any]) -> Dict[str, Any]:
     from cqhecs.sat import parse_dimacs, solve
 
     formula = parse_dimacs(arguments["cnf"], source="mcp")
-    result = solve(
-        formula,
-        timeout_seconds=float(arguments.get("timeout", 5.0)),
-        node_budget=arguments.get("node_budget"),
-    )
+    if arguments.get("engine", "dpll") == "cadical":
+        from cqhecs.sat_external import solve_external
+
+        result = solve_external(formula, timeout_seconds=float(arguments.get("timeout", 5.0)))
+    elif arguments.get("engine") == "omniwave":
+        from cqhecs.omniwave import OmniwaveConfig, OmniwaveEngine
+
+        engine = OmniwaveEngine(formula, OmniwaveConfig(
+            waves=int(arguments.get("waves", 4)), workers=int(arguments.get("workers", 2)),
+            timeout_seconds=float(arguments.get("timeout", 5.0)), bcp=str(arguments.get("bcp", "scalar")),
+        ))
+        result = engine.run()
+        return {
+            "formula": {"num_vars": formula.num_vars, "num_clauses": formula.num_clauses},
+            "result": result.to_dict(),
+            "omniwave": engine.snapshot(),
+        }
+    else:
+        result = solve(
+            formula,
+            timeout_seconds=float(arguments.get("timeout", 5.0)),
+            node_budget=arguments.get("node_budget"),
+        )
     return {
         "formula": {"num_vars": formula.num_vars, "num_clauses": formula.num_clauses},
         "result": result.to_dict(),
@@ -194,6 +235,11 @@ def _call(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         return _text(_tool_sat(arguments))
     if name == "cqhecs_sat_models":
         return _text(_tool_models(arguments))
+    if name == "cqhecs_sat_count":
+        from cqhecs.sat import count_models, parse_dimacs
+
+        formula = parse_dimacs(arguments["cnf"], source="mcp")
+        return _text({"result": count_models(formula, timeout_seconds=float(arguments.get("timeout", 5.0)))})
     if name == "cqhecs_devices":
         from cqhecs.device_profiles import list_profiles, summary
 

@@ -24,6 +24,7 @@
       <button data-view="evidence"><span>04</span>Evidence</button>
       <button data-view="research"><span>05</span>Research</button>
       <button data-view="hardware"><span>06</span>Hardware</button>
+      <button data-view="omniwave"><span>07</span>OMNIWAVE lab</button>
     </nav>
     <div class="side-foot">
       <span class="dot" id="health-dot"></span>
@@ -162,10 +163,12 @@ p cnf 3 3
             <label class="field"><span>Ratio</span><input id="sat-ratio" type="number" value="4.26" step="0.01" min="0" max="20"></label>
             <label class="field"><span>Timeout s</span><input id="sat-timeout" type="number" value="5" step="0.1" min="0.01" max="30"></label>
             <label class="field"><span>Node budget</span><input id="sat-budget" type="number" value="0" min="0" step="1"></label>
+            <label class="field"><span>Engine</span><select id="sat-engine"><option value="dpll">DPLL (built-in reference)</option><option value="cadical">CaDiCaL (optional extra, DRAT-checked)</option><option value="omniwave">OMNIWAVE (experimental, DRAT-checked)</option></select></label>
           </div>
           <div class="actions">
             <button class="primary" id="sat-solve">Solve CNF</button>
             <button id="sat-random">Random 3-SAT</button>
+            <button id="sat-count">Count models (#SAT)</button>
           </div>
           <p class="hint">UNKNOWN means the timeout stopped the search. It is never reported as UNSAT.</p>
         </div>
@@ -190,6 +193,61 @@ p cnf 3 3
         <button id="sat-sweep">Run sweep</button>
         <div class="chart tall" id="sweep-chart"></div>
         <p class="hint" id="sweep-note">A rising curve is consistent with ETH; it is not a proof of ETH and says nothing about P = NP.</p>
+      </div>
+    </section>
+
+    <section class="view" id="view-omniwave">
+      <div class="grid lab">
+        <div class="panel">
+          <div class="panel-head"><h3>Run setup</h3><span class="tag">experimental</span></div>
+          <label class="field">
+            <span>CNF (leave empty for random 3-SAT)</span>
+            <textarea id="ow-cnf" spellcheck="false" rows="7" aria-describedby="ow-cnf-hint"></textarea>
+          </label>
+          <p class="hint" id="ow-cnf-hint">Empty CNF: a random 3-SAT formula from the vars, ratio and seed fields.</p>
+          <div class="controls">
+            <label class="field"><span>Random vars</span><input id="ow-n" type="number" value="60" min="3" max="120"></label>
+            <label class="field"><span>Ratio</span><input id="ow-ratio" type="number" value="4.26" step="0.01" min="0" max="20"></label>
+            <label class="field"><span>Seed</span><input id="ow-seed" type="number" value="20261031" min="0"></label>
+            <label class="field"><span>Waves</span><input id="ow-waves" type="number" value="4" min="1" max="16"></label>
+            <label class="field"><span>Workers</span><input id="ow-workers" type="number" value="2" min="1" max="8"></label>
+            <label class="field"><span>Propagation</span><select id="ow-bcp">
+              <option value="scalar">scalar (one front)</option>
+              <option value="batch">batch (CPU)</option>
+              <option value="vulkan">vulkan (GPU, CPU-verified)</option>
+            </select></label>
+            <label class="field"><span>Batch size</span><input id="ow-batch" type="number" value="64" min="1" max="4096"></label>
+            <label class="field"><span>Timeout s</span><input id="ow-timeout" type="number" value="20" step="0.5" min="0.1" max="120"></label>
+            <label class="field"><span>Front budget</span><input id="ow-fronts" type="number" value="200000" min="1" max="5000000"></label>
+          </div>
+          <div class="actions" role="group" aria-label="Run controls">
+            <button class="primary" id="ow-start">Start</button>
+            <button id="ow-pause" disabled>Pause</button>
+            <button id="ow-resume" disabled>Resume</button>
+            <button id="ow-cancel" disabled>Cancel</button>
+          </div>
+          <p class="hint" id="ow-gpu">GPU: checking...</p>
+        </div>
+        <div class="panel result">
+          <div class="panel-head"><h3>Live state</h3><span class="tag" id="ow-state" aria-live="polite">idle</span></div>
+          <div class="metrics" id="ow-metrics"></div>
+          <p class="hint" id="ow-verdict" aria-live="polite"></p>
+          <div class="chart" id="ow-chart" role="img" aria-label="Fronts processed and coverage over time"></div>
+        </div>
+      </div>
+      <div class="grid two">
+        <div class="panel">
+          <div class="panel-head"><h3>Fronts per wave</h3><span class="tag" id="ow-starts">starts -</span></div>
+          <div id="ow-waves-bars" class="bars"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Fronts per worker</h3><span class="tag">threads share the GIL</span></div>
+          <div id="ow-workers-bars" class="bars"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>What this shows</h3><span class="tag">non-claims</span></div>
+        <p class="hint" id="ow-nonclaim">Every number comes from the running engine. Waves are exhaustive x / not-x splits of the search space; refuted fronts are logged as DRAT lemmas, short nogoods are shared only after logging, and UNSAT is reported only when cqhecs.drat accepts the proof. Coverage is the exact fraction of the 2<sup>n</sup> assignments already refuted or decided. Worker threads share one Python interpreter, so more workers are not a speedup claim, and no run says anything about P vs NP or ETH.</p>
       </div>
     </section>
 

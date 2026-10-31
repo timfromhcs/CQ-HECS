@@ -65,6 +65,7 @@ export interface RunResult {
 export type WorkerRequest =
   | { type: "init" }
   | { type: "sat"; id: number; dimacs: string; timeoutMs: number }
+  | { type: "count"; id: number; dimacs: string; timeoutMs: number }
   | { type: "sweep"; id: number; numVars: number; ratios: number[]; trials: number; timeoutMs: number }
   | { type: "probe"; numQubits: number }
   | RunRequest
@@ -77,4 +78,5 @@ export type WorkerResponse =
   | { type: "result"; result: RunResult }
   | { type: "error"; id: number; message: string }
   | { type: "sat"; id: number; result: import("./sat").SatResult; numVars: number; numClauses: number }
-  | { type: "sweep"; id: number; points: import("./sat").SweepPoint[] };
+  | { type: "sweep"; id: number; points: import("./sat").SweepPoint[] }
+  | { type: "count"; id: number; result: import("./sat").CountResult; numVars: number; numClauses: number };
