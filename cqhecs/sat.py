@@ -13,12 +13,23 @@ engine here is the supported surface:
 * ``UNKNOWN`` means a timeout or node budget stopped the search, or that the
   two search procedures disagreed (fail closed).
 
+The default engine scans every clause during propagation. ``solve(...,
+propagation="watched")`` selects a second engine with two watched literals per
+non-unit clause and a propagation queue. It deliberately keeps the same decision
+variable, polarity and pure-literal rule so a comparison isolates the propagation
+data structure. The tree-resolution certificate is always produced by the
+independent scan-based certifying search described below.
+
 The certificate comes from a second search that uses unit propagation only
 (pure-literal elimination preserves satisfiability but is not a resolution
 step). If that search finds a model where the main search found none, the
 procedures contradict each other and the result is ``UNKNOWN``. A certificate
 that is too large or too slow to produce leaves ``UNSAT`` exhaustive but
 ``certified=False``, and the note says why.
+
+The public model predicate treats an unassigned variable as unassigned, not as
+``False``. A partial assignment can therefore never satisfy a negative literal by
+accident; only a genuine full model verifies.
 
 The random-3-SAT sweep is an empirical runtime measurement. A curve that looks
 exponential is not a proof of the Exponential Time Hypothesis, and no finite
@@ -30,7 +41,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -38,9 +49,10 @@ SAT = "SAT"
 UNSAT = "UNSAT"
 UNKNOWN = "UNKNOWN"
 
-#: Version of the SAT result dictionary. 1.1 adds ``certification``,
-#: ``proof_system``, ``engine`` and this field; nothing was removed.
-RESULT_CONTRACT_VERSION = "1.1"
+#: Version of the SAT result dictionary. 1.2 adds the original-input digest and
+#: the watched propagation label; 1.1 added ``certification``, ``proof_system``,
+#: ``engine`` and this field. Nothing was removed.
+RESULT_CONTRACT_VERSION = "1.2"
 
 #: Values of ``SATResult.certification``.
 CERTIFICATIONS = ("MODEL_VERIFIED", "TREE_RESOLUTION_CHECKED", "DRAT_CHECKED", "UNCERTIFIED", "NONE")
@@ -59,6 +71,9 @@ class CNF:
     num_vars: int
     clauses: Tuple[Tuple[int, ...], ...]
     source: Optional[str] = None
+    #: SHA-256 of the input text as supplied. ``sha256`` is the canonical form;
+    #: this field binds the result to the original bytes/text when available.
+    original_sha256: Optional[str] = field(default=None, compare=False)
 
     def __post_init__(self) -> None:
         if self.num_vars < 0:
@@ -93,16 +108,28 @@ class CNF:
             lines.append(" ".join(str(lit) for lit in clause) + " 0")
         return "\n".join(lines) + "\n"
 
+    @staticmethod
+    def _clause_satisfied(clause: Sequence[int], assignment: Dict[int, bool]) -> bool:
+        """
+        True if a literal of ``clause`` is true under ``assignment``.
+
+        An unassigned variable is *not* treated as ``False``: otherwise every
+        negative literal would count as satisfied on a partial assignment.
+        Model verification therefore only accepts a genuine full model.
+        """
+        for literal in clause:
+            value = assignment.get(abs(literal))
+            if value is not None and value == (literal > 0):
+                return True
+        return False
+
     def is_satisfied(self, assignment: Dict[int, bool]) -> bool:
         """True only if every clause has at least one true literal."""
-        for clause in self.clauses:
-            if not any(assignment.get(abs(lit), False) == (lit > 0) for lit in clause):
-                return False
-        return True
+        return all(self._clause_satisfied(clause, assignment) for clause in self.clauses)
 
     def first_unsatisfied(self, assignment: Dict[int, bool]) -> Optional[int]:
         for index, clause in enumerate(self.clauses):
-            if not any(assignment.get(abs(lit), False) == (lit > 0) for lit in clause):
+            if not self._clause_satisfied(clause, assignment):
                 return index
         return None
 
@@ -113,7 +140,11 @@ def parse_dimacs(text: str, source: Optional[str] = None) -> CNF:
 
     Comments (``c``) and the optional ``%`` terminator are ignored. Clauses may
     span lines. A missing ``p cnf`` header is an error; silently inferring the
-    variable count would hide a truncated file.
+    variable count would hide a truncated file. Repeated literals inside one
+    clause are removed (``1 1 0`` is the unit clause ``1``): DIMACS permits them
+    and the native parser accepts them too. A clause with both signs
+    (``1 -1 0``) is kept as a tautology. Construct :class:`CNF` directly if
+    strict rejection is required.
     """
     if not isinstance(text, str):
         raise CNFFormatError("DIMACS input must be text")
@@ -152,7 +183,7 @@ def parse_dimacs(text: str, source: Optional[str] = None) -> CNF:
             except ValueError as exc:
                 raise CNFFormatError(f"line {line_number}: {token!r} is not an integer") from exc
             if literal == 0:
-                clauses.append(tuple(pending))
+                clauses.append(tuple(dict.fromkeys(pending)))
                 pending = []
             else:
                 pending.append(literal)
@@ -165,7 +196,12 @@ def parse_dimacs(text: str, source: Optional[str] = None) -> CNF:
         raise CNFFormatError(
             f"header declares {declared_clauses} clauses, parsed {len(clauses)}"
         )
-    return CNF(num_vars=num_vars, clauses=tuple(clauses), source=source)
+    return CNF(
+        num_vars=num_vars,
+        clauses=tuple(clauses),
+        source=source,
+        original_sha256=hashlib.sha256(text.encode("utf-8")).hexdigest(),
+    )
 
 
 def load_dimacs(path: Path | str) -> CNF:
@@ -204,6 +240,8 @@ class SATResult:
     model_verified: bool
     formula_sha256: str
     note: str
+    #: SHA-256 of the original DIMACS text, when the formula came from the parser.
+    formula_original_sha256: Optional[str] = None
     #: Tree-resolution refutation (see :func:`check_refutation`); only for UNSAT.
     certificate: Optional[Tuple[Tuple[Any, ...], ...]] = None
     #: True only if ``certificate`` passed :func:`check_refutation`, or an
@@ -248,6 +286,7 @@ class SATResult:
             "timeout_seconds": self.timeout_seconds,
             "model_verified": self.model_verified,
             "formula_sha256": self.formula_sha256,
+            "formula_original_sha256": self.formula_original_sha256,
             "note": self.note,
             "certified": self.certified,
             "certificate_steps": len(self.certificate) if self.certificate else 0,
@@ -415,6 +454,170 @@ class _DPLL:
             var: self.assignment[var] == 1
             for var in range(1, self.formula.num_vars + 1)
         }
+
+
+class _WatchedDPLL(_DPLL):
+    """
+    DPLL with two-watched-literal unit propagation.
+
+    The search order (decision variable, polarity and pure-literal
+    elimination) is deliberately identical to :class:`_DPLL`. The first
+    comparison therefore isolates the propagation data structure instead of
+    mixing in a second heuristic change.
+
+    Watch positions are not undone on backtracking: they remain valid because
+    a watch only moves to a literal that was not false at the time. Assignments
+    are undone through the trail, and ``qhead`` is reset to the trail length.
+    """
+
+    def __init__(self, formula: CNF, timeout_seconds: float, deadline: float, node_budget: Optional[int] = None):
+        super().__init__(formula, timeout_seconds, deadline, node_budget)
+        #: literal -> clause indices that watch it
+        self._watches: Dict[int, List[int]] = {}
+        #: clause index -> two literal positions, or None for unit/empty clauses
+        self._watch_pos: List[Optional[List[int]]] = [None] * formula.num_clauses
+        self._qhead = 0
+        self._initial_conflict = False
+        self._initialize_watches()
+
+    def _initialize_watches(self) -> None:
+        for index, clause in enumerate(self.formula.clauses):
+            if len(clause) == 0:
+                self._initial_conflict = True
+            elif len(clause) == 1:
+                if not self._assign_literal(clause[0]):
+                    self._initial_conflict = True
+                else:
+                    self.propagations += 1
+            else:
+                positions = [0, 1]
+                self._watch_pos[index] = positions
+                for literal in (clause[0], clause[1]):
+                    self._watches.setdefault(literal, []).append(index)
+
+    def _undo(self, mark: int) -> None:
+        super()._undo(mark)
+        if self._qhead > len(self.trail):
+            self._qhead = len(self.trail)
+
+    def _bcp(self) -> bool:
+        """Propagate all enqueued literals; False on conflict."""
+        while self._qhead < len(self.trail):
+            true_literal = self.trail[self._qhead]
+            self._qhead += 1
+            false_literal = -true_literal
+            watch_list = self._watches.get(false_literal)
+            if not watch_list:
+                continue
+            position = 0
+            while position < len(watch_list):
+                clause_index = watch_list[position]
+                clause = self.formula.clauses[clause_index]
+                watches = self._watch_pos[clause_index]
+                if watches is None:  # pragma: no cover - invariant guard
+                    watch_list[position] = watch_list[-1]
+                    watch_list.pop()
+                    continue
+                if clause[watches[0]] == false_literal:
+                    false_watch, other_watch = 0, 1
+                elif clause[watches[1]] == false_literal:
+                    false_watch, other_watch = 1, 0
+                else:  # pragma: no cover - would mean a stale watch entry
+                    watch_list[position] = watch_list[-1]
+                    watch_list.pop()
+                    continue
+                other_literal = clause[watches[other_watch]]
+                other_value = self._value(other_literal)
+                if other_value == 1:
+                    position += 1
+                    continue
+                replacement = -1
+                for candidate, literal in enumerate(clause):
+                    if candidate == watches[0] or candidate == watches[1]:
+                        continue
+                    if self._value(literal) != -1:
+                        replacement = candidate
+                        break
+                if replacement >= 0:
+                    watches[false_watch] = replacement
+                    watch_list[position] = watch_list[-1]
+                    watch_list.pop()
+                    self._watches.setdefault(clause[replacement], []).append(clause_index)
+                    continue
+                if other_value == -1:
+                    self.conflicts += 1
+                    return False
+                if not self._assign_literal(other_literal):
+                    self.conflicts += 1
+                    return False
+                self.propagations += 1
+                position += 1
+        return True
+
+    def _assign_pure_literals(self) -> bool:
+        """Assign literals whose variable now occurs with one polarity only."""
+        polarities: Dict[int, int] = {}
+        for clause in self.formula.clauses:
+            if any(self._value(literal) == 1 for literal in clause):
+                continue
+            open_literals = [literal for literal in clause if self._value(literal) == 0]
+            if len(open_literals) < 2:
+                continue
+            for literal in open_literals:
+                variable = abs(literal)
+                polarities[variable] = polarities.get(variable, 0) | (1 if literal > 0 else 2)
+        changed = False
+        for variable, mask in polarities.items():
+            if mask not in (1, 2) or self.assignment[variable] != 0:
+                continue
+            literal = variable if mask == 1 else -variable
+            if not self._assign_literal(literal):
+                self.conflicts += 1
+                return False
+            self.propagations += 1
+            changed = True
+        return changed
+
+    def _propagate(self) -> bool:
+        if self._initial_conflict:
+            self.conflicts += 1
+            return False
+        while True:
+            if not self._bcp():
+                return False
+            if not self._assign_pure_literals():
+                return True
+
+    def search(self, depth: int = 0) -> bool:
+        self.nodes += 1
+        if self.node_budget is not None and self.nodes > self.node_budget:
+            raise _NodeLimit
+        self.max_depth = max(self.max_depth, depth)
+        self._ticks += 1
+        if (self._ticks & 1023) == 0 and time.perf_counter() > self.deadline:
+            raise _Timeout
+
+        mark = len(self.trail)
+        if not self._propagate():
+            self._undo(mark)
+            return False
+        if self._all_satisfied():
+            return True
+        variable = self._choose_variable()
+        if variable is None:
+            return True
+
+        for value in (1, -1):
+            self.decisions += 1
+            branch_mark = len(self.trail)
+            if self._assign_literal(variable if value == 1 else -variable):
+                if self.search(depth + 1):
+                    return True
+            self._undo(branch_mark)
+            self._qhead = len(self.trail)
+        self._undo(mark)
+        self._qhead = len(self.trail)
+        return False
 
 
 #: Largest refutation produced (steps). A larger one is not kept.
@@ -610,21 +813,36 @@ def solve(
     node_budget: Optional[int] = None,
     certify: bool = True,
     certificate_timeout_seconds: Optional[float] = None,
+    propagation: str = "scan",
 ) -> SATResult:
     """
     Solve ``formula`` soundly. Timeout or node budget yields ``UNKNOWN``.
 
     With ``certify`` (default) an UNSAT verdict is followed by a certifying
-    search, budgeted separately by ``certificate_timeout_seconds`` (default:
-    ``timeout_seconds``); see the module docstring.
+    search. ``certificate_timeout_seconds`` is its own budget, additionally
+    capped by the remaining wall-clock budget of the solve call: the certificate
+    never extends the advertised deadline. If no time remains, the verdict stays
+    ``UNSAT`` but ``certified=False`` and the note says why.
+
+    ``propagation="watched"`` selects the two-watched-literal engine. It uses
+    the same decision order and pure-literal rule as the default ``"scan"``
+    engine, so a comparison isolates the propagation data structure. The
+    tree-resolution certificate is always produced by the independent
+    scan-based certifying search.
     """
     if timeout_seconds <= 0:
         raise ValueError("timeout_seconds must be > 0")
     if node_budget is not None and node_budget <= 0:
         raise ValueError("node_budget must be > 0 when provided")
+    if propagation not in ("scan", "watched"):
+        raise ValueError("propagation must be 'scan' or 'watched'")
     started = time.perf_counter()
     deadline = started + float(timeout_seconds)
-    engine = _DPLL(formula, float(timeout_seconds), deadline, node_budget)
+    engine: _DPLL
+    if propagation == "watched":
+        engine = _WatchedDPLL(formula, float(timeout_seconds), deadline, node_budget)
+    else:
+        engine = _DPLL(formula, float(timeout_seconds), deadline, node_budget)
     status: str
     assignment: Optional[Dict[int, bool]] = None
     note: str
@@ -670,8 +888,17 @@ def solve(
                 sys.setrecursionlimit(old_limit)
 
     if status == UNSAT and certify:
-        budget = float(timeout_seconds if certificate_timeout_seconds is None else certificate_timeout_seconds)
-        certificate, outcome, certificate_note = _certify(formula, budget)
+        configured = float(timeout_seconds if certificate_timeout_seconds is None else certificate_timeout_seconds)
+        remaining = deadline - time.perf_counter()
+        budget = min(configured, max(0.0, remaining))
+        if budget <= 0.0:
+            certificate, outcome, certificate_note = (
+                None,
+                "NOT_PRODUCED",
+                "certificate not produced: the solve deadline is exhausted",
+            )
+        else:
+            certificate, outcome, certificate_note = _certify(formula, budget)
         if outcome == "DISAGREEMENT":
             status = UNKNOWN
             note = f"UNSAT withheld: {certificate_note}; refusing to report either verdict"
@@ -692,10 +919,12 @@ def solve(
         timeout_seconds=float(timeout_seconds),
         model_verified=bool(status == SAT and assignment is not None and formula.is_satisfied(assignment)),
         formula_sha256=formula.sha256,
+        formula_original_sha256=formula.original_sha256,
         note=note,
         certificate=certificate if status == UNSAT else None,
         certified=bool(certified and status == UNSAT),
         proof_system="tree-resolution" if (certified and status == UNSAT) else None,
+        engine="dpll-watched" if propagation == "watched" else "dpll",
     )
 
 
@@ -746,6 +975,7 @@ def enumerate_models(
         "models": models,
         "elapsed_ms": (time.perf_counter() - started) * 1000.0,
         "formula_sha256": formula.sha256,
+        "formula_original_sha256": formula.original_sha256,
     }
 
 
@@ -878,6 +1108,7 @@ def count_models(
         "method": "exact (DPLL counting, components, cache)",
         "note": note,
         "formula_sha256": formula.sha256,
+        "formula_original_sha256": formula.original_sha256,
         "contract_version": RESULT_CONTRACT_VERSION,
     }
 
@@ -938,6 +1169,7 @@ def max_sat(
         "num_clauses": formula.num_clauses,
         "method": f"exhaustive over 2^{formula.num_vars} assignments",
         "formula_sha256": formula.sha256,
+        "formula_original_sha256": formula.original_sha256,
     }
 
 

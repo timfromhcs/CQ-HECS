@@ -8,6 +8,29 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Added
+
+- `cqhecs.sat`: opt-in two-watched-literal propagation via
+  `solve(..., propagation="watched")` and `cq-hecs sat solve --engine watched`
+  (also accepted by the local Studio). The default `dpll` scan engine and the
+  independent tree-resolution certificate path are unchanged. Evidence:
+  `research/v6/evidence/sat_propagation_benchmark.json` (finite, machine-specific).
+- `cq_omniwave_shutdown()` C ABI and an `atexit` hook in `cqhecs.omniwave.gpu`, so
+  the lazy Vulkan context is destroyed before DLL unload.
+- SAT result contract `1.2`: `formula_original_sha256` retains the digest of the
+  input text while `formula_sha256` remains the canonical normalized digest.
+- `parse_dimacs` now normalizes repeated literals (`1 1 0` → `1`), matching the
+  native parser; direct `CNF(...)` construction remains strict.
+
+### Fixed
+
+- `CNF.is_satisfied` / `first_unsatisfied` no longer treat an unassigned variable
+  as `False`; a partial assignment cannot satisfy a negative literal by accident.
+- The UNSAT certificate budget is capped by the remaining solve deadline, so a
+  certificate can no longer extend the advertised wall-clock budget.
+- Windows: the Vulkan status probe no longer aborts the interpreter with
+  `0xC0000409` during DLL unload.
+
 ## [3.5.0] - 2026-10-31
 
 Proof-carrying SAT across all surfaces, exact model counting, a pinned audit of the

@@ -104,7 +104,20 @@ def test_sat_count_tool_and_certification():
     ])
     assert json.loads(counted["result"]["content"][0]["text"])["result"]["count"] == "12"
     result = json.loads(solved["result"]["content"][0]["text"])["result"]
-    assert result["certification"] == "TREE_RESOLUTION_CHECKED" and result["contract_version"] == "1.1"
+    assert result["certification"] == "TREE_RESOLUTION_CHECKED" and result["contract_version"] == "1.2"
+
+
+def test_sat_solve_tool_with_the_watched_engine():
+    (reply,) = _session([
+        {"jsonrpc": "2.0", "id": 13, "method": "tools/call",
+         "params": {"name": "cqhecs_sat_solve",
+                    "arguments": {"cnf": "p cnf 2 4\n1 2 0\n-1 2 0\n1 -2 0\n-1 -2 0\n",
+                                  "engine": "watched"}}},
+    ])
+    data = json.loads(reply["result"]["content"][0]["text"])
+    assert data["result"]["status"] == "UNSAT"
+    assert data["result"]["certification"] == "TREE_RESOLUTION_CHECKED"
+    assert data["result"]["engine"] == "dpll-watched"
 
 
 def test_sat_solve_tool_with_the_omniwave_engine():

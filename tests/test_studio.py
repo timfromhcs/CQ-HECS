@@ -93,6 +93,10 @@ def test_sat_solve_and_sweep(state):
     sat = state.sat_solve({"cnf": "p cnf 2 2\n1 0\n-1 2 0\n", "timeout": 2})
     assert sat["result"]["status"] == "SAT"
     assert sat["result"]["model_verified"] is True
+    watched = state.sat_solve({"cnf": "p cnf 1 2\n1 0\n-1 0\n", "timeout": 2, "engine": "watched"})
+    assert watched["result"]["status"] == "UNSAT"
+    assert watched["result"]["engine"] == "dpll-watched"
+    assert watched["result"]["certified"] is True
     sweep = state.sat_sweep({"sizes": [6], "ratios": [4.0], "trials": 1, "timeout": 1})
     assert len(sweep["rows"]) == 1
     assert "not a proof" in sweep["non_claim"]

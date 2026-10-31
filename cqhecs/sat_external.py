@@ -117,6 +117,7 @@ def solve_external(
         timeout_seconds=float(timeout_seconds),
         model_verified=status == SAT,
         formula_sha256=formula.sha256,
+        formula_original_sha256=formula.original_sha256,
         note=note,
         certificate=None,
         certified=certified,

@@ -342,11 +342,25 @@ cq-hecs sat models --cnf "p cnf 3 2\n1 2 0\n-1 3 0\n" --limit 5
 cq-hecs sat maxsat --cnf "p cnf 2 2\n1 0\n-1 0\n" --weights 1,2
 cq-hecs sat count --cnf "p cnf 200 1\n1 2 0\n"     # exact #SAT
 cq-hecs sat solve pigeonhole_6_5.cnf --engine cadical  # optional extra, DRAT-checked
+cq-hecs sat solve pigeonhole_6_5.cnf --engine watched  # two-watched-literal propagation
 cq-hecs mcp
 ```
 
+The built-in engine has two propagation paths. `dpll` (default) scans clauses;
+`watched` keeps two watched literals per non-unit clause and a propagation queue.
+Both use the same decision order, polarity and pure-literal rule, and the
+tree-resolution certificate is still produced by the independent scan-based
+search. The measured comparison is in
+`research/v6/evidence/sat_propagation_benchmark.json`; it is a finite, machine-
+specific result, not a universal speedup claim.
+
 `SAT` means a model was found and verified clause by clause. `UNSAT` means the
-search space was exhausted. By default the Python surface also records a
+search space was exhausted. The unreleased SAT contract 1.2 also carries
+`formula_original_sha256` (the input text) next to the canonical
+`formula_sha256`; repeated literals are normalized by the parser, while direct
+`CNF(...)` construction remains strict.
+
+By default the Python surface also records a
 tree-resolution refutation that a separate checker (`check_refutation`) replays;
 `certified` is true only after that check, and a missing or failed certificate is
 reported as such (disagreement between the two searches yields `UNKNOWN`). The

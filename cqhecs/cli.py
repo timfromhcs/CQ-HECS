@@ -535,7 +535,11 @@ def cmd_sat(args: argparse.Namespace) -> int:
                 Path(args.proof_out).parent.mkdir(parents=True, exist_ok=True)
                 Path(args.proof_out).write_text("\n".join(engine.proof()) + "\n", "utf-8")
         elif getattr(args, "engine", "dpll") != "cadical":
-            result = solve(formula, timeout_seconds=args.timeout)
+            result = solve(
+                formula,
+                timeout_seconds=args.timeout,
+                propagation="watched" if getattr(args, "engine", "dpll") == "watched" else "scan",
+            )
         payload = {
             "schema_version": JSON_SCHEMA_VERSION,
             "version": __version__,
@@ -543,6 +547,7 @@ def cmd_sat(args: argparse.Namespace) -> int:
                 "num_vars": formula.num_vars,
                 "num_clauses": formula.num_clauses,
                 "sha256": formula.sha256,
+                "original_sha256": formula.original_sha256,
                 "source": formula.source,
             },
             "result": result.to_dict(),
@@ -1271,8 +1276,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_sat_solve.add_argument("--json-out", default=None, help="Write the full result JSON here")
     p_sat_solve.add_argument("--show-model", action="store_true", help="Print the satisfying assignment")
     p_sat_solve.add_argument(
-        "--engine", choices=["dpll", "cadical", "omniwave"], default="dpll",
-        help="dpll (built-in reference), cadical (optional extra: pip install cqhecs[sat]) "
+        "--engine", choices=["dpll", "watched", "cadical", "omniwave"], default="dpll",
+        help="dpll (built-in reference), watched (same search with two-watched-literal propagation), "
+        "cadical (optional extra: pip install cqhecs[sat]) "
         "or omniwave (experimental multi-front search; UNSAT only with a checked DRAT proof)",
     )
     p_sat_solve.add_argument("--waves", type=int, default=4, help="OMNIWAVE: number of waves")
