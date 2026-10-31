@@ -70,6 +70,8 @@ TOOLS: List[Dict[str, Any]] = [
                 "workers": {"type": "integer", "default": 2, "description": "omniwave only"},
                 "bcp": {"type": "string", "enum": ["scalar", "batch", "vulkan"], "default": "scalar",
                         "description": "omniwave only; vulkan results are verified against the CPU reference"},
+                "branch": {"type": "string", "enum": ["auto", "jw", "bfs"], "default": "auto",
+                           "description": "omniwave only; auto uses BFS on parity-heavy formulas and JW elsewhere"},
             },
             "required": ["cnf"],
         },
@@ -168,6 +170,7 @@ def _tool_sat(arguments: Dict[str, Any]) -> Dict[str, Any]:
         engine = OmniwaveEngine(formula, OmniwaveConfig(
             waves=int(arguments.get("waves", 4)), workers=int(arguments.get("workers", 2)),
             timeout_seconds=float(arguments.get("timeout", 5.0)), bcp=str(arguments.get("bcp", "scalar")),
+            branch=str(arguments.get("branch", "auto")),
         ))
         result = engine.run()
         return {

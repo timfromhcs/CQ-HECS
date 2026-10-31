@@ -8,6 +8,20 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [3.7.0] - 2026-10-31
+
+### Added
+
+- OMNIWAVE `branch` policy (`auto`, `jw`, `bfs`) in Python, CLI, Studio and MCP.
+  `auto` uses Jeroslow-Wang on non-parity formulas and keeps BFS on parity-heavy
+  formulas. Pigeonhole fronts fall 777 → 239 (13.7× wall on the full suite);
+  random-30/40 UNSAT fronts fall 135–241 → 29–53. Some small SAT cases regress
+  because scoring costs more than the saved fronts; `--branch bfs` preserves the
+  old behavior.
+- Studio OMNIWAVE branch selector, branch in the live config, and a final
+  timeline sample for runs that finish between tick boundaries.
+- Web SAT result JSON export (input/canonical digest, engine and result).
+
 ## [3.6.0] - 2026-10-31
 
 ### Added

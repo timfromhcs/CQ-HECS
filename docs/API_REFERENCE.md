@@ -134,7 +134,7 @@ CQ_API double cq_get_active_vram_mb(cq_context_t* ctx);
 CQ_API const char* cq_get_version(void);
 ```
 - **Description**: Queries semantic version string.
-- **Return Value**: Constant string `"3.6.0"`, derived from the package
+- **Return Value**: Constant string `"3.7.0"`, derived from the package
   version (`scripts/version.py`); it must not drift.
 
 ---
@@ -186,7 +186,7 @@ These are not C-ABI symbols. They are documented here because the C ABI's
 | `cq-hecs sat solve --engine cadical` | Optional CaDiCaL backend (`pip install cqhecs[sat]`). The SAT model is re-checked; the UNSAT DRAT proof is checked by `cqhecs.drat`; a missing backend is an error, never a fallback. (3.5.0) |
 | `cq-hecs sat count` | Exact model count (#SAT): `COUNTED` with an exact integer string, or `UNKNOWN` on budget. (3.5.0) |
 | `cq-hecs sat solve --engine watched` | Built-in DPLL with two-watched-literal unit propagation. Same decision order, polarity and pure-literal rule as the default scan engine; UNSAT certificates still come from the independent scan-based certifying search. (3.6.0, opt-in) |
-| `cq-hecs sat solve --engine omniwave` | Experimental multi-front search (`--waves`, `--workers`, `--bcp scalar|batch|vulkan`, `--batch-size`, `--proof-out`). UNSAT only with a DRAT proof accepted by `cqhecs.drat`; JSON output adds an `omniwave` stats object. (3.5.0) |
+| `cq-hecs sat solve --engine omniwave` | Experimental multi-front search (`--waves`, `--workers`, `--bcp scalar|batch|vulkan`, `--branch auto|jw|bfs`, `--batch-size`, `--proof-out`). UNSAT only with a DRAT proof accepted by `cqhecs.drat`; JSON output adds an `omniwave` stats object. (3.6.0) |
 | `cq-hecs studio` | Local experiment UI; see [`STUDIO.md`](STUDIO.md). |
 
 SAT result dictionaries carry `contract_version` `1.2` (3.6.0), which adds `formula_original_sha256` and the `dpll-watched` engine label. `1.1` (3.5.0) added `certification`, `proof_system` and `engine`; no field was removed.

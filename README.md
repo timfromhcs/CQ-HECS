@@ -26,7 +26,7 @@ Four classical simulation paths · one result contract · fail-closed by design
 
 ---
 
-> **Status: `v3.6.0` (2026-10-31).** Correctness-first SAT propagation, a clearer
+> **Status: `v3.7.0` (2026-10-31).** Correctness-first SAT propagation, a clearer
 > result contract, and stronger proof evidence:
 >
 > - **Watched-literal SAT (opt-in).** `solve(..., propagation="watched")` and
@@ -52,11 +52,14 @@ Four classical simulation paths · one result contract · fail-closed by design
 >   formalized at pinned revisions, not peer-reviewed by this project. The Lean
 >   build status is recorded in `research/v6/`; P vs NP stays open.
 > - **OMNIWAVE (experimental).** A multi-front exact SAT search
->   (`--engine omniwave`, MCP, Studio **OMNIWAVE lab** with live data and
->   pause/resume/cancel). UNSAT only with a DRAT proof accepted by `cqhecs.drat`;
->   propagation can run on Vulkan, verified against the CPU on every pass. It is a
->   research engine, slower than CaDiCaL, with no speedup or complexity claim
->   (`research/v5/OMNIWAVE.md`).
+>   (`--engine omniwave`, CLI/MCP, Studio **OMNIWAVE lab** with live data and
+>   pause/resume/cancel). The default `--branch auto` uses Jeroslow-Wang on
+>   pigeonhole/random formulas and BFS on parity-heavy formulas; measured UNSAT
+>   wall time drops by 2.7–13.7× on the benchmark families (some small SAT cases
+>   pay scoring overhead; `--branch bfs` preserves the old behavior). UNSAT only
+>   with a DRAT proof accepted by `cqhecs.drat`; Vulkan propagation is verified
+>   against the CPU on every pass. It is a research engine, not a CaDiCaL
+>   replacement, with no complexity claim.
 >
 > **v3.4.0** added measured noise from three QPU vendors:
 >
@@ -314,7 +317,7 @@ equivariance, zero-noise identity, and channel composition order.
   live at https://cq-hecs-web.vercel.app; source in [`web/`](web/).
 - **MCP:** `cq-hecs mcp`, a stdio JSON-RPC server for agents (run, analyze,
   SAT solve/models, hardware evidence).
-- **Standalone:** `cqhecs-3.6.0-windows-x64.zip` on the release page; unzip
+- **Standalone:** `cqhecs-3.7.0-windows-x64.zip` on the release page; unzip
   and run `cq-hecs\cq-hecs.exe`. `scripts/build_exe.ps1` rebuilds it.
 
 ### CQ-HECS Studio
@@ -496,13 +499,13 @@ choco install vulkan-sdk cmake ninja -y --no-progress
 
 ```bash
 python -m build
-# dist/cqhecs-3.6.0-py3-none-any.whl
-# dist/cqhecs-3.6.0.tar.gz
+# dist/cqhecs-3.7.0-py3-none-any.whl
+# dist/cqhecs-3.7.0.tar.gz
 ```
 
 Published wheels, sdists, SHA-256 checksums, and the SPDX SBOM are attached to
 [GitHub Releases](https://github.com/timfromhcs/CQ-HECS/releases). The latest
-release is `v3.6.0`.
+release is `v3.7.0`.
 
 ---
 
@@ -686,7 +689,7 @@ audit record the final numbers. Measurements are not performance claims.
 
 | Gate | Result |
 | :--- | :--- |
-| Python suite (local v3.6.0 candidate) | **1964 passed**, 9 skips (opt-in exe and external-checker hooks), 1 deselected slow gate, exit 0 |
+| Python suite (local v3.7.0 candidate) | **1968 passed**, 9 skips (opt-in exe and external-checker hooks), 1 deselected slow gate, exit 0 |
 | Optional `python-sat`/CaDiCaL tests | **44 passed** in a separate process; the Windows/Python 3.14.6 CaDiCaL build then exits `0xC0000409` (external defect F-09) |
 | Branch coverage | 84 % on the last Linux CI lane; not remeasured for the local candidate |
 | CTest (native) | **21/21**, including the OMNIWAVE BCP kernel against a C++ reference |
@@ -694,7 +697,7 @@ audit record the final numbers. Measurements are not performance claims.
 | Metamorphic selftest | **12/12** |
 | SPIR-V shaders | **13/13** verified |
 | Web unit / browser | **17/17** unit; **13/13** Playwright + axe |
-| Version consistency | all surfaces report `3.6.0` |
+| Version consistency | all surfaces report `3.7.0` |
 | Lint | `flake8 --select=E9,F` clean on `cqhecs`, `python_bridge`, `scripts`, `tests` |
 | Silent-truncation audit | no patterns found |
 | Latest CI matrix | 7/7 jobs on the v3.5.0 tree; v3.6.0 exact-SHA run recorded in the release audit |
