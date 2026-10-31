@@ -66,3 +66,17 @@ CMake 4.4.0, Node 22.23.1, Rust 1.96.0.
 | M5 | CakeLPR / lrat-check / drat-trim | LRAT and DRAT accepted | PASS |
 | M5 | Lean 4.33.1 `lake build` + `PrintAxioms` | 9768 jobs; three standard axioms | PASS |
 | M5 | Comparator + nanoda | running/recorded in `evidence/COMPARATOR_ETH.md` | see file |
+
+## v3.6.0 release verification
+
+| Gate | Command / source | Observed | Status |
+| :--- | :--- | :--- | :--- |
+| Exact source CI | `gh pr checks 39` | 8/8 jobs + Vercel pass on `cb0c4be` | PASS |
+| Merge-SHA CI | `gh run watch 41189243074` | all jobs success on `db300c0` | PASS |
+| Vercel Preview | preview URL | Ready, but Vercel Authentication blocks unauthenticated E2E | BLOCKED |
+| Vercel Production | `E2E_BASE_URL=https://cq-hecs-web.vercel.app npm run e2e` | 13/13 pass; bundle reports `3.6.0` / `db300c0` | PASS |
+| Release assets | `gh release download v3.6.0` + SHA-256 | all hashes match `sha256sums.txt` | PASS |
+| Clean release wheel | fresh venv from downloaded wheel | version 3.6.0, selftest PASS | PASS |
+| Lean build | `lake build` | 9768 jobs, standard axioms | PASS |
+| Comparator + nanoda | `comparator-check.sh` | `Your solution is okay!`; nanoda accepts | PASS |
+| External proof | drat-trim / lrat-check / cake_lpr | DRAT and LRAT verified; CakeML `VERIFIED UNSAT` | PASS |
