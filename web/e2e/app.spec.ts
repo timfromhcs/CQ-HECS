@@ -91,6 +91,8 @@ test("SAT lab: UNSAT carries a checked certificate, SAT a verified model, #SAT a
   await expect(page.locator("#sat-result .cert")).toContainText("checked clause by clause");
   await page.click("#sat-count");
   await expect(page.locator(".count-value")).toContainText("6 satisfying assignments");
+  await expect(page.locator("#sat-result .digest")).toContainText("SHA-256 input");
+  await expect(page.locator("#sat-result .digest")).toContainText("canonical");
 });
 
 for (const vp of VIEWPORTS) {

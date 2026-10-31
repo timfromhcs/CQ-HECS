@@ -638,6 +638,7 @@ function setupSat() {
     out.innerHTML = `<p><span class="status ${cls}">${r.status}</span> <span class="muted small">${m.numVars} vars · ${m.numClauses} clauses</span></p>
       <p class="cert ${r.certification === "UNCERTIFIED" ? "warn" : ""}">${esc(t(`sat.cert.${r.certification}`, { n: r.certificateSteps }))}</p>
       <p class="small">${esc(t("sat.stats", { d: r.decisions, p: r.propagations, c: r.conflicts, t: r.elapsedMs.toFixed(1) }))}</p>
+      <p class="muted small digest">${esc(t("sat.digest", { original: m.originalSha256, canonical: m.canonicalSha256 }))}</p>
       <p class="muted small">${esc(r.note)}</p>
       ${model ? `<details><summary>${esc(t("sat.model"))}</summary><pre class="model">${esc(model)}</pre></details>` : ""}`;
   });
@@ -651,7 +652,8 @@ function setupSat() {
     out.innerHTML = r.status === "COUNTED"
       ? `<p><span class="status ok">#SAT</span> <span class="muted small">${m.numVars} vars · ${m.numClauses} clauses</span></p>
          <p class="count-value">${esc(t("sat.countResult", { n: r.count ?? "" }))}</p>
-         <p class="muted small">${r.nodes} nodes · ${r.cacheHits} cache hits · ${r.elapsedMs.toFixed(1)} ms · ${esc(r.note)}</p>`
+         <p class="muted small">${r.nodes} nodes · ${r.cacheHits} cache hits · ${r.elapsedMs.toFixed(1)} ms · ${esc(r.note)}</p>
+         <p class="muted small digest">${esc(t("sat.digest", { original: m.originalSha256, canonical: m.canonicalSha256 }))}</p>`
       : `<p><span class="status warn">UNKNOWN</span></p><p class="cert warn">${esc(t("sat.countUnknown"))}</p>`;
   });
   $("#sat-sweep").addEventListener("click", async () => {

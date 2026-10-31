@@ -449,7 +449,9 @@ class OmniwaveEngine:
         common = dict(
             decisions=s.splits, propagations=s.propagations, conflicts=s.conflicts,
             nodes=s.fronts_processed, max_depth=0, timeout_seconds=float(self.config.timeout_seconds),
-            formula_sha256=self.formula.sha256, engine="omniwave",
+            formula_sha256=self.formula.sha256,
+            formula_original_sha256=self.formula.original_sha256,
+            engine="omniwave",
         )
         if self._model is not None:
             return SATResult(status=SAT, assignment=self._model, elapsed_ms=elapsed(), model_verified=True,

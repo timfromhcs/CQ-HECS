@@ -270,15 +270,14 @@
   },
   "release_artifacts": {
     "dist_directory": "dist",
-    "commit_sha": "19df10cdc80f26dc9bb81b4438192c084845f477",
-    "published_at": "2026-10-19T13:33:01Z",
-    "provenance": "checksums computed from the released GitHub assets of tag v2.0.0 (tag object 9ed0a3a -> commit 19df10c); the checksum coverage fix post-dated the tag, so sha256sums.txt was recomputed from the published bytes and re-uploaded, then verified by an independent re-download",
+    "commit_sha": "13c45b39a736cf044d579d4f2fcf10c4ae7f2b8e",
     "checksums": {
-      "cqhecs-2.0.0-py3-none-any.whl": "7b55f73ceb61d865d208fbd8b6a970424797aaa81df1763b6fe34bb323fba5e2",
-      "cqhecs-2.0.0.tar.gz": "730fd84f16280d64925b55be35aa6eb480319edb9363852f000e57d1f30aa5e3",
-      "cqhecs-sbom.spdx.json": "85a1163cc770e2281605d27ec12dcabe446a02408df9bf414c30f26d5c43fb78",
-      "RELEASE_NOTES_v2.0.0.md": "6020c2db7a8e0c2317c0286d8daf2491219f28243c5886be6fc7d8d02cbab6e4",
-      "sha256sums.txt": "8c50c39d100e3c4088da4f4ddb31e258224854396f42e884f5c29739292927be"
+      "cqhecs-3.6.0-py3-none-any.whl": "ce1addf2adfc2ebe54912bbb37cfb4e9a5ee2966843223a8e964b9b2146939eb",
+      "cqhecs-3.6.0-windows-x64.zip": "f88c81ded6ee980addba657dd0001b5cbe2e3e418ce36e018cbc330388538f12",
+      "cqhecs-3.6.0.tar.gz": "4ff6985ec6b829138dd5623661071689ef167886343b36c506ad85f74f5b43fa",
+      "cqhecs-sbom.spdx.json": "989f600a92818d2bb0ff2e101d7a1c0759827c5c09648959f5135071b57c802d",
+      "RELEASE_NOTES_v3.6.0.md": "c914099bd0170b1ca61906ed1f5d277f0237c36d1bd80bcec6b4937ff0694fba",
+      "sha256sums.txt": "949243d0d1692fcfd0860e084a15cef38eb6f588a4fe0c48985291496e019f71"
     },
     "sbom_file": "dist/cqhecs-sbom.spdx.json"
   }

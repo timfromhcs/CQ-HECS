@@ -14,6 +14,7 @@ benchmark in ``scripts/omniwave_benchmark.py`` measures it.
 
 from __future__ import annotations
 
+import atexit
 import ctypes
 import os
 import sys
@@ -25,6 +26,18 @@ from cqhecs.omniwave import bcp
 ROOT = Path(__file__).resolve().parents[2]
 _lib: Optional[ctypes.CDLL] = None
 _tried = False
+_shutdown_registered = False
+
+
+def _shutdown() -> None:
+    """Destroy the native Vulkan context before the DLL is unloaded."""
+    lib = _lib
+    if lib is None:
+        return
+    try:
+        lib.cq_omniwave_shutdown()
+    except (AttributeError, OSError):
+        pass
 
 
 class GpuUnavailable(RuntimeError):
@@ -42,7 +55,7 @@ def _candidates() -> List[Path]:
 
 
 def _load() -> Optional[ctypes.CDLL]:
-    global _lib, _tried
+    global _lib, _tried, _shutdown_registered
     if _tried:
         return _lib
     _tried = True
@@ -59,7 +72,13 @@ def _load() -> Optional[ctypes.CDLL]:
         lib.cq_omniwave_bcp_eval.restype = ctypes.c_int
         lib.cq_omniwave_device_name.argtypes = [ctypes.c_char_p, ctypes.c_uint32]
         lib.cq_omniwave_device_name.restype = ctypes.c_int
+        if hasattr(lib, "cq_omniwave_shutdown"):
+            lib.cq_omniwave_shutdown.argtypes = []
+            lib.cq_omniwave_shutdown.restype = None
         _lib = lib
+        if not _shutdown_registered:
+            atexit.register(_shutdown)
+            _shutdown_registered = True
         break
     return _lib
 

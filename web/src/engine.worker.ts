@@ -7,7 +7,8 @@ import { Core, bitsOf } from "./core";
 import { GpuEngine } from "./gpu";
 import type { EngineInfo, RunRequest, RunResult, WorkerRequest, WorkerResponse } from "./protocol";
 import { measurementMap, readoutPair, run } from "./simulate";
-import { countModels, parseDimacs, solve, sweep } from "./sat";
+import { countModels, parseDimacs, solve, sweep, toDimacs } from "./sat";
+import { sha256Hex } from "./digest";
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -124,14 +125,24 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   } else if (msg.type === "sat") {
     try {
       const f = parseDimacs(msg.dimacs);
-      post({ type: "sat", id: msg.id, result: solve(f, msg.timeoutMs), numVars: f.numVars, numClauses: f.clauses.length });
+      const originalSha256 = await sha256Hex(msg.dimacs);
+      const canonicalSha256 = await sha256Hex(toDimacs(f));
+      post({
+        type: "sat", id: msg.id, result: solve(f, msg.timeoutMs), numVars: f.numVars,
+        numClauses: f.clauses.length, originalSha256, canonicalSha256,
+      });
     } catch (e) {
       post({ type: "error", id: msg.id, message: String((e as Error).message ?? e) });
     }
   } else if (msg.type === "count") {
     try {
       const f = parseDimacs(msg.dimacs);
-      post({ type: "count", id: msg.id, result: countModels(f, msg.timeoutMs), numVars: f.numVars, numClauses: f.clauses.length });
+      const originalSha256 = await sha256Hex(msg.dimacs);
+      const canonicalSha256 = await sha256Hex(toDimacs(f));
+      post({
+        type: "count", id: msg.id, result: countModels(f, msg.timeoutMs), numVars: f.numVars,
+        numClauses: f.clauses.length, originalSha256, canonicalSha256,
+      });
     } catch (e) {
       post({ type: "error", id: msg.id, message: String((e as Error).message ?? e) });
     }

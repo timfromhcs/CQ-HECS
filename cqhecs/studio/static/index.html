@@ -163,7 +163,7 @@ p cnf 3 3
             <label class="field"><span>Ratio</span><input id="sat-ratio" type="number" value="4.26" step="0.01" min="0" max="20"></label>
             <label class="field"><span>Timeout s</span><input id="sat-timeout" type="number" value="5" step="0.1" min="0.01" max="30"></label>
             <label class="field"><span>Node budget</span><input id="sat-budget" type="number" value="0" min="0" step="1"></label>
-            <label class="field"><span>Engine</span><select id="sat-engine"><option value="dpll">DPLL (built-in reference)</option><option value="cadical">CaDiCaL (optional extra, DRAT-checked)</option><option value="omniwave">OMNIWAVE (experimental, DRAT-checked)</option></select></label>
+            <label class="field"><span>Engine</span><select id="sat-engine"><option value="dpll">DPLL (built-in reference)</option><option value="watched">DPLL + watched literals</option><option value="cadical">CaDiCaL (optional extra, DRAT-checked)</option><option value="omniwave">OMNIWAVE (experimental, DRAT-checked)</option></select></label>
           </div>
           <div class="actions">
             <button class="primary" id="sat-solve">Solve CNF</button>

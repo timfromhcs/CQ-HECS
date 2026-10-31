@@ -8,6 +8,7 @@ import { Builder, compile, matrix, parseQasm, toQasm, type Circuit } from "../sr
 import { Core } from "../src/core";
 import { PRESETS } from "../src/presets";
 import { run } from "../src/simulate";
+import { sha256Hex } from "../src/digest";
 
 const wasm = readFileSync(new URL("../public/cqhecs_core.wasm", import.meta.url));
 const fixtures = JSON.parse(readFileSync(new URL("./fixtures/qiskit_statevectors.json", import.meta.url), "utf-8"));
@@ -283,6 +284,13 @@ test("SAT certificates: every UNSAT is replay-checked; corrupted certificates ar
   assert.equal(checkRefutation(f, good!.slice(0, 2)), false);
   assert.equal(checkRefutation(f, [["leaf", [2]], ["leaf", [-2]], ["resolve", -2]]), false);
   assert.equal(checkRefutation(f, []), false);
+});
+
+test("SAT input digest matches the Python contract and duplicate literals normalize", async () => {
+  const { parseDimacs } = await import("../src/sat");
+  assert.equal(await sha256Hex("abc"), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+  const f = parseDimacs("p cnf 2 2\n1 1 0\n-2 -2 1 0\n");
+  assert.deepEqual(f.clauses, [[1], [-2, 1]]);
 });
 
 test("#SAT: exact counts against brute force, BigInt range, budgets", async () => {

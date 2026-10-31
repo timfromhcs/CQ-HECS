@@ -1,0 +1,270 @@
+{
+  "created_utc": "2026-10-31T07:47:34Z",
+  "failures": [],
+  "machine": {
+    "cpu_count": 16,
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "python": "3.14.6"
+  },
+  "method": "same solver, decision order, polarity and pure-literal rule; propagation=scan vs propagation=watched; certify=False for timing; separate checked certificate pass for UNSAT",
+  "non_claims": [
+    "Finite measurements on one machine are not an asymptotic complexity claim.",
+    "A speedup on one family is not a universal SAT performance claim.",
+    "Tree-resolution certificates are checked by cqhecs.sat.check_refutation; that checker is independent of the search but not formally verified."
+  ],
+  "project_version": "3.5.0",
+  "rows": [
+    {
+      "certificate": null,
+      "family": "random-3sat-70",
+      "num_clauses": 298,
+      "num_vars": 70,
+      "scan": {
+        "conflicts": 119,
+        "decisions": 245,
+        "elapsed_ms_median": 136.8396000470966,
+        "elapsed_ms_min": 133.09490005485713,
+        "elapsed_ms_p95": 139.9482000269927,
+        "max_depth": 16,
+        "model_verified": true,
+        "nodes": 246,
+        "note": "model verified clause by clause",
+        "propagations": 2671,
+        "samples": 5,
+        "status": "SAT",
+        "wall_ms_median": 137.22800003597513
+      },
+      "scan_over_watched_speedup": 1.6387249904849155,
+      "sha256": "36a4f308c70fb4f0aac8c2d06d1d3dc5a1cf4fcb455cea1d5ef9e42319a5b12f",
+      "timeout_seconds": 30.0,
+      "watched": {
+        "conflicts": 119,
+        "decisions": 245,
+        "elapsed_ms_median": 83.50370003608987,
+        "elapsed_ms_min": 82.61809998657554,
+        "elapsed_ms_p95": 83.98090000264347,
+        "max_depth": 16,
+        "model_verified": true,
+        "nodes": 246,
+        "note": "model verified clause by clause",
+        "propagations": 2565,
+        "samples": 5,
+        "status": "SAT",
+        "wall_ms_median": 83.90240004519
+      }
+    },
+    {
+      "certificate": {
+        "checked": true,
+        "engine": "dpll-watched",
+        "steps": 921
+      },
+      "family": "random-3sat-90",
+      "num_clauses": 384,
+      "num_vars": 90,
+      "scan": {
+        "conflicts": 443,
+        "decisions": 884,
+        "elapsed_ms_median": 677.5959000224248,
+        "elapsed_ms_min": 667.0719999819994,
+        "elapsed_ms_p95": 685.5592000065371,
+        "max_depth": 16,
+        "model_verified": false,
+        "nodes": 885,
+        "note": "exhaustive DPLL search; no certificate requested",
+        "propagations": 11030,
+        "samples": 5,
+        "status": "UNSAT",
+        "wall_ms_median": 677.9301000060514
+      },
+      "scan_over_watched_speedup": 1.7386045150050249,
+      "sha256": "9c2b2beffba7c78b9897b897b76d30a6303c710019dc43282c1af74f4fb31526",
+      "timeout_seconds": 30.0,
+      "watched": {
+        "conflicts": 443,
+        "decisions": 884,
+        "elapsed_ms_median": 389.7355000372045,
+        "elapsed_ms_min": 387.8480000421405,
+        "elapsed_ms_p95": 394.0767000312917,
+        "max_depth": 16,
+        "model_verified": false,
+        "nodes": 885,
+        "note": "exhaustive DPLL search; no certificate requested",
+        "propagations": 10132,
+        "samples": 5,
+        "status": "UNSAT",
+        "wall_ms_median": 390.08590002777055
+      }
+    },
+    {
+      "certificate": null,
+      "family": "planted-70",
+      "num_clauses": 280,
+      "num_vars": 70,
+      "scan": {
+        "conflicts": 2,
+        "decisions": 13,
+        "elapsed_ms_median": 7.994899991899729,
+        "elapsed_ms_min": 7.969800033606589,
+        "elapsed_ms_p95": 8.039299980737269,
+        "max_depth": 11,
+        "model_verified": true,
+        "nodes": 14,
+        "note": "model verified clause by clause",
+        "propagations": 71,
+        "samples": 5,
+        "status": "SAT",
+        "wall_ms_median": 8.264000003691763
+      },
+      "scan_over_watched_speedup": 1.0409619349653325,
+      "sha256": "4e6dcd6dbb6732ed4811b9a80789e7155dc7f2350f0cd88977c236f0f94bef9c",
+      "timeout_seconds": 30.0,
+      "watched": {
+        "conflicts": 2,
+        "decisions": 13,
+        "elapsed_ms_median": 7.680300041101873,
+        "elapsed_ms_min": 7.615300011821091,
+        "elapsed_ms_p95": 7.776699960231781,
+        "max_depth": 11,
+        "model_verified": true,
+        "nodes": 14,
+        "note": "model verified clause by clause",
+        "propagations": 75,
+        "samples": 5,
+        "status": "SAT",
+        "wall_ms_median": 7.951500010676682
+      }
+    },
+    {
+      "certificate": {
+        "checked": true,
+        "engine": "dpll-watched",
+        "steps": 1439
+      },
+      "family": "pigeonhole-7-6",
+      "num_clauses": 133,
+      "num_vars": 42,
+      "scan": {
+        "conflicts": 720,
+        "decisions": 1438,
+        "elapsed_ms_median": 131.29389996174723,
+        "elapsed_ms_min": 129.5115999528207,
+        "elapsed_ms_p95": 132.61129998136312,
+        "max_depth": 15,
+        "model_verified": false,
+        "nodes": 1439,
+        "note": "exhaustive DPLL search; no certificate requested",
+        "propagations": 6118,
+        "samples": 5,
+        "status": "UNSAT",
+        "wall_ms_median": 131.48009998258203
+      },
+      "scan_over_watched_speedup": 1.087892183294317,
+      "sha256": "025c015d04a706c3f6c2156a9513958ba8ef62a6fbf613109d6efd0c858fbe02",
+      "timeout_seconds": 30.0,
+      "watched": {
+        "conflicts": 720,
+        "decisions": 1438,
+        "elapsed_ms_median": 120.6864999840036,
+        "elapsed_ms_min": 120.00760005321354,
+        "elapsed_ms_p95": 122.25419998867437,
+        "max_depth": 15,
+        "model_verified": false,
+        "nodes": 1439,
+        "note": "exhaustive DPLL search; no certificate requested",
+        "propagations": 6118,
+        "samples": 5,
+        "status": "UNSAT",
+        "wall_ms_median": 120.8230999764055
+      }
+    },
+    {
+      "certificate": {
+        "checked": true,
+        "engine": "dpll-watched",
+        "steps": 10079
+      },
+      "family": "pigeonhole-8-7",
+      "num_clauses": 204,
+      "num_vars": 56,
+      "scan": {
+        "conflicts": 5040,
+        "decisions": 10078,
+        "elapsed_ms_median": 1292.1510000014678,
+        "elapsed_ms_min": 1256.1123999767005,
+        "elapsed_ms_p95": 1320.850599964615,
+        "max_depth": 21,
+        "model_verified": false,
+        "nodes": 10079,
+        "note": "exhaustive DPLL search; no certificate requested",
+        "propagations": 42897,
+        "samples": 5,
+        "status": "UNSAT",
+        "wall_ms_median": 1292.3789999913424
+      },
+      "scan_over_watched_speedup": 1.1206202376675365,
+      "sha256": "9d3cf44ea2c5ff0475e8ace839471cd56afbe7f08c421d4a9539c0e32ac8cc1e",
+      "timeout_seconds": 30.0,
+      "watched": {
+        "conflicts": 5040,
+        "decisions": 10078,
+        "elapsed_ms_median": 1153.0676999827847,
+        "elapsed_ms_min": 1148.3557000174187,
+        "elapsed_ms_p95": 1163.442599994596,
+        "max_depth": 21,
+        "model_verified": false,
+        "nodes": 10079,
+        "note": "exhaustive DPLL search; no certificate requested",
+        "propagations": 42897,
+        "samples": 5,
+        "status": "UNSAT",
+        "wall_ms_median": 1153.2797999680042
+      }
+    },
+    {
+      "certificate": {
+        "checked": true,
+        "engine": "dpll-watched",
+        "steps": 8191
+      },
+      "family": "tseitin-4x5",
+      "num_clauses": 96,
+      "num_vars": 31,
+      "scan": {
+        "conflicts": 4096,
+        "decisions": 8190,
+        "elapsed_ms_median": 985.5624999618158,
+        "elapsed_ms_min": 978.9793000090867,
+        "elapsed_ms_p95": 991.8169999727979,
+        "max_depth": 12,
+        "model_verified": false,
+        "nodes": 8191,
+        "note": "exhaustive DPLL search; no certificate requested",
+        "propagations": 38498,
+        "samples": 5,
+        "status": "UNSAT",
+        "wall_ms_median": 985.6929999659769
+      },
+      "scan_over_watched_speedup": 1.5094579038212077,
+      "sha256": "7e8fd5c0e10771b22c7ca6c66572eafb97886bc7a791246480f87dedfb01d7c8",
+      "timeout_seconds": 30.0,
+      "watched": {
+        "conflicts": 4096,
+        "decisions": 8190,
+        "elapsed_ms_median": 652.9248000006191,
+        "elapsed_ms_min": 648.2991999946535,
+        "elapsed_ms_p95": 661.1192999989726,
+        "max_depth": 12,
+        "model_verified": false,
+        "nodes": 8191,
+        "note": "exhaustive DPLL search; no certificate requested",
+        "propagations": 38498,
+        "samples": 5,
+        "status": "UNSAT",
+        "wall_ms_median": 653.0647999607027
+      }
+    }
+  ],
+  "schema_version": "1.0"
+}

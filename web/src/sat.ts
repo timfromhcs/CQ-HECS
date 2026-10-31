@@ -51,12 +51,12 @@ export function parseDimacs(text: string): CNF {
     for (const tok of line.split(/\s+/)) {
       const lit = Number(tok);
       if (!Number.isInteger(lit)) throw new Error(`invalid literal '${tok}'`);
-      if (lit === 0) { clauses.push(current); current = []; continue; }
+      if (lit === 0) { clauses.push([...new Set(current)]); current = []; continue; }
       if (Math.abs(lit) > numVars) throw new Error(`literal ${lit} exceeds ${numVars} variables`);
       current.push(lit);
     }
   }
-  if (current.length) clauses.push(current);
+  if (current.length) clauses.push([...new Set(current)]);
   if (numVars < 0) throw new Error("missing 'p cnf' header");
   if (numClauses >= 0 && clauses.length !== numClauses) {
     throw new Error(`header declares ${numClauses} clauses, found ${clauses.length}`);

@@ -60,9 +60,10 @@ TOOLS: List[Dict[str, Any]] = [
                 "node_budget": {"type": "integer"},
                 "engine": {
                     "type": "string",
-                    "enum": ["dpll", "cadical", "omniwave"],
+                    "enum": ["dpll", "watched", "cadical", "omniwave"],
                     "default": "dpll",
-                    "description": "cadical needs the optional python-sat extra; omniwave is the experimental "
+                    "description": "watched is the built-in DPLL with two-watched-literal propagation; "
+                    "cadical needs the optional python-sat extra; omniwave is the experimental "
                     "multi-front engine. For both, UNSAT is reported only with a DRAT proof checked by cqhecs.drat",
                 },
                 "waves": {"type": "integer", "default": 4, "description": "omniwave only"},
@@ -170,7 +171,12 @@ def _tool_sat(arguments: Dict[str, Any]) -> Dict[str, Any]:
         ))
         result = engine.run()
         return {
-            "formula": {"num_vars": formula.num_vars, "num_clauses": formula.num_clauses},
+            "formula": {
+                "num_vars": formula.num_vars,
+                "num_clauses": formula.num_clauses,
+                "sha256": formula.sha256,
+                "original_sha256": formula.original_sha256,
+            },
             "result": result.to_dict(),
             "omniwave": engine.snapshot(),
         }
@@ -179,9 +185,15 @@ def _tool_sat(arguments: Dict[str, Any]) -> Dict[str, Any]:
             formula,
             timeout_seconds=float(arguments.get("timeout", 5.0)),
             node_budget=arguments.get("node_budget"),
+            propagation="watched" if arguments.get("engine") == "watched" else "scan",
         )
     return {
-        "formula": {"num_vars": formula.num_vars, "num_clauses": formula.num_clauses},
+        "formula": {
+            "num_vars": formula.num_vars,
+            "num_clauses": formula.num_clauses,
+            "sha256": formula.sha256,
+            "original_sha256": formula.original_sha256,
+        },
         "result": result.to_dict(),
     }
 

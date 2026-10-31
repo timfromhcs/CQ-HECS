@@ -255,5 +255,43 @@ class TestCliProfileAndBridge(unittest.TestCase):
         self.assertEqual(res["path"], "NOISY_DM")
 
 
+class TestCliSatEngines(unittest.TestCase):
+    def test_watched_engine_json_contract(self):
+        code, out, err = run_cli(
+            "--format", "json",
+            "sat", "solve", "--cnf", "p cnf 2 1\n1 2 0\n",
+            "--engine", "watched",
+        )
+        self.assertEqual(code, EXIT_OK, msg=err)
+        payload = json.loads(out)
+        result = payload["result"]
+        self.assertEqual(result["status"], "SAT")
+        self.assertEqual(result["engine"], "dpll-watched")
+        self.assertTrue(result["model_verified"])
+        self.assertEqual(result["certification"], "MODEL_VERIFIED")
+        self.assertEqual(payload["formula"]["sha256"], result["formula_sha256"])
+        self.assertEqual(payload["formula"]["original_sha256"], result["formula_original_sha256"])
+        self.assertIsNotNone(result["formula_original_sha256"])
+
+    def test_watched_engine_unsat_has_checked_certificate(self):
+        code, out, err = run_cli(
+            "--format", "json",
+            "sat", "solve", "--cnf", "p cnf 1 2\n1 0\n-1 0\n",
+            "--engine", "watched",
+        )
+        self.assertEqual(code, EXIT_OK, msg=err)
+        result = json.loads(out)["result"]
+        self.assertEqual(result["status"], "UNSAT")
+        self.assertEqual(result["certification"], "TREE_RESOLUTION_CHECKED")
+        self.assertTrue(result["certified"])
+
+    def test_dpll_is_still_the_default_engine(self):
+        code, out, _ = run_cli(
+            "--format", "json", "sat", "solve", "--cnf", "p cnf 1 1\n1 0\n"
+        )
+        self.assertEqual(code, EXIT_OK)
+        self.assertEqual(json.loads(out)["result"]["engine"], "dpll")
+
+
 if __name__ == "__main__":
     unittest.main()

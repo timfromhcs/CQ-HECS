@@ -77,6 +77,6 @@ export type WorkerResponse =
   | { type: "progress"; id: number; fraction: number; label: string }
   | { type: "result"; result: RunResult }
   | { type: "error"; id: number; message: string }
-  | { type: "sat"; id: number; result: import("./sat").SatResult; numVars: number; numClauses: number }
+  | { type: "sat"; id: number; result: import("./sat").SatResult; numVars: number; numClauses: number; originalSha256: string; canonicalSha256: string }
   | { type: "sweep"; id: number; points: import("./sat").SweepPoint[] }
-  | { type: "count"; id: number; result: import("./sat").CountResult; numVars: number; numClauses: number };
+  | { type: "count"; id: number; result: import("./sat").CountResult; numVars: number; numClauses: number; originalSha256: string; canonicalSha256: string };

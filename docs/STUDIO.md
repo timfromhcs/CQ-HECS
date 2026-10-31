@@ -59,8 +59,9 @@ The supported engine is `cqhecs/sat.py`:
 - `UNSAT` — exhaustive search finished; a tree-resolution certificate is replay-checked (`certified`);
 - `UNKNOWN` — timeout or node budget; never reported as `UNSAT`.
 
-The engine selector offers `dpll` (built-in reference), `cadical` (optional
-extra, DRAT-checked) and `omniwave` (experimental, DRAT-checked).
+The engine selector offers `dpll` (built-in reference), `watched` (the same
+search with two-watched-literal propagation), `cadical` (optional extra,
+DRAT-checked) and `omniwave` (experimental, DRAT-checked).
 
 The sweep is an empirical runtime curve. It is not a proof of ETH and says
 nothing about `P = NP`.
@@ -111,7 +112,7 @@ credentials.
 | `GET` | `/api/devices` | — | measured M-FIT-2 device profiles |
 | `POST` | `/api/simulate` | `{source, shots, seed, path, noise}` (`noise`: `ideal`, `mfit`, `mfit2`, `custom`, `device:<id>`) | circuit result |
 | `POST` | `/api/noise/compare` | `{job_id, overrides?}` | measured vs models |
-| `POST` | `/api/sat/solve` | `{cnf}` or `{random:{...}}`, optional `engine` (`dpll`, `cadical`, `omniwave`) | sound SAT result with `certification` |
+| `POST` | `/api/sat/solve` | `{cnf}` or `{random:{...}}`, optional `engine` (`dpll`, `watched`, `cadical`, `omniwave`) | sound SAT result with `certification` |
 | `POST` | `/api/sat/count` | `{cnf, timeout}` | exact #SAT count |
 | `POST` | `/api/sat/sweep` | `{sizes, ratios, trials, timeout}` | empirical sweep |
 | `GET` | `/api/omniwave/status` | — | live OMNIWAVE state, timeline, result, GPU status |

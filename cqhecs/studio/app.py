@@ -647,14 +647,19 @@ class StudioState:
                 result = solve_external(formula, timeout_seconds=timeout)
             except BackendUnavailable as exc:
                 raise StudioError(str(exc), status=503, code="backend_unavailable") from exc
-        elif engine == "dpll":
-            result = solve(formula, timeout_seconds=timeout, node_budget=node_budget)
+        elif engine in ("dpll", "watched"):
+            result = solve(
+                formula,
+                timeout_seconds=timeout,
+                node_budget=node_budget,
+                propagation="watched" if engine == "watched" else "scan",
+            )
         elif engine == "omniwave":
             from cqhecs.omniwave import solve_omniwave
 
             result = solve_omniwave(formula, timeout_seconds=timeout)
         else:
-            raise StudioError("engine must be dpll, cadical or omniwave", code="invalid_engine")
+            raise StudioError("engine must be dpll, watched, cadical or omniwave", code="invalid_engine")
         return {
             "schema_version": "1.0",
             "formula": self._formula_summary(formula),
@@ -707,6 +712,7 @@ class StudioState:
             "num_vars": formula.num_vars,
             "num_clauses": formula.num_clauses,
             "sha256": formula.sha256,
+            "original_sha256": formula.original_sha256,
             "source": formula.source,
             "clause_widths": _width_histogram(formula),
         }

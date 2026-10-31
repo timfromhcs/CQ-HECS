@@ -26,24 +26,31 @@ Four classical simulation paths · one result contract · fail-closed by design
 
 ---
 
-> **Status: `v3.5.0` (2026-10-31).** Proof-carrying SAT, exact model counting, and a
-> research audit of the October 2026 ETH claims:
+> **Status: `v3.6.0` (2026-10-31).** Correctness-first SAT propagation, a clearer
+> result contract, and stronger proof evidence:
 >
-> - **SAT evidence everywhere.** Every SAT result now names its evidence
->   (`certification`): `MODEL_VERIFIED`, `TREE_RESOLUTION_CHECKED`, `DRAT_CHECKED`,
->   `UNCERTIFIED` or `NONE`. The optional CaDiCaL engine (`pip install cqhecs[sat]`,
->   `cq-hecs sat solve --engine cadical`) has its UNSAT proofs checked by an
->   in-repo DRAT checker (`cqhecs.drat`) that shares no code with the solver. The
->   browser SAT lab now records and replays tree-resolution certificates too.
-> - **Exact #SAT** (`cq-hecs sat count`, `count_models`, MCP, Studio, web).
->   Counts are exact big integers; a budget that runs out gives `UNKNOWN`.
-> - **ETH audit.** `research/v5/COMPLEXITY_CLAIM_AUDIT.md` reads the OpenAI and
->   Anthropic artifacts at pinned revisions. ETH (and with it SETH) is *claimed
->   refuted*, formalized in Lean, and not peer-reviewed. The proofs were not re-run
->   here, and P vs NP stays open.
-> - **Web quality gates.** Playwright E2E and axe (WCAG 2.2 AA, no serious
->   violations) run in CI, with screenshots at six viewports. A result panel shows
->   engine, precision, noise provenance and build SHA, with JSON export.
+> - **Watched-literal SAT (opt-in).** `solve(..., propagation="watched")` and
+>   `cq-hecs sat solve --engine watched` use two watched literals per non-unit
+>   clause while keeping the scan engine's decision order and pure-literal rule.
+>   The default remains the readable scan DPLL; the independent scan-based
+>   certifying search still produces every tree-resolution certificate.
+>   Six fixed benchmark families, five repeats: 1.04–1.74× median scan/watched on
+>   the measured machine, no verdict or certificate disagreement. Finite and
+>   machine-specific, not a universal speedup claim.
+> - **SAT contract 1.2.** Results carry `formula_original_sha256` next to the
+>   canonical `formula_sha256`; the parser normalizes repeated DIMACS literals.
+>   Partial assignments no longer satisfy negative literals by accident, and the
+>   certificate budget cannot extend the solve deadline.
+> - **Proof evidence.** A CaDiCaL DRAT proof and its LRAT conversion are checked
+>   by `cqhecs.drat`, `drat-trim`, `lrat-check` and the CakeML-verified `cake_lpr`
+>   (`research/v6/evidence/DRAT_EXTERNAL.md`). This covers that proof/formula,
+>   not the whole pipeline.
+> - **Sandbox / UX.** Windows Vulkan teardown no longer aborts the interpreter.
+>   The web SAT lab shows input and canonical SHA-256; Playwright/axe cover all
+>   routes, EN/DE/FR, the WebGPU fallback, safe limits and six viewports.
+> - **Still open.** The OpenAI/Anthropic ETH proofs are *claimed* and Lean-
+>   formalized at pinned revisions, not peer-reviewed by this project. The Lean
+>   build status is recorded in `research/v6/`; P vs NP stays open.
 > - **OMNIWAVE (experimental).** A multi-front exact SAT search
 >   (`--engine omniwave`, MCP, Studio **OMNIWAVE lab** with live data and
 >   pause/resume/cancel). UNSAT only with a DRAT proof accepted by `cqhecs.drat`;
@@ -307,7 +314,7 @@ equivariance, zero-noise identity, and channel composition order.
   live at https://cq-hecs-web.vercel.app; source in [`web/`](web/).
 - **MCP:** `cq-hecs mcp`, a stdio JSON-RPC server for agents (run, analyze,
   SAT solve/models, hardware evidence).
-- **Standalone:** `cqhecs-3.5.0-windows-x64.zip` on the release page; unzip
+- **Standalone:** `cqhecs-3.6.0-windows-x64.zip` on the release page; unzip
   and run `cq-hecs\cq-hecs.exe`. `scripts/build_exe.ps1` rebuilds it.
 
 ### CQ-HECS Studio
@@ -342,11 +349,25 @@ cq-hecs sat models --cnf "p cnf 3 2\n1 2 0\n-1 3 0\n" --limit 5
 cq-hecs sat maxsat --cnf "p cnf 2 2\n1 0\n-1 0\n" --weights 1,2
 cq-hecs sat count --cnf "p cnf 200 1\n1 2 0\n"     # exact #SAT
 cq-hecs sat solve pigeonhole_6_5.cnf --engine cadical  # optional extra, DRAT-checked
+cq-hecs sat solve pigeonhole_6_5.cnf --engine watched  # two-watched-literal propagation
 cq-hecs mcp
 ```
 
+The built-in engine has two propagation paths. `dpll` (default) scans clauses;
+`watched` keeps two watched literals per non-unit clause and a propagation queue.
+Both use the same decision order, polarity and pure-literal rule, and the
+tree-resolution certificate is still produced by the independent scan-based
+search. The measured comparison is in
+`research/v6/evidence/sat_propagation_benchmark.json`; it is a finite, machine-
+specific result, not a universal speedup claim.
+
 `SAT` means a model was found and verified clause by clause. `UNSAT` means the
-search space was exhausted. By default the Python surface also records a
+search space was exhausted. SAT contract 1.2 also carries
+`formula_original_sha256` (the input text) next to the canonical
+`formula_sha256`; repeated literals are normalized by the parser, while direct
+`CNF(...)` construction remains strict.
+
+By default the Python surface also records a
 tree-resolution refutation that a separate checker (`check_refutation`) replays;
 `certified` is true only after that check, and a missing or failed certificate is
 reported as such (disagreement between the two searches yields `UNKNOWN`). The
@@ -475,13 +496,13 @@ choco install vulkan-sdk cmake ninja -y --no-progress
 
 ```bash
 python -m build
-# dist/cqhecs-3.5.0-py3-none-any.whl
-# dist/cqhecs-3.5.0.tar.gz
+# dist/cqhecs-3.6.0-py3-none-any.whl
+# dist/cqhecs-3.6.0.tar.gz
 ```
 
 Published wheels, sdists, SHA-256 checksums, and the SPDX SBOM are attached to
 [GitHub Releases](https://github.com/timfromhcs/CQ-HECS/releases). The latest
-release is `v3.5.0`.
+release is `v3.6.0`.
 
 ---
 
@@ -659,22 +680,24 @@ A deeper component matrix is in [`ARCHITECTURE.md`](ARCHITECTURE.md) and
 
 ## Verification
 
-The numbers below are from the Linux CI lane with the native build required
-(`CQ_HECS_REQUIRE_NATIVE=1`) on the `v3.5.0` tree. They are measurements, not
-performance claims. The release audit records the exact SHA and CI runs.
+The Linux CI numbers below are historical v3.5.0 measurements. The v3.6.0 local
+candidate was measured on Windows 11 / Python 3.14.6; the exact-SHA CI and release
+audit record the final numbers. Measurements are not performance claims.
 
 | Gate | Result |
 | :--- | :--- |
-| Python suite | **1669 passed**, 4 opt-in exe skips, 1 opt-in `slow` gate |
-| Branch coverage | **84 %** on the Linux CI lane (v3.0.0 release audit: 86 %) |
-| CTest (native) | **21/21**, including a `WILL_FAIL` meta-test proving checks run in Release builds and the OMNIWAVE BCP kernel against a C++ reference on llvmpipe (0 mismatches) |
+| Python suite (local v3.6.0 candidate) | **1964 passed**, 9 skips (opt-in exe and external-checker hooks), 1 deselected slow gate, exit 0 |
+| Optional `python-sat`/CaDiCaL tests | **44 passed** in a separate process; the Windows/Python 3.14.6 CaDiCaL build then exits `0xC0000409` (external defect F-09) |
+| Branch coverage | 84 % on the last Linux CI lane; not remeasured for the local candidate |
+| CTest (native) | **21/21**, including the OMNIWAVE BCP kernel against a C++ reference |
 | Source mutation | **54/54** killed |
 | Metamorphic selftest | **12/12** |
 | SPIR-V shaders | **13/13** verified |
-| Version consistency | all surfaces report `3.5.0` |
+| Web unit / browser | **17/17** unit; **13/13** Playwright + axe |
+| Version consistency | all surfaces report `3.6.0` |
 | Lint | `flake8 --select=E9,F` clean on `cqhecs`, `python_bridge`, `scripts`, `tests` |
 | Silent-truncation audit | no patterns found |
-| Latest CI matrix | 7/7 jobs: Linux, Windows, ASan/UBSan, Python 3.12–3.14, static/package |
+| Latest CI matrix | 7/7 jobs on the v3.5.0 tree; v3.6.0 exact-SHA run recorded in the release audit |
 
 ### Verify it yourself
 

@@ -96,13 +96,34 @@ def test_determinism():
         "1 2 0\n",
         "p cnf 2 3\n1 0\n",
         "p cnf 2 1\n3 0\n",
-        "p cnf 2 1\n1 1 0\n",
         "p cnf 2 1\n1 2\n",
     ],
 )
 def test_malformed_dimacs_is_rejected(text):
     with pytest.raises(CNFFormatError):
         parse_dimacs(text)
+
+
+def test_duplicate_literals_are_normalized_not_rejected():
+    formula = parse_dimacs("p cnf 2 2\n1 1 0\n-2 -2 1 0\n")
+    assert formula.clauses == ((1,), (-2, 1))
+    assert solve(formula, 1.0).status == SAT
+
+
+def test_original_and_canonical_digests_are_both_retained():
+    with_duplicate = parse_dimacs("p cnf 2 1\n1 1 0\n")
+    normalized = parse_dimacs("c comment\np cnf 2 1\n1 0\n")
+    assert with_duplicate.clauses == normalized.clauses
+    assert with_duplicate.sha256 == normalized.sha256
+    assert with_duplicate.original_sha256 != normalized.original_sha256
+    result = solve(with_duplicate, 1.0, certify=False)
+    assert result.formula_sha256 == with_duplicate.sha256
+    assert result.formula_original_sha256 == with_duplicate.original_sha256
+
+
+def test_direct_cnf_construction_stays_strict():
+    with pytest.raises(CNFFormatError):
+        CNF(2, ((1, 1),))
 
 
 def test_enumeration_is_reported_not_hidden():
