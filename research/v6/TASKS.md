@@ -50,3 +50,16 @@ Every task points to evidence in `EVIDENCE_LEDGER.md` or `TEST_MATRIX.md`.
 | T6-M13-02 | M13 | Vercel Preview exact-SHA smoke | lead | BLOCKED (Vercel auth; production E2E PASS) |
 | T6-M14-01 | M14 | Merge, Production, release asset verification | lead | PASS (release published; assets verified) |
 | T6-M15-01 | M15 | Post-release audit and backlog | lead | PASS (post-release audit) |
+
+## v3.7.0 follow-up (post-3.6.0)
+
+| ID | Task | Status |
+| :--- | :--- | :--- |
+| T7-OW-01 | Jeroslow-Wang branch heuristic with parity-aware auto mode | PASS |
+| T7-OW-02 | Branch policy in Python/CLI/MCP/Studio | PASS |
+| T7-OW-03 | Full benchmark before/after, raw JSON | PASS (`evidence/OMNIWAVE_BRANCHING.md`) |
+| T7-UI-01 | Studio branch selector + final timeline sample | PASS |
+| T7-WEB-01 | SAT result JSON export | PASS |
+| T7-REL-01 | v3.7.0 local build, release, asset hash verification | PASS |
+| T7-OW-04 | Dedicated mutation targets for branch policy | TODO |
+| T7-OW-05 | Improve small-SAT scoring overhead | TODO |
