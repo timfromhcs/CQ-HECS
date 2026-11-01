@@ -25,3 +25,38 @@ Local checkpoint commit `7c4b62f` on `feat/sha-forge-hardware-lab` (not pushed).
 16. Added `cqhecs.hardware.results` (identifier-free bundle) and the MEASURED section in the Miner Lab; results folder `E:\qCSHA\sha_forge_results\`.
 17. Local gates: pytest 2570 passed / 109 skipped; web unit 33; Playwright 40; flake8, version and truncation gates pass.
 18. Process notes: two inline-script mistakes (a `\b` in a normal string became a backspace in a doc; fixed). No data loss.
+
+## Third session (operator asked: better job distribution, build+flash over USB, research on the device, then extend CQ-HECS and push)
+
+19. Job distribution: read current guidance on multi-agent work (hub-and-spoke,
+    file scoping, only independent work in parallel) and ran one isolated worker
+    on new files (`preimage_sat.py`, its tests, `SAT_SHA.md`) while the firmware
+    work continued in the main session. No file was touched twice.
+20. Installed the ESP-IDF v6.0.2 toolchain (`E:\esp`) — B-04 unblocked. The clone
+    and installer succeeded this time; no install was worked around.
+21. Firmware: research oracle (FIPS 180-4 + trace + streaming), guard, nine HTTP
+    routes, running-app backup routes, host tests (84 + 115 assertions), Kconfig
+    flag, and a CI job that builds the research variant on a clean runner.
+22. Hardware cycle (4 flashes, all `write-flash 0x10000` + `verify-flash`):
+    - image 1 (CI): all research JSON routes failed → defect D-1 (cJSON prebuffer
+      0 → `malloc(0)` → NULL). Fixed.
+    - image 2 (CI): unit associated to a non-routing mesh node, no BSSID pin →
+      defect D-2. **Full backup restored at `0x0`, verified, mining back** before
+      further work; the per-device values were then read out of that backup.
+    - image 3/4 (local per-device): gates refused with `pool_active` /
+      `thermal_unsafe` because `pause` keeps the socket open and powers the ASIC
+      down → defect D-3. Fixed with testable semantics + a bounded thermal age.
+    - image 5 (local per-device): **12/12 session steps green**, 64-round trace
+      accepted by `round_trace.replay()`, `sha256d("abc")` correct, 4 MiB WLAN
+      backup digest verified, mining resumed.
+23. Research extension: reduced-round SHA-256 encoded as CNF, decided by the
+    in-repo DPLL with tree-resolution and DRAT certificates checked in-repo,
+    preimage counts verified against exhaustive enumeration. 32 tests.
+    A measured limitation of `sat.py` (deadline not enforced when no decisions are
+    needed) is recorded as B-11 instead of being hidden.
+24. CI: CQ-HECS run 41360179171 is green on all eight jobs (Python 2786/7 skipped
+    on Linux, 2690/53 on Windows, Playwright 40/40, mutation 60/60). ESP-Miner
+    host tests green on three commits; `build` and `build-research` green.
+25. Fixed on the way: a pinned `upload-artifact` SHA that does not exist, a
+    megabyte-long pytest id that breaks on Windows, and a header buffer reused for
+    two response headers (IDF stores the pointer, it does not copy).

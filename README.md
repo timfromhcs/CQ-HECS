@@ -322,16 +322,20 @@ rest of CQ-HECS: no claim without a check that ran.
   (`CONFIG_TIMSMINER_SHA_RESEARCH`, default off) that computes SHA-256 in
   software on the ESP32-S3 and returns the same trace document, behind a
   short-lived operator token and thermal/pool/budget gates. Host tests:
-  81 assertions for the SHA oracle and 105 for the authorisation guard.
+  84 assertions for the SHA oracle and 115 for the authorisation guard.
 - The BM1366 executes SHA-256d internally and returns nonces. It exposes no round
   registers or message schedule, no client can write an arbitrary block to it,
   and nothing here reads ASIC state. `capabilities.limitations.asic_access` is
   `"none"`, and a profile or capability document that claims otherwise is
   refused by `firmware_profile.reject_asic_round_claim()`.
 
-Status: host-verified and build-verified; the research firmware has not been
-flashed to the miner. See
-[`research/sha_forge/FIRMWARE.md`](research/sha_forge/FIRMWARE.md).
+Status: **validated on the miner** (2026-11-02). A 64-round software trace served
+by the device was accepted unchanged by the Python reference replay, with the same
+output state as the host implementation; `sha256d("abc")` and a 4 MiB WLAN backup
+(verified against its own digest) were also checked on the unit. Three defects
+were found by those runs and fixed. See
+[`research/sha_forge/FIRMWARE.md`](research/sha_forge/FIRMWARE.md) and
+[`FIRMWARE_BUILD.md`](research/sha_forge/FIRMWARE_BUILD.md).
 
 ### Real-data reference evaluation
 
@@ -728,24 +732,35 @@ A deeper component matrix is in [`ARCHITECTURE.md`](ARCHITECTURE.md) and
 
 ## Verification
 
-The Linux CI numbers below are historical v3.5.0 measurements. The v3.6.0 local
-candidate was measured on Windows 11 / Python 3.14.6; the exact-SHA CI and release
-audit record the final numbers. Measurements are not performance claims.
+Measured on the exact head SHA `c854560` of `dev/sha-forge-hardware-lab`
+(run 41360179171, all eight jobs green). Numbers, not projections.
 
 | Gate | Result |
 | :--- | :--- |
-| Python suite (local v4.0.0 candidate, Windows 11 / Python 3.13) | **2503 passed** in the full run, 13 skips (optional `python-sat`, external proof checkers, exe / native-module hooks), 1 deselected slow gate; 3 more tests that load native artifacts pass against a fresh build (`CQ_HECS_BUILD_DIR`) and fail against the stale pre-v4 build directory |
-| Optional `python-sat`/CaDiCaL tests | **not run for v4** (`python-sat` not installed in the v4 environment; last recorded in v3.7.0: 44 passed, external defect F-09) |
-| Branch coverage | 84 % on the last Linux CI lane; not remeasured for v4 |
-| CTest (native, Release, fresh 4.0.0 build) | **21/21**, including the OMNIWAVE BCP kernel against a C++ reference |
-| Source mutation | **60/60** killed (54 inherited + 6 new v4 mutants) |
-| Metamorphic selftest (`selftest --cases 4`) | PASS |
-| SPIR-V shaders | **13/13** verified |
-| Web unit / browser | **17/17** unit; **13/13** Playwright + axe against the local build (preview and production not yet run for v4) |
+| Python suite, Linux / Python 3.11 | **2786 passed**, 7 skipped, 1 deselected in 4 m 56 s |
+| Python suite, Windows / Python 3.11 | **2690 passed**, 53 skipped, 1 deselected in 4 m 11 s (the extra skips are Windows-only optional hooks) |
+| Python 3.12 / 3.13 / 3.14 lanes | green |
+| Branch coverage | measured on the Linux lane; not a release threshold |
+| CTest (native, Release) | **21/21** |
+| Source mutation | **60/60** killed |
+| SPIR-V shaders + Vulkan dispatch | green |
+| Web unit tests | **33/33** |
+| Playwright + axe (browser) | **40/40** |
+| Web build | `tsc --noEmit` clean, `dist/forge.html` + assets produced |
 | Version consistency | all surfaces report `4.0.0` |
 | Lint | `flake8 --select=E9,F` clean on `cqhecs`, `python_bridge`, `scripts`, `tests` |
 | Silent-truncation audit | no patterns found |
-| Latest CI matrix | pending: the v4 pull request's exact-SHA run is recorded in `research/v7/RELEASE_AUDIT.md` |
+| Optional `python-sat`/CaDiCaL tests | **not run** (`python-sat` is not installed here; the last recorded run is v3.7.0, external defect F-09) |
+
+Two smaller gates that this work added and that run on every push:
+
+- the SHA known-answer vectors now have short ids, so the one-million-byte vector
+  no longer builds a megabyte-long test id (on Windows that id travelled through a
+  32767-character environment variable and the two large vectors errored before
+  their assertion ran);
+- the firmware's own host tests (189 assertions across
+  `research_sha.c` and `research_guard.c`) are covered by `make` in
+  `simulation/`, including the ASan/UBSan rerun, in the ESP-Miner CI.
 
 ### Verify it yourself
 

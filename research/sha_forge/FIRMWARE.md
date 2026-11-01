@@ -1,8 +1,9 @@
 # Research firmware contract (ESP-Miner branch `feat/timsminer-sha-research-mode`)
 
-Status: **IMPLEMENTED, NOT FLASHED**. The firmware builds and its host tests pass;
-the miner still runs its original factory image. That distinction is kept
-everywhere in this record.
+Status: **IMPLEMENTED, FLASHED AND VALIDATED ON `timsminer`** (2026-11-02). The
+miner ran the research image, served a 64-round software trace that the Python
+reference accepted unchanged, and returned to mining afterwards. The evidence is
+in §5 and in `FIRMWARE_BUILD.md`.
 
 ## 1. What the firmware adds
 
@@ -77,15 +78,36 @@ field and an extra key inside a round would look like tampering.
 
 ## 5. Evidence produced so far
 
+The first real session on the unit (2026-11-02, 12/12 steps):
+
+| Check | Result |
+|---|---|
+| `GET /api/research/status` | `research_enabled: true`, `state: disarmed`, `identity_verified: true`, thermal 53 °C, ceiling 65 °C |
+| `GET /api/research/capabilities` | `compute: software_cpu`, `asic_access: none`, features `sha256, sha256d, round_trace, reduced_rounds` |
+| `POST /api/system/pause` | `pool_connected` became `false` → `arm` accepted |
+| Pairing | 6-digit token read from the COM3 console, `arm` → `state: armed` |
+| `POST /api/research/sha256` (64 bytes of zero, 64 rounds) | 64 rounds returned; **`cqhecs.sha.round_trace.replay()` accepted every value**, `output_state = da5698be…837a9d8`, identical to the host C implementation |
+| `POST /api/research/sha256` (`616263`, `sha256d`) | `4f8b42c2…c6358` — the published SHA-256d("abc") value |
+| `GET /api/system/backup/info` | `factory`, offset 65 536, 4 194 304 bytes, `complete_chip_backup: false` |
+| `GET /api/system/backup/running-app` | 4 194 304 bytes downloaded, SHA-256 equal to the metadata |
+| `POST /api/research/disarm` + `/api/system/resume` | disarmed; mining resumed and climbed again |
+
+Host suites:
+
 | Evidence | Where |
 |---|---|
-| Host SHA suite: 81 assertions (FIPS KAT, padding boundaries, genesis SHA-256d, 10⁶×"a", trace invariants, JSON shape, hex helpers) | `ESP-Miner/simulation/test_research_sha.c` |
-| Host guard suite: 105 assertions (every refusal path, budgets, token reuse, pause accounting, watchdog) | `ESP-Miner/simulation/test_research_guard.c` |
-| Cross-language check: 6 device traces accepted by `round_trace.replay()` | `scripts/verify_firmware_trace.py` |
+| SHA oracle: 84 assertions (FIPS KAT, padding boundaries, genesis SHA-256d, 10⁶×"a", trace invariants, JSON shape, streaming split-equivalence, hex helpers) | `ESP-Miner/simulation/test_research_sha.c` |
+| Authorisation guard: 115 assertions (every refusal path, budgets, token reuse, pause accounting, watchdog, mining-activity semantics, thermal age limits) | `ESP-Miner/simulation/test_research_guard.c` |
+| Cross-language check: device-shaped traces accepted by `round_trace.replay()` | `scripts/verify_firmware_trace.py` |
 | Device client + profile tests: 32 | `tests/test_firmware_research.py` |
 
-Build artefacts (image hashes, sizes, both configurations) are recorded in
-`research/sha_forge/FIRMWARE_BUILD.md` once produced.
+Three implementations agree on the same block: the device's C, the host's C (same
+source, different compiler) and the Python reference. That is the cross-check the
+project asked for, and it happened on the hardware rather than in a simulator.
+
+Two real defects were found by these runs and fixed (see `FIRMWARE_BUILD.md`):
+the JSON prebuffer that made every research route fail silently, and the
+pause/thermal semantics above.
 
 ## 6. How to use it from this repository
 
@@ -110,7 +132,12 @@ a block or round count different from the request, `asic_access != "none"`, a
 - The pairing token is only as private as the device's serial console. Anyone who
   can read the log endpoint can complete pairing. The firmware is therefore a
   same-LAN, single-operator surface; it must not be exposed to the internet.
+- A research image must carry the per-device BSSID pin and static fallback. The
+  CI artefact does not, and flashing it left the unit on a non-routing mesh node
+  (defect D-2 in `FIRMWARE_BUILD.md`). The image that is validated on the unit is
+  the locally built per-device variant, not the CI artefact.
 - Research jobs share the CPU with the mining task; there is no preemption
   between them. The job budget exists for that reason.
-- No hardware run has happened yet. Everything above is host-verified and
-  build-verified; the device behaviour is a claim until measured.
+- The thermal reading during a session is the last measurement taken before the
+  pause, bounded by an age window. It is an upper bound, not a live value, and the
+  status says so (`temperature_source`).
