@@ -1,0 +1,286 @@
+MSBuild-Version 18.7.1+024f5b037 für .NET Framework
+
+  1>Checking Build System
+  Compiling Vulkan 1.3 SPIR-V shader: bond_svd.comp -> bond_svd.spv
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  D:/Quantum EMU/CQ-HECS/shaders/compute/bond_svd.comp
+  Compiling Vulkan 1.3 SPIR-V shader: cordic.comp -> cordic.spv
+  D:/Quantum EMU/CQ-HECS/shaders/compute/cordic.comp
+  Compiling Vulkan 1.3 SPIR-V shader: omniwave_bcp.comp -> omniwave_bcp.spv
+  nb_internals.cpp
+  D:/Quantum EMU/CQ-HECS/shaders/compute/omniwave_bcp.comp
+  Compiling Vulkan 1.3 SPIR-V shader: state_reset.comp -> state_reset.spv
+  D:/Quantum EMU/CQ-HECS/shaders/compute/state_reset.comp
+  Compiling Vulkan 1.3 SPIR-V shader: tensor_contract.comp -> tensor_contract.spv
+  D:/Quantum EMU/CQ-HECS/shaders/compute/tensor_contract.comp
+  Compiling Vulkan 1.3 SPIR-V shader: cordic_gate.comp -> cordic_gate.spv
+  D:/Quantum EMU/CQ-HECS/shaders/cordic_gate.comp
+  Compiling Vulkan 1.3 SPIR-V shader: cq_hecs_core.comp -> cq_hecs_core.spv
+  D:/Quantum EMU/CQ-HECS/shaders/cq_hecs_core.comp
+  Compiling Vulkan 1.3 SPIR-V shader: cuckoo_prune.comp -> cuckoo_prune.spv
+  D:/Quantum EMU/CQ-HECS/shaders/cuckoo_prune.comp
+  Compiling Vulkan 1.3 SPIR-V shader: explosion_shield.comp -> explosion_shield.spv
+  D:/Quantum EMU/CQ-HECS/shaders/explosion_shield.comp
+  Compiling Vulkan 1.3 SPIR-V shader: mcwf_noise.comp -> mcwf_noise.spv
+  D:/Quantum EMU/CQ-HECS/shaders/mcwf_noise.comp
+  Compiling Vulkan 1.3 SPIR-V shader: mps_contract.comp -> mps_contract.spv
+  D:/Quantum EMU/CQ-HECS/shaders/mps_contract.comp
+  Compiling Vulkan 1.3 SPIR-V shader: ring_multiply.comp -> ring_multiply.spv
+  D:/Quantum EMU/CQ-HECS/shaders/ring_multiply.comp
+  Compiling Vulkan 1.3 SPIR-V shader: tensor_contract_2q.comp -> tensor_contract_2q.spv
+  D:/Quantum EMU/CQ-HECS/shaders/tensor_contract_2q.comp
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  nb_func.cpp
+  vulkan_engine.cpp
+  nb_type.cpp
+  entropy_harvester.cpp
+C:\Users\hcsme\AppData\Roaming\Python\Python314\site-packages\nanobind\src\nb_func.cpp(375,17): warning C4459: Deklaration von "vectorcall" blendet globale Deklaration aus [D:\Quantum EMU\CQ-HECS\build\v4\nanobind-static.vcxproj]
+      C:\Users\hcsme\AppData\Roaming\Python\Python314\site-packages\nanobind\include\nanobind\nb_backend_slots.h(581,1):
+      Siehe Deklaration von "nanobind::detail::vectorcall"
+  
+C:\Users\hcsme\AppData\Roaming\Python\Python314\site-packages\nanobind\src\nb_type.cpp(2112,29): warning C4457: Deklaration von "p" blendet Funktionsparameter aus [D:\Quantum EMU\CQ-HECS\build\v4\nanobind-static.vcxproj]
+      C:\Users\hcsme\AppData\Roaming\Python\Python314\site-packages\nanobind\src\nb_type.cpp(2097,34):
+      Siehe Deklaration von "p"
+  
+C:\Users\hcsme\AppData\Roaming\Python\Python314\site-packages\nanobind\src\nb_type.cpp(2336,39): warning C4457: Deklaration von "p" blendet Funktionsparameter aus [D:\Quantum EMU\CQ-HECS\build\v4\nanobind-static.vcxproj]
+      C:\Users\hcsme\AppData\Roaming\Python\Python314\site-packages\nanobind\src\nb_type.cpp(2284,37):
+      Siehe Deklaration von "p"
+  
+  nb_enum.cpp
+  tiered_storage.cpp
+  nb_ndarray.cpp
+  qasm_parser.cpp
+C:\Users\hcsme\AppData\Roaming\Python\Python314\site-packages\nanobind\src\nb_ndarray.cpp(604,21): warning C4457: Deklaration von "p" blendet Funktionsparameter aus [D:\Quantum EMU\CQ-HECS\build\v4\nanobind-static.vcxproj]
+      C:\Users\hcsme\AppData\Roaming\Python\Python314\site-packages\nanobind\src\nb_ndarray.cpp(594,43):
+      Siehe Deklaration von "p"
+  
+  nb_static_property.cpp
+  nb_datetime.cpp
+  sat_solver.cpp
+  common.cpp
+  error.cpp
+  arx_engine.cpp
+  trampoline.cpp
+  terminal_ui.cpp
+  implicit.cpp
+  Code wird generiert...
+  json_formatter.cpp
+  nanobind-static.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\nanobind-static.lib
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  cqhecs_bindings.cpp
+  stabilizer_tableau.cpp
+  mps_sampler.cpp
+  hybrid_engine.cpp
+  cq_qasm_parser.cpp
+  lattice.cpp
+  binding.cpp
+  cordic_engine.cpp
+  residual_engine.cpp
+  tensor_network.cpp
+     Bibliothek "D:/Quantum EMU/CQ-HECS/build/v4/bin/Release/_cqhecs_core.lib" und Objekt "D:/Quantum EMU/CQ-HECS/build/v4/bin/Release/_cqhecs_core.exp" werden erstellt.
+  constraint_solver.cpp
+  _cqhecs_core.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\_cqhecs_core.cp314-win_amd64.pyd
+  vulkan_context.cpp
+     Bibliothek "D:/Quantum EMU/CQ-HECS/build/v4/bin/Release/_cq_hecs_core.lib" und Objekt "D:/Quantum EMU/CQ-HECS/build/v4/bin/Release/_cq_hecs_core.exp" werden erstellt.
+  _cq_hecs_core.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\_cq_hecs_core.cp314-win_amd64.pyd
+D:\Quantum EMU\CQ-HECS\src\vulkan\vulkan_context.cpp(149,32): warning C4996: 'getenv': This function or variable may be unsafe. Consider using _dupenv_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Quantum EMU\CQ-HECS\build\v4\cq_hecs_core_objects.vcxproj]
+  vulkan_buffer.cpp
+  vulkan_pipeline.cpp
+  Code wird generiert...
+  cq_hecs_core_objects.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\cq_hecs_core_objects.dir\Release\cq_hecs_core_objects.lib
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  cq_c_api.cpp
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  test_stabilizer.cpp
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  test_statevector_contract.cpp
+  test_release_assert_meta.cpp
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  test_stabilizer_extreme.cpp
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  test_bitexact_and_stress.cpp
+  test_300q_stress.cpp
+  main.cpp
+  test_exact_ring.cpp
+  test_stress_limits.cpp
+  test_exact_algebra.cpp
+  test_qpu_facade_contract.cpp
+  test_mps_contract.cpp
+  test_sat_parser.cpp
+  test_hybrid_mps.cpp
+  ghz300_example.cpp
+  test_vulkan_device_policy.cpp
+  test_engine_cpp.cpp
+D:\Quantum EMU\CQ-HECS\src\cq_c_api.cpp(94,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Quantum EMU\CQ-HECS\build\v4\cq_hecs_core.vcxproj]
+  hybrid_engine.cpp
+  test_reversibility.cpp
+  hybrid_engine.cpp
+  vulkan_engine.cpp
+C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\algorithm(4248,24): warning C4244: "=": Konvertierung von "int" in "char", möglicher Datenverlust [D:\Quantum EMU\CQ-HECS\build\v4\test_qpu_facade_contract.vcxproj]
+  (Quelldatei „../../tests/cpp/test_qpu_facade_contract.cpp“ wird kompiliert)
+      C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\algorithm(4248,24):
+      der Vorlageninstanziierungskontext (der älteste zuerst) ist
+          D:\Quantum EMU\CQ-HECS\include\cq_hecs\transpiler\qasm3_parser.hpp(294,14):
+          Siehe Verweis auf die gerade kompilierte Instanziierung "_OutIt std::transform<std::_String_iterator<std::_String_val<std::_Simple_types<_Elem>>>,std::_String_iterator<std::_String_val<std::_Simple_types<_Elem>>>,int(__cdecl *)(int)>(const _InIt,const _InIt,_OutIt,_Fn)" der Funktions-Vorlage.
+          with
+          [
+              _OutIt=std::_String_iterator<std::_String_val<std::_Simple_types<char>>>,
+              _Elem=char,
+              _InIt=std::_String_iterator<std::_String_val<std::_Simple_types<char>>>,
+              _Fn=int (__cdecl *)(int)
+          ]
+  
+C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\algorithm(4248,24): warning C4244: "=": Konvertierung von "int" in "char", möglicher Datenverlust [D:\Quantum EMU\CQ-HECS\build\v4\test_bitexact_and_stress.vcxproj]
+  (Quelldatei „../../tests/test_bitexact_and_stress.cpp“ wird kompiliert)
+      C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\algorithm(4248,24):
+      der Vorlageninstanziierungskontext (der älteste zuerst) ist
+          D:\Quantum EMU\CQ-HECS\include\cq_hecs\transpiler\qasm3_parser.hpp(294,14):
+          Siehe Verweis auf die gerade kompilierte Instanziierung "_OutIt std::transform<std::_String_iterator<std::_String_val<std::_Simple_types<_Elem>>>,std::_String_iterator<std::_String_val<std::_Simple_types<_Elem>>>,int(__cdecl *)(int)>(const _InIt,const _InIt,_OutIt,_Fn)" der Funktions-Vorlage.
+          with
+          [
+              _OutIt=std::_String_iterator<std::_String_val<std::_Simple_types<char>>>,
+              _Elem=char,
+              _InIt=std::_String_iterator<std::_String_val<std::_Simple_types<char>>>,
+              _Fn=int (__cdecl *)(int)
+          ]
+  
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  test_statevector_contract.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_statevector_contract.exe
+  test_release_assert_meta.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_release_assert_meta.exe
+  stabilizer_tableau.cpp
+  cq_hecs_api.cpp
+  ring.cpp
+  mps_sampler.cpp
+  ghz300_example.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\ghz300_example.exe
+C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(636,85): warning C4244: "Argument": Konvertierung von "_Ty" in "uint8_t", möglicher Datenverlust [D:\Quantum EMU\CQ-HECS\build\v4\test_bitexact_and_stress.vcxproj]
+C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(636,85): warning C4244:         with [D:\Quantum EMU\CQ-HECS\build\v4\test_bitexact_and_stress.vcxproj]
+C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(636,85): warning C4244:         [ [D:\Quantum EMU\CQ-HECS\build\v4\test_bitexact_and_stress.vcxproj]
+C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(636,85): warning C4244:             _Ty=int [D:\Quantum EMU\CQ-HECS\build\v4\test_bitexact_and_stress.vcxproj]
+C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(636,85): warning C4244:         ] [D:\Quantum EMU\CQ-HECS\build\v4\test_bitexact_and_stress.vcxproj]
+  (Quelldatei „../../tests/test_bitexact_and_stress.cpp“ wird kompiliert)
+      C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(636,85):
+      der Vorlageninstanziierungskontext (der älteste zuerst) ist
+          D:\Quantum EMU\CQ-HECS\tests\test_bitexact_and_stress.cpp(159,21):
+          Siehe Verweis auf die gerade kompilierte Instanziierung "cq_hecs::transpiler::J_QuantumOpcode &std::vector<cq_hecs::transpiler::J_QuantumOpcode,std::allocator<cq_hecs::transpiler::J_QuantumOpcode>>::emplace_back<cq_hecs::transpiler::OpCode,uint8_t&,int,cq_hecs::transpiler::OpFlags,unsigned int>(cq_hecs::transpiler::OpCode &&,uint8_t &,int &&,cq_hecs::transpiler::OpFlags &&,unsigned int &&)" der Funktions-Vorlage.
+              D:\Quantum EMU\CQ-HECS\tests\test_bitexact_and_stress.cpp(159,33):
+              Ersten Verweis auf "std::vector<cq_hecs::transpiler::J_QuantumOpcode,std::allocator<cq_hecs::transpiler::J_QuantumOpcode>>::emplace_back" in "run_test_circuit_depth_stress_100k" anzeigen
+          C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\vector(927,24):
+          Siehe Verweis auf die gerade kompilierte Instanziierung "_Ty &std::vector<_Ty,std::allocator<_Ty>>::_Emplace_one_at_back<cq_hecs::transpiler::OpCode,uint8_t&,int,cq_hecs::transpiler::OpFlags,unsigned int>(cq_hecs::transpiler::OpCode &&,uint8_t &,int &&,cq_hecs::transpiler::OpFlags &&,unsigned int &&)" der Funktions-Vorlage.
+          with
+          [
+              _Ty=cq_hecs::transpiler::J_QuantumOpcode
+          ]
+          C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\vector(847,20):
+          Siehe Verweis auf die gerade kompilierte Instanziierung "_Ty &std::vector<_Ty,std::allocator<_Ty>>::_Emplace_back_with_unused_capacity<cq_hecs::transpiler::OpCode,uint8_t&,int,cq_hecs::transpiler::OpFlags,unsigned int>(cq_hecs::transpiler::OpCode &&,uint8_t &,int &&,cq_hecs::transpiler::OpFlags &&,unsigned int &&)" der Funktions-Vorlage.
+          with
+          [
+              _Ty=cq_hecs::transpiler::J_QuantumOpcode
+          ]
+          C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\vector(862,18):
+          Siehe Verweis auf die gerade kompilierte Instanziierung "void std::_Construct_in_place<cq_hecs::transpiler::J_QuantumOpcode,_Ty,uint8_t&,int,cq_hecs::transpiler::OpFlags,unsigned int>(cq_hecs::transpiler::J_QuantumOpcode &,_Ty &&,uint8_t &,int &&,cq_hecs::transpiler::OpFlags &&,unsigned int &&) noexcept" der Funktions-Vorlage.
+          with
+          [
+              _Ty=cq_hecs::transpiler::OpCode
+          ]
+          C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(657,14):
+          Siehe Verweis auf die gerade kompilierte Instanziierung "_Ty *std::construct_at<_Ty,cq_hecs::transpiler::OpCode,uint8_t&,int,cq_hecs::transpiler::OpFlags,unsigned int>(_Ty *const ,cq_hecs::transpiler::OpCode &&,uint8_t &,int &&,cq_hecs::transpiler::OpFlags &&,unsigned int &&) noexcept(<expr>)" der Funktions-Vorlage.
+          with
+          [
+              _Ty=cq_hecs::transpiler::J_QuantumOpcode
+          ]
+  
+C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(661,82): warning C4244: "Argument": Konvertierung von "_Ty" in "uint8_t", möglicher Datenverlust [D:\Quantum EMU\CQ-HECS\build\v4\test_bitexact_and_stress.vcxproj]
+C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(661,82): warning C4244:         with [D:\Quantum EMU\CQ-HECS\build\v4\test_bitexact_and_stress.vcxproj]
+C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(661,82): warning C4244:         [ [D:\Quantum EMU\CQ-HECS\build\v4\test_bitexact_and_stress.vcxproj]
+C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(661,82): warning C4244:             _Ty=int [D:\Quantum EMU\CQ-HECS\build\v4\test_bitexact_and_stress.vcxproj]
+C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(661,82): warning C4244:         ] [D:\Quantum EMU\CQ-HECS\build\v4\test_bitexact_and_stress.vcxproj]
+  (Quelldatei „../../tests/test_bitexact_and_stress.cpp“ wird kompiliert)
+  
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  test_vulkan_compute_contract.cpp
+C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(647,94): warning C4244: "Argument": Konvertierung von "_Ty" in "uint8_t", möglicher Datenverlust [D:\Quantum EMU\CQ-HECS\build\v4\test_bitexact_and_stress.vcxproj]
+C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(647,94): warning C4244:         with [D:\Quantum EMU\CQ-HECS\build\v4\test_bitexact_and_stress.vcxproj]
+C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(647,94): warning C4244:         [ [D:\Quantum EMU\CQ-HECS\build\v4\test_bitexact_and_stress.vcxproj]
+C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(647,94): warning C4244:             _Ty=int [D:\Quantum EMU\CQ-HECS\build\v4\test_bitexact_and_stress.vcxproj]
+C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(647,94): warning C4244:         ] [D:\Quantum EMU\CQ-HECS\build\v4\test_bitexact_and_stress.vcxproj]
+  (Quelldatei „../../tests/test_bitexact_and_stress.cpp“ wird kompiliert)
+      C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(647,94):
+      der Vorlageninstanziierungskontext (der älteste zuerst) ist
+          C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\vector(862,18):
+          Siehe Verweis auf die gerade kompilierte Instanziierung "void std::_Construct_in_place<cq_hecs::transpiler::J_QuantumOpcode,_Ty,uint8_t&,int,cq_hecs::transpiler::OpFlags,unsigned int>(cq_hecs::transpiler::J_QuantumOpcode &,_Ty &&,uint8_t &,int &&,cq_hecs::transpiler::OpFlags &&,unsigned int &&) noexcept" der Funktions-Vorlage.
+          with
+          [
+              _Ty=cq_hecs::transpiler::OpCode
+          ]
+          C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\include\xutility(657,14):
+          Siehe Verweis auf die gerade kompilierte Instanziierung "_Ty *std::construct_at<_Ty,cq_hecs::transpiler::OpCode,uint8_t&,int,cq_hecs::transpiler::OpFlags,unsigned int>(_Ty *const ,cq_hecs::transpiler::OpCode &&,uint8_t &,int &&,cq_hecs::transpiler::OpFlags &&,unsigned int &&) noexcept" der Funktions-Vorlage.
+          with
+          [
+              _Ty=cq_hecs::transpiler::J_QuantumOpcode
+          ]
+  
+  tableau.cpp
+  test_constraint_solver.cpp
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  test_exact_algebra.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_exact_algebra.exe
+  Code wird generiert...
+  stabilizer_tableau.cpp
+  maxcut_example.cpp
+  stabilizer_tableau.cpp
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  test_ghz300.cpp
+  test_sat_parser.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_sat_parser.exe
+  Code wird generiert...
+  Code wird generiert...
+  Code wird generiert...
+  test_300q_stress.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_300q_stress.exe
+  test_bitexact_and_stress.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_bitexact_and_stress.exe
+  test_reversibility.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_reversibility.exe
+  test_vulkan_compute_contract.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_vulkan_compute_contract.exe
+  test_qasm_contract.cpp
+  test_vulkan_device_policy.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_vulkan_device_policy.exe
+  test_mps_contract.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_mps_contract.exe
+  Code wird generiert...
+  test_stabilizer.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_stabilizer.exe
+  test_stabilizer_extreme.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_stabilizer_extreme.exe
+  test_engine_cpp.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_engine_cpp.exe
+  maxcut_example.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\maxcut_example.exe
+     Bibliothek "D:/Quantum EMU/CQ-HECS/build/v4/bin/Release/cq_hecs.lib" und Objekt "D:/Quantum EMU/CQ-HECS/build/v4/bin/Release/cq_hecs.exp" werden erstellt.
+  test_qpu_facade_contract.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_qpu_facade_contract.exe
+  cq_hecs_shared.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\cq_hecs.dll
+  test_exact_ring.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_exact_ring.exe
+  test_constraint_solver.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_constraint_solver.exe
+  mps_sampler.cpp
+  cq_hecs.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\cq_hecs.exe
+  Code wird generiert...
+  test_hybrid_mps.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_hybrid_mps.exe
+  test_ghz300.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_ghz300.exe
+  test_qasm_contract.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_qasm_contract.exe
+  test_stress_limits.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_stress_limits.exe
+  cq_qasm_parser.cpp
+  ring.cpp
+  tableau.cpp
+  vulkan_engine.cpp
+  Code wird generiert...
+     Bibliothek "D:/Quantum EMU/CQ-HECS/build/v4/bin/Release/cq_hecs_core.lib" und Objekt "D:/Quantum EMU/CQ-HECS/build/v4/bin/Release/cq_hecs_core.exp" werden erstellt.
+  cq_hecs_core.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\cq_hecs_core.dll
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+build exit 0

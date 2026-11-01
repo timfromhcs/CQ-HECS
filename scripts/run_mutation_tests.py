@@ -693,7 +693,89 @@ def check_omniwave_batch_bcp() -> bool:
     return False
 
 
+def check_separator_count() -> bool:
+    """True if variable-elimination #SAT disagrees with brute force."""
+    import itertools
+
+    from cqhecs.sat import CNF, count_models
+
+    cases = [
+        CNF(5, ((1, 2), (3, 4))),             # two components and one free variable
+        CNF(4, ((1, -2), (2, 3), (-3, 4))),   # one component
+        CNF(3, ((1,), (-1, 2))),              # unit clauses
+        CNF(3, ((1, -1), (2, 3))),            # tautology
+        CNF(4, ((1, 2, 3), (-1, -2), (-2, -3), (-1, -3), (3, 4))),
+    ]
+    for formula in cases:
+        brute = sum(
+            formula.is_satisfied({v: bits[v - 1] for v in range(1, formula.num_vars + 1)})
+            for bits in itertools.product((False, True), repeat=formula.num_vars)
+        )
+        if count_models(formula, method="separator")["count"] != str(brute):
+            return True
+    return False
+
+
+def check_pauli_y_phase() -> bool:
+    """True if a native Path D Y observable has the wrong phase."""
+    from cqhecs.backends.path_d_sparse_pauli import (
+        PathDSparsePauliBackend,
+        pauli_observable_from_ops,
+    )
+
+    backend = PathDSparsePauliBackend(
+        max_pauli_terms=10**6, prune_threshold=0.0, error_tolerance=10.0
+    )
+    circuit = [("h", [0], []), ("s", [0], [])]  # |+i>, so <Y> = +1
+    out = backend.evaluate_paulis(circuit, 1, [pauli_observable_from_ops("Y", [(0, "Y")])])["Y"]
+    return abs(out.value - 1.0) > 1e-9
+
+
+def check_pauli_bound_accounting() -> bool:
+    """True if a per-observable Path D bound is smaller than the true error."""
+    import random
+
+    from cqhecs.backends.dense_reference import simulate
+    from cqhecs.backends.path_d_sparse_pauli import (
+        PathDSparsePauliBackend,
+        pauli_observable_from_ops,
+    )
+
+    n = 4
+    for seed in range(40):
+        rng = random.Random(seed)
+        circuit = []
+        for _ in range(14):
+            r = rng.random()
+            if r < 0.35:
+                a, b = rng.sample(range(n), 2)
+                circuit.append((rng.choice(["cx", "cz"]), [a, b], []))
+            elif r < 0.7:
+                circuit.append((rng.choice(["rx", "ry", "rz"]), [rng.randrange(n)], [rng.uniform(-3, 3)]))
+            else:
+                circuit.append((rng.choice(["h", "s", "t"]), [rng.randrange(n)], []))
+        string = tuple((q, rng.choice("XYZ")) for q in sorted(rng.sample(range(n), 3)))
+        backend = PathDSparsePauliBackend(max_pauli_terms=3, prune_threshold=0.0, error_tolerance=10.0)
+        got = backend.evaluate_paulis(circuit, n, [pauli_observable_from_ops("o", string)])["o"]
+        truth = simulate(circuit, n).pauli_expectation(string)
+        if got.resolved and abs(got.value - truth) > got.error_bound + 1e-9:
+            return True
+    return False
+
+
+def check_plan_forced_refusal() -> bool:
+    """True if a forced incapable path is planned as executable."""
+    from cqhecs.execution_plan import build_execution_plan
+
+    plan = build_execution_plan([("h", [0], []), ("t", [0], [])], forced_path="A")
+    return plan.refusal is None or plan.selected_path is not None
+
+
 CHECKS: Dict[str, Callable[[], bool]] = {
+    "separator_count": check_separator_count,
+    "pauli_y_phase": check_pauli_y_phase,
+    "pauli_bound_accounting": check_pauli_bound_accounting,
+    "plan_forced_refusal": check_plan_forced_refusal,
     "qubit_bit_order": check_qubit_bit_order,
     "cz_conjugation": check_cz_conjugation,
     "rank_budget_fail_closed": check_rank_budget_fail_closed,
@@ -1251,6 +1333,54 @@ MUTANTS: List[SourceMutant] = [
         replacement="                if open_count == 0:\n                    status = OPEN_\n",
         check="omniwave_batch_bcp",
         mechanism="the batched kernel stops seeing conflicts, so refuted fronts are split forever",
+    ),
+    SourceMutant(
+        name="Separator #SAT ignores literal polarity",
+        target="cqhecs/sat_separator.py",
+        original="        if lit < 0:\n            falsifying |= 1 << (-lit)\n",
+        replacement="        if True:\n            falsifying |= 1 << abs(lit)\n",
+        check="separator_count",
+        mechanism="a clause factor excludes the assignment that sets every variable true, whatever the literal signs (a pure sign flip would be an equivalent mutant and is deliberately not used)",
+    ),
+    SourceMutant(
+        name="Separator #SAT join ignores shared variables",
+        target="cqhecs/sat_separator.py",
+        original="        for rmask, rweight in index.get(lmask & shared, ()):\n",
+        replacement="        for rmask, rweight in [i for lst in index.values() for i in lst]:\n",
+        check="separator_count",
+        mechanism="factors are multiplied even where they disagree on a shared variable",
+    ),
+    SourceMutant(
+        name="Separator #SAT keeps tautological clauses",
+        target="cqhecs/sat_separator.py",
+        original="        if any(-lit in literals for lit in literals):\n            continue\n",
+        replacement="        if False:\n            continue\n",
+        check="separator_count",
+        mechanism="(x or not x) is turned into a restricting factor instead of being dropped",
+    ),
+    SourceMutant(
+        name="Path D native Y loses its phase",
+        target="cqhecs/backends/path_d_sparse_pauli.py",
+        original="            coeff *= 1j\n",
+        replacement="            coeff *= 1\n",
+        check="pauli_y_phase",
+        mechanism="Y = iXZ is stored as XZ, so every Y observable has the wrong sign/phase",
+    ),
+    SourceMutant(
+        name="Path D per-observable bound never accumulates",
+        target="cqhecs/backends/path_d_sparse_pauli.py",
+        original="                states[key] = evolved\n                bounds[key] += discarded\n                if bounds[key] > self.error_tolerance:\n",
+        replacement="                states[key] = evolved\n                bounds[key] += 0.0 * discarded\n                if bounds[key] > self.error_tolerance:\n",
+        check="pauli_bound_accounting",
+        mechanism="discarded Pauli mass is dropped from the certified bound, so the bound understates the error",
+    ),
+    SourceMutant(
+        name="ExecutionPlan reroutes a forced incapable path",
+        target="cqhecs/execution_plan.py",
+        original="        elif forced not in props.supported_paths:\n",
+        replacement="        elif False:\n",
+        check="plan_forced_refusal",
+        mechanism="a forced path that cannot run the circuit is planned as executable instead of refused",
     ),
 ]
 
