@@ -1,6 +1,6 @@
 # HCS SHA Forge — Final report (this run)
 
-**Verdict: PARTIAL.** Software, break testing, UI and read-only hardware measurement are done and green locally. The operator-requested **flash was not performed**: the verified-backup gate (AGENTBUILD §6) cannot be met on this machine and the research firmware does not exist yet (B-03, B-04).
+**Verdict: PARTIAL.** Software, break testing, UI and read-only hardware measurement are done and green locally. The operator-requested **flash was not performed**: the verified-backup gate is now met (USB, B-03), but the research firmware does not exist and the ESP-IDF install was denied by the permission classifier (B-04).
 
 ## 1. Branch and commits
 
@@ -25,7 +25,8 @@
 | Identity read of `timsminer` | done: hostname `timsminer`, board 201, BM1366, `v4.0.2-rc1-timsminer`, running partition `factory` |
 | 60-minute baseline, stock firmware | done: 121 samples, 0 gaps; hashrate 240.5–425.2 GH/s (mean 325.1) at 485 MHz / 1100 mV, 64–65 °C, 11.4 W, 0 % ASIC error, 536 accepted / 1 rejected |
 | Pool, worker, wallet | unchanged (operator decision) |
-| Flash, OTA, restart, restore | **none**, see B-03/B-04 |
+| USB backup | done: full 16 MiB read, verified against the chip, two private copies; flash encryption and secure boot are off |
+| Flash, OTA, restore by writing | **none**: no research firmware (B-04). The miner was reset over USB (bootloader entry, then hard reset) and returned in about 25 s on the same firmware |
 | Writes, malformed requests or load against the unit | none (deliberate) |
 
 The miner is in the same firmware state as before this run.
@@ -40,7 +41,7 @@ Python 2570 passed / 109 skipped / 0 failed; web unit 33; Playwright 40; CI stat
 
 ## 6. Limits and next steps
 
-- To flash: attach `timsminer` by USB (or point to the private backup), approve installing ESP-IDF v6.0.2, then build stock, verify the hash, create the research profile, test restore first.
+- To flash: allow the ESP-IDF v6.0.2 install (or install it yourself), then build stock, verify the hash, create the research profile with host tests and flash over WLAN or USB. The USB backup and rescue path already exist.
 - WASM SHA module (B-05), Chrome Local Network Access check (B-07), research sprint (B-06) remain open.
 - Hashrate instability on the stock firmware (B-09) is unexplained.
 

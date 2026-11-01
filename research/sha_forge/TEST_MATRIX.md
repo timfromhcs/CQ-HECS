@@ -19,15 +19,15 @@ Full logs: `E:\qCSHA\sha_forge_results\tests\`.
 | Web unit tests `npm test` | PASS | 33 passed (17 existing + 16 new) |
 | `tsc --noEmit`, `vite build` | PASS | two entries |
 | Playwright + axe | PASS | **40 passed**: 13 existing + 27 new (tabs, validation, export, demo makes no cross-origin request, bridge unreachable, WebGPU-absent fallback, language, keyboard, axe on 5 tabs, no horizontal scroll at 360/768/1280/1920, 8 break tests, measured baseline section, evidence export) |
-| Hardware, read-only | MEASURED | identity read and a 60-minute baseline on the stock firmware (EVIDENCE_LEDGER E-09, E-11) |
+| Hardware, read-only | MEASURED | identity read, 60-minute stock baseline, USB chip identity, eFuse security state, full-flash backup verified against the chip (E-09, E-11, E-14) |
+| Miner reset and return | PASS | controlled resets over USB (bootloader entry and hard reset); back on WLAN with the same firmware and identity in about 25 s, mining |
 
 ## Not tested
 
 | Gate | Status | Why |
 |---|---|---|
-| Flash, OTA, research firmware, restore, ASIC job path | NOT TESTED / BLOCKED | B-03, B-04: no verified restore artifact, no USB access, no ESP-IDF; research firmware does not exist |
+| Flash, OTA, research firmware, restore by writing, ASIC job path | NOT TESTED / BLOCKED | B-04: research firmware does not exist and the ESP-IDF install was denied by the permission classifier; the USB rescue backup now exists |
 | WLAN backup route, backup/restore on a bench unit | NOT TESTED / BLOCKED | not implemented in firmware |
-| Flash-encryption / secure-boot state | NOT TESTED | B-01 |
 | Any write, malformed request or load against the physical unit | NOT TESTED (deliberate) | a crash of the only unit is not an acceptable test |
 | WASM SIMD / scalar SHA modules | NOT TESTED | B-05 |
 | WebGPU on other browsers/adapters; Chrome Local Network Access with a LAN host | NOT TESTED | B-07 |
