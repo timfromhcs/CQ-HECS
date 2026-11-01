@@ -1,0 +1,12 @@
+# HCS SHA Forge — Blockers
+
+| ID | Severity | Category | Status | Description | Next safe action |
+|---|---|---|---|---|---|
+| B-01 | High | HARDWARE | OPEN | No operator-approved read of `timsminer` was made. Identity, running partition, flash-encryption / secure-boot state and the 60-minute baseline are all `NOT RUN`. | Operator supplies the exact host (no scan) and approves a read-only `/api/system/info` session; run bridge with `--device-host`. |
+| B-02 | Medium | SCOPE | OPEN | Operator said "use timsminer with blackhark data, only that one" and later "timminer2 also excluded". Ambiguous: "blackhark data" may mean the other unit's pool/wallet, network values or telemetry. It was **not** applied; `blackharkminer` and `timminer2` are hard-excluded in code. | Operator states exactly which data (e.g. which pool/worker field) is meant, and confirms it must never be used to identify or flash `timsminer`. |
+| B-03 | High | HARDWARE | OPEN (by design) | M3: no WLAN backup route exists in ESP-Miner yet (`GET /api/system/backup/running-app`), so no original app image has been downloaded, hashed or copied twice. The ESP-Miner repo was not modified. | Implement the read-only route with host tests on a bench unit; build a backup-exporter if needed. No research flash until the gate passes. |
+| B-04 | High | HARDWARE | OPEN (by design) | M4/M5/M8: no research firmware, no ASIC job path, no flash, no restore were done. Requires B-01, B-03 and explicit approval. | Follow AGENTBUILD §6 and §12 M3→M4 order. |
+| B-05 | Medium | WEB | OPEN | No SHA WebAssembly module (scalar/SIMD) is bundled; the probe reports both tiers as unavailable with that reason. `cargo` 1.96 is present, so a small Rust module is feasible. | Add a `wasm32` SHA-256 module with the same KAT/cross-language tests, then enable the tiers. |
+| B-06 | Medium | RESEARCH | OPEN | `sha256-research-framework` not cloned or audited; HashSmash article not fetched; ePrint PDFs not read (only abstracts). | Research sprint per `LITERATURE_MAP.md`. |
+| B-07 | Low | WEB | OPEN | Chrome Local Network Access behaviour not verified on tested builds; only same-machine loopback was exercised. | Test Chrome/Edge against a bridge on loopback and a LAN host, record versions. |
+| B-08 | Low | CI | OPEN | No GitHub push/PR was made; remote CI and Vercel preview are `NOT RUN`. Workflow files were not changed. | After review: push the feature branch (operator action), open a draft PR, read CI on the exact head SHA. |
