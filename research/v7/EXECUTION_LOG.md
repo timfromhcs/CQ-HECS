@@ -8,3 +8,4 @@
 | M10 | `cqhecs/sat_separator.py`, `count_models(method=...)`; 316 tests | done |
 | M10 | benchmark `sat_separator_bench.json` | 0 mismatches; see FINDINGS F-001 |
 | M10 | DPLL counter RecursionError (F-002) | regression test red -> fixed -> green |
+| M5 | `PauliObservable`, `evaluate_pauli_observables`, `expectation.py` single native pass; 203 oracle tests | done |

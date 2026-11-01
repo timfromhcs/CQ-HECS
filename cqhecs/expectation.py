@@ -311,40 +311,32 @@ def _evaluate_terms(
         meta["numerical_mode"] = "float64-dense-statevector"
         return terms, bounds, unresolved
 
-    # sparse_pauli: one Path D run per distinct basis-rotation pattern.
+    # sparse_pauli: one native Heisenberg pass over every distinct X/Y/Z string.
+    # Each string keeps its own certified bound; an unresolved string does not
+    # invalidate the others.
     from cqhecs.backends.path_d_sparse_pauli import (
         PathDSparsePauliBackend,
         UnsupportedPathDOperation,
+        pauli_observable_from_ops,
     )
 
-    groups: Dict[Tuple[Tuple[int, str], ...], List[Any]] = {}
+    requests = []
+    names: Dict[str, Tuple[Tuple[int, str], ...]] = {}
     for key in terms:
         if not key:
             terms[key] = 1.0
             continue
-        groups.setdefault(_rotation_signature(key), []).append(key)
+        name = f"t{len(names)}"
+        names[name] = key
+        requests.append(pauli_observable_from_ops(name, key))
 
-    runs = 0
-    for signature, keys in groups.items():
-        # An idle top qubit would otherwise shrink the width Path D infers
-        # from the instruction list and invalidate observables on it.
-        rotated = (
-            instructions
-            + _basis_rotation(signature)
-            + [("id", [num_qubits - 1], [])]
-        )
-        requests = {}
-        for idx, key in enumerate(keys):
-            mask = 0
-            for q, _letter in key:
-                mask |= 1 << q
-            requests[f"t{idx}"] = mask
+    if requests:
         backend = PathDSparsePauliBackend(
             max_pauli_terms=max_pauli_terms, error_tolerance=error_tolerance
         )
         try:
-            res = backend.execute(
-                rotated, shots=1, error_tolerance=error_tolerance, observables=requests
+            evaluated = backend.evaluate_paulis(
+                instructions, num_qubits, requests, error_tolerance
             )
         except UnsupportedPathDOperation as exc:
             raise ExpectationError(
@@ -352,18 +344,17 @@ def _evaluate_terms(
                 "use method='dense' (up to the dense width limit) or method='stabilizer' "
                 "(Clifford circuits)"
             ) from exc
-        runs += 1
-        if res.unresolved or res.expectation_values is None:
-            unresolved = True
-            for key in keys:
+        for name, key in names.items():
+            outcome = evaluated[name]
+            bounds[key] = outcome.error_bound
+            if outcome.resolved:
+                terms[key] = outcome.value
+            else:
                 terms[key] = None
-                bounds[key] = float(res.error_bound)
-            continue
-        for idx, key in enumerate(keys):
-            terms[key] = float(res.expectation_values[f"t{idx}"])
-            bounds[key] = float(res.error_bound)
+                unresolved = True
     meta["numerical_mode"] = "float64-heisenberg-certified"
-    meta["sparse_pauli_runs"] = runs
+    meta["sparse_pauli_runs"] = 1 if requests else 0
+    meta["per_observable_bounds"] = True
     return terms, bounds, unresolved
 
 

@@ -33,3 +33,31 @@ and a new held-out set is required.
 
 **Outcome.** See `FINDINGS.md` (filled after the run; raw data in
 `evidence/sat_separator_bench.json`).
+
+## H4-PAULI-01 -- native X/Y/Z Heisenberg observables with per-observable certified bounds
+
+**Honest scope note.** `cqhecs.expectation` already evaluated X/Y/Z strings on
+Path D in v3.7.0 by appending basis-change gates and running one Path D pass per
+rotation pattern, reporting the *shared total* bound for every value. This
+hypothesis is therefore about two narrow improvements, not about "adding"
+general Paulis: (a) native propagation of `coeff * X^x Z^z` terms (Y = iXZ) in a
+single pass, and (b) a separate bound per observable.
+
+**Claim.** For every supported circuit, observable and truncation setting,
+`|<O>_exact - <O>_PathD| <= error_bound(O)` where `error_bound(O)` counts only
+`O`'s own discarded Pauli mass; and an observable that exceeds the tolerance does
+not make other observables unresolved.
+
+**Falsification.** Any case where the true error (Qiskit `Statevector` +
+`Pauli.expectation_value`, an independent implementation) exceeds that
+observable's bound; any untruncated disagreement above 1e-9; any phase error in
+the exhaustive one-/two-qubit tables; the Y-phase mutation not being detected.
+
+**Data.** `tests/test_path_d_pauli_observables.py` (203 tests; fixed seeds
+`range(120)` untruncated, `1000+range(150)` truncated). No performance claim.
+
+**Limits (not supported, typed refusal or absent):** products of Paulis on one
+qubit (`X[0]Z[0]`), weighted sums as a single native observable (still handled
+one level up by `expectation_values`), gates outside Path D's conjugation set
+(`UnsupportedPathDOperation`), float64 roundoff in the bound, any statement about
+counts or joint distributions.

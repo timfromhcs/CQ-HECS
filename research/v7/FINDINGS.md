@@ -43,3 +43,15 @@ test `test_dpll_counter_refuses_deep_recursion_instead_of_crashing` failed befor
 the fix. The counter now returns `UNKNOWN` with an explicit note (no count
 claimed). Severity: medium (no wrong answer, but an unhandled exception in a
 public API and MCP/Studio surface).
+
+## F-003 H4-PAULI-01: native X/Y/Z observables -- SUPPORTED_IN_SCOPE
+All 203 oracle tests pass. 150 randomized truncated circuits (>= 50 with a
+non-zero bound) never exceeded their own certified bound; 120 untruncated random
+circuits agree with Qiskit to 1e-9; every single-qubit gate x letter and every
+two-qubit Pauli x {cx, cz, swap} entry matches to 1e-12; the Y-phase mutation is
+caught. In 60 random truncated circuits the per-observable maximum was strictly
+below the shared-sum bound in more than 10 (asserted), i.e. the new bounds are
+tighter, never looser, by construction. `expectation_values(method="sparse_pauli")`
+now runs once instead of once per basis-rotation pattern; its reported
+`error_bound` per value is the observable's own bound (previously the group
+total). Callers that read the old looser number get a smaller, still valid one.

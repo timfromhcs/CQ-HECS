@@ -33,7 +33,7 @@ import math
 import re
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
 import numpy as np
 
 from cqhecs.circuit_parsing import parse_circuit
@@ -234,6 +234,62 @@ class PauliTerm:
 
 class UnsupportedPathDOperation(ValueError):
     """Raised when a circuit uses an operation Path D cannot evolve faithfully."""
+
+
+@dataclass(frozen=True)
+class PauliObservable:
+    """
+    A Hermitian Pauli string in the *stored* basis: ``coeff * X^x Z^z``.
+
+    ``Y = i X Z`` (``X Z = [[0,-1],[1,0]]``, ``i X Z = [[0,-i],[i,0]] = Y``), so
+    every ``Y`` factor contributes one factor ``i`` to ``coeff``. Because each
+    qubit carries at most one letter, ``coeff`` is always one of ``1, i, -1,
+    -i`` and the operator is Hermitian by construction.
+    """
+
+    name: str
+    x_mask: int
+    z_mask: int
+    coeff: complex
+
+
+class PauliValue(NamedTuple):
+    """Outcome for one observable: its own certified bound, never a shared one."""
+
+    value: Optional[float]
+    error_bound: float
+    resolved: bool
+
+
+def pauli_observable_from_ops(
+    name: str, ops: Sequence[Tuple[int, str]]
+) -> PauliObservable:
+    """Builds a :class:`PauliObservable` from ``[(qubit, 'X'|'Y'|'Z'), ...]``."""
+    x_mask = z_mask = 0
+    coeff = complex(1.0, 0.0)
+    seen = set()
+    for qubit, letter in ops:
+        if qubit < 0:
+            raise ValueError(f"negative qubit index {qubit} in observable {name!r}")
+        if qubit in seen:
+            raise ValueError(
+                f"qubit {qubit} appears twice in observable {name!r}; products of "
+                "Paulis on one qubit are not accepted"
+            )
+        seen.add(qubit)
+        bit = 1 << qubit
+        letter = letter.upper()
+        if letter == "X":
+            x_mask |= bit
+        elif letter == "Z":
+            z_mask |= bit
+        elif letter == "Y":
+            x_mask |= bit
+            z_mask |= bit
+            coeff *= 1j
+        elif letter != "I":
+            raise ValueError(f"invalid Pauli letter {letter!r} in {name!r}")
+    return PauliObservable(name, x_mask, z_mask, coeff)
 
 
 class SparsePauliDynamicsSimulator:
@@ -478,6 +534,62 @@ class SparsePauliDynamicsSimulator:
         unresolved = (self.accumulated_error_bound > self.error_tolerance)
         return exp_val, float(self.accumulated_error_bound), unresolved
 
+    def evaluate_pauli_observables(
+        self,
+        instructions: List[Tuple[str, List[int], List[float]]],
+        observables: Sequence[PauliObservable],
+    ) -> Dict[str, PauliValue]:
+        """
+        Heisenberg propagation of general X/Y/Z Pauli strings with a **separate
+        certified bound per observable**.
+
+        For observable ``O`` the discarded Pauli mass ``D_O`` is accumulated only
+        from ``O``'s own truncations, so ``|<O_exact> - <O_kept>| <= D_O``
+        (triangle inequality; truncating *other* observables cannot change it).
+        An observable whose own bound exceeds ``error_tolerance`` is reported
+        ``resolved=False`` with ``value=None`` and is no longer propagated -- the
+        bound only grows, so the outcome could not recover. Other observables
+        are unaffected.
+
+        The bound covers deliberate truncation only. Float64 roundoff is not
+        included. It certifies each returned *expectation value*; it says nothing
+        about sampled counts or joint distributions.
+        """
+        states: Dict[str, Dict[Tuple[int, int], complex]] = {}
+        for obs in observables:
+            if obs.name in states:
+                raise ValueError(f"duplicate observable name {obs.name!r}")
+            if max(obs.x_mask, obs.z_mask).bit_length() > self.num_qubits:
+                raise ValueError(
+                    f"observable {obs.name!r} acts beyond the "
+                    f"{self.num_qubits}-qubit system"
+                )
+            states[obs.name] = {(obs.x_mask, obs.z_mask): obs.coeff}
+        bounds = dict.fromkeys(states, 0.0)
+        active = set(states)
+        for name, qubits, params in reversed(instructions):
+            if name in self.IGNORED_GATES:
+                continue
+            for key in sorted(active):
+                evolved = self._apply_gate_backward(states[key], name, qubits, params)
+                evolved, discarded = self._truncate_terms(evolved)
+                states[key] = evolved
+                bounds[key] += discarded
+                if bounds[key] > self.error_tolerance:
+                    active.discard(key)
+        out: Dict[str, PauliValue] = {}
+        for key, terms in states.items():
+            if key not in active:
+                out[key] = PauliValue(None, float(bounds[key]), False)
+                continue
+            # <0..0| c X^x Z^z |0..0> = c when x == 0 and 0 otherwise. For a
+            # Hermitian observable the exact sum is real; the real part is taken.
+            exp_val = sum(c.real for (x, _z), c in terms.items() if x == 0)
+            out[key] = PauliValue(
+                max(-1.0, min(1.0, float(exp_val))), float(bounds[key]), True
+            )
+        return out
+
     def evaluate_expectation_values(
         self,
         instructions: List[Tuple[str, List[int], List[float]]],
@@ -713,6 +825,100 @@ class PathDSparsePauliBackend:
         self.error_tolerance = error_tolerance
         self.allow_uncertified_joint_counts = allow_uncertified_joint_counts
 
+    def evaluate_paulis(
+        self,
+        instructions: List[Tuple[str, List[int], List[float]]],
+        num_qubits: int,
+        observables: Sequence[PauliObservable],
+        error_tolerance: Optional[float] = None,
+    ) -> Dict[str, PauliValue]:
+        """
+        Per-observable certified values for general Pauli strings.
+
+        ``instructions`` are already-parsed operations (terminal measurements
+        removed); ``num_qubits`` is passed explicitly so an idle top qubit cannot
+        change the width.
+        """
+        if num_qubits > self.MAX_QUBITS:
+            raise ValueError(
+                f"Path D supports at most {self.MAX_QUBITS} qubits "
+                f"(got {num_qubits}); refusing before building observables."
+            )
+        tol = error_tolerance if error_tolerance is not None else self.error_tolerance
+        sim = SparsePauliDynamicsSimulator(
+            num_qubits=num_qubits,
+            max_pauli_terms=self.max_pauli_terms,
+            prune_threshold=self.prune_threshold,
+            error_tolerance=tol,
+        )
+        return sim.evaluate_pauli_observables(instructions, observables)
+
+    def _execute_pauli_strings(
+        self,
+        instructions: List[Tuple[str, List[int], List[float]]],
+        n_q: int,
+        requested: List[str],
+        tol: float,
+        t0: float,
+    ) -> SimulationResult:
+        """``execute(observables=[...])`` for lists containing X or Y letters."""
+        from cqhecs.expectation import parse_pauli
+
+        parsed: List[PauliObservable] = []
+        for text in requested:
+            if not isinstance(text, str):
+                raise TypeError(
+                    f"Observable descriptor must be str, got {type(text).__name__}"
+                )
+            if re.search(r"[XYxy]", text):
+                pauli = parse_pauli(text, n_q)
+                parsed.append(pauli_observable_from_ops(pauli.label, pauli.ops))
+            else:
+                for name, mask in _parse_observable_request([text], n_q).items():
+                    parsed.append(PauliObservable(name, 0, mask, complex(1.0, 0.0)))
+        evaluated = self.evaluate_paulis(instructions, n_q, parsed, tol)
+        unresolved = any(not v.resolved for v in evaluated.values())
+        error_bound = max((v.error_bound for v in evaluated.values()), default=0.0)
+        values = {k: v.value for k, v in evaluated.items() if v.resolved}
+        t1 = time.perf_counter()
+        return SimulationResult(
+            path="D",
+            exact=False,
+            error_bound=error_bound,
+            unresolved=unresolved,
+            counts={},
+            expectation_values=None if unresolved else values,
+            execution_time_ms=(t1 - t0) * 1000.0,
+            metadata={
+                "backend": "SparsePauliDynamicsSimulator",
+                "qubit_count": n_q,
+                "error_tolerance": tol,
+                "certified_error_bound": error_bound,
+                "unresolved": unresolved,
+                "max_pauli_terms": self.max_pauli_terms,
+                "method": "Heisenberg Sparse-Pauli Certified Approximation (native X/Y/Z)",
+                "hardware_access": False,
+                "classical_only": True,
+                "certified_observables": sorted(values),
+                "per_observable_error_bounds": {
+                    k: v.error_bound for k, v in evaluated.items()
+                },
+                "error_bound_scope": (
+                    "each returned value is certified by its own entry in "
+                    "per_observable_error_bounds; error_bound is their maximum"
+                ),
+                "counts_supported": False,
+                "counts_are_joint_distribution": False,
+                "error_bound_covers": "expectation_values",
+                "error_bound_excludes": "counts (not produced)",
+                "numerical_mode": "float64-heisenberg-certified",
+                "reason": (
+                    "Path D certifies Pauli expectation values only; the bound "
+                    "excludes float64 roundoff and any sampled distribution."
+                ),
+            },
+        )
+
     def execute(
         self,
         circuit: Any,
@@ -737,6 +943,17 @@ class PathDSparsePauliBackend:
             raise ValueError(
                 f"Path D supports at most {self.MAX_QUBITS} qubits "
                 f"(circuit has {n_q}); refusing before building observables."
+            )
+
+        if (
+            observables is not None
+            and not isinstance(observables, dict)
+            and any(
+                isinstance(o, str) and re.search(r"[XYxy]", o) for o in observables
+            )
+        ):
+            return self._execute_pauli_strings(
+                instructions, n_q, list(observables), tol, t0
             )
 
         sim = SparsePauliDynamicsSimulator(

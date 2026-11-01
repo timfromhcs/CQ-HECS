@@ -14,12 +14,12 @@ record everything else honestly as not promoted.
 | M2 | Source/literature audit | IN_PROGRESS (literature map: prior art for planned features only) |
 | M3 | Result schema / contracts | PARTIAL: `plan_check` metadata added additively; no field changed meaning |
 | M4 | Explainable ExecutionPlan (Python/CLI/MCP/Studio API) | SUPPORTED_IN_SCOPE (Python+CLI+MCP+Studio API); Studio *UI panel* NOT STARTED |
-| M5 | Path D general Pauli observables | DEFERRED (not started; needs phase-convention spec + dense oracle first) |
+| M5 | Path D native X/Y/Z observables + per-observable bounds | SUPPORTED_IN_SCOPE (see HYPOTHESES H4-PAULI-01 for scope: not a new capability, a tighter and single-pass one) |
 | M6 | Path C graph-aware ordering | DEFERRED |
 | M7 | Noise calibration schema v3 | DEFERRED |
 | M8 | Browser/Python/native conformance corpus | NOT STARTED |
 | M9 | Native/GPU correctness+performance | NOT STARTED (Vulkan toolchain unverified) |
-| M10 | Exact separator #SAT backend | SUPPORTED_IN_SCOPE (opt-in `method="separator"|"auto"`; default stays dpll) |
+| M10 | Exact separator #SAT backend | SUPPORTED_IN_SCOPE (opt-in `method="separator"` or `"auto"`; default stays dpll) |
 | M11 | CNF-to-XOR with witness | DEFERRED |
 | M12 | Optional CDCL | DEFERRED |
 | M13 | OMNIWAVE v4 experiments | DEFERRED |
