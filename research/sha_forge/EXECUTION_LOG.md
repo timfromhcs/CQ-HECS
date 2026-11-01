@@ -14,4 +14,4 @@ Date: 2026-11-01. Operator: timfromhcs. Agent session: Claude Code (Sonnet 5.5).
 10. Added a "SHA Forge" link to the CQ-HECS nav and a second Vite entry (`forge.html`).
 11. **Not done, by design:** no contact with any physical miner, no firmware work in ESP-Miner, no push, no PR, no Vercel deployment.
 
-Commit: see FINAL_REPORT (a local checkpoint commit is created only if the operator asks; nothing was committed at the time of writing).
+Local checkpoint commit `7c4b62f` on `feat/sha-forge-hardware-lab` (not pushed). Full Python suite: 2499 passed, 109 skipped.
