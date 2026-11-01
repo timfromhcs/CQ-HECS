@@ -19,6 +19,10 @@ web/forge.html + src/forge/*  ──────▶ cqhecs/hardware/bridge.py  �
 | `cqhecs/hardware/miner_protocol.py` | `/api/system/info` → `hcs.sha.miner.v1`, unknown → `null`, secrets never copied. |
 | `cqhecs/hardware/evidence.py` | ESP image/app-descriptor inspection, backup manifest where every flag comes from a check that ran, recheck from file, restore preview. |
 | `cqhecs/hardware/bridge.py` | Loopback-only HTTP service, exact-origin CORS, pairing token with TTL, POST-only mutation routes, rate limit, strict JSON, 4 KiB body cap. **Read-only**: work/flash routes answer `403 READ_ONLY`. `--simulate` runs without any LAN access. |
+| `cqhecs/hardware/firmware_profile.py` | Pins a built image (version, commit, size, SHA-256, build flags, research limits), re-hashes the artefact, and refuses an image whose digest does not match or any document that claims ASIC-internal SHA state (`asic_access` must be `none`). `matches_device()` compares a live research status with the record. |
+| `cqhecs/hardware/research_client.py` | Typed client for the firmware `/api/research/*` routes: 64-byte block traces replayed through `round_trace.replay` before acceptance, digests cross-checked against the local reference, no redirects, 256 KiB cap, typed refusals (`thermal_unsafe`, `pool_active`, …) treated as results. |
+| `scripts/sha_forge_firmware.py` | CLI: pin an image, verify it, read the device status, capture a verified trace as evidence. The device address is always an argument, never committed. |
+| `scripts/verify_firmware_trace.py` | Cross-language check: builds the firmware's host test binary, emits device-shaped traces and runs `round_trace.replay()` on each. |
 | `web/src/forge/{sha,gpu_sha,backends,demo,i18n,main}.ts`, `forge.html` | Browser analyzer, WGSL u32 batch kernel with CPU oracle self-test, backend probe with visible fallbacks, seeded demo fixtures, EN/DE/FR. |
 
 ## What the ASIC path is and is not

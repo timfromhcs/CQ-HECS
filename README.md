@@ -307,6 +307,32 @@ Every `SimulationResult` carries a machine-readable state:
 - IBM calibration import (schema 2.0) preserves non-operational gates and
   inconsistent T1/T2 as explicit flags instead of clipping them.
 
+### HCS SHA Forge (experimental)
+
+A separate, bounded research surface around SHA-256, with the same rule as the
+rest of CQ-HECS: no claim without a check that ran.
+
+- `cqhecs/sha`: FIPS 180-4 reference, per-round traces (`hcs.sha.trace.v1`,
+  always tagged `SOFTWARE_REPLAY`), a replay that rejects any tampered value, and
+  SHA-256d header traces with the midstate.
+- `cqhecs/hardware`: device allowlist (exactly one unit), explicit state machine,
+  loopback-only bridge, firmware profile pinned by image digest, and a typed
+  client that replays every trace the device returns before accepting it.
+- On-device counterpart: an optional ESP-Miner firmware feature
+  (`CONFIG_TIMSMINER_SHA_RESEARCH`, default off) that computes SHA-256 in
+  software on the ESP32-S3 and returns the same trace document, behind a
+  short-lived operator token and thermal/pool/budget gates. Host tests:
+  81 assertions for the SHA oracle and 105 for the authorisation guard.
+- The BM1366 executes SHA-256d internally and returns nonces. It exposes no round
+  registers or message schedule, no client can write an arbitrary block to it,
+  and nothing here reads ASIC state. `capabilities.limitations.asic_access` is
+  `"none"`, and a profile or capability document that claims otherwise is
+  refused by `firmware_profile.reject_asic_round_claim()`.
+
+Status: host-verified and build-verified; the research firmware has not been
+flashed to the miner. See
+[`research/sha_forge/FIRMWARE.md`](research/sha_forge/FIRMWARE.md).
+
 ### Real-data reference evaluation
 
 `cq-hecs reference` evaluates a noisy prediction against measured IBM counts
