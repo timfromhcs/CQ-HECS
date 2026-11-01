@@ -758,6 +758,19 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         "version": __version__,
         "analysis": props.to_dict(),
     }
+    plan = None
+    if args.explain or args.force_path or args.require_counts or args.max_memory_mb:
+        from cqhecs.execution_plan import build_execution_plan
+
+        plan = build_execution_plan(
+            circuit,
+            forced_path=args.force_path,
+            require_counts=args.require_counts,
+            max_memory_bytes=(
+                int(args.max_memory_mb * 1024 * 1024) if args.max_memory_mb else None
+            ),
+        )
+        payload["plan"] = plan.to_dict()
     if args.format == "json":
         _emit_json(payload)
     else:
@@ -768,6 +781,9 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         print(f"Entanglement: {props.entanglement_estimate} (max cut {props.max_cut_width})")
         print(f"Recommended : Path {props.recommended_path}")
         print(f"Reason      : {props.reason}")
+        if plan is not None:
+            print()
+            print(plan.explain())
     return EXIT_OK
 
 
@@ -1192,6 +1208,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_analyze = sub.add_parser("analyze", help="Statically analyze a circuit")
     p_analyze.add_argument("circuit", help=".qasm file, 'name:<builtin>' or 'mod.py:NAME'")
+    p_analyze.add_argument(
+        "--explain", action="store_true",
+        help="Add the dry-run ExecutionPlan (candidate paths, estimates, refusals)",
+    )
+    p_analyze.add_argument(
+        "--force-path", choices=["A", "B", "C", "D"], default=None,
+        help="Plan as if this path were forced (a forced path is never rerouted)",
+    )
+    p_analyze.add_argument(
+        "--require-counts", action="store_true",
+        help="Plan as if bitstring counts are required (Path D cannot provide them)",
+    )
+    p_analyze.add_argument(
+        "--max-memory-mb", type=float, default=None,
+        help="Refuse in the plan if the selected path's heuristic estimate exceeds this",
+    )
 
     p_run = sub.add_parser("run", help="Execute a circuit")
     p_run.add_argument("circuit", help=".qasm file, 'name:<builtin>' or 'mod.py:NAME'")

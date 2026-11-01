@@ -373,23 +373,42 @@ class StudioState:
             "measured": True,
         }
 
-    def simulate(self, request: Mapping[str, Any]) -> Dict[str, Any]:
-        source = str(request.get("source", "preset:bell"))
+    @staticmethod
+    def _resolve_circuit(source: str) -> Any:
         if source.startswith("preset:"):
             name = source[len("preset:") :]
             try:
-                circuit = build_builtin_circuit(name)
+                return build_builtin_circuit(name)
             except (KeyError, ValueError) as exc:
                 raise StudioError(f"unknown preset {name!r}", status=404, code="unknown_preset") from exc
-        elif source.startswith("qasm:"):
-            circuit = source[len("qasm:") :]
-        elif "OPENQASM" in source or "qreg" in source:
-            circuit = source
-        else:
-            raise StudioError(
-                "source must be 'preset:<name>' or an OpenQASM 2.0 string",
-                code="invalid_source",
+        if source.startswith("qasm:"):
+            return source[len("qasm:") :]
+        if "OPENQASM" in source or "qreg" in source:
+            return source
+        raise StudioError(
+            "source must be 'preset:<name>' or an OpenQASM 2.0 string",
+            code="invalid_source",
+        )
+
+    def plan(self, request: Mapping[str, Any]) -> Dict[str, Any]:
+        """Dry-run ExecutionPlan; same schema as the CLI, MCP and Python API."""
+        circuit = self._resolve_circuit(str(request.get("source", "preset:bell")))
+        path = str(request.get("path", "auto")).upper()
+        if path != "AUTO" and path not in ("A", "B", "C", "D"):
+            raise StudioError("path must be auto, A, B, C or D", code="invalid_path")
+        try:
+            plan = self._router.plan(
+                circuit,
+                preferred_path=None if path == "AUTO" else path,
+                require_counts=bool(request.get("require_counts", False)),
             )
+        except (TypeError, ValueError) as exc:
+            raise StudioError(str(exc), status=422, code="invalid_circuit") from exc
+        return {"schema_version": "1.0", "plan": plan.to_dict()}
+
+    def simulate(self, request: Mapping[str, Any]) -> Dict[str, Any]:
+        source = str(request.get("source", "preset:bell"))
+        circuit = self._resolve_circuit(source)
         circuit = _measured(circuit)
         shots = _int(request.get("shots"), "shots", 1, 20000, 1024)
         seed = _int(request.get("seed"), "seed", 0, 2**31 - 1, 42)
@@ -1023,6 +1042,8 @@ class StudioHandler(BaseHTTPRequestHandler):
             body = self._read_json()
             if path == "/api/simulate":
                 return self._json(HTTPStatus.OK, self.server.state.simulate(body))
+            if path == "/api/plan":
+                return self._json(HTTPStatus.OK, self.server.state.plan(body))
             if path == "/api/noise/compare":
                 return self._json(HTTPStatus.OK, self.server.state.compare_noise(body))
             if path == "/api/sat/solve":
