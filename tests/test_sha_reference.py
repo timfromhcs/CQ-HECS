@@ -37,7 +37,16 @@ def test_constants_derive_from_primes():
     assert [_frac_root(p, 2) for p in primes[:8]] == list(ref.IV)
 
 
-@pytest.mark.parametrize("message,digest", vectors.SHA256_KAT)
+# The known-answer vectors include a one-million-byte message. With the default
+# id generation pytest builds the test id from repr(message), i.e. a megabyte-long
+# string, and on Windows that id travels through an environment variable that is
+# limited to 32767 characters - the test then fails to run with an OSError before
+# the assertion is ever reached. Explicit, short, still unique ids fix that
+# without changing what is asserted.
+_KAT_IDS = [("empty" if not message else f"{len(message)}-byte-message") for message, _ in vectors.SHA256_KAT]
+
+
+@pytest.mark.parametrize("message,digest", vectors.SHA256_KAT, ids=_KAT_IDS)
 def test_known_answers(message, digest):
     assert ref.sha256(message).hex() == digest
 
