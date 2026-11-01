@@ -22,4 +22,4 @@ PY
 Independent checks: NIST vectors, `hashlib`, `node:crypto`, Web Crypto, constants re-derived from prime roots, the Bitcoin genesis header
 (`000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f`), and negative controls (wrong IV, missing feed-forward, endian swap, mutated constant, off-by-one round).
 
-Limits: single- and multi-block messages and 80-byte headers only; no UI for the differential view yet (available in Python: `diff_traces`).
+Limits: input is capped at 8192 bytes (129 blocks) so a trace stays bounded; single- and multi-block messages and 80-byte headers only; no UI for the differential view yet (available in Python: `diff_traces`).

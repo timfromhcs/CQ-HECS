@@ -22,9 +22,9 @@ Python test deps installed for this work: pytest, hypothesis, numpy, qiskit (dec
 
 | Item | State |
 |---|---|
-| Live `/api/system/info` read of `timsminer` | `NOT RUN` — no operator-approved read in this session |
-| 60-minute baseline at 30 s sampling | `NOT RUN` |
-| Running partition, flash-encryption / secure-boot state | `NOT RUN` |
+| Live `/api/system/info` read of `timsminer` | DONE — operator supplied the address; hostname, board, ASIC, firmware and partition recorded in `DEVICE_PROFILE.md` |
+| 60-minute baseline at 30 s sampling | DONE on the stock firmware: 121 samples, 0 gaps (EVIDENCE_LEDGER E-11) |
+| Running partition | `factory` (measured). Flash-encryption / secure-boot state: `NOT RUN` |
 | WLAN app-image backup | `NOT RUN` |
 | Any flash, OTA, restart, pool or frequency change | **none performed** |
 

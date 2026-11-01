@@ -1,55 +1,50 @@
 # HCS SHA Forge — Final report (this run)
 
-**Verdict: PARTIAL.** The software side (M1, M2 read-only, M6 partly, M7 demo) is built and tested. The hardware side (M0 device part, M3, M4, M5, M8) is **not started by design** and gated on operator action.
+**Verdict: PARTIAL.** Software, break testing, UI and read-only hardware measurement are done and green locally. The operator-requested **flash was not performed**: the verified-backup gate (AGENTBUILD §6) cannot be met on this machine and the research firmware does not exist yet (B-03, B-04).
 
-## 1. Commits and branches
+## 1. Branch and commits
 
-| Repo | Branch | Commit |
+| Repo | Branch | State |
 |---|---|---|
-| CQ-HECS | `feat/sha-forge-hardware-lab` (from `423e389`, tag v4.0.0) | `7c4b62f` plus a follow-up commit for this report; **not pushed**, no PR |
+| CQ-HECS | `dev/sha-forge-hardware-lab` (local name `feat/sha-forge-hardware-lab`, from `423e389`, tag v4.0.0) | commits listed in `git log`; pushed as the dev branch, see EXECUTION_LOG for the remote CI result on the exact head SHA |
 | ESP-Miner | none | unchanged (`21f543c`) |
 | sha256-research-framework | none | not touched |
 
-## 2. Files (CQ-HECS)
+## 2. What was built
 
-Python: `cqhecs/sha/{__init__,model,round_trace,sha256_reference,vectors}.py`, `cqhecs/hardware/{__init__,bridge,evidence,miner_capabilities,miner_protocol,state_machine}.py`.
-Tests: `tests/test_sha_{reference,round_trace,model,bridge}.py`, `tests/test_hardware_policy.py`.
-Web: `web/forge.html`, `web/src/forge/*`, `web/tests/forge.test.ts` (+ fixture), `web/e2e/forge.spec.ts`; edited `web/vite.config.ts` (second entry), `web/tests/run.mjs`, `web/index.html` (one nav link).
-Docs/research: `docs/{LOCAL_BRIDGE,MINER_BACKUP_RESTORE,SHA_ROUND_ANALYZER,TIMSMINER_RESEARCH_MODE,WEBGPU_WASM_BACKENDS}.md`, `research/sha_forge/*`, `CHANGELOG.md` (Unreleased).
+- `cqhecs/sha`: FIPS 180-4 reference, 64-round traces (`hcs.sha.trace.v1`, `SOFTWARE_REPLAY`), replay that rejects tampering, nonce candidate replay, typed result contract.
+- `cqhecs/hardware`: state machine, timsminer-only allowlist (`blackharkminer`, `timminer2` excluded), telemetry normaliser, backup manifest and restore preview, loopback read-only bridge (hardened by break testing), secret-free result bundle builder.
+- `web/forge.html`: Round Analyzer, Miner Lab with a **MEASURED** baseline section kept apart from the **DEMO** fixture, backend probe with WebGPU u32 kernel, Evidence export, EN/DE/FR.
+- `scripts/sha_forge_baseline.py` (read-only capture, identity checked per sample) and `scripts/sha_forge_publish_results.py`.
+- Results live outside both repositories in `E:\qCSHA\sha_forge_results\` (raw capture, logs, breakage report). Only the identifier-free bundle `web/public/forge/baseline_results.json` is in the repo.
 
-## 3. How to run
+## 3. Hardware: what happened and what did not
 
-```bash
-# Python tests
-python -m pytest tests/test_sha_reference.py tests/test_sha_round_trace.py tests/test_sha_model.py tests/test_sha_bridge.py tests/test_hardware_policy.py -q
-# Web demo
-cd web && npm ci && npm run dev      # open /forge.html
-# Local bridge without any hardware
-python -m cqhecs.hardware.bridge --origin http://127.0.0.1:5173 --simulate
-```
+| Item | Result |
+|---|---|
+| Identity read of `timsminer` | done: hostname `timsminer`, board 201, BM1366, `v4.0.2-rc1-timsminer`, running partition `factory` |
+| 60-minute baseline, stock firmware | done: 121 samples, 0 gaps; hashrate 240.5–425.2 GH/s (mean 325.1) at 485 MHz / 1100 mV, 64–65 °C, 11.4 W, 0 % ASIC error, 536 accepted / 1 rejected |
+| Pool, worker, wallet | unchanged (operator decision) |
+| Flash, OTA, restart, restore | **none**, see B-03/B-04 |
+| Writes, malformed requests or load against the unit | none (deliberate) |
 
-The Vercel preview was **not** deployed.
+The miner is in the same firmware state as before this run.
 
-## 4. Capability results on the test machine
+## 4. Break testing
 
-Backend probe in the in-app Chromium: `WEBGPU` available (self-test matched CPU), `WASM_SIMD`/`WASM_SCALAR` not available (no module bundled), `BROWSER_CPU` available, bridge-dependent backends unavailable without a bridge. Selected: `WEBGPU`. Browser and adapter versions were not recorded.
+7 real defects found and fixed with regression tests (bridge: bad `Content-Length`, stalled body, connection exhaustion, aborted clients, unthrottled device reads, HTML error pages; analyzer: 1 MB input froze the page). Details: `E:\qCSHA\sha_forge_results\BREAKAGE_REPORT.md`.
 
-## 5–8. Hardware
+## 5. Tests (see TEST_MATRIX.md)
 
-Device identity, firmware state, backup, flash and restore: **none performed, none verified** (`NOT TESTED`). No backup file exists. The miner was never contacted and is in whatever state it was in before; this run neither changed nor observed it.
+Python 2570 passed / 109 skipped / 0 failed; web unit 33; Playwright 40; CI static gates pass. Not run locally: native CTest, mutation suite, SBOM and licence report.
 
-## 9. Test matrix
+## 6. Limits and next steps
 
-See `TEST_MATRIX.md`. Summary: Python 2499 passed / 109 skipped; web unit 33 passed; Playwright 30 passed; hardware, firmware, WASM, remote CI: not tested.
-
-## 10. Known limitations and next smallest useful task
-
-- Device scope: only `timsminer`; `blackharkminer` and `timminer2` excluded. The instruction about "blackhark data" is unresolved (B-02).
-- Smallest next step needing no approval: a Rust `wasm32` SHA-256 module so the WASM tiers can be tested (B-05).
-- Smallest next step needing operator input: approve a read-only `/api/system/info` read of `timsminer` via the bridge (`--device-host`), then capture the 60-minute baseline (B-01).
-- Then M3: implement and bench-test the read-only WLAN backup route in ESP-Miner.
+- To flash: attach `timsminer` by USB (or point to the private backup), approve installing ESP-IDF v6.0.2, then build stock, verify the hash, create the research profile, test restore first.
+- WASM SHA module (B-05), Chrome Local Network Access check (B-07), research sprint (B-06) remain open.
+- Hashrate instability on the stock firmware (B-09) is unexplained.
 
 ## Definition-of-done check (AGENTBUILD §16)
 
-Done: SHA reference vs independent oracles; reproducible 64-round trace; no false round-access claim; bridge loopback-only, paired, allowlisted, schema-validated; demo deterministic and labelled; no secrets or device identifiers committed.
-Not done: three-repo audit, ASIC candidate verification on real data, research mode, WLAN backup/restore, WASM/WebGPU parity beyond one browser, Vercel preview, CI/licence/SBOM gates.
+Done: SHA reference vs independent oracles; reproducible 64-round trace; no false round-access claim; bridge loopback-only, paired, allowlisted, schema-validated and break-tested; demo deterministic and labelled; measured data separated and identifier-free; no secrets committed.
+Not done: three-repo audit, ASIC candidate verification on real data, research mode, WLAN backup/restore, restored-firmware validation, WASM/WebGPU parity beyond one browser, SBOM/licence gates.

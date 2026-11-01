@@ -4,6 +4,7 @@ export type Lang = "en" | "de" | "fr";
 type Dict = Record<string, string>;
 
 const en: Dict = {
+  "mi.meas.t": "Measured baseline (physical node)", "mi.meas.badge": "MEASURED — physical timsminer, stock firmware, read-only polling", "mi.meas.none": "No measured results are bundled with this build.", "mi.meas.note": "Not a research-firmware or ASIC-job measurement. Missing samples stay gaps.", "mi.meas.n": "Samples", "mi.meas.gaps": "Gaps", "mi.meas.hash": "Hashrate GH/s (min / mean / max)", "mi.meas.temp": "ASIC temperature °C (min / max)", "mi.meas.power": "Power W (mean)", "mi.meas.shares": "Shares accepted / rejected during the window", "mi.meas.fw": "Firmware", "mi.meas.verdict": "Verdict", "mi.tele": "Demo telemetry (simulated)",
   skip: "Skip to content", lang: "Language", back: "CQ-HECS Web",
   tagline: "Real Silicon. Reproducible Science.", credit: "Made with love by timfromhcs & hcsmedia.",
   "tab.overview": "Overview", "tab.analyzer": "Round Analyzer", "tab.miner": "Miner Lab", "tab.bench": "Engine Benchmarks", "tab.evidence": "Evidence",
@@ -20,11 +21,11 @@ const en: Dict = {
   "an.mode": "Input", "an.mode.text": "Text message", "an.mode.hex": "Hex bytes", "an.mode.header": "Bitcoin 80-byte header (SHA-256d)",
   "an.input": "Message", "an.rounds": "Rounds (1–64)", "an.run": "Compute trace", "an.genesis": "Load genesis header", "an.export": "Export trace JSON",
   "an.src": "SOFTWARE_REPLAY — computed in your browser, not read from any ASIC.", "an.pad": "Padding", "an.block": "Block", "an.rounds.t": "Rounds", "an.pick": "Round",
-  "an.err.hex": "Not valid hex.", "an.err.header": "A Bitcoin header is exactly 80 bytes (160 hex characters).", "an.err.rounds": "Rounds must be between 1 and 64.", "an.reduced": "Reduced-round experiment: this is not standard SHA-256.",
+  "an.err.hex": "Not valid hex.", "an.err.size": "Input too large (maximum 8192 bytes).", "an.err.header": "A Bitcoin header is exactly 80 bytes (160 hex characters).", "an.err.rounds": "Rounds must be between 1 and 64.", "an.reduced": "Reduced-round experiment: this is not standard SHA-256.",
   "an.webcrypto.ok": "Web Crypto agrees with the reference digest.", "an.webcrypto.bad": "Web Crypto DISAGREES with the reference digest.", "an.webcrypto.na": "Web Crypto unavailable here; digest not cross-checked.",
   "mi.title": "Miner Lab · TimsMiner / BM1366 Research Node", "mi.note": "Only the unit named timsminer is allowlisted. Other devices are refused. The bridge runs on your computer (127.0.0.1); this page never contacts your miner directly.",
   "mi.id": "Device identity", "mi.state": "Connection state", "mi.url": "Local bridge address", "mi.connect": "Connect local TimsMiner",
-  "mi.tele": "Telemetry", "mi.table": "Chart as table", "mi.arm": "Arm research", "mi.start": "Start bounded test", "mi.restore": "Restore original firmware",
+  "mi.table": "Chart as table", "mi.arm": "Arm research", "mi.start": "Start bounded test", "mi.restore": "Restore original firmware",
   "mi.locked": "Arming, work and firmware actions are unavailable in demo mode and in this read-only release.",
   "mi.demo.id": "No device. Demo node only.", "mi.demo.state": "DEMO — no LAN requests are made.", "mi.src.demo": "DEMO / SIMULATED — seeded fixture, not hardware.",
   "mi.err.url": "The bridge must be on this computer (127.0.0.1 or localhost).", "mi.err.net": "Bridge not reachable. Start it on this computer, or the browser blocked the local connection (check the site permission for local network access).",
@@ -37,6 +38,7 @@ const en: Dict = {
 };
 
 const de: Dict = {
+  "mi.meas.t": "Gemessene Baseline (physischer Knoten)", "mi.meas.badge": "GEMESSEN – physischer timsminer, Standard-Firmware, nur lesend abgefragt", "mi.meas.none": "In diesem Build sind keine Messergebnisse enthalten.", "mi.meas.note": "Keine Messung der Forschungs-Firmware oder von ASIC-Jobs. Fehlende Samples bleiben Lücken.", "mi.meas.n": "Samples", "mi.meas.gaps": "Lücken", "mi.meas.hash": "Hashrate GH/s (min / Mittel / max)", "mi.meas.temp": "ASIC-Temperatur °C (min / max)", "mi.meas.power": "Leistung W (Mittel)", "mi.meas.shares": "Akzeptierte / abgelehnte Shares im Zeitraum", "mi.meas.fw": "Firmware", "mi.meas.verdict": "Urteil", "mi.tele": "Demo-Telemetrie (simuliert)",
   skip: "Zum Inhalt springen", lang: "Sprache", tagline: "Echtes Silizium. Reproduzierbare Wissenschaft.", credit: "Mit Liebe gemacht von timfromhcs & hcsmedia.",
   "tab.overview": "Übersicht", "tab.analyzer": "Runden-Analyse", "tab.miner": "Miner-Labor", "tab.bench": "Engine-Benchmarks", "tab.evidence": "Nachweise",
   "ov.title": "SHA-256 Schritt für Schritt – und ein optionaler physischer Knoten.",
@@ -52,11 +54,11 @@ const de: Dict = {
   "an.mode": "Eingabe", "an.mode.text": "Textnachricht", "an.mode.hex": "Hex-Bytes", "an.mode.header": "Bitcoin-Header, 80 Byte (SHA-256d)",
   "an.input": "Nachricht", "an.rounds": "Runden (1–64)", "an.run": "Spur berechnen", "an.genesis": "Genesis-Header laden", "an.export": "Spur als JSON exportieren",
   "an.src": "SOFTWARE_REPLAY – im Browser berechnet, von keinem ASIC gelesen.", "an.pad": "Padding", "an.block": "Block", "an.rounds.t": "Runden", "an.pick": "Runde",
-  "an.err.hex": "Kein gültiges Hex.", "an.err.header": "Ein Bitcoin-Header hat genau 80 Byte (160 Hex-Zeichen).", "an.err.rounds": "Runden müssen zwischen 1 und 64 liegen.", "an.reduced": "Reduzierte Runden: Das ist kein Standard-SHA-256.",
+  "an.err.hex": "Kein gültiges Hex.", "an.err.size": "Eingabe zu groß (höchstens 8192 Byte).", "an.err.header": "Ein Bitcoin-Header hat genau 80 Byte (160 Hex-Zeichen).", "an.err.rounds": "Runden müssen zwischen 1 und 64 liegen.", "an.reduced": "Reduzierte Runden: Das ist kein Standard-SHA-256.",
   "an.webcrypto.ok": "Web Crypto stimmt mit dem Referenz-Digest überein.", "an.webcrypto.bad": "Web Crypto WIDERSPRICHT dem Referenz-Digest.", "an.webcrypto.na": "Web Crypto hier nicht verfügbar; Digest nicht gegengeprüft.",
   "mi.title": "Miner-Labor · TimsMiner / BM1366-Forschungsknoten", "mi.note": "Nur das Gerät timsminer steht auf der Allowlist. Andere Geräte werden abgelehnt. Die Bridge läuft auf deinem Rechner (127.0.0.1); diese Seite kontaktiert den Miner nie direkt.",
   "mi.id": "Geräteidentität", "mi.state": "Verbindungsstatus", "mi.url": "Adresse der lokalen Bridge", "mi.connect": "Lokalen TimsMiner verbinden",
-  "mi.tele": "Telemetrie", "mi.table": "Diagramm als Tabelle", "mi.arm": "Forschung scharf schalten", "mi.start": "Begrenzten Test starten", "mi.restore": "Original-Firmware wiederherstellen",
+  "mi.table": "Diagramm als Tabelle", "mi.arm": "Forschung scharf schalten", "mi.start": "Begrenzten Test starten", "mi.restore": "Original-Firmware wiederherstellen",
   "mi.locked": "Scharfschalten, Arbeit und Firmware-Aktionen sind im Demo-Modus und in dieser Read-only-Version nicht verfügbar.",
   "mi.demo.id": "Kein Gerät. Nur Demo-Knoten.", "mi.demo.state": "DEMO – es werden keine LAN-Anfragen gesendet.", "mi.src.demo": "DEMO / SIMULIERT – Fixture mit festem Seed, keine Hardware.",
   "mi.err.url": "Die Bridge muss auf diesem Rechner laufen (127.0.0.1 oder localhost).", "mi.err.net": "Bridge nicht erreichbar. Starte sie auf diesem Rechner, oder der Browser hat die lokale Verbindung blockiert (Seitenberechtigung für das lokale Netzwerk prüfen).",
@@ -69,6 +71,7 @@ const de: Dict = {
 };
 
 const fr: Dict = {
+  "mi.meas.t": "Référence mesurée (nœud physique)", "mi.meas.badge": "MESURÉ — timsminer physique, firmware standard, lecture seule", "mi.meas.none": "Aucun résultat mesuré n'est inclus dans cette version.", "mi.meas.note": "Pas une mesure du firmware de recherche ni de jobs ASIC. Les échantillons manquants restent des trous.", "mi.meas.n": "Échantillons", "mi.meas.gaps": "Trous", "mi.meas.hash": "Débit GH/s (min / moy. / max)", "mi.meas.temp": "Température ASIC °C (min / max)", "mi.meas.power": "Puissance W (moy.)", "mi.meas.shares": "Parts acceptées / rejetées sur la période", "mi.meas.fw": "Firmware", "mi.meas.verdict": "Verdict", "mi.tele": "Télémétrie de démo (simulée)",
   skip: "Aller au contenu", lang: "Langue", tagline: "Du vrai silicium. Une science reproductible.", credit: "Fait avec amour par timfromhcs & hcsmedia.",
   "tab.overview": "Aperçu", "tab.analyzer": "Analyseur de tours", "tab.miner": "Labo mineur", "tab.bench": "Benchmarks moteurs", "tab.evidence": "Preuves",
   "ov.title": "SHA-256 pas à pas — et un nœud physique optionnel.",
@@ -84,11 +87,11 @@ const fr: Dict = {
   "an.mode": "Entrée", "an.mode.text": "Message texte", "an.mode.hex": "Octets hex", "an.mode.header": "En-tête Bitcoin de 80 octets (SHA-256d)",
   "an.input": "Message", "an.rounds": "Tours (1–64)", "an.run": "Calculer la trace", "an.genesis": "Charger l'en-tête genesis", "an.export": "Exporter la trace JSON",
   "an.src": "SOFTWARE_REPLAY — calculé dans votre navigateur, pas lu depuis un ASIC.", "an.pad": "Bourrage", "an.block": "Bloc", "an.rounds.t": "Tours", "an.pick": "Tour",
-  "an.err.hex": "Hex invalide.", "an.err.header": "Un en-tête Bitcoin fait exactement 80 octets (160 caractères hex).", "an.err.rounds": "Les tours doivent être entre 1 et 64.", "an.reduced": "Expérience à tours réduits : ce n'est pas du SHA-256 standard.",
+  "an.err.hex": "Hex invalide.", "an.err.size": "Entrée trop grande (8192 octets maximum).", "an.err.header": "Un en-tête Bitcoin fait exactement 80 octets (160 caractères hex).", "an.err.rounds": "Les tours doivent être entre 1 et 64.", "an.reduced": "Expérience à tours réduits : ce n'est pas du SHA-256 standard.",
   "an.webcrypto.ok": "Web Crypto confirme le condensat de référence.", "an.webcrypto.bad": "Web Crypto CONTREDIT le condensat de référence.", "an.webcrypto.na": "Web Crypto indisponible ; condensat non recoupé.",
   "mi.title": "Labo mineur · Nœud de recherche TimsMiner / BM1366", "mi.note": "Seule l'unité nommée timsminer est autorisée. Les autres appareils sont refusés. Le pont tourne sur votre ordinateur (127.0.0.1) ; cette page ne contacte jamais le mineur directement.",
   "mi.id": "Identité de l'appareil", "mi.state": "État de connexion", "mi.url": "Adresse du pont local", "mi.connect": "Connecter le TimsMiner local",
-  "mi.tele": "Télémétrie", "mi.table": "Graphique en tableau", "mi.arm": "Armer la recherche", "mi.start": "Lancer un test borné", "mi.restore": "Restaurer le firmware d'origine",
+  "mi.table": "Graphique en tableau", "mi.arm": "Armer la recherche", "mi.start": "Lancer un test borné", "mi.restore": "Restaurer le firmware d'origine",
   "mi.locked": "Armement, travail et actions firmware sont indisponibles en mode démo et dans cette version en lecture seule.",
   "mi.demo.id": "Aucun appareil. Nœud de démo seulement.", "mi.demo.state": "DEMO — aucune requête LAN n'est envoyée.", "mi.src.demo": "DEMO / SIMULÉ — jeu à graine fixe, pas du matériel.",
   "mi.err.url": "Le pont doit être sur cet ordinateur (127.0.0.1 ou localhost).", "mi.err.net": "Pont injoignable. Lancez-le sur cet ordinateur, ou le navigateur a bloqué la connexion locale (vérifiez l'autorisation réseau local du site).",

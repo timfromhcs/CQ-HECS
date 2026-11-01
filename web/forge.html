@@ -96,6 +96,16 @@
         <button id="mi-connect" class="btn primary" data-i18n="mi.connect">Connect local TimsMiner</button>
       </div>
       <p id="mi-msg" class="note" role="status"></p>
+      <h2 data-i18n="mi.meas.t">Measured baseline (physical node)</h2>
+      <p class="srcbadge measured" id="mi-meas-badge"></p>
+      <p class="note" id="mi-meas-note"></p>
+      <dl class="kv" id="mi-meas-kv"></dl>
+      <figure>
+        <svg id="mi-meas-chart" viewBox="0 0 600 160" role="img" aria-labelledby="mi-meas-chart-t mi-meas-chart-d"><title id="mi-meas-chart-t"></title><desc id="mi-meas-chart-d"></desc></svg>
+        <figcaption id="mi-meas-cap"></figcaption>
+      </figure>
+      <details><summary data-i18n="mi.table">Chart as table</summary>
+        <div class="tablewrap" tabindex="0" role="region" aria-label="Measured table"><table class="grid mono" id="mi-meas-table"></table></div></details>
       <h2 data-i18n="mi.tele">Telemetry</h2>
       <p class="srcbadge" id="mi-src"></p>
       <figure>

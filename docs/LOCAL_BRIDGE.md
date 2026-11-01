@@ -22,6 +22,8 @@ Profile construction fails for any other hostname; `blackharkminer` and `timmine
 - `POST /research/jobs`, `/research/pause`, `/research/cancel`, `/backup/export` answer `403 READ_ONLY` and never reach the device.
 - `POST /restore/preview` only describes; `allowed` is false without a verified backup manifest.
 - There is no proxy, scan, register, UART or firmware route. Unknown paths return 404.
+- Hostile clients: digit-only `Content-Length` (else 400), 408 on stalled bodies (5 s socket timeout), at most 32 concurrent connections (503 beyond), aborted clients are silent, errors are JSON.
+- The miner is protected from request bursts: device reads are cached for 1 s (failures too) and limited to 120 per minute.
 - Headers, bodies and tokens are never logged.
 
 ## Browser permission

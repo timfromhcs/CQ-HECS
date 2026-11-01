@@ -124,3 +124,125 @@ for (const [w, h] of [[360, 800], [768, 1024], [1280, 800], [1920, 1080]]) {
     }
   });
 }
+
+// ---------------------------------------------------------------- break attempts
+
+test("break: a huge input is refused quickly and the page stays responsive", async ({ page }) => {
+  await page.goto("/forge.html?lang=en#analyzer");
+  await page.fill("#an-input", "A".repeat(1_000_000));
+  const t0 = Date.now();
+  await page.click("#an-form button[type=submit]");
+  await expect(page.locator("#an-error")).toBeVisible({ timeout: 5000 });
+  expect(Date.now() - t0).toBeLessThan(4000);
+  await expect(page.locator("#an-error")).toContainText("too large");
+  await page.fill("#an-input", "abc");
+  await page.click("#an-form button[type=submit]");
+  await expect(page.locator("#an-summary")).toContainText("ba7816bf");
+});
+
+test("break: hostile text is never interpreted as HTML and unicode hashes correctly", async ({ page }) => {
+  await page.goto("/forge.html?lang=en#analyzer");
+  const evil = `<img src=x onerror="window.__pwned=1"><script>window.__pwned=1</script>`;
+  await page.fill("#an-input", evil);
+  await page.click("#an-form button[type=submit]");
+  await expect(page.locator("#an-summary")).toContainText("Web Crypto agrees");
+  await page.fill("#an-input", "😀 Größe 日本語 \u0000 ‮");
+  await page.click("#an-form button[type=submit]");
+  await expect(page.locator("#an-summary")).toContainText("Web Crypto agrees");
+  expect(await page.evaluate(() => (window as unknown as { __pwned?: number }).__pwned)).toBeUndefined();
+});
+
+test("break: odd, empty and whitespace hex input", async ({ page }) => {
+  await page.goto("/forge.html?lang=en#analyzer");
+  await page.selectOption("#an-mode", "hex");
+  for (const bad of ["abc", "0x61", "6 1 6", "61\n62", "gg", ""]) {
+    await page.fill("#an-input", bad);
+    await page.click("#an-form button[type=submit]");
+    if (bad === "6 1 6" || bad === "61\n62" || bad === "") {
+      // whitespace is stripped; empty is the valid empty message; odd length after stripping is invalid
+      if (bad === "6 1 6") await expect(page.locator("#an-error")).toBeVisible();
+      else await expect(page.locator("#an-error")).toBeHidden();
+    } else {
+      await expect(page.locator("#an-error")).toBeVisible();
+    }
+  }
+});
+
+test("break: header mode rejects 79 and 81 bytes and reduced rounds", async ({ page }) => {
+  await page.goto("/forge.html?lang=en#analyzer");
+  await page.selectOption("#an-mode", "header");
+  for (const n of [79, 81, 0]) {
+    await page.fill("#an-input", "00".repeat(n));
+    await page.click("#an-form button[type=submit]");
+    await expect(page.locator("#an-error")).toBeVisible();
+  }
+  await page.fill("#an-input", "00".repeat(80));
+  await page.fill("#an-rounds", "20");
+  await page.click("#an-form button[type=submit]");
+  await expect(page.locator("#an-error")).toBeVisible();
+});
+
+test("break: 30 rapid submissions leave a consistent result and no console error", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+  await page.goto("/forge.html?lang=en#analyzer");
+  await page.evaluate(() => { for (let i = 0; i < 30; i++) (document.getElementById("an-form") as HTMLFormElement).requestSubmit(); });
+  await expect(page.locator("#an-summary")).toContainText("ba7816bf");
+  await expect(page.locator("#an-table tbody tr")).toHaveCount(64);
+  expect(errors).toEqual([]);
+});
+
+test("break: blocked localStorage does not break the page", async ({ page }) => {
+  await page.addInitScript(() => { Object.defineProperty(window, "localStorage", { get() { throw new Error("blocked"); } }); });
+  await page.goto("/forge.html?lang=en");
+  await page.selectOption("#lang", "de");
+  await expect(page.locator("[data-tab=analyzer]")).toHaveText("Runden-Analyse");
+});
+
+test("break: WebGPU device loss mid-session leaves the CPU path working", async ({ page }) => {
+  await page.addInitScript(() => {
+    const real = navigator.gpu;
+    if (!real) return;
+    const orig = real.requestAdapter.bind(real);
+    real.requestAdapter = async (...a) => {
+      const ad = await orig(...a);
+      if (!ad) return ad;
+      const rd = ad.requestDevice.bind(ad);
+      ad.requestDevice = async (...b) => { const d = await rd(...b); setTimeout(() => d.destroy(), 0); return d; };
+      return ad;
+    };
+  });
+  await page.goto("/forge.html?lang=en#bench");
+  await page.click("#be-run");
+  await expect(page.locator("#be-selected")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator("#be-decisions tbody tr", { hasText: "BROWSER_CPU" })).toContainText("available");
+  await expect(page.locator("#be-results tbody tr").first()).toContainText("BROWSER_CPU");
+});
+
+test("break: the bridge URL field refuses every non-loopback address form", async ({ page }) => {
+  await page.goto("/forge.html?lang=en#miner");
+  for (const u of ["http://192.168.1.5", "http://127.0.0.1.evil.com", "http://user:pw@127.0.0.1:8765", "https://127.0.0.1:8765", "http://[::1]x", "file:///etc/passwd", "javascript:alert(1)", "//127.0.0.1", ""]) {
+    await page.fill("#mi-url", u);
+    await page.click("#mi-connect");
+    await expect(page.locator("#mi-msg")).toContainText("127.0.0.1 or localhost");
+  }
+});
+
+test("miner lab: the measured baseline is shown, labelled MEASURED and kept apart from the demo", async ({ page }) => {
+  await page.goto("/forge.html?lang=en#miner");
+  await expect(page.locator("#mi-meas-badge")).toContainText("MEASURED");
+  await expect(page.locator("#mi-meas-kv")).toContainText("v4.0.2-rc1-timsminer");
+  await expect(page.locator("#mi-meas-kv")).toContainText("OK");
+  expect(await page.locator("#mi-meas-table tbody tr").count()).toBeGreaterThan(10);
+  await expect(page.locator("#mi-src")).toContainText("DEMO / SIMULATED");
+  const text = (await page.locator("main").innerText()).replaceAll("127.0.0.1", ""); // loopback appears in help text only
+  expect(text).not.toMatch(/\b\d{1,3}(\.\d{1,3}){3}\b/); // no other IPv4 address on the page
+  expect(text).not.toMatch(/([0-9a-f]{2}:){5}[0-9a-f]{2}/i);
+});
+
+test("evidence export contains the measured bundle", async ({ page }) => {
+  await page.goto("/forge.html?lang=en#miner");
+  await expect(page.locator("#mi-meas-badge")).toContainText("MEASURED");
+  await page.click("[data-tab=evidence]");
+  await expect(page.locator("#ev-pre")).toContainText("hcs.sha.forge.baseline.v1");
+});

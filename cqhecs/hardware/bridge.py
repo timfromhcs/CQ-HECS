@@ -25,6 +25,8 @@ LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 MAX_BODY = 4096
 RATE_LIMIT = 30          # POSTs per window
 RATE_WINDOW_S = 60.0
+READ_RATE_LIMIT = 120    # GETs per window
+CRLF = bytes([13, 10])
 POST_ROUTES = {"/pair", "/pair/revoke", "/research/jobs", "/research/pause", "/research/cancel",
                "/backup/export", "/restore/preview"}
 GET_ROUTES = {"/health", "/capabilities", "/telemetry", "/research/status", "/backup/status"}
@@ -59,6 +61,39 @@ class BridgeConfig:
     host: str = "127.0.0.1"
     port: int = 0
     token_ttl_s: float = 600.0
+    request_timeout_s: float = 5.0    # per-socket timeout: a stalled client can never pin a thread
+    max_connections: int = 32         # concurrent connections; extra ones get 503
+    read_cache_s: float = 1.0         # device reads inside this window are served from cache
+
+
+class _Server(ThreadingHTTPServer):
+    """Threaded server with a hard connection cap and no traceback spam from hostile clients."""
+
+    daemon_threads = True
+    request_queue_size = 16
+
+    def __init__(self, addr, handler, max_connections: int):
+        super().__init__(addr, handler)
+        self._slots = threading.BoundedSemaphore(max_connections)
+
+    def process_request(self, request, client_address):
+        if not self._slots.acquire(blocking=False):
+            try:
+                request.sendall(b"HTTP/1.0 503 Service Unavailable" + CRLF + b"Content-Length: 0" + CRLF + b"Connection: close" + CRLF + CRLF)
+            except OSError:
+                pass
+            self.shutdown_request(request)
+            return
+        super().process_request(request, client_address)
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._slots.release()
+
+    def handle_error(self, request, client_address):  # malformed or aborted clients are expected
+        pass
 
 
 class Bridge:
@@ -72,6 +107,8 @@ class Bridge:
         self.clock = clock
         self._tokens: dict = {}
         self._hits: list = []
+        self._reads: list = []
+        self._cache = None            # (expiry, (status, body))
         self._lock = threading.Lock()
         self._server = None
         self._thread = None
@@ -82,8 +119,9 @@ class Bridge:
 
         class Handler(_Handler):
             owner = bridge
+            timeout = bridge.config.request_timeout_s
 
-        self._server = ThreadingHTTPServer((self.config.host, self.config.port), Handler)
+        self._server = _Server((self.config.host, self.config.port), Handler, self.config.max_connections)
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
         self._thread.start()
 
@@ -128,9 +166,31 @@ class Bridge:
             self._hits.append(now)
             return True
 
+    def read_rate_ok(self) -> bool:
+        now = self.clock()
+        with self._lock:
+            self._reads = [t for t in self._reads if now - t < RATE_WINDOW_S]
+            if len(self._reads) >= READ_RATE_LIMIT:
+                return False
+            self._reads.append(now)
+            return True
+
     # -- device
     def read_device(self):
-        """Returns (status, body). Identity is verified before anything is exposed."""
+        """Returns (status, body). Identity is verified before anything is exposed.
+
+        Results (including failures) are cached briefly so request bursts never reach the miner.
+        """
+        now = self.clock()
+        with self._lock:
+            if self._cache and now < self._cache[0]:
+                return self._cache[1]
+        result = self._read_device_uncached()
+        with self._lock:
+            self._cache = (self.clock() + self.config.read_cache_s, result)
+        return result
+
+    def _read_device_uncached(self):
         try:
             info = self.device.get_info()
         except Exception:
@@ -155,27 +215,46 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _send(self, status: int, body: dict):
         raw = json.dumps(body).encode()
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(raw)))
-        self.send_header("Cache-Control", "no-store")
-        origin = self._origin()
-        if origin:
-            self.send_header("Access-Control-Allow-Origin", origin)
-            self.send_header("Vary", "Origin")
-        self.end_headers()
-        self.wfile.write(raw)
+        try:
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(raw)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            origin = self._origin()
+            if origin:
+                self.send_header("Access-Control-Allow-Origin", origin)
+                self.send_header("Vary", "Origin")
+            self.end_headers()
+            self.wfile.write(raw)
+        except OSError:  # client went away mid-response
+            self.close_connection = True
+
+    def send_error(self, code, message=None, explain=None):  # JSON instead of the stock HTML page
+        self._send(code, {"error": "BAD_REQUEST" if code < 500 else "SERVER_ERROR"})
+        self.close_connection = True
 
     def _token(self):
         auth = self.headers.get("Authorization", "")
         return auth[7:] if auth.startswith("Bearer ") else None
 
     def _body(self):
-        n = int(self.headers.get("Content-Length") or 0)
+        cl = self.headers.get("Content-Length")
+        if cl is not None and not cl.isascii() or cl is not None and not cl.isdigit():
+            self._send(400, {"error": "INVALID_CONTENT_LENGTH"})
+            return None
+        n = int(cl) if cl else 0
         if n > MAX_BODY:
             self._send(413, {"error": "PAYLOAD_TOO_LARGE"})
             return None
-        raw = self.rfile.read(n) if n else b"{}"
+        try:
+            raw = self.rfile.read(n) if n else b"{}"
+        except OSError:  # includes socket timeouts: a stalled client is dropped, not waited for
+            self._send(408, {"error": "REQUEST_TIMEOUT"})
+            return None
+        if len(raw) != n and n:
+            self._send(400, {"error": "INCOMPLETE_BODY"})
+            return None
         try:
             data = json.loads(raw)
         except ValueError:
@@ -222,8 +301,12 @@ class _Handler(BaseHTTPRequestHandler):
         if m:
             if m.group(1) != self.owner.config.profile.device_id:
                 return self._send(404, {"error": "UNKNOWN_DEVICE"})
+            if not self.owner.read_rate_ok():
+                return self._send(429, {"error": "RATE_LIMITED"})
             return self._send(*self.owner.read_device())
         if path == "/telemetry":
+            if not self.owner.read_rate_ok():
+                return self._send(429, {"error": "RATE_LIMITED"})
             return self._send(*self.owner.read_device())
         if path == "/research/status":
             return self._send(200, {"state": "CONNECTED_READ_ONLY", "research_armed": False, "active_jobs": 0})

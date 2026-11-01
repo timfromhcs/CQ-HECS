@@ -81,10 +81,19 @@ function setEnv(kind: "demo" | "local" | "hardware" | "recovery"): void {
 // ------------------------------------------------------------------ analyzer
 let currentBlocks: sha.BlockTrace[] = [];
 
+const MAX_INPUT_BYTES = 8192; // 129 blocks: keeps the trace bounded so the page never freezes
+
 function parseInput(mode: string, raw: string): Uint8Array {
-  if (mode === "text") return enc.encode(raw);
+  // Reject before any work: a hex byte needs two characters, a UTF-8 byte at least one.
+  if (raw.length > (mode === "text" ? MAX_INPUT_BYTES : 2 * MAX_INPUT_BYTES + 64)) throw new Error(t(lang, "an.err.size"));
+  if (mode === "text") {
+    const bytes = enc.encode(raw);
+    if (bytes.length > MAX_INPUT_BYTES) throw new Error(t(lang, "an.err.size"));
+    return bytes;
+  }
   let bytes: Uint8Array;
   try { bytes = sha.fromHex(raw); } catch { throw new Error(t(lang, "an.err.hex")); }
+  if (bytes.length > MAX_INPUT_BYTES) throw new Error(t(lang, "an.err.size"));
   if (mode === "header" && bytes.length !== 80) throw new Error(t(lang, "an.err.header"));
   return bytes;
 }
@@ -209,46 +218,100 @@ function renderMinerStatic(): void {
   if (!session.bridge?.reachable) $("mi-state").textContent = t(lang, "mi.demo.state");
   $("mi-src").textContent = t(lang, "mi.src.demo");
   drawTelemetry();
+  void loadMeasured();
 }
 
-function drawTelemetry(): void {
-  const demo = demoTelemetry();
-  const svg = $("mi-chart") as unknown as SVGSVGElement;
+function drawSeries(prefix: string, values: (number | null)[], label: string, color: string): void {
+  const svg = $(prefix) as unknown as SVGSVGElement;
   svg.querySelectorAll("*:not(title):not(desc)").forEach((n) => n.remove());
-  $("mi-chart-t").textContent = `${DEMO_LABEL}: hashrate`;
-  $("mi-chart-d").textContent = t(lang, "mi.gap");
-  const vals = demo.samples.map((s) => s.hashrate_ghs);
-  const nums = vals.filter((v): v is number => v !== null);
+  $(`${prefix}-t`).textContent = `${label}: hashrate`;
+  $(`${prefix}-d`).textContent = t(lang, "mi.gap");
+  const nums = values.filter((v): v is number => v !== null);
+  if (nums.length < 2) return;
   const lo = Math.min(...nums) - 2, hi = Math.max(...nums) + 2;
-  const x = (i: number) => 30 + (i / (vals.length - 1)) * 560;
+  const x = (i: number) => 30 + (i / (values.length - 1)) * 560;
   const y = (v: number) => 140 - ((v - lo) / (hi - lo)) * 120;
   const ns = "http://www.w3.org/2000/svg";
   let seg: string[] = [];
   const flush = () => {
-    if (seg.length > 1) { const p = document.createElementNS(ns, "polyline"); p.setAttribute("points", seg.join(" ")); p.setAttribute("fill", "none"); p.setAttribute("stroke", "var(--accent)"); p.setAttribute("stroke-width", "2"); svg.append(p); }
+    if (seg.length > 1) {
+      const p = document.createElementNS(ns, "polyline");
+      p.setAttribute("points", seg.join(" ")); p.setAttribute("fill", "none"); p.setAttribute("stroke", color); p.setAttribute("stroke-width", "2");
+      svg.append(p);
+    }
     seg = [];
   };
-  vals.forEach((v, i) => { if (v === null) flush(); else seg.push(`${x(i).toFixed(1)},${y(v).toFixed(1)}`); });
+  values.forEach((v, i) => { if (v === null) flush(); else seg.push(`${x(i).toFixed(1)},${y(v).toFixed(1)}`); });
   flush();
   const lab = document.createElementNS(ns, "text");
-  lab.setAttribute("x", "34"); lab.setAttribute("y", "16"); lab.setAttribute("fill", "var(--warn)"); lab.setAttribute("font-size", "12");
-  lab.textContent = `${DEMO_LABEL} · GH/s ${lo.toFixed(0)}–${hi.toFixed(0)}`;
+  lab.setAttribute("x", "34"); lab.setAttribute("y", "16"); lab.setAttribute("fill", color); lab.setAttribute("font-size", "12");
+  lab.textContent = `${label} · GH/s ${lo.toFixed(0)}–${hi.toFixed(0)}`;
   svg.append(lab);
-  $("mi-cap").textContent = `${DEMO_LABEL}. ${t(lang, "mi.gap")}`;
-  const tbl = $("mi-table");
+}
+
+function fillTable(id: string, head: string[], rows: (string | number | null)[][]): void {
+  const tbl = $(id);
   tbl.replaceChildren();
-  const head = el("tr");
-  ["t (s)", "GH/s", "°C", "W"].forEach((h) => head.append(el("th", h)));
-  const thead = el("thead");
-  thead.append(head);
-  tbl.append(thead);
+  const thead = el("thead"), hr = el("tr");
+  head.forEach((h) => hr.append(el("th", h)));
+  thead.append(hr);
   const body = el("tbody");
-  demo.samples.forEach((s) => {
-    const tr = el("tr");
-    [s.t_s, s.hashrate_ghs, s.temperature_c, s.power_w].forEach((v) => tr.append(el("td", v === null ? "—" : String(v))));
-    body.append(tr);
-  });
-  tbl.append(body);
+  rows.forEach((r) => { const tr = el("tr"); r.forEach((v) => tr.append(el("td", v === null ? "—" : String(v)))); body.append(tr); });
+  tbl.append(thead, body);
+}
+
+function drawTelemetry(): void {
+  const demo = demoTelemetry();
+  drawSeries("mi-chart", demo.samples.map((s) => s.hashrate_ghs), DEMO_LABEL, "var(--warn)");
+  $("mi-cap").textContent = `${DEMO_LABEL}. ${t(lang, "mi.gap")}`;
+  fillTable("mi-table", ["t (s)", "GH/s", "°C", "W"], demo.samples.map((s) => [s.t_s, s.hashrate_ghs, s.temperature_c, s.power_w]));
+}
+
+interface Stat { n: number; min: number; max: number; mean: number }
+interface Baseline {
+  schema: string; source: string; mode: string; verdict: string; firmware: string[]; interval_s: number;
+  samples: { t_s: number; hashrate_ghs: number | null; temperature_c: number | null; power_w: number | null }[];
+  summary: {
+    samples: number; gaps: number; hashrate_ghs: Stat | null; temperature_c: Stat | null; power_w: Stat | null;
+    shares_accepted_delta: number | null; shares_rejected_delta: number | null;
+  };
+}
+let measured: Baseline | null | undefined;
+
+async function loadMeasured(): Promise<void> {
+  const badge = $("mi-meas-badge");
+  try {
+    if (measured === undefined) {
+      const r = await fetch("/forge/baseline_results.json", { cache: "no-store" });
+      const j = r.ok && (r.headers.get("content-type") ?? "").includes("json") ? ((await r.json()) as Baseline) : null;
+      measured = j && j.schema === "hcs.sha.forge.baseline.v1" && j.source === "MEASURED" ? j : null;
+    }
+  } catch { measured = null; }
+  const kv = $("mi-meas-kv");
+  kv.replaceChildren();
+  if (!measured) {
+    badge.textContent = t(lang, "mi.meas.none");
+    $("mi-meas-note").textContent = "";
+    $("mi-meas-cap").textContent = "";
+    drawSeries("mi-meas-chart", [], "MEASURED", "var(--ok)");
+    fillTable("mi-meas-table", [], []);
+    return;
+  }
+  const m = measured, s = m.summary;
+  badge.textContent = t(lang, "mi.meas.badge");
+  $("mi-meas-note").textContent = t(lang, "mi.meas.note");
+  const f = (st: Stat | null, parts: ("min" | "mean" | "max")[]) => (st ? parts.map((k) => st[k].toFixed(1)).join(" / ") : "—");
+  dd(kv, t(lang, "mi.meas.fw"), m.firmware.join(", "));
+  dd(kv, t(lang, "mi.meas.n"), `${s.samples} (${m.interval_s} s)`);
+  dd(kv, t(lang, "mi.meas.gaps"), String(s.gaps));
+  dd(kv, t(lang, "mi.meas.hash"), f(s.hashrate_ghs, ["min", "mean", "max"]));
+  dd(kv, t(lang, "mi.meas.temp"), f(s.temperature_c, ["min", "max"]));
+  dd(kv, t(lang, "mi.meas.power"), f(s.power_w, ["mean"]));
+  dd(kv, t(lang, "mi.meas.shares"), `${s.shares_accepted_delta ?? "—"} / ${s.shares_rejected_delta ?? "—"}`);
+  dd(kv, t(lang, "mi.meas.verdict"), m.verdict);
+  drawSeries("mi-meas-chart", m.samples.map((x) => x.hashrate_ghs), "MEASURED", "var(--ok)");
+  $("mi-meas-cap").textContent = `MEASURED. ${t(lang, "mi.gap")}`;
+  fillTable("mi-meas-table", ["t (s)", "GH/s", "°C", "W"], m.samples.map((x) => [x.t_s, x.hashrate_ghs, x.temperature_c, x.power_w]));
 }
 
 function loopbackOnly(raw: string): URL | null {
@@ -355,7 +418,7 @@ function sessionDoc(): unknown {
   return {
     schema: "hcs.sha.forge.session.v1", generated: new Date().toISOString(), environment: $("env-badge").textContent,
     app: { version: typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "unknown", source: typeof __SOURCE_SHA__ === "string" ? __SOURCE_SHA__ : "unknown" },
-    demo_label: DEMO_LABEL, probe: session.probe ?? null, benchmark: session.benchmark ?? null, bridge: session.bridge ?? null, trace_present: !!session.trace,
+    demo_label: DEMO_LABEL, probe: session.probe ?? null, benchmark: session.benchmark ?? null, measured_baseline: measured ?? null, bridge: session.bridge ?? null, trace_present: !!session.trace,
   };
 }
 

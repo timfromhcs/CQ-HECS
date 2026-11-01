@@ -18,12 +18,14 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   restore-preview checks, and a loopback-only read-only bridge (`python -m cqhecs.hardware.bridge`, `--simulate` for no LAN).
 - **Web `/forge.html`**: Round Analyzer, deterministic labelled demo Miner Lab, backend probe (WebGPU u32 kernel with CPU
   self-test, visible fallbacks), evidence export, EN/DE/FR. A "SHA Forge" link was added to the main navigation.
-- Tests: 89 Python tests (`test_sha_*`, `test_hardware_policy`), 16 web unit tests and 17 Playwright/axe tests.
+- Hardening found by break testing (each with a regression test): bridge handles bad/negative `Content-Length`, truncated bodies, idle and aborted clients, caps connections, throttles device reads; analyzer input capped at 8 KiB.
+- Measured results: `cqhecs.hardware.results` builds a secret-free `hcs.sha.forge.baseline.v1` bundle from a raw capture (`scripts/sha_forge_baseline.py`, `scripts/sha_forge_publish_results.py`); the Miner Lab shows it as MEASURED, separate from the DEMO fixture. Included: a 60-minute read-only baseline of the stock firmware on timsminer.
+- Tests: 160 new Python tests (`test_sha_*`, `test_hardware_policy`), 16 web unit tests and 27 Playwright/axe tests. Full suite: 2570 passed, 109 skipped.
 - Research record `research/sha_forge/`; docs `docs/LOCAL_BRIDGE.md`, `MINER_BACKUP_RESTORE.md`, `SHA_ROUND_ANALYZER.md`,
   `TIMSMINER_RESEARCH_MODE.md`, `WEBGPU_WASM_BACKENDS.md`.
 
 Not included: any ESP-Miner firmware change, WLAN backup route, research firmware, ASIC job path, flash or restore
-(see `research/sha_forge/BLOCKERS.md`). No hardware measurement was taken.
+(see `research/sha_forge/BLOCKERS.md`). The only hardware data are read-only stock-firmware measurements.
 
 ## [4.0.0] - 2026-11-01
 

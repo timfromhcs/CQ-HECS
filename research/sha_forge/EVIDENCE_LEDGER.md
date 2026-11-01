@@ -12,7 +12,10 @@ Trust levels: `MEASURED` (run here, output seen), `REPRODUCED_HERE`, `SOURCE_CLA
 | E-06 | Bridge fails closed (identity, origin, token, method, size, rate, read-only) | SIMULATED device | `tests/test_sha_bridge.py` (16), `tests/test_hardware_policy.py` (28) |
 | E-07 | Bridge reachable from the page only after the connect click; unreachable state is explicit; demo makes no cross-origin request | MEASURED | `web/e2e/forge.spec.ts`, manual run with `--simulate` |
 | E-08 | ePrint 2026/232 and 2026/1120 abstracts say what the snapshot says | SOURCE_CLAIM | fetched 2026-11-01, PDFs unread |
-| E-09 | `timsminer` identity, firmware, partition, baseline, backup | NOT_RUN | blockers B-01, B-03 |
+| E-09 | `timsminer` identity (hostname, board 201, BM1366, firmware `v4.0.2-rc1-timsminer`, running partition `factory`) | MEASURED | one read-only GET 2026-11-01 |
+| E-11 | 60-minute read-only baseline on the **stock** firmware: 121 samples at 30 s, 0 gaps, uptime monotonic, reset reason unchanged; hashrate 240.5–425.2 GH/s (mean 325.1, stdev 32.3), temperature 64–65 °C, power 11.37–11.64 W, RSSI -61…-56 dBm, free heap 7.88–7.90 MB, 536 shares accepted / 1 rejected | MEASURED | raw data in `E:\qCSHA\sha_forge_results\baseline\`; public bundle `web/public/forge/baseline_results.json` (schema `hcs.sha.forge.baseline.v1`, identifier-free, checked by `cqhecs.hardware.results.assert_public_safe`) |
+| E-12 | Bridge, SHA, policy and UI survive adversarial and fuzz inputs after the F-08/F-09 fixes | REPRODUCED_HERE | `tests/test_sha_bridge_adversarial.py` (17), `tests/test_sha_fuzz.py` (41), Playwright break tests (8) |
+| E-13 | Flash-encryption / secure-boot state, backup, restore, any research firmware, any ASIC-job measurement | NOT_RUN | B-01, B-03, B-04 |
 | E-10 | Any ASIC-returned nonce re-verified | NOT_RUN | blocker B-04 |
 
 The ASIC throughput of any unit has **not** been measured here. Historical GH/s figures in the ESP-Miner repo are not evidence for this work.

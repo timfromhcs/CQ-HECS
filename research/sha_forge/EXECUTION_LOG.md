@@ -15,3 +15,13 @@ Date: 2026-11-01. Operator: timfromhcs. Agent session: Claude Code (Sonnet 5.5).
 11. **Not done, by design:** no contact with any physical miner, no firmware work in ESP-Miner, no push, no PR, no Vercel deployment.
 
 Local checkpoint commit `7c4b62f` on `feat/sha-forge-hardware-lab` (not pushed). Full Python suite: 2499 passed, 109 skipped.
+
+## Second session (operator asked: flash, break things, results outside repos, dev branch, README)
+
+12. Operator gave the address of `timsminer`. One read-only GET confirmed identity; partition is `factory`. Operator decided: pool unchanged.
+13. Flash requested. Checked prerequisites: no ESP-IDF, Docker engine stopped, no USB device on this computer, private USB backups not found. The verified-backup gate cannot be met, so **no flash** (B-03, B-04).
+14. Started the 60-minute read-only baseline (`scripts/sha_forge_baseline.py`, 30 s). Finished: 121 samples, 0 gaps.
+15. Break testing: raw-socket attacks on the bridge found 6 defects, fuzzing found none in the SHA/policy code, UI attacks found 1 (1 MB input froze the page). All fixed test-first.
+16. Added `cqhecs.hardware.results` (identifier-free bundle) and the MEASURED section in the Miner Lab; results folder `E:\qCSHA\sha_forge_results\`.
+17. Local gates: pytest 2570 passed / 109 skipped; web unit 33; Playwright 40; flake8, version and truncation gates pass.
+18. Process notes: two inline-script mistakes (a `\b` in a normal string became a backspace in a doc; fixed). No data loss.
