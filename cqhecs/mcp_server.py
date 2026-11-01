@@ -50,6 +50,23 @@ TOOLS: List[Dict[str, Any]] = [
         },
     },
     {
+        "name": "cqhecs_plan",
+        "description": (
+            "Dry-run ExecutionPlan: selected path, candidate paths with capability "
+            "blockers, heuristic resource estimates and typed refusals. Allocates "
+            "no simulator state."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "circuit": {"type": "string"},
+                "force_path": {"type": "string", "enum": ["A", "B", "C", "D"]},
+                "require_counts": {"type": "boolean"},
+            },
+            "required": ["circuit"],
+        },
+    },
+    {
         "name": "cqhecs_sat_solve",
         "description": "Solve a DIMACS CNF soundly; UNKNOWN is a timeout, never UNSAT.",
         "inputSchema": {
@@ -84,6 +101,7 @@ TOOLS: List[Dict[str, Any]] = [
             "properties": {
                 "cnf": {"type": "string"},
                 "timeout": {"type": "number", "default": 5.0},
+                "method": {"type": "string", "enum": ["dpll", "separator", "auto"], "default": "dpll"},
             },
             "required": ["cnf"],
         },
@@ -154,6 +172,23 @@ def _tool_analyze(arguments: Dict[str, Any]) -> Dict[str, Any]:
     instructions, n = parse_circuit(circuit)
     props = CircuitAnalyzer().analyze_instructions(instructions, n)
     return props.to_dict()
+
+
+def _tool_plan(arguments: Dict[str, Any]) -> Dict[str, Any]:
+    from cqhecs.circuit_library import build_builtin_circuit
+    from cqhecs.execution_plan import build_execution_plan
+
+    source = arguments["circuit"]
+    if source.startswith("preset:"):
+        circuit = build_builtin_circuit(source[len("preset:") :])
+    else:
+        circuit = source
+    plan = build_execution_plan(
+        circuit,
+        forced_path=arguments.get("force_path"),
+        require_counts=bool(arguments.get("require_counts", False)),
+    )
+    return plan.to_dict()
 
 
 def _tool_sat(arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -246,6 +281,8 @@ def _call(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         return _text(_tool_run(arguments))
     if name == "cqhecs_analyze":
         return _text(_tool_analyze(arguments))
+    if name == "cqhecs_plan":
+        return _text(_tool_plan(arguments))
     if name == "cqhecs_sat_solve":
         return _text(_tool_sat(arguments))
     if name == "cqhecs_sat_models":
@@ -254,7 +291,11 @@ def _call(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         from cqhecs.sat import count_models, parse_dimacs
 
         formula = parse_dimacs(arguments["cnf"], source="mcp")
-        return _text({"result": count_models(formula, timeout_seconds=float(arguments.get("timeout", 5.0)))})
+        return _text({"result": count_models(
+            formula,
+            timeout_seconds=float(arguments.get("timeout", 5.0)),
+            method=str(arguments.get("method", "dpll")),
+        )})
     if name == "cqhecs_devices":
         from cqhecs.device_profiles import list_profiles, summary
 

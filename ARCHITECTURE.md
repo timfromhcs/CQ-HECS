@@ -175,3 +175,57 @@ mapping, so `measure_all()` circuits produce the same keys as Aer.
    observed, not when the mutated code happens to raise.
 7. **Reproducible releases:** checksums and SBOM tracked in
    [audit/release_tracking.json](audit/release_tracking.json).
+
+
+## 6. v4 additions: execution planning, exact counting backends, Path D observables
+
+### 6.1 `ExecutionPlan` (`cqhecs/execution_plan.py`)
+
+A plan is a *report on the router's decision*, not a second router. It is built
+from the normalised instruction list and the shared gate manifest only; no
+statevector, tableau, MPS or backend object is created.
+
+* **Capability is separate from cost.** `candidate_paths[*].capable` and
+  `capability_blockers` come from the manifest-backed analysis. `policy_notes`
+  record why a *capable* path was not first (T-count over the rank threshold, cut
+  width over the entanglement threshold, lower A->B->C->D priority).
+* **Selection** is `CircuitAnalyzer.recommended_path` or the forced path. A forced
+  path that cannot run the circuit yields a `FORCED_PATH_UNSUPPORTED` refusal;
+  nothing is rerouted. Path D with `require_counts` yields `COUNTS_UNAVAILABLE`.
+* **Estimates** (`estimated_peak_memory_bytes`, `estimated_work_units`) are
+  heuristics from qubit count, gate count, T-count and 1D cut crossings
+  (Schmidt rank across a cut is bounded by 4^crossings and 2^min(side)). They do
+  not model backend swap routing or scratch I/O and are never guarantees. A
+  caller budget turns an overshoot of the *selected* path into `RESOURCE_BUDGET`.
+* **Determinism.** No timestamps or random values; `plan_digest` is a SHA-256 of
+  the canonical JSON of every other field. `normalized_circuit_digest` covers
+  gate names, qubit operands and `repr`-exact parameters.
+* **After execution** `result.metadata["plan_check"]` records planned vs actual
+  path and elapsed time. It is calibration data and never feeds back into routing.
+
+Surfaces: Python (`build_execution_plan`, `EntanglementAdaptiveRouter.plan`),
+CLI (`analyze --explain`), MCP (`cqhecs_plan`), Studio (`POST /api/plan`).
+
+### 6.2 Exact #SAT backends (`cqhecs/sat.py`, `cqhecs/sat_separator.py`)
+
+`count_models(method=...)` returns the same integer from two exact algorithms:
+
+* `dpll` (default): DPLL counting with unit propagation, component splitting and a
+  component cache. Deep formulas return `UNKNOWN` (recursion guard) instead of
+  raising.
+* `separator`: variable elimination in min-fill order. Each non-tautological
+  clause is a sparse factor; assignments are bit masks; joins are hash joins on
+  shared variables; counts are Python integers. The largest table is bounded by
+  2^(induced width + 1); exceeding the table budget or deadline returns `UNKNOWN`.
+* `auto`: plans the order first (no tables) and uses elimination only at induced
+  width <= 14; otherwise, or on refusal, DPLL counting. Partial results are never
+  combined across backends.
+
+### 6.3 Path D observables (`cqhecs/backends/path_d_sparse_pauli.py`)
+
+Terms are stored as `coeff * X^x Z^z`. `Y = iXZ`, so a Y factor multiplies the
+coefficient by `i`; each qubit carries at most one letter, which keeps the
+operator Hermitian. For observable `O`, only `O`'s own truncations enter its
+bound `D_O`, so `|<O_exact> - <O_kept>| <= D_O`. An observable above the tolerance
+is unresolved and stops being propagated; others are unaffected. The bound covers
+deliberate truncation only (not float64 roundoff) and says nothing about counts.

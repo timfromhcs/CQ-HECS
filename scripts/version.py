@@ -15,7 +15,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 #: The canonical version. Every release artifact and document must match this.
-VERSION = "3.7.0"
+VERSION = "4.0.0"
 
 
 def package_version() -> str:

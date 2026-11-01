@@ -33,6 +33,11 @@ from cqhecs.circuit_analyzer import (
     CircuitProperties,
 )
 from cqhecs.circuit_parsing import parse_circuit
+from cqhecs.execution_plan import (
+    ExecutionPlan,
+    _plan_from_props,
+    plan_check,
+)
 from cqhecs.gate_manifest import path_gate_names
 from cqhecs.result import SimulationResult
 from cqhecs.backends.path_a_stabilizer import PathAStabilizerBackend
@@ -95,6 +100,39 @@ class EntanglementAdaptiveRouter:
             error_tolerance=error_tolerance,
         )
         self.error_tolerance = error_tolerance
+        self.max_storage_mb = max_storage_mb
+        self.max_pauli_terms = max_pauli_terms
+
+    # -- planning ------------------------------------------------------
+    def plan(
+        self,
+        circuit: Any,
+        preferred_path: Optional[str] = None,
+        require_counts: bool = False,
+        max_memory_bytes: Optional[int] = None,
+    ) -> ExecutionPlan:
+        """
+        Dry run: the :class:`~cqhecs.execution_plan.ExecutionPlan` that
+        :meth:`route_and_execute` would follow, built without allocating any
+        backend state. Refusals are reported inside the plan.
+        """
+        from cqhecs.execution_plan import build_execution_plan
+
+        return build_execution_plan(
+            circuit,
+            forced_path=preferred_path,
+            require_counts=require_counts,
+            max_memory_bytes=max_memory_bytes,
+            analyzer=self.analyzer,
+            max_storage_mb=self.max_storage_mb,
+            max_pauli_terms=self.max_pauli_terms,
+        )
+
+    @staticmethod
+    def _attach_plan(res: SimulationResult, plan: ExecutionPlan) -> SimulationResult:
+        """Records plan-vs-actual observation; never influences routing."""
+        res.metadata["plan_check"] = plan_check(plan, res.path, res.execution_time_ms)
+        return res
 
     # -- validation ----------------------------------------------------
     @staticmethod
@@ -197,6 +235,19 @@ class EntanglementAdaptiveRouter:
 
         tol = error_tolerance if error_tolerance is not None else self.error_tolerance
         forced = preferred_path is not None
+        plan = _plan_from_props(
+            circuit,
+            instructions,
+            num_qubits,
+            props,
+            forced_path=preferred_path,
+            require_counts=require_counts,
+            max_memory_bytes=None,
+            analyzer=self.analyzer,
+            max_storage_mb=self.max_storage_mb,
+            max_pauli_terms=self.max_pauli_terms,
+            software_version=__import__("cqhecs").__version__,
+        )
 
         if forced:
             selected = preferred_path.upper()
@@ -238,7 +289,7 @@ class EntanglementAdaptiveRouter:
         if selected == "A":
             res = self.backend_a.execute(circuit, shots=shots, seed=seed)
             res.metadata["analysis"] = props.to_dict()
-            return res
+            return self._attach_plan(res, plan)
 
         if selected == "B":
             try:
@@ -258,7 +309,7 @@ class EntanglementAdaptiveRouter:
                 selected = fallback
             else:
                 res.metadata["analysis"] = props.to_dict()
-                return res
+                return self._attach_plan(res, plan)
 
         if selected == "C":
             res = self.backend_c.execute(circuit, shots=shots, seed=seed)
@@ -279,16 +330,16 @@ class EntanglementAdaptiveRouter:
                 )
                 res_d.metadata["escalation_from"] = "C"
                 res_d.metadata["analysis"] = props.to_dict()
-                return res_d
+                return self._attach_plan(res_d, plan)
             res.metadata["analysis"] = props.to_dict()
-            return res
+            return self._attach_plan(res, plan)
 
         if selected == "D":
             res = self.backend_d.execute(
                 circuit, shots=shots, seed=seed, error_tolerance=tol
             )
             res.metadata["analysis"] = props.to_dict()
-            return res
+            return self._attach_plan(res, plan)
 
         raise ValueError(
             f"Unknown path: {selected}. Valid paths are {list(VALID_PATHS)}."

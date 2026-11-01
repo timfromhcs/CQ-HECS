@@ -1,17 +1,57 @@
 # CQ-HECS Release Notes
 
-**Version:** 3.7.0
-**Release date:** 2026-10-31
+**Version:** 4.0.0
+**Release date:** 2026-11-01
 **License:** Apache 2.0
 **Repository:** [https://github.com/timfromhcs/CQ-HECS](https://github.com/timfromhcs/CQ-HECS)
 
-> The release workflow copies this file to `dist/RELEASE_NOTES_v3.7.0.md`,
+> The release workflow copies this file to `dist/RELEASE_NOTES_v4.0.0.md`,
 > prepends the exact source commit and required CI run, and appends the SHA256
 > values of the final assets.
 
 ---
 
-## 0. What v3.7.0 adds
+## 0. What v4.0.0 adds
+
+`v4.0.0` removes nothing. It adds three evidence-backed improvements; everything
+else considered for v4 was deferred and is not claimed.
+
+### Implemented and tested
+
+1. **Explainable `ExecutionPlan`.** A dry-run plan (no backend allocation) explains
+   which path the router will take and why, which paths are incapable and why, and
+   what a budget would refuse. Available in Python, `cq-hecs analyze --explain`, MCP
+   (`cqhecs_plan`) and Studio (`POST /api/plan`) with one JSON schema. The routing
+   policy is unchanged.
+2. **Variable-elimination #SAT.** `count_models(method="separator"|"auto")` is exact
+   and refuses with `UNKNOWN` rather than exceed its table/time budget.
+3. **Path D native X/Y/Z observables with per-observable bounds.**
+
+### Measured (finite, machine-specific)
+
+* #SAT, 11 synthetic families, Windows 11 / Python 3.13: variable elimination is
+  13x-550x faster (median) on the six bounded-width families where DPLL finished, and decides formulas the DPLL counter
+  cannot (a 2000-variable chain; a banded 120-variable formula that times out), but is
+  slower on high-width random 3-SAT, where `auto` avoids it. See
+  `research/v7/FINDINGS.md`. No asymptotic or general speedup is claimed.
+
+### Fixed
+
+* The DPLL model counter crashed with `RecursionError` on deep formulas; it now returns
+  `UNKNOWN`.
+
+### Experimental / not supported
+
+* Plan estimates are heuristics, not guarantees; they ignore backend swap routing and
+  scratch I/O.
+* Formally checked: nothing new in v4 (the v6 Lean/Comparator/nanoda/cake_lpr records
+  are unchanged and limited to their named artifacts).
+* Not supported / deferred: Path C graph ordering, noise calibration v3, CNF-to-XOR
+  witnesses, CDCL, OMNIWAVE scheduling changes, browser/native conformance corpus.
+
+---
+
+## History: v3.7.0 notes (superseded)
 
 `v3.7.0` is an additive minor release focused on the experimental OMNIWAVE
 engine and the product surfaces that expose it.

@@ -986,7 +986,129 @@ class _CountBudget(Exception):
     pass
 
 
+COUNT_METHODS = ("dpll", "separator", "auto")
+
+#: ``method="auto"`` only attempts variable elimination when the planned
+#: induced width is at most this; wider formulas stay on DPLL counting.
+AUTO_SEPARATOR_MAX_WIDTH = 14
+
+
 def count_models(
+    formula: CNF,
+    timeout_seconds: float = 10.0,
+    node_budget: Optional[int] = None,
+    method: str = "dpll",
+    separator_max_table_entries: int = 500_000,
+) -> Dict[str, Any]:
+    """
+    Exact model count ``#F`` over all ``2^num_vars`` assignments.
+
+    ``method`` selects the exact backend; both return the same integer:
+
+    * ``"dpll"`` (default, unchanged): DPLL counting with component caching.
+    * ``"separator"``: variable elimination (:mod:`cqhecs.sat_separator`). It
+      refuses with ``UNKNOWN`` rather than exceed ``separator_max_table_entries``
+      or the time budget, and reports the induced width it planned.
+    * ``"auto"``: plan the elimination order first (no tables); use elimination
+      when the induced width is at most :data:`AUTO_SEPARATOR_MAX_WIDTH`, and
+      DPLL counting otherwise or if elimination returns ``UNKNOWN``. A partial
+      result from one backend is never combined with the other.
+
+    The returned ``backend`` field names the backend that produced the count.
+    """
+    if method not in COUNT_METHODS:
+        raise ValueError(f"method must be one of {COUNT_METHODS}, got {method!r}")
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be > 0")
+    if method == "dpll":
+        return _count_models_dpll(formula, timeout_seconds, node_budget)
+
+    from cqhecs import sat_separator
+
+    started = time.perf_counter()
+    deadline = started + float(timeout_seconds)
+    sep: Dict[str, Any]
+    try:
+        has_empty, normal = sat_separator.normalise_clauses(formula.clauses)
+        if has_empty:
+            sep = sat_separator.count_by_elimination(
+                formula.num_vars, formula.clauses,
+                max_table_entries=separator_max_table_entries, deadline=deadline,
+            )
+        else:
+            plan = sat_separator.plan_elimination(
+                formula.num_vars, normal, deadline=deadline
+            )
+            if method == "auto" and plan.induced_width > AUTO_SEPARATOR_MAX_WIDTH:
+                sep = {
+                    "status": UNKNOWN, "count": None, "induced_width": plan.induced_width,
+                    "reason": f"induced width {plan.induced_width} exceeds the auto "
+                    f"limit {AUTO_SEPARATOR_MAX_WIDTH}",
+                }
+            else:
+                sep = sat_separator.count_by_elimination(
+                    formula.num_vars, formula.clauses,
+                    max_table_entries=separator_max_table_entries,
+                    deadline=deadline, plan=plan,
+                )
+    except sat_separator.SeparatorBudget as exc:
+        sep = {"status": UNKNOWN, "count": None, "induced_width": None, "reason": exc.reason}
+
+    if sep["status"] == COUNTED:
+        value = sep["count"]
+        return {
+            "status": COUNTED,
+            "count": str(value),
+            "satisfiable": value > 0,
+            "num_vars": formula.num_vars,
+            "num_clauses": formula.num_clauses,
+            "nodes": 0,
+            "cache_hits": 0,
+            "elapsed_ms": (time.perf_counter() - started) * 1000.0,
+            "method": "exact (variable elimination, min-fill order)",
+            "backend": "separator",
+            "induced_width": sep.get("induced_width"),
+            "max_table": sep.get("max_table"),
+            "note": "exact variable elimination; no sampling or approximation",
+            "formula_sha256": formula.sha256,
+            "formula_original_sha256": formula.original_sha256,
+            "contract_version": RESULT_CONTRACT_VERSION,
+        }
+
+    if method == "separator":
+        return {
+            "status": UNKNOWN,
+            "count": None,
+            "satisfiable": None,
+            "num_vars": formula.num_vars,
+            "num_clauses": formula.num_clauses,
+            "nodes": 0,
+            "cache_hits": 0,
+            "elapsed_ms": (time.perf_counter() - started) * 1000.0,
+            "method": "exact (variable elimination, min-fill order)",
+            "backend": "separator",
+            "induced_width": sep.get("induced_width"),
+            "max_table": sep.get("max_table"),
+            "note": f"no count claimed: {sep.get('reason', 'budget exhausted')}",
+            "formula_sha256": formula.sha256,
+            "formula_original_sha256": formula.original_sha256,
+            "contract_version": RESULT_CONTRACT_VERSION,
+        }
+
+    # method == "auto": elimination was not applicable or refused.
+    remaining = max(deadline - time.perf_counter(), 1e-3)
+    result = _count_models_dpll(formula, remaining, node_budget)
+    result["backend"] = "dpll"
+    result["auto_separator"] = {
+        "attempted": True,
+        "outcome": "refused",
+        "reason": sep.get("reason"),
+        "induced_width": sep.get("induced_width"),
+    }
+    return result
+
+
+def _count_models_dpll(
     formula: CNF,
     timeout_seconds: float = 10.0,
     node_budget: Optional[int] = None,
@@ -1096,6 +1218,14 @@ def count_models(
         except _CountBudget:
             status, value = UNKNOWN, None
             note = "time or node budget exhausted; no count claimed"
+        except RecursionError:
+            # The counter recurses once per decision level; a deep formula must
+            # be a typed refusal, never an escaped exception or a partial count.
+            status, value = UNKNOWN, None
+            note = (
+                "recursion depth limit reached by DPLL counting; no count "
+                "claimed (method='separator' or 'auto' may decide this formula)"
+            )
     return {
         "status": status,
         "count": str(value) if value is not None else None,
@@ -1106,6 +1236,7 @@ def count_models(
         "cache_hits": stats["cache_hits"],
         "elapsed_ms": (time.perf_counter() - started) * 1000.0,
         "method": "exact (DPLL counting, components, cache)",
+        "backend": "dpll",
         "note": note,
         "formula_sha256": formula.sha256,
         "formula_original_sha256": formula.original_sha256,

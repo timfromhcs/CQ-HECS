@@ -1,0 +1,96 @@
+CMake is re-running because D:/Quantum EMU/CQ-HECS/build/v4/CMakeFiles/generate.stamp is out-of-date.
+  the file 'D:/Quantum EMU/CQ-HECS/CMakeLists.txt'
+  is newer than 'D:/Quantum EMU/CQ-HECS/build/v4/CMakeFiles/generate.stamp.depend'
+  result='-1'
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.26200.
+-- Setting Vulkan_LIBRARY=C:\VulkanSDK\1.4.357.0/Lib/vulkan-1.lib
+-- Vulkan: C:/VulkanSDK/1.4.357.0/Lib/vulkan-1.lib (version 1.4.357)
+-- Found glslangValidator for automated SPIR-V compilation: C:/VulkanSDK/1.4.357.0/Bin/glslangValidator.exe
+-- Configuring done (0.7s)
+-- Generating done (0.3s)
+-- Build files have been written to: D:/Quantum EMU/CQ-HECS/build/v4
+MSBuild-Version 18.7.1+024f5b037 für .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  nanobind-static.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\nanobind-static.lib
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  vulkan_engine.cpp
+  _cq_hecs_core.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\_cq_hecs_core.cp314-win_amd64.pyd
+  _cqhecs_core.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\_cqhecs_core.cp314-win_amd64.pyd
+  entropy_harvester.cpp
+  tiered_storage.cpp
+  qasm_parser.cpp
+  sat_solver.cpp
+  arx_engine.cpp
+  terminal_ui.cpp
+  json_formatter.cpp
+  lattice.cpp
+  cordic_engine.cpp
+  residual_engine.cpp
+  tensor_network.cpp
+  constraint_solver.cpp
+  vulkan_context.cpp
+D:\Quantum EMU\CQ-HECS\src\vulkan\vulkan_context.cpp(149,32): warning C4996: 'getenv': This function or variable may be unsafe. Consider using _dupenv_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Quantum EMU\CQ-HECS\build\v4\cq_hecs_core_objects.vcxproj]
+  vulkan_buffer.cpp
+  vulkan_pipeline.cpp
+  Code wird generiert...
+  cq_hecs_core_objects.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\cq_hecs_core_objects.dir\Release\cq_hecs_core_objects.lib
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  cq_hecs_core.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\cq_hecs_core.dll
+  test_stabilizer.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_stabilizer.exe
+  test_300q_stress.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_300q_stress.exe
+  test_statevector_contract.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_statevector_contract.exe
+  test_stabilizer_extreme.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_stabilizer_extreme.exe
+  test_hybrid_mps.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_hybrid_mps.exe
+  test_bitexact_and_stress.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_bitexact_and_stress.exe
+  test_stress_limits.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_stress_limits.exe
+  test_exact_algebra.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_exact_algebra.exe
+  test_vulkan_device_policy.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_vulkan_device_policy.exe
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  main.cpp
+  test_exact_ring.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_exact_ring.exe
+  test_qpu_facade_contract.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_qpu_facade_contract.exe
+  test_mps_contract.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_mps_contract.exe
+  test_reversibility.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_reversibility.exe
+  test_sat_parser.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_sat_parser.exe
+  test_constraint_solver.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_constraint_solver.exe
+  test_qasm_contract.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_qasm_contract.exe
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  cq_hecs_api.cpp
+  test_release_assert_meta.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_release_assert_meta.exe
+  test_ghz300.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_ghz300.exe
+  test_vulkan_compute_contract.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_vulkan_compute_contract.exe
+  test_engine_cpp.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\test_engine_cpp.exe
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+  maxcut_example.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\maxcut_example.exe
+  ghz300_example.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\ghz300_example.exe
+     Bibliothek "D:/Quantum EMU/CQ-HECS/build/v4/bin/Release/cq_hecs.lib" und Objekt "D:/Quantum EMU/CQ-HECS/build/v4/bin/Release/cq_hecs.exp" werden erstellt.
+  cq_hecs.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\cq_hecs.exe
+  cq_hecs_shared.vcxproj -> D:\Quantum EMU\CQ-HECS\build\v4\bin\Release\cq_hecs.dll
+  Building Custom Rule D:/Quantum EMU/CQ-HECS/CMakeLists.txt
+build exit 0
