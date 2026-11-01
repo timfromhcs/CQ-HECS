@@ -1,4 +1,4 @@
-# CQ-HECS Architecture (v2)
+# CQ-HECS Architecture (v2, historical)
 
 > This document describes the architecture that v2.2.2 actually ships. It
 > replaces an earlier aspirational "VRTS-300" specification whose bit-exact

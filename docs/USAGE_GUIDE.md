@@ -56,6 +56,7 @@ cq-hecs version
 cq-hecs doctor
 cq-hecs backend list          # capabilities of Paths A–D
 cq-hecs analyze name:ghz8     # static analysis + path recommendation
+cq-hecs analyze name:ghz8 --explain   # + dry-run ExecutionPlan (v4)
 cq-hecs run name:bell --shots 1000 --seed 42
 cq-hecs verify name:bell --reference aer
 cq-hecs benchmark smoke

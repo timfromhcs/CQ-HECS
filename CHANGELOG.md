@@ -8,6 +8,52 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-11-01
+
+Explainable planning, an exact variable-elimination #SAT backend and per-observable
+Path D bounds. Nothing is removed; see `MIGRATION_V4.md` for the three behavior notes.
+
+### Added
+
+- **`ExecutionPlan`** (`cqhecs.execution_plan`, schema `cqhecs.execution_plan/1`): a
+  deterministic dry-run plan built from the shared gate manifest without allocating
+  any backend. It reports candidate paths with capability blockers (kept separate
+  from policy notes), the router's selected path, heuristic memory/work estimates
+  (labelled as estimates), known hard limits, typed refusals and a plan digest.
+  Exposed as `cq-hecs analyze --explain`, `EntanglementAdaptiveRouter.plan()`, the
+  MCP tool `cqhecs_plan` and Studio `POST /api/plan` with one schema. Routed results
+  gain `metadata["plan_check"]` (planned vs actual path; observation only).
+- **`count_models(method="dpll"|"separator"|"auto")`** and `cq-hecs sat count
+  --method`: exact #SAT by min-fill variable elimination (`cqhecs.sat_separator`) with
+  arbitrary-precision counts, a table budget and deadline that return `UNKNOWN`
+  instead of a partial count, and a width preflight. The default stays `dpll`.
+  Preregistered benchmark H4-SAT-01: 0 mismatches over 11 families; orders of
+  magnitude faster on bounded-width families, slower or refusing on high-width random
+  3-SAT (reported, not hidden). No general speedup claim.
+- **Path D native X/Y/Z observables** with a separate certified bound per observable
+  (`PauliObservable`, `evaluate_pauli_observables`, `evaluate_paulis`); validated
+  against Qiskit `Statevector`/`Pauli` and exhaustive one-/two-qubit tables.
+- Six new source mutants (60/60 killed) covering the separator counter, the Path D
+  Y phase and bound accounting, and plan refusal.
+
+### Changed
+
+- `expectation_values(method="sparse_pauli")` runs one native pass (was one pass per
+  basis-rotation pattern) and reports each observable's own bound (was the group
+  total). The bound is smaller or equal and still certified; an observable above the
+  tolerance no longer invalidates the others.
+
+### Fixed
+
+- `count_models` (DPLL) raised an uncaught `RecursionError` on deep formulas such as a
+  2000-variable implication chain; it now returns `UNKNOWN` with a note and no count.
+
+### Not included (evaluated and deferred)
+
+Graph-aware Path C ordering, noise calibration schema v3, CNF-to-XOR witnesses, an
+optional CDCL engine, OMNIWAVE scheduling experiments, a browser/native conformance
+corpus and Lean formalization. See `research/v7/DECISIONS.md`.
+
 ## [3.7.0] - 2026-10-31
 
 ### Added

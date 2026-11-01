@@ -26,7 +26,26 @@ Four classical simulation paths · one result contract · fail-closed by design
 
 ---
 
-> **Status: `v3.7.0` (2026-10-31).** Correctness-first SAT propagation, a clearer
+> **Status: `v4.0.0` (2026-11-01).** Explainable planning and exact bounded-width
+> counting; nothing removed (see [`MIGRATION_V4.md`](MIGRATION_V4.md)):
+>
+> - **`ExecutionPlan` dry run.** `cq-hecs analyze CIRCUIT --explain` (also Python,
+>   MCP `cqhecs_plan`, Studio `/api/plan`) reports the selected path, why each
+>   other path is incapable or lower priority, heuristic resource estimates
+>   (labelled as estimates) and typed refusals, without allocating a simulator.
+> - **Variable-elimination #SAT (opt-in).** `cq-hecs sat count --method
+>   separator|auto`. Exact, arbitrary-precision, `UNKNOWN` beyond its budget; the
+>   default stays the DPLL counter. Faster on bounded-width families, slower on
+>   high-width random 3-SAT (`research/v7/FINDINGS.md`).
+> - **Path D X/Y/Z observables with per-observable certified bounds.**
+> - **Fix:** the DPLL counter no longer crashes with `RecursionError`.
+>
+> Evaluated and deferred, not claimed: graph-aware Path C ordering, noise
+> calibration v3, CNF-to-XOR witnesses, CDCL, browser/native conformance corpus.
+>
+> **Previous release: `v3.7.0` (2026-10-31).**
+>
+> *v3.7.0 summary (unchanged below):* Correctness-first SAT propagation, a clearer
 > result contract, and stronger proof evidence:
 >
 > - **Watched-literal SAT (opt-in).** `solve(..., propagation="watched")` and
@@ -317,7 +336,7 @@ equivariance, zero-noise identity, and channel composition order.
   live at https://cq-hecs-web.vercel.app; source in [`web/`](web/).
 - **MCP:** `cq-hecs mcp`, a stdio JSON-RPC server for agents (run, analyze,
   SAT solve/models, hardware evidence).
-- **Standalone:** `cqhecs-3.7.0-windows-x64.zip` on the release page; unzip
+- **Standalone:** `cqhecs-4.0.0-windows-x64.zip` on the release page; unzip
   and run `cq-hecs\cq-hecs.exe`. `scripts/build_exe.ps1` rebuilds it.
 
 ### CQ-HECS Studio
@@ -499,13 +518,13 @@ choco install vulkan-sdk cmake ninja -y --no-progress
 
 ```bash
 python -m build
-# dist/cqhecs-3.7.0-py3-none-any.whl
-# dist/cqhecs-3.7.0.tar.gz
+# dist/cqhecs-4.0.0-py3-none-any.whl
+# dist/cqhecs-4.0.0.tar.gz
 ```
 
 Published wheels, sdists, SHA-256 checksums, and the SPDX SBOM are attached to
 [GitHub Releases](https://github.com/timfromhcs/CQ-HECS/releases). The latest
-release is `v3.7.0`.
+release is `v4.0.0`.
 
 ---
 
@@ -689,18 +708,18 @@ audit record the final numbers. Measurements are not performance claims.
 
 | Gate | Result |
 | :--- | :--- |
-| Python suite (local v3.7.0 candidate) | **1968 passed**, 9 skips (opt-in exe and external-checker hooks), 1 deselected slow gate, exit 0 |
-| Optional `python-sat`/CaDiCaL tests | **44 passed** in a separate process; the Windows/Python 3.14.6 CaDiCaL build then exits `0xC0000409` (external defect F-09) |
-| Branch coverage | 84 % on the last Linux CI lane; not remeasured for the local candidate |
-| CTest (native) | **21/21**, including the OMNIWAVE BCP kernel against a C++ reference |
-| Source mutation | **54/54** killed |
-| Metamorphic selftest | **12/12** |
+| Python suite (local v4.0.0 candidate, Windows 11 / Python 3.13) | **2503 passed** in the full run, 13 skips (optional `python-sat`, external proof checkers, exe / native-module hooks), 1 deselected slow gate; 3 more tests that load native artifacts pass against a fresh build (`CQ_HECS_BUILD_DIR`) and fail against the stale pre-v4 build directory |
+| Optional `python-sat`/CaDiCaL tests | **not run for v4** (`python-sat` not installed in the v4 environment; last recorded in v3.7.0: 44 passed, external defect F-09) |
+| Branch coverage | 84 % on the last Linux CI lane; not remeasured for v4 |
+| CTest (native, Release, fresh 4.0.0 build) | **21/21**, including the OMNIWAVE BCP kernel against a C++ reference |
+| Source mutation | **60/60** killed (54 inherited + 6 new v4 mutants) |
+| Metamorphic selftest (`selftest --cases 4`) | PASS |
 | SPIR-V shaders | **13/13** verified |
-| Web unit / browser | **17/17** unit; **13/13** Playwright + axe |
-| Version consistency | all surfaces report `3.7.0` |
+| Web unit / browser | **17/17** unit; **13/13** Playwright + axe against the local build (preview and production not yet run for v4) |
+| Version consistency | all surfaces report `4.0.0` |
 | Lint | `flake8 --select=E9,F` clean on `cqhecs`, `python_bridge`, `scripts`, `tests` |
 | Silent-truncation audit | no patterns found |
-| Latest CI matrix | 7/7 jobs on the v3.5.0 tree; v3.6.0 exact-SHA run recorded in the release audit |
+| Latest CI matrix | pending: the v4 pull request's exact-SHA run is recorded in `research/v7/RELEASE_AUDIT.md` |
 
 ### Verify it yourself
 

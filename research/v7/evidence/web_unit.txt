@@ -6,103 +6,103 @@ TAP version 13
 # Subtest: matches Qiskit Statevector on 40 random circuits (1-8 qubits), no global-phase slack
 ok 1 - matches Qiskit Statevector on 40 random circuits (1-8 qubits), no global-phase slack
   ---
-  duration_ms: 29.6001
+  duration_ms: 31.9051
   type: 'test'
   ...
 # Subtest: matches an independent full-matrix reference, incl. mcx/mcz/cswap
 ok 2 - matches an independent full-matrix reference, incl. mcx/mcz/cswap
   ---
-  duration_ms: 53.0695
+  duration_ms: 59.8545
   type: 'test'
   ...
 # Subtest: unitarity: norm stays 1 to 1e-12 on a 16-qubit random circuit
 ok 3 - unitarity: norm stays 1 to 1e-12 on a 16-qubit random circuit
   ---
-  duration_ms: 43.8666
+  duration_ms: 46.9786
   type: 'test'
   ...
 # Subtest: QASM export round-trips to the identical state
 ok 4 - QASM export round-trips to the identical state
   ---
-  duration_ms: 15.3881
+  duration_ms: 17.3056
   type: 'test'
   ...
 # Subtest: presets: Bell, GHZ, Grover and teleportation behave as expected
 ok 5 - presets: Bell, GHZ, Grover and teleportation behave as expected
   ---
-  duration_ms: 16.9082
+  duration_ms: 22.1972
   type: 'test'
   ...
 # Subtest: mid-circuit measurement collapses and feeds later gates
 ok 6 - mid-circuit measurement collapses and feeds later gates
   ---
-  duration_ms: 3.6707
+  duration_ms: 3.9377
   type: 'test'
   ...
 # Subtest: reset returns a qubit to |0> and readout noise flips bits
 ok 7 - reset returns a qubit to |0> and readout noise flips bits
   ---
-  duration_ms: 10.1742
+  duration_ms: 9.6232
   type: 'test'
   ...
 # Subtest: sampling is reproducible for a seed and statistically sound
 ok 8 - sampling is reproducible for a seed and statistically sound
   ---
-  duration_ms: 18.6951
+  duration_ms: 19.1227
   type: 'test'
   ...
 # Subtest: the core refuses widths outside 1..30 instead of truncating
 ok 9 - the core refuses widths outside 1..30 instead of truncating
   ---
-  duration_ms: 23.7638
+  duration_ms: 24.2056
   type: 'test'
   ...
 # Subtest: parser rejects malformed input
 ok 10 - parser rejects malformed input
   ---
-  duration_ms: 1.4218
+  duration_ms: 1.389
   type: 'test'
   ...
 # Subtest: device-profile noise reproduces the exact Python M-FIT-2 distributions
 ok 11 - device-profile noise reproduces the exact Python M-FIT-2 distributions
   ---
-  duration_ms: 5062.0615
+  duration_ms: 5720.8143
   type: 'test'
   ...
 # Subtest: trajectory count is one per shot for small circuits and bounded for large ones
 ok 12 - trajectory count is one per shot for small circuits and bounded for large ones
   ---
-  duration_ms: 0.4274
+  duration_ms: 0.5206
   type: 'test'
   ...
 # Subtest: SAT solver: sound verdicts, brute-force agreement, budgets
 ok 13 - SAT solver: sound verdicts, brute-force agreement, budgets
   ---
-  duration_ms: 119.1152
+  duration_ms: 123.6247
   type: 'test'
   ...
 # Subtest: i18n: every UI key and guide section exists in EN, DE and FR
 ok 14 - i18n: every UI key and guide section exists in EN, DE and FR
   ---
-  duration_ms: 1.5888
+  duration_ms: 2.4225
   type: 'test'
   ...
 # Subtest: SAT certificates: every UNSAT is replay-checked; corrupted certificates are rejected
 ok 15 - SAT certificates: every UNSAT is replay-checked; corrupted certificates are rejected
   ---
-  duration_ms: 21.7035
+  duration_ms: 26.8021
   type: 'test'
   ...
 # Subtest: SAT input digest matches the Python contract and duplicate literals normalize
 ok 16 - SAT input digest matches the Python contract and duplicate literals normalize
   ---
-  duration_ms: 10.9449
+  duration_ms: 8.1285
   type: 'test'
   ...
 # Subtest: \#SAT: exact counts against brute force, BigInt range, budgets
 ok 17 - \#SAT: exact counts against brute force, BigInt range, budgets
   ---
-  duration_ms: 203.8281
+  duration_ms: 219.1471
   type: 'test'
   ...
 1..17
@@ -113,5 +113,5 @@ ok 17 - \#SAT: exact counts against brute force, BigInt range, budgets
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 5743.5171
+# duration_ms 6445.467
 unit exit 0

@@ -9,3 +9,4 @@
 | M10 | benchmark `sat_separator_bench.json` | 0 mismatches; see FINDINGS F-001 |
 | M10 | DPLL counter RecursionError (F-002) | regression test red -> fixed -> green |
 | M5 | `PauliObservable`, `evaluate_pauli_observables`, `expectation.py` single native pass; 203 oracle tests | done |
+| M15/M17 | version 4.0.0 on all surfaces; README/CHANGELOG/RELEASE_NOTES/MIGRATION_V4/ARCHITECTURE; native, web, mutation, wheel gates | done locally (see TEST_MATRIX) |

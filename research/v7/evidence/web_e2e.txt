@@ -1,0 +1,23 @@
+
+> cqhecs-web@1.0.0 e2e
+> playwright test
+
+
+Running 13 tests using 1 worker
+
+  ok  1 [chromium] › e2e\app.spec.ts:24:1 › every route renders, deep links survive a reload, and the console stays clean (6.2s)
+  ok  2 [chromium] › e2e\app.spec.ts:37:1 › language switch EN/DE/FR changes the interface (619ms)
+  ok  3 [chromium] › e2e\app.spec.ts:46:1 › Bell run: only 00/11, provenance shown, JSON export downloads (995ms)
+  ok  4 [chromium] › e2e\app.spec.ts:60:1 › WebGPU-unavailable fallback: the option is disabled, WASM still runs (700ms)
+  ok  5 [chromium] › e2e\app.spec.ts:71:1 › safe limits refuse an oversized circuit instead of running it (1.3s)
+  ok  6 [chromium] › e2e\app.spec.ts:81:1 › SAT lab: UNSAT carries a checked certificate, SAT a verified model, #SAT an exact count (1.1s)
+  ok  7 [chromium] › e2e\app.spec.ts:103:3 › layout mobile-360: no horizontal overflow, screenshots retained (2.0s)
+  ok  8 [chromium] › e2e\app.spec.ts:103:3 › layout mobile-390: no horizontal overflow, screenshots retained (1.8s)
+  ok  9 [chromium] › e2e\app.spec.ts:103:3 › layout tablet-768: no horizontal overflow, screenshots retained (2.0s)
+  ok 10 [chromium] › e2e\app.spec.ts:103:3 › layout desktop-1280: no horizontal overflow, screenshots retained (2.2s)
+  ok 11 [chromium] › e2e\app.spec.ts:103:3 › layout desktop-1440: no horizontal overflow, screenshots retained (4.5s)
+  ok 12 [chromium] › e2e\app.spec.ts:103:3 › layout desktop-1920: no horizontal overflow, screenshots retained (4.0s)
+  ok 13 [chromium] › e2e\app.spec.ts:118:1 › accessibility: no critical or serious axe violations on the main views (10.0s)
+
+  13 passed (44.4s)
+e2e exit 0

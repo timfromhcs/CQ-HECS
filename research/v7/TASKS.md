@@ -12,7 +12,7 @@ record everything else honestly as not promoted.
 | M0 | Safe repo state, branch from verified origin/main | DONE |
 | M1 | Baseline reproduction (Python gates) | DONE (native/web/mutation NOT RUN yet) |
 | M2 | Source/literature audit | IN_PROGRESS (literature map: prior art for planned features only) |
-| M3 | Result schema / contracts | PARTIAL: `plan_check` metadata added additively; no field changed meaning |
+| M3 | Result schema / contracts | PARTIAL: additive fields only (plan_check, count backend, per-observable bounds); no field changed meaning |
 | M4 | Explainable ExecutionPlan (Python/CLI/MCP/Studio API) | SUPPORTED_IN_SCOPE (Python+CLI+MCP+Studio API); Studio *UI panel* NOT STARTED |
 | M5 | Path D native X/Y/Z observables + per-observable bounds | SUPPORTED_IN_SCOPE (see HYPOTHESES H4-PAULI-01 for scope: not a new capability, a tighter and single-pass one) |
 | M6 | Path C graph-aware ordering | DEFERRED |
@@ -24,8 +24,8 @@ record everything else honestly as not promoted.
 | M12 | Optional CDCL | DEFERRED |
 | M13 | OMNIWAVE v4 experiments | DEFERRED |
 | M14 | Formal verification | DEFERRED |
-| M15 | UX/docs/provenance | NOT STARTED |
+| M15 | UX/docs/provenance | PARTIAL: docs, migration notes and provenance fields done; Studio/Web UI panels for the plan NOT STARTED |
 | M16 | Hardening/security | NOT STARTED |
-| M17 | Local release-candidate gates | NOT STARTED |
-| M18 | Remote CI/preview loop | NOT STARTED |
+| M17 | Local release-candidate gates | DONE (SBOM/checksums and Windows package are release-time steps, NOT RUN) |
+| M18 | Remote CI/preview loop | IN_PROGRESS |
 | M19 | Release decision | NOT STARTED -- publishing requires explicit user authorization |

@@ -1,0 +1,92 @@
+..............................................F..................................................F..........F....................................................................... [  7%]
+................s......................... [  8%]
+.s...ssss.................................. [ 10%]
+.................. [ 11%]
+......................................................... [ 13%]
+.................... [ 14%]
+....... [ 14%]
+........................................................ss.......................... [ 17%]
+........................................................................................... [ 21%]
+........................................................................ [ 24%]
+........................................................................ [ 27%]
+........................................................................ [ 30%]
+........................................................................ [ 32%]
+........................................................................ [ 35%]
+........................................................................ [ 38%]
+........................................................... [ 41%]
+........................................................................ [ 43%]
+........................................................................ [ 46%]
+..................................................................sss... [ 49%]
+...................................................................... [ 52%]
+........................................................................ [ 55%]
+........................................................................ [ 58%]
+........................................................................ [ 60%]
+........................................................................ [ 63%]
+........................................................................ [ 66%]
+........................................................................ [ 69%]
+........................................................................ [ 72%]
+........................................................................ [ 75%]
+........................................................................ [ 78%]
+........................................................................ [ 81%]
+........................................................................ [ 83%]
+........................................................................ [ 86%]
+........................................................................ [ 89%]
+........................................................................ [ 92%]
+........................................................................ [ 95%]
+.............................................................. [ 97%]
+........................................................                                                         [100%]
+================================== FAILURES ===================================
+_________________________ TestCAPI.test_version_query _________________________
+
+self = <test_c_api.TestCAPI testMethod=test_version_query>
+
+    def test_version_query(self):
+        ver = self.lib.cq_get_version().decode("utf-8")
+>       self.assertEqual(ver, "4.0.0")
+E       AssertionError: '3.7.0' != '4.0.0'
+E       - 3.7.0
+E       + 4.0.0
+
+tests\test_c_api.py:69: AssertionError
+________________ TestCLIPowerShell.test_cli_dashboard_bounded _________________
+
+self = <test_cli_powershell.TestCLIPowerShell testMethod=test_cli_dashboard_bounded>
+
+    def test_cli_dashboard_bounded(self):
+        from cqhecs import __version__
+    
+        res = self.run_cmd(["dashboard", "--demo", "--cycles", "2"])
+        self.assertEqual(res.returncode, 0)
+>       self.assertIn(f"CQ-HECS {__version__}", res.stdout)
+E       AssertionError: 'CQ-HECS 4.0.0' not found in '\x1b[2J\x1b[H\x1b[H\x1b[1;37;44m===============================================================================\x1b[0m\n\x1b[1;37;41m   CQ-HECS 3.7.0 :: DEMO DASHBOARD :: SIMULATED DATA - NOT A MEASUREMENT \x1b[0m\n\x1b[1;37;44m===============================================================================\x1b[0m\n \x1b[90mCycle #000001 | every value below is a preset or a sine curve; no device or run is observed\x1b[0m\n\n\x1b[1;36m+-- VRAM gauge (SIMULATED) -------------+  +-- Workload weights (SIMULATED) -------+\x1b[0m\n| VRAM (demo):   \x1b[1;32m004.561 MB\x1b[0m             |  | Alpha (ARX):   020.7% [##--------]  |\n| VRAM Ceiling:  \x1b[1;37m00120.0 MB\x1b[0m (demo)        |  | Beta (Phase):  030.0% [###-------]  |\n| Headroom:      \x1b[1;33m00115.4 MB\x1b[0m Remaining   |  | Gamma (SAT):   017.1% [##--------]  |\n| Usage Gauge:   [#-------------]  |  | Delta (SVD):   015.4% [##--------]  |\n| Status:        \x1b[1;33mSIMULATED, NOT READ\x1b[0m    |  | Epsilon (Lyap):016.7% [##--------]  |\n\x1b[1;36m+----------------------------------------+  +----------------------------------------+\x1b[0m\n\n\x1b[1;33m+-- MPS metrics (SIMULATED) ------------+  +-- Sine trace (SIMULATED) -------------+\x1b[0m\n| Qubit Count:   00300 Qubits (1D Lattice)|  | Trace value:      054.2 (demo)        |\n| Bond Dim (chi):00064 (Capacity: 64)   |  | Nudge (demo):     \x1b[1;32mno             \x1b[0m    |\n| Residual (L_res):0.000000              |  | Waveform Trace:   #%##+=-....:-+*#%@   |\n| MPS Throughput:00039880 cycles/s         |  | Source:           \x1b[1;33mSIMULATED (sin)\x1b[0m      |\n\x1b[1;33m+----------------------------------------+  +----------------------------------------+\x1b[0m\n\n\x1b[90m  [Q]/Esc quits  |  SIMULATED DATA - NOT A MEASUREMENT\x1b[0m\n\x1b[H\x1b[1;37;44m===============================================================================\x1b[0m\n\x1b[1;37;41m   CQ-HECS 3.7.0 :: DEMO DASHBOARD :: SIMULATED DATA - NOT A MEASUREMENT \x1b[0m\n\x1b[1;37;44m===============================================================================\x1b[0m\n \x1b[90mCycle #000002 | every value below is a preset or a sine curve; no device or run is observed\x1b[0m\n\n\x1b[1;36m+-- VRAM gauge (SIMULATED) -------------+  +-- Workload weights (SIMULATED) -------+\x1b[0m\n| VRAM (demo):   \x1b[1;32m004.591 MB\x1b[0m             |  | Alpha (ARX):   021.1% [##--------]  |\n| VRAM Ceiling:  \x1b[1;37m00120.0 MB\x1b[0m (demo)        |  | Beta (Phase):  029.6% [###-------]  |\n| Headroom:      \x1b[1;33m00115.4 MB\x1b[0m Remaining   |  | Gamma (SAT):   017.5% [##--------]  |\n| Usage Gauge:   [#-------------]  |  | Delta (SVD):   015.0% [##--------]  |\n| Status:        \x1b[1;33mSIMULATED, NOT READ\x1b[0m    |  | Epsilon (Lyap):016.8% [##--------]  |\n\x1b[1;36m+----------------------------------------+  +----------------------------------------+\x1b[0m\n\n\x1b[1;33m+-- MPS metrics (SIMULATED) ------------+  +-- Sine trace (SIMULATED) -------------+\x1b[0m\n| Qubit Count:   00300 Qubits (1D Lattice)|  | Trace value:      063.0 (demo)        |\n| Bond Dim (chi):00064 (Capacity: 64)   |  | Nudge (demo):     \x1b[1;32mno             \x1b[0m    |\n| Residual (L_res):0.000000              |  | Waveform Trace:   #**+-:....:-=+**#@   |\n| MPS Throughput:00039880 cycles/s         |  | Source:           \x1b[1;33mSIMULATED (sin)\x1b[0m      |\n\x1b[1;33m+----------------------------------------+  +----------------------------------------+\x1b[0m\n\n\x1b[90m  [Q]/Esc quits  |  SIMULATED DATA - NOT A MEASUREMENT\x1b[0m\n\n[TUI] Exited cleanly after 2 cycles.\n'
+
+tests\test_cli_powershell.py:145: AssertionError
+_______________ TestCLIPowerShell.test_cli_version_is_canonical _______________
+
+self = <test_cli_powershell.TestCLIPowerShell testMethod=test_cli_version_is_canonical>
+
+    def test_cli_version_is_canonical(self):
+        from cqhecs import __version__
+    
+        res = self.run_cmd(["version"])
+        self.assertEqual(res.returncode, 0)
+>       self.assertIn(f"CQ-HECS {__version__}", res.stdout)
+E       AssertionError: 'CQ-HECS 4.0.0' not found in 'CQ-HECS 3.7.0\nEngine class: legacy_z8_phase_ledger (statevector_simulation=false)\nPowered by CQ-HECS (https://github.com/timfromhcs)\nAuthor: Tim (@timfromhcs) <timfromhcs@gmail.com>\n'
+
+tests\test_cli_powershell.py:44: AssertionError
+=========================== short test summary info ===========================
+SKIPPED [1] tests\test_sat_certificates.py:23: could not import 'pysat.solvers': No module named 'pysat'
+SKIPPED [1] tests\test_sat_external.py:13: python-sat (optional extra) not installed
+SKIPPED [1] tests\test_correctness_contracts.py:1206: native _cqhecs_core not available
+SKIPPED [1] tests\test_drat_external_vector.py:47: set CQ_DRAT_TRIM to a drat-trim executable
+SKIPPED [1] tests\test_exe_smoke.py:26: CQ_HECS_EXE not set
+SKIPPED [1] tests\test_exe_smoke.py:31: CQ_HECS_EXE not set
+SKIPPED [1] tests\test_exe_smoke.py:36: CQ_HECS_EXE not set
+SKIPPED [1] tests\test_exe_smoke.py:41: CQ_HECS_EXE not set
+SKIPPED [1] tests\test_lrat_external.py:22: set CQ_CAKE_LPR to a cake_lpr binary
+SKIPPED [1] tests\test_lrat_external.py:34: set CQ_LRAT_CHECK to an lrat-check binary
+SKIPPED [1] tests\test_qiskit_and_transpiler.py:62: native _cq_hecs_core is not built; the legacy VulkanQpuBackend provider requires it (build the native component to run this)
+SKIPPED [1] tests\test_qiskit_and_transpiler.py:81: native _cq_hecs_core is not built; the legacy VulkanQpuBackend provider requires it (build the native component to run this)
+SKIPPED [1] tests\test_qiskit_and_transpiler.py:105: native _cq_hecs_core is not built; the legacy VulkanQpuBackend provider requires it (build the native component to run this)
+3 failed, 2503 passed, 13 skipped, 1 deselected, 2251 subtests passed in 216.93s (0:03:36)
+EXIT 1
