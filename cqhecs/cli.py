@@ -596,7 +596,9 @@ def cmd_sat(args: argparse.Namespace) -> int:
         except (OSError, ValueError) as exc:
             LOG.error("%s", exc)
             return EXIT_USAGE
-        counted = count_models(formula, timeout_seconds=args.timeout)
+        counted = count_models(
+            formula, timeout_seconds=args.timeout, method=args.method
+        )
         payload = {"schema_version": JSON_SCHEMA_VERSION, "version": __version__, "result": counted}
         if args.format == "json":
             _emit_json(payload)
@@ -605,6 +607,9 @@ def cmd_sat(args: argparse.Namespace) -> int:
             print(f"Status     : {counted['status']}")
             print(f"#Models    : {counted['count'] if counted['count'] is not None else 'not determined'}")
             print(f"Method     : {counted['method']}")
+            print(f"Backend    : {counted.get('backend', 'dpll')}")
+            if counted.get("induced_width") is not None:
+                print(f"Width      : {counted['induced_width']}")
             print(f"Nodes      : {counted['nodes']}  cache hits {counted['cache_hits']}")
             print(f"Time (ms)  : {counted['elapsed_ms']:.2f}")
             print(f"Note       : {counted['note']}")
@@ -1325,6 +1330,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_sat_count.add_argument("file", nargs="?", help="DIMACS .cnf file")
     p_sat_count.add_argument("--cnf", default=None, help="DIMACS text")
     p_sat_count.add_argument("--timeout", type=float, default=10.0, help="Timeout in seconds")
+    p_sat_count.add_argument(
+        "--method", choices=["dpll", "separator", "auto"], default="dpll",
+        help="Exact backend: dpll (default), separator (variable elimination; "
+        "UNKNOWN beyond its table budget) or auto (separator only at low planned width)",
+    )
 
     p_sat_models = sat_sub.add_parser("models", help="Enumerate up to N models")
     p_sat_models.add_argument("file", nargs="?", help="DIMACS .cnf file")

@@ -19,7 +19,7 @@ record everything else honestly as not promoted.
 | M7 | Noise calibration schema v3 | DEFERRED |
 | M8 | Browser/Python/native conformance corpus | NOT STARTED |
 | M9 | Native/GPU correctness+performance | NOT STARTED (Vulkan toolchain unverified) |
-| M10 | Exact separator #SAT backend | IN_PROGRESS |
+| M10 | Exact separator #SAT backend | SUPPORTED_IN_SCOPE (opt-in `method="separator"|"auto"`; default stays dpll) |
 | M11 | CNF-to-XOR with witness | DEFERRED |
 | M12 | Optional CDCL | DEFERRED |
 | M13 | OMNIWAVE v4 experiments | DEFERRED |

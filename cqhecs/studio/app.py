@@ -694,10 +694,13 @@ class StudioState:
 
         timeout = _float(request.get("timeout"), "timeout", 0.01, 30.0, 5.0)
         formula = self._formula_from_request(request)
+        method = str(request.get("method", "dpll"))
+        if method not in ("dpll", "separator", "auto"):
+            raise StudioError("method must be dpll, separator or auto", code="invalid_method")
         return {
             "schema_version": "1.0",
             "formula": self._formula_summary(formula),
-            "result": count_models(formula, timeout_seconds=timeout),
+            "result": count_models(formula, timeout_seconds=timeout, method=method),
             "non_claim": "An exact count for this formula; UNKNOWN means the budget ran out, not zero.",
         }
 

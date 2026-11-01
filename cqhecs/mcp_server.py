@@ -101,6 +101,7 @@ TOOLS: List[Dict[str, Any]] = [
             "properties": {
                 "cnf": {"type": "string"},
                 "timeout": {"type": "number", "default": 5.0},
+                "method": {"type": "string", "enum": ["dpll", "separator", "auto"], "default": "dpll"},
             },
             "required": ["cnf"],
         },
@@ -290,7 +291,11 @@ def _call(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         from cqhecs.sat import count_models, parse_dimacs
 
         formula = parse_dimacs(arguments["cnf"], source="mcp")
-        return _text({"result": count_models(formula, timeout_seconds=float(arguments.get("timeout", 5.0)))})
+        return _text({"result": count_models(
+            formula,
+            timeout_seconds=float(arguments.get("timeout", 5.0)),
+            method=str(arguments.get("method", "dpll")),
+        )})
     if name == "cqhecs_devices":
         from cqhecs.device_profiles import list_profiles, summary
 
