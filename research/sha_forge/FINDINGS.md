@@ -78,3 +78,57 @@ Where OMNIWAVE stays the right choice: UNSAT families that need exhaustive cube
 coverage with DRAT evidence - the SHA work uses OMNIWAVE exactly there, for the
 one-flipped-bit contradiction in `tests/test_sha_preimage_sat.py`, where its proof is
 accepted by `cqhecs.drat`.
+
+## F-15 (2026-11-02) - learned branching for OMNIWAVE: built, measured, not promoted
+
+Operator request: train a small custom model ("JEV") and put it into OMNIWAVE so it
+gets faster. Done, and the answer is no for now.
+
+What was built: `cqhecs/omniwave/learned.py` (10 integer features per candidate,
+logistic scorer with JSON weights, optional fine-tuned
+`google/bert_uncased_L-2_H-128_A-2`), `scripts/train_branch_jev.py` (data collection
+from the project's own instances, the engine's propagation as the labelling oracle,
+train/held-out split by instance), and the engine hook (`branch="learned"`).
+
+Measured on the held-out instance (pigeonhole-8-7, not in training):
+
+| Policy | Verdict | Time | Fronts |
+|---|---|---|---|
+| Jeroslow-Wang (default) | UNSAT | 27.4 s | 10 079 |
+| Learned scorer | UNKNOWN | 60 s budget | 157 973 |
+
+The greedy label ("does this variable refute one branch immediately") is the wrong
+target: it produces a 15x larger tree than the clause-weighted JW order. Promotion
+rule from the plan says the policy needs a >= 20 % win on one family and no 10 %
+regression; it has neither, so it stays opt-in and the default is untouched.
+
+Safety, and why shipping it at all is acceptable: a learned heuristic only picks among
+unassigned variables, so it cannot change an answer. SAT is still verified against the
+original CNF, UNSAT still needs a DRAT proof checked in-repo, and
+`tests/test_omniwave_learned.py` asserts that an adversarial stub policy returns the
+same verdict.
+
+## F-16 (2026-11-02) - occurrence-list propagation: 2.4x on one family, nothing on the heavy one
+
+Profiling pigeonhole-8-7 put `_propagate` at 78 % of the runtime (15 M dictionary
+lookups for 5 188 fronts) because every pass rescanned the whole formula. Replacing it
+with occurrence-list propagation (a literal only re-examines the clauses containing it)
+gave, with identical verdicts and checked proofs:
+
+| Instance | Before | After |
+|---|---|---|
+| SHA-256 encoding W=16 r=8 | 0.26 s | **0.11 s** (2.4x) |
+| random 3-SAT 70 vars | 0.31 s | 0.27 s |
+| random 3-SAT 60 vars | 0.15 s | 0.13 s |
+| pigeonhole-8-7 | 31.07 s | 29.81 s (same 10 079 fronts) |
+| pigeonhole-9-8 | UNKNOWN, 35 885 fronts/25 s | UNKNOWN, 37 927 fronts/25 s |
+
+The honest reading: the change removes per-front overhead, and per-front overhead was
+not what limited the graded instance - the number of fronts was. Both numbers are in
+the table instead of an average that would hide it.
+
+Two defects of my own were caught on the way and are worth remembering: the first
+rewrite silently added pure-literal elimination (which the engine never had, and which
+the reference batched BCP does not do - the equivalence test caught it), and the second
+assigned one unit per full rescan (114 scans on a single SHA front - the profile
+caught it).

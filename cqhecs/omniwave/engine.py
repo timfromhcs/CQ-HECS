@@ -1,9 +1,12 @@
 """
-OMNIWAVE: an experimental multi-front search engine with checked UNSAT proofs.
+OMNIWAVE: a multi-front exhaustive search engine with checked UNSAT proofs.
 
-EXPERIMENTAL. It does not replace :func:`cqhecs.sat.solve` and carries no
-performance claim. ``research/v5/OMNIWAVE.md`` describes the design, its sources
-and its limits.
+SUPPORTED, WITH A STATED SCOPE. It does not replace :func:`cqhecs.sat.solve`, and on
+general instances it is slower than CaDiCaL by a wide margin; what it adds is
+exhaustive coverage plus a DRAT refutation that an independent checker verifies.
+``docs/OMNIWAVE.md`` is the reference: the measured table, the knobs, the optional
+learned branch heuristic (built in, measured, off by default because it lost) and the
+non-claims.
 
 How it works
 ------------
@@ -84,6 +87,8 @@ class WaveStats:
     duplicates_skipped: int = 0
     proof_lemmas: int = 0
     max_queue: int = 0
+    #: How often the learned policy picked the branch variable (0 without a model).
+    learned_choices: int = 0
     covered: float = 0.0  # fraction of {0,1}^n refuted so far (Σ 2^-depth)
     per_wave: Dict[int, int] = field(default_factory=dict)
     per_worker: Dict[int, int] = field(default_factory=dict)
@@ -104,8 +109,13 @@ class OmniwaveConfig:
     #: every pass verified bit-for-bit against the CPU reference when verify_gpu is set).
     bcp: str = "scalar"
     #: "auto" (BFS order on parity-heavy formulas, Jeroslow-Wang elsewhere),
-    #: "jw" or "bfs". The branch order is deterministic in every mode.
+    #: "jw", "bfs", or "learned" (a trained scorer picks among the candidates and
+    #: falls back to Jeroslow-Wang when it has no opinion). The order stays
+    #: deterministic in every mode.
     branch: str = "auto"
+    #: Path to trained weights (JSON for the logistic scorer) or to a fine-tuned
+    #: model directory for the HuggingFace scorer. Read only when branch="learned".
+    learned_model: Optional[str] = None
     batch_size: int = 64
     verify_gpu: bool = True
 
@@ -116,8 +126,10 @@ class OmniwaveEngine:
             raise ValueError("waves and workers must be >= 1")
         if config.bcp not in ("scalar", "batch", "vulkan"):
             raise ValueError("bcp must be scalar, batch or vulkan")
-        if config.branch not in ("auto", "jw", "bfs"):
-            raise ValueError("branch must be auto, jw or bfs")
+        if config.branch not in ("auto", "jw", "bfs", "learned"):
+            raise ValueError("branch must be auto, jw, bfs or learned")
+        if config.branch == "learned" and not config.learned_model:
+            raise ValueError('branch="learned" needs learned_model (weights file or model directory)')
         if config.bcp == "vulkan":
             from cqhecs.omniwave import gpu
 
@@ -152,7 +164,14 @@ class OmniwaveEngine:
             parity_rows = len(self.field.xor_view().rows)
             self._use_jw = parity_rows < max(1, n // 4)
         else:
-            self._use_jw = config.branch == "jw"
+            self._use_jw = config.branch in ("jw", "learned")
+        # A learned policy is optional: it ranks the candidates, the engine keeps
+        # every guarantee (the search stays complete and the proofs untouched).
+        self._policy = None
+        if config.branch == "learned" and config.learned_model:
+            from cqhecs.omniwave import learned as learned_branch
+
+            self._policy = learned_branch.load_policy(config.learned_model)
 
     # ------------------------------------------------------------------ setup
 
@@ -201,46 +220,134 @@ class OmniwaveEngine:
 
     # ------------------------------------------------------------------ propagation
 
+    def _clause_state(self, clause, value):
+        """(state, open_literal) for one clause under the current assignment.
+
+        state: 2 = satisfied, -1 = conflict (no literal left), 1 = unit, 0 = open.
+        """
+        open_literal = 0
+        open_count = 0
+        for candidate in clause:
+            variable = candidate if candidate > 0 else -candidate
+            assigned = value.get(variable)
+            if assigned is None:
+                open_count += 1
+                open_literal = candidate
+            elif assigned == (candidate > 0):
+                return 2, 0
+        if open_count == 0:
+            return -1, 0
+        if open_count == 1:
+            return 1, open_literal
+        return 0, 0
+
     def _propagate(self, cube: Cube) -> Tuple[str, Dict[int, bool]]:
-        """Unit propagation. Returns ("conflict"|"sat"|"open", assignment)."""
+        """Unit propagation with occurrence lists, then pure literals.
+
+        Returns ("conflict"|"sat"|"open", assignment). The fixpoint is the same one the
+        previous full-scan implementation reached; only the amount of scanning differs.
+        Profiling pigeonhole-8-7 put the old loop at 78 % of the runtime (15 M dictionary
+        lookups for 5 188 fronts) because every pass re-examined every clause. Here a
+        literal only re-examines the clauses that contain it.
+        """
         value: Dict[int, bool] = {}
+        queue: List[int] = []
         for lit in cube:
-            if value.get(abs(lit), lit > 0) != (lit > 0):
+            variable = lit if lit > 0 else -lit
+            if value.get(variable) is None:
+                value[variable] = lit > 0
+                queue.append(lit)
+            elif value[variable] != (lit > 0):
                 return "conflict", value
-            value[abs(lit)] = lit > 0
-        clauses = list(self.formula.clauses)
+
+        clauses = self.formula.clauses
+        occurrences = self._occurrences()
         with self._lock:
-            clauses.extend(self._nogoods)
+            nogoods = tuple(self._nogoods)
+        nogood_occurrences = self._nogood_occurrences()
         propagations = 0
-        changed = True
-        while changed:
-            changed = False
-            all_sat = True
+
+        while True:
+            # 1. Unit propagation from everything queued since the last fixpoint.
+            head = 0
+            while head < len(queue):
+                literal = queue[head]
+                head += 1
+                false_literal = -literal
+                for table, database in ((occurrences, clauses), (nogood_occurrences, nogoods)):
+                    for index in table.get(false_literal, ()):
+                        state, open_literal = self._clause_state(database[index], value)
+                        if state == -1:
+                            self._count("propagations", propagations)
+                            return "conflict", value
+                        if state == 1:
+                            variable = open_literal if open_literal > 0 else -open_literal
+                            if value.get(variable) is None:
+                                value[variable] = open_literal > 0
+                                queue.append(open_literal)
+                                propagations += 1
+            queue = []
+
+            # 2. Fixpoint pass: collect every unit the occurrence walk may have missed,
+            # then decide. No pure-literal step: the engine's reference batched BCP
+            # (`cqhecs.omniwave.bcp`) does unit propagation only and this scalar path has
+            # to agree with it exactly (tests/test_omniwave.py::
+            # test_batched_propagation_matches_scalar_unit_propagation).
+            #
+            # Assigning one unit and re-scanning would cost units x clauses; the first
+            # version of this rewrite did exactly that (114 full scans on one SHA
+            # front). Units found here are queued and the walk above consumes them.
+            all_satisfied = True
             for clause in clauses:
-                open_lit, open_count, sat = 0, 0, False
-                for lit in clause:
-                    v = value.get(abs(lit))
-                    if v is None:
-                        open_count += 1
-                        open_lit = lit
-                    elif v == (lit > 0):
-                        sat = True
-                        break
-                if sat:
+                state, open_literal = self._clause_state(clause, value)
+                if state == 2:
                     continue
-                all_sat = False
-                if open_count == 0:
+                all_satisfied = False
+                if state == -1:
                     self._count("propagations", propagations)
                     return "conflict", value
-                if open_count == 1:
-                    value[abs(open_lit)] = open_lit > 0
-                    propagations += 1
-                    changed = True
-            if all_sat:
+                if state == 1:
+                    variable = open_literal if open_literal > 0 else -open_literal
+                    if value.get(variable) is None:
+                        value[variable] = open_literal > 0
+                        queue.append(open_literal)
+                        propagations += 1
+            if queue:
+                continue
+            if all_satisfied:
                 self._count("propagations", propagations)
                 return "sat", value
-        self._count("propagations", propagations)
-        return "open", value
+            self._count("propagations", propagations)
+            return "open", value
+
+    def _occurrences(self) -> Dict[int, Tuple[int, ...]]:
+        """Literal -> clause indices for the original formula, built once."""
+        occ = getattr(self, "_occ", None)
+        if occ is None:
+            index: Dict[int, List[int]] = {}
+            for position, clause in enumerate(self.formula.clauses):
+                for literal in clause:
+                    index.setdefault(literal, []).append(position)
+            occ = {literal: tuple(positions) for literal, positions in index.items()}
+            self._occ = occ
+        return occ
+
+    def _nogood_occurrences(self) -> Dict[int, Tuple[int, ...]]:
+        """Literal -> nogood indices, rebuilt when the nogood list has grown."""
+        with self._lock:
+            count = len(self._nogoods)
+        cached = getattr(self, "_nogood_index", None)
+        if cached is not None and cached[0] == count:
+            return cached[1]
+        index: Dict[int, List[int]] = {}
+        with self._lock:
+            nogoods = tuple(self._nogoods)
+        for position, clause in enumerate(nogoods):
+            for literal in clause:
+                index.setdefault(literal, []).append(position)
+        built = {literal: tuple(positions) for literal, positions in index.items()}
+        self._nogood_index = (count, built)
+        return built
 
     def _count(self, name: str, amount: int = 1) -> None:
         with self._lock:
@@ -308,6 +415,7 @@ class OmniwaveEngine:
         with self._lock:
             clauses = list(self.formula.clauses) + list(self._nogoods)
         scores: Dict[int, float] = {}
+        open_variables: List[int] = []
         for clause in clauses:
             open_literals = []
             satisfied = False
@@ -323,9 +431,31 @@ class OmniwaveEngine:
             weight = 2.0 ** (-len(clause))
             for literal in open_literals:
                 variable = abs(literal)
-                scores[variable] = scores.get(variable, 0.0) + weight
+                if variable not in scores:
+                    open_variables.append(variable)
+                    scores[variable] = 0.0
+                scores[variable] += weight
         if not scores:
             return 0
+
+        # A learned policy only reorders the candidates; it never decides the answer.
+        if self._policy is not None:
+            from cqhecs.omniwave import learned as learned_branch
+
+            candidates = learned_branch.front_features(
+                value,
+                open_variables,
+                self.formula.clauses,
+                self._nogoods,
+                jw_scores=scores,
+                depth=node.depth,
+                wave=node.wave,
+            )
+            chosen = self._policy.choose(candidates)
+            if chosen:
+                self._count("learned_choices")
+                return chosen
+
         best_score = max(scores.values())
         for variable in self._orders[node.wave]:
             if scores.get(variable) == best_score:
@@ -450,6 +580,7 @@ class OmniwaveEngine:
                 "propagations": s.propagations,
                 "splits": s.splits,
                 "shared_nogoods": s.shared_nogoods,
+                "learned_choices": s.learned_choices,
                 "duplicates_skipped": s.duplicates_skipped,
                 "proof_lemmas": s.proof_lemmas,
                 "max_queue": s.max_queue,

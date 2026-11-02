@@ -70,7 +70,7 @@ Four classical simulation paths · one result contract · fail-closed by design
 > - **Still open.** The OpenAI/Anthropic ETH proofs are *claimed* and Lean-
 >   formalized at pinned revisions, not peer-reviewed by this project. The Lean
 >   build status is recorded in `research/v6/`; P vs NP stays open.
-> - **OMNIWAVE (experimental).** A multi-front exact SAT search
+> - **OMNIWAVE.** A multi-front exact SAT search
 >   (`--engine omniwave`, CLI/MCP, Studio **OMNIWAVE lab** with live data and
 >   pause/resume/cancel). The default `--branch auto` uses Jeroslow-Wang on
 >   pigeonhole/random formulas and BFS on parity-heavy formulas; measured UNSAT
@@ -347,7 +347,8 @@ rest of CQ-HECS: no claim without a check that ran.
   fixed. Watched propagation is 8.6-16.1x faster than the scan reference on these
   formulas, with identical verdicts.
 - The P-vs-NP boundary is written down rather than implied:
-  [esearch/sha_forge/P_VS_NP_BOUNDARY.md](research/sha_forge/P_VS_NP_BOUNDARY.md)
+  [
+esearch/sha_forge/P_VS_NP_BOUNDARY.md](research/sha_forge/P_VS_NP_BOUNDARY.md)
   states the three reasons these experiments cannot bear on it.
 Status: **validated on the miner** (2026-11-02). A 64-round software trace served
 by the device was accepted unchanged by the Python reference replay, with the same
@@ -466,7 +467,7 @@ the `SAT_VERIFIED`/`UNSAT_PROVEN`/`TIMEOUT_UNKNOWN` vocabulary. The Studio and
 
 | Surface | Quantum engine | SAT engine |
 | :--- | :--- | :--- |
-| Python / CLI / Qiskit / MCP / Studio | routed paths A–D (CPU), density matrix ≤ 10 qubits for noise | `cqhecs.sat` DPLL (+ optional CaDiCaL), `count_models`, experimental OMNIWAVE (`cqhecs.omniwave`) |
+| Python / CLI / Qiskit / MCP / Studio | routed paths A–D (CPU), density matrix ≤ 10 qubits for noise | `cqhecs.sat` DPLL (+ optional CaDiCaL), `count_models`, OMNIWAVE (`cqhecs.omniwave`, exhaustive + checked proofs, see [`docs/OMNIWAVE.md`](docs/OMNIWAVE.md)) |
 | Native C++20 / C ABI | the C++20 core behind the C ABI (CTest 21/21); 13 SPIR-V shaders validated and dispatched on a software ICD in CI, **no end-to-end GPU circuit simulator** | `cq_solve_sat` (no proof object); `cq_omniwave_bcp_eval` (one batched BCP pass for OMNIWAVE, CPU-verified) |
 | Web (browser) | its own state vector: WASM f64 (exact up to rounding), WebGPU f32 (single precision, cross-checked ≤ 20 qubits); **not** paths A–D | its own TS DPLL with replay-checked tree-resolution certificates, `countModels`; no CaDiCaL |
 | Windows build (`cq-hecs.exe`) | same as Python/CLI | same as Python (CaDiCaL only if built with `python-sat`) |
