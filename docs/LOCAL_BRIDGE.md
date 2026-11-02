@@ -30,3 +30,31 @@ Profile construction fails for any other hostname; `blackharkminer` and `timmine
 
 The page asks the browser for local-network access only after you click **Connect local TimsMiner**. Denied, blocked or unreachable
 all show a clear message and no retry loop starts. Chrome/Edge behaviour on specific versions is not yet recorded (blocker B-07).
+
+## Measured: a browser cannot reach the miner directly
+
+On 2026-11-02, Chromium 156.0.8078.4 was asked to fetch two read-only endpoints of
+the allowlisted unit from a page served on loopback, from `http://127.0.0.1:4173`
+and from `http://localhost:4173`:
+
+```
+Access to fetch at 'http://<device>/api/system/info' from origin 'http://localhost:4173'
+has been blocked by CORS policy: Permission was denied for this request to access
+the `local` address space.
+TypeError: Failed to fetch        (status 0, 0 bytes)
+```
+
+`navigator.permissions.query({name: "local-network-access"})` reports `prompt` for
+both origins: the capability exists, but it needs an operator gesture and a
+prompt, and a page cannot grant it silently. The device's own CORS headers are not
+the blocker - they allow private ranges; the browser's Local Network Access policy
+is.
+
+Consequence, and why the bridge is not optional: the web UI cannot talk to the
+miner. Every device read goes through the loopback bridge, which is the only
+component with network access to the unit. A future "direct browser" mode would
+need an explicit operator permission prompt per origin, and must be designed for
+the case where the operator declines.
+
+Reproduce: `node web/scripts/measure-lan-access.mjs http://<device> http://localhost:4173`
+(Playwright/Chromium, no writes to the device).

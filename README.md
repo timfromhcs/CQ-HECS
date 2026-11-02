@@ -329,6 +329,14 @@ rest of CQ-HECS: no claim without a check that ran.
   `"none"`, and a profile or capability document that claims otherwise is
   refused by `firmware_profile.reject_asic_round_claim()`.
 
+- Browser: the Forge page ships a scalar SHA-256 WebAssembly module (the same
+  `public/cqhecs_core.wasm` the state-vector emulator uses), cross-checked against
+  the TypeScript reference on the FIPS vectors, every padding boundary and
+  pseudo-random messages. The backend probe reports `WASM_SCALAR` only after the
+  module passed its own known-answer test, and falls back to the CPU with a stated
+  reason when the module cannot be loaded. No SIMD variant is built, so that tier
+  stays visibly unavailable.
+
 Status: **validated on the miner** (2026-11-02). A 64-round software trace served
 by the device was accepted unchanged by the Python reference replay, with the same
 output state as the host implementation; `sha256d("abc")` and a 4 MiB WLAN backup

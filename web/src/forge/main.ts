@@ -2,6 +2,7 @@
 
 import * as sha from "./sha";
 import { detectWasmSimd, probeBackends, type ProbeResult } from "./backends";
+import { loadWasmSha } from "./wasm_sha";
 import { cpuBatch, createGpuSha, MAX_BATCH, webgpuSelfTest, type GpuSha } from "./gpu_sha";
 import { DEMO_HEADER, DEMO_LABEL, demoTelemetry } from "./demo";
 import { LANGS, pickLang, t, type Lang } from "./i18n";
@@ -365,10 +366,14 @@ function randomBlocks(n: number): Uint32Array {
 async function runBench(): Promise<void> {
   const msg = $("be-msg");
   msg.textContent = t(lang, "be.running");
+  // The WASM tier is reported available only after the module itself computed a
+  // known answer; loadWasmSha() returns undefined when it cannot.
+  const wasmSha = await loadWasmSha();
   const probe = await probeBackends({
     hasNavigatorGpu: "gpu" in navigator,
     acquireGpu: "gpu" in navigator ? acquireGpu : undefined,
     wasmSimd: detectWasmSimd(),
+    wasmSha,
     browserCpuSelfTest: () => sha.toHex(sha.sha256(enc.encode("abc"))) === "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
     bridge: session.bridge?.reachable ? { reachable: true, nativeBackend: false, deviceAllowlisted: false, supportsJobType: false } : undefined,
   });

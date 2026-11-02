@@ -12,3 +12,43 @@
 - **F-10 (observation):** hashrate on the stock firmware is unstable over an hour (240–425 GH/s, mean 325 vs expected 434) while temperature, power, ASIC error and heap are flat. Unexplained; see B-09.
 - **F-11 (observation):** the unit runs from the `factory` partition. Backup and restore design must not assume the running app lives in `ota_0`/`ota_1`.
 - **F-12 (process):** the operator asked for a flash; the safety gate of their own AGENTBUILD document (verified backup first) could not be met on this machine, so no flash was done. Recorded as B-03/B-04 rather than worked around.
+
+## F-13 (2026-11-02) - the hashrate swing is not caused by the research firmware
+
+B-09 recorded a swing between 240 and 425 GH/s (mean 325, stdev 32) on the stock
+image during the first 60-minute baseline, with an expected ~434 at 485 MHz /
+1100 mV. The stock image has since been replaced twice; the device now runs
+`v4.0.2-rc1-sha-research` with the **same** settings (485 MHz, 1100 mV, no limit
+raised, no pool change).
+
+A second read-only capture, 30 minutes at 30 s (61 samples, 0 gaps), while the
+miner was mining normally:
+
+| Metric | Stock capture (60 min) | Research firmware (30 min) |
+|---|---|---|
+| Samples | 121 | 61 |
+| Mean hashrate | 325 GH/s | **333 GH/s** |
+| Stdev | 32 | 29 |
+| Range | 240-425 | **271-404** |
+| Expected (485 MHz / 1100 mV) | ~434 | ~434 |
+| Temperature | 64-65 C | 54-59 C |
+| Power | not captured | 10.6-11.1 W |
+| Shares accepted / rejected | 537 / 1 | **257 / 0** |
+
+What this supports and what it does not:
+
+- The swing is **not** an artefact of the research firmware: a different build,
+  byte-for-byte different from the stock image, shows the same distribution at the
+  same clock and voltage.
+- The gap to the expected ~434 GH/s is a property of the device or its settings,
+  not of the tooling; 0 rejected shares and 0 % ASIC error argue against a
+  hardware fault on the share path.
+- It does **not** explain the cause. Temperature in the second capture was 6-7 K
+  lower (the unit was idle for a while before it), which could raise the clock
+  ceiling rather than lower it, so thermal throttling is not an obvious
+  explanation either.
+- Nothing was tuned to chase it, and B-09 stays open as an observation.
+
+Raw samples: `E:\qCSHA\sha_forge_results\baseline_research_fw\`
+(`baseline_20261102T081809Z.jsonl` and its `.summary.json`). Reproduce the summary
+with `python scripts/summarise_hashrate.py <capture.jsonl>`.

@@ -198,17 +198,27 @@ where that stops, and it is not a statement about 64-round SHA-256.*
 
 | experiment | outcome | why |
 |---|---|---|
-| W = 32, 1 free word, 17 rounds, output asserted | **UNRESOLVED**, no answer after 150 s (hard child-process timeout) | `sat.solve(timeout_seconds=45)` did not return: the built-in deadline is checked between search nodes, and this instance needs no decisions, so a single `_propagate()` call dominates the wall clock |
-| W = 32, 1 free word, 18 / 19 / 20 rounds | **UNRESOLVED**, > 90 s each, killed | same as above |
+| W = 32, 1 free word, 17 rounds, output asserted | **UNRESOLVED**, no answer inside any practical budget | the search needs no decisions, so unit propagation does all the work; the encoder is a decoder here and the instance is simply too large to propagate to a conclusion in the budget |
+| W = 32, 1 free word, 18 / 19 / 20 rounds | **UNRESOLVED**, killed | same as above |
 | W = 8, 1 free word, 17 rounds, free word **0** | **UNRESOLVED**: `UNKNOWN` after 1 023 decisions / 466 conflicts (30 s requested, 67 s wall) | the free word feeds every round through the schedule; propagation is no longer decisive and DPLL searches |
 | W = 32 preimage with the output *not* over-determined (e.g. asserting one output word) | not attempted | out of scope for this record; no claim |
 | 64-round preimage of any kind | not attempted, and not claimed feasible | the 64-round *verification* instance (437 985 clauses) is decided in ≈1 s only because all 1 024 message bits are constants |
 
-The timeout observation in the first two rows is a measured property of
-`cqhecs/sat.py` as it stands (deadline checked per 1024 nodes, propagation not
-interruptible). It is recorded here as a limitation for that module's owner, not
-as something this work changed: `sat.py` was imported, not modified. Until it is
-addressed, a caller must bound such a solve with a child process.
+### The timeout observation, and its fix
+
+The first run of this work recorded a real defect in `cqhecs/sat.py`: the deadline
+was checked every 1024 search *nodes*, and an instance that needs no decisions
+runs inside a single node, so one `_propagate()` call could scan the formula for
+minutes. Measured then: a 17-round, one-free-word instance produced **no answer
+after 150 s with a 45 s budget**.
+
+Fixed in the same module (not worked around): the deadline is now also checked at
+the top of every propagation pass, in the branching heuristic, and every 4096
+watch visits inside the watched-literal propagation. Re-measured on the same
+instance (27 489 variables, 94 529 clauses): a **3 s budget returns `UNKNOWN`
+after 3.23 s** — an overshoot of one clause pass instead of the whole search.
+`tests/test_sat_deadline.py` pins this for both engines, and the 161 existing SAT
+and DRAT tests are unchanged.
 
 Freeing the *last* schedule word (index 15) at W = 8 is easy (0 decisions,
 0.12 s at 17 rounds) while freeing word 0 at the same size is UNRESOLVED — the
