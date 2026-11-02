@@ -81,12 +81,28 @@ test("engine probe selects a software engine and explains every rejection", asyn
   }
 });
 
-test("without WebGPU the probe falls back visibly to the CPU", async ({ page }) => {
+test("without WebGPU the probe uses the bundled WASM scalar core", async ({ page }) => {
   await page.addInitScript(() => { Object.defineProperty(navigator, "gpu", { value: undefined, configurable: true }); delete (navigator as unknown as Record<string, unknown>).gpu; });
   await page.goto("/forge.html?lang=en#bench");
   await page.click("#be-run");
-  await expect(page.locator("#be-selected")).toContainText("BROWSER_CPU", { timeout: 30_000 });
+  // The SHA-256 WebAssembly module is bundled now, so the honest fallback order is
+  // WASM_SIMD (absent by design) -> WASM_SCALAR (present, self-tested) -> CPU.
+  await expect(page.locator("#be-selected")).toContainText("WASM_SCALAR", { timeout: 30_000 });
   await expect(page.locator("#be-decisions tbody tr", { hasText: "WEBGPU" })).toContainText("not available");
+  await expect(page.locator("#be-decisions tbody tr", { hasText: "WASM_SCALAR" })).toContainText("self-test");
+});
+
+test("when the wasm module cannot load, the probe falls back to the CPU and says so", async ({ page }) => {
+  // Serve a 404 for the module: the page must not claim a WASM tier it cannot use.
+  await page.route("**/cqhecs_core.wasm", (route) => route.fulfill({ status: 404, body: "" }));
+  await page.addInitScript(() => { Object.defineProperty(navigator, "gpu", { value: undefined, configurable: true }); });
+  await page.goto("/forge.html?lang=en#bench");
+  await page.click("#be-run");
+  await expect(page.locator("#be-selected")).toContainText("BROWSER_CPU", { timeout: 30_000 });
+  const wasmRow = page.locator("#be-decisions tbody tr", { hasText: "WASM_SCALAR" });
+  await expect(wasmRow).toContainText("not available");
+  // A missing module needs a reason, not just a red label.
+  expect((await wasmRow.locator("td").last().innerText()).length).toBeGreaterThan(5);
 });
 
 test("language switch EN/DE/FR", async ({ page }) => {
