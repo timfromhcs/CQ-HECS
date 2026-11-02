@@ -98,8 +98,8 @@ exactly that.
 | A | V1 circuit corpus (Qiskit oracle) | **done** |
 | A | V2 engine measurement (WASM measured, WebGPU NOT RUN) | **done, with the GPU column honestly empty** |
 | A | V3 documentation | **done** (this file, `docs/WEB_ENGINES.md`, CHANGELOG, README) |
-| B | V4 `hcs.run.v2` provenance across CLI/Studio/Web | **not started** |
-| C | V6–V8 version 5.0.0, migration notes, release | **not started** |
+| B | V4 `hcs.run.v2` provenance across CLI/Studio/Web | **done** (5.0.0, `docs/PROVENANCE.md`, `MIGRATION_V5.md`) |
+| C | V6–V8 version 5.0.0, migration notes, release | **done** (5.0.0 on every surface, CI, merge) |
 
-Stage A ships as a normal feature merge; 5.0.0 is not claimed, because the provenance
-contract it is supposed to introduce does not exist yet.
+Stage A shipped as 4.2.0; stage B/C as 5.0.0. The remaining gap in the contract is the
+circuit-simulation CLI path, which does not write cards yet - stated, not hidden.
