@@ -10,6 +10,7 @@ import { loadProfiles, profileNoise, type DeviceProfile } from "./profiles";
 import { pigeonhole, random3Sat, toDimacs, type SweepPoint } from "./sat";
 import type { EngineInfo, EngineKind, Noise, RunResult, WorkerRequest, WorkerResponse } from "./protocol";
 import type { CodeEditor } from "./editor";
+import { sha256Hex } from "./digest";
 import { trajectoryCount } from "./simulate";
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
@@ -480,7 +481,7 @@ function stopRun() {
   $("#stats").innerHTML = `<span class="chip">${esc(t("run.cancelled"))}</span>`;
 }
 
-function runOnce(c: Circuit, ops: ReturnType<typeof compile>, shots: number, engine: EngineKind, noise: Noise, onProgress?: (f: number, label: string) => void): Promise<RunResult> {
+function runOnce(c: Circuit, ops: ReturnType<typeof compile>, shots: number, engine: EngineKind, noise: Noise, onProgress?: (f: number, label: string) => void, seed = (Math.random() * 2 ** 31) | 0): Promise<RunResult> {
   const id = ++reqId;
   return new Promise((resolve, reject) => {
     const onMsg = (e: MessageEvent<WorkerResponse>) => {
@@ -494,7 +495,7 @@ function runOnce(c: Circuit, ops: ReturnType<typeof compile>, shots: number, eng
     worker.addEventListener("message", onMsg);
     worker.postMessage({
       type: "run", id, numQubits: c.numQubits, numClbits: c.numClbits, ops, shots,
-      seed: (Math.random() * 2 ** 31) | 0, engine, noise,
+      seed, engine, noise,
     } satisfies WorkerRequest);
   });
 }
@@ -505,10 +506,13 @@ async function runCurrent() {
   try { p = plan(); } catch (e) { showCodeError(e); return; }
   if (!p.est.safe) { $("#estimate").textContent = `⚠ ${t("run.refused", { reason: estimateReason(p) })}`; return; }
   setRunning(true);
+  // The seed is chosen here, not inside the worker, so the exported run card can carry
+  // it: a card without the seed is not reproducible, it is only a screenshot with JSON.
+  const seed = (Math.random() * 2 ** 31) | 0;
   try {
-    lastRunInput = { qasm: toQasm(p.c), shots: p.shots, engine: p.engine, noise: p.noise };
+    lastRunInput = { qasm: toQasm(p.c), shots: p.shots, engine: p.engine, noise: p.noise, seed };
   } catch {
-    lastRunInput = { qasm: "", shots: p.shots, engine: p.engine, noise: p.noise };
+    lastRunInput = { qasm: "", shots: p.shots, engine: p.engine, noise: p.noise, seed };
   }
   const bar = $("#progress .bar"), label = $("#progress .label");
   bar.style.width = "0";
@@ -517,7 +521,7 @@ async function runCurrent() {
     const r = await runOnce(p.c, p.ops, p.shots, p.engine, p.noise, (f, l) => {
       bar.style.width = `${(f * 100).toFixed(1)}%`;
       label.textContent = l;
-    });
+    }, seed);
     (r as RunResult & { profile?: string; extrapolated?: number }).profile = p.noise.profile;
     (r as RunResult & { extrapolated?: number }).extrapolated = (p.noise as Noise & { extrapolated?: number }).extrapolated ?? 0;
     showResult(r);
@@ -552,7 +556,7 @@ function showResult(r: RunResult) {
   else $("#res-bloch").replaceChildren();
 }
 
-let lastRunInput: { qasm: string; shots: number; engine: EngineKind; noise: Noise } | null = null;
+let lastRunInput: { qasm: string; shots: number; engine: EngineKind; noise: Noise; seed: number } | null = null;
 
 function renderProvenance(r: RunResult) {
   const extra = r as RunResult & { profile?: string };
@@ -572,14 +576,19 @@ function renderProvenance(r: RunResult) {
   $("#res-details").hidden = false;
 }
 
-function exportResult() {
+async function exportResult() {
   if (!lastResult) return;
+  // The digest is over the QASM text the run used, so a reader can verify the card
+  // against the circuit without trusting this page.
+  const inputDigest = lastRunInput?.qasm ? await sha256Hex(lastRunInput.qasm).catch(() => null) : null;
   const document_ = {
-    schema: "cqhecs.web.run/1.0",
+    schema: "cqhecs.web.run/1.1",
     app_version: __APP_VERSION__,
     source_revision: __SOURCE_SHA__,
     created_at: new Date().toISOString(),
     input: lastRunInput,
+    input_digest: inputDigest,
+    digest_algorithm: "SHA-256 over the QASM text in input.qasm",
     engine: { kind: lastResult.engine, precision: lastResult.engine === "wasm" ? "f64" : "f32" },
     result: lastResult,
     limitations: [t("prov.not")],

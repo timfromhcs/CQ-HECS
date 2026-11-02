@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { mkdirSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync } from "node:fs";
 
 const ROUTES = ["", "guide", "lab", "code", "sat", "compare", "device"];
 const VIEWPORTS = [
@@ -54,7 +55,36 @@ test("Bell run: only 00/11, provenance shown, JSON export downloads", async ({ p
   await page.locator("#res-details summary").click();
   const download = page.waitForEvent("download");
   await page.click("#res-export");
-  expect((await download).suggestedFilename()).toMatch(/^cqhecs-run-\d+\.json$/);
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/^cqhecs-run-\d+\.json$/);
+
+  // The exported card must be reproducible, not decorative: the digest has to be the
+  // SHA-256 of the QASM it carries, the seed has to be there, and no device or bridge
+  // detail may leak into a file the user shares.
+  const raw = readFileSync((await file.path())!, "utf8");
+  const card = JSON.parse(raw);
+  expect(card.schema).toBe("cqhecs.web.run/1.1");
+  expect(card.input_digest).toBe(createHash("sha256").update(card.input.qasm, "utf8").digest("hex"));
+  expect(card.engine).toEqual({ kind: "wasm", precision: "f64" });
+  expect(Number.isInteger(card.input.seed)).toBe(true);
+  expect(card.result.counts).toBeTruthy();
+  expect(raw).not.toMatch(/bssid|\bwallet\b|\btoken\b|bridge_url|192\.168\./i);
+});
+
+test("the editor bundle is lazy: it loads only when the code lab opens", async ({ page }) => {
+  const requested: string[] = [];
+  page.on("request", (request) => requested.push(request.url()));
+  const editorLoaded = () => requested.some((url) => /\/assets\/editor-[^/]+\.js/.test(url));
+
+  await page.goto("/?lang=en#/");
+  await ready(page);
+  await page.goto("/?lang=en#/lab");
+  await ready(page);
+  expect(editorLoaded(), "the editor chunk must not be part of the first visit").toBe(false);
+
+  await page.goto("/?lang=en#/code");
+  await expect(page.locator("#editor .cm-editor")).toBeVisible({ timeout: 30_000 });
+  expect(editorLoaded(), "opening the code lab must load the editor chunk").toBe(true);
 });
 
 test("WebGPU-unavailable fallback: the option is disabled, WASM still runs", async ({ page }) => {
