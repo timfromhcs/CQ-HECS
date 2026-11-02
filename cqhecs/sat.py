@@ -347,6 +347,21 @@ class _DPLL:
             literal = self.trail.pop()
             self.assignment[abs(literal)] = 0
 
+    # -- deadline -------------------------------------------------------
+    def _check_deadline(self) -> None:
+        """Raise ``_Timeout`` once the solve budget is spent.
+
+        ``search()`` checks the deadline every 1024 nodes, which is useless for an
+        instance that needs no decisions: one call to ``_propagate()`` can scan
+        hundreds of thousands of clauses and run for minutes inside a single node
+        (measured on a 17-round reduced-SHA instance: a 45 s budget produced no
+        answer after 150 s). The checks below sit at the top of each full clause
+        pass and in the branching heuristic, so the worst-case overshoot is one
+        pass over the formula instead of the whole search.
+        """
+        if time.perf_counter() > self.deadline:
+            raise _Timeout
+
     # -- propagation ----------------------------------------------------
     def _propagate(self) -> bool:
         """
@@ -356,6 +371,7 @@ class _DPLL:
         formula. Returns False on conflict.
         """
         while True:
+            self._check_deadline()
             changed = False
             polarities: Dict[int, int] = {}
             for clause in self.formula.clauses:
@@ -407,6 +423,7 @@ class _DPLL:
 
     def _choose_variable(self) -> Optional[int]:
         """Jeroslow-Wang: weight variables in short unsatisfied clauses."""
+        self._check_deadline()
         scores: Dict[int, float] = {}
         for clause in self.formula.clauses:
             if any(self._value(literal) == 1 for literal in clause):
@@ -502,7 +519,15 @@ class _WatchedDPLL(_DPLL):
 
     def _bcp(self) -> bool:
         """Propagate all enqueued literals; False on conflict."""
+        visited = 0
         while self._qhead < len(self.trail):
+            # A single queue can be enormous (a 437k-clause formula assigns
+            # hundreds of thousands of literals in one propagation round), so the
+            # deadline is also checked inside the propagation loop, not only
+            # between search nodes.
+            visited += 1
+            if (visited & 4095) == 0:
+                self._check_deadline()
             true_literal = self.trail[self._qhead]
             self._qhead += 1
             false_literal = -true_literal
@@ -583,6 +608,7 @@ class _WatchedDPLL(_DPLL):
             self.conflicts += 1
             return False
         while True:
+            self._check_deadline()
             if not self._bcp():
                 return False
             if not self._assign_pure_literals():
