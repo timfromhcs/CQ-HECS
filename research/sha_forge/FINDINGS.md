@@ -52,3 +52,29 @@ What this supports and what it does not:
 Raw samples: `E:\qCSHA\sha_forge_results\baseline_research_fw\`
 (`baseline_20261102T081809Z.jsonl` and its `.summary.json`). Reproduce the summary
 with `python scripts/summarise_hashrate.py <capture.jsonl>`.
+
+## F-14 (2026-11-02) - OMNIWAVE is the wrong engine for these instances, and that is fine
+
+The horizon asked for an OMNIWAVE upgrade. Before changing anything, the existing
+engine was measured on the SHA encodings, because a change without a baseline is a
+guess:
+
+| Instance | DPLL (watched) | OMNIWAVE w=2 | OMNIWAVE w=4 |
+|---|---|---|---|
+| W=8, preimage, 16 rounds (6 345 vars) | SAT in 0.070 s | SAT in 0.46 s | SAT in 0.49 s |
+| W=16, preimage, 16 rounds (12 689 vars) | SAT in 0.148 s | SAT in 1.07 s | SAT in 1.21 s |
+
+Same verdicts, 6.5x to 8x slower. The reason is structural: these formulas become
+almost entirely definitional unit clauses after a few decisions, so propagation
+decides them; OMNIWAVE's strength is exhaustive front splitting with shared nogoods
+and proof logging, which is work these instances do not need.
+
+What that means for the planned change: **none was made**. A branch or scheduling
+change cannot be justified by an instance class where the engine is already 8x
+behind for a structural reason, and a proof-carrying component is the wrong place
+for a speculative edit at the end of a horizon. The measurement is the result.
+
+Where OMNIWAVE stays the right choice: UNSAT families that need exhaustive cube
+coverage with DRAT evidence - the SHA work uses OMNIWAVE exactly there, for the
+one-flipped-bit contradiction in `tests/test_sha_preimage_sat.py`, where its proof is
+accepted by `cqhecs.drat`.

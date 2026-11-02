@@ -301,3 +301,64 @@ Windows 11 (`win32`), CPython 3.14.6, `pytest 9.1.1`, AMD Ryzen 7 7735HS
 platform; timings above are single-machine wall clock, not a benchmark protocol.
 Deterministic sizes: the encoder allocates variables in a fixed order, so
 `CNF.sha256` is a stable fingerprint of each formula.
+
+## 8. The measured frontier (2026-11-02)
+
+`scripts/sha_round_frontier.py` regenerates this table. One machine, one repetition
+per cell, **10 s budget per cell**, one free message word (index 0), the output state
+asserted to the reference value of the block.
+
+| Width | Rounds that finish inside 10 s | First round that does not | Instance size at that round |
+|---:|---|---:|---|
+| 8 | 2, 4, 6, 8, 10, 12, 14, 16 (0.03-0.65 s) | 18 (`UNKNOWN`) | 7 401 vars / 25 325 clauses |
+| 16 | 2, 4, 6, 8, 10, 12, 14, 16 (0.07-1.68 s) | 18 (`UNKNOWN`) | 14 801 vars / 50 865 clauses |
+| 32 | 1-16 (0.09-5.19 s) | 17 (`UNKNOWN`, measured separately) | ~27 500 vars / ~94 500 clauses |
+| 32, verification (all 1024 bits fixed) | 64 rounds in 0.99 s | - | 126 721 vars / 437 985 clauses |
+
+The boundary is **structural, not a size effect**: it sits at the same round for
+every width even though the instances differ by an order of magnitude in size. A
+consistent explanation, offered as a hypothesis and not as a proof: for rounds <= 16
+the free word enters only as a plain addend of the round function, and the eight
+asserted output words over-determine it (256 constrained bits against at most 32
+unknowns), so unit propagation can invert the circuit. From round 17 the free word
+first passes through `sigma0` in the message schedule, that linearity is gone, and
+propagation stops deciding - the solver has to search, and 10 s is not enough.
+
+Two consequences for how this work is described:
+
+- "UNKNOWN after 10 s" is a statement about this budget on this machine. It is not a
+  hardness claim, and the table deliberately does not extrapolate: the row for 17+
+  rounds says nothing about 64 rounds.
+- The 64-round *verification* row is cheap **because every message bit is given**. It
+  is a correctness check of the encoding, not a search.
+
+Reproduce:
+
+```bash
+cd E:/qCSHA/CQ-HECS
+$env:PYTHONPATH="."
+python scripts/sha_round_frontier.py --out <results dir> --timeout 10
+```
+
+## 9. Which propagation engine these CNFs want (measured)
+
+The same cells as section 8, one repetition each, 30 s budget, both engines from
+`cqhecs/sat.py`, identical verdicts in every row:
+
+| Instance | `propagation="scan"` | `propagation="watched"` | Speed-up |
+|---|---:|---:|---:|
+| W=8, preimage, 16 rounds | 0.62 s | 0.07 s | 8.7x |
+| W=16, preimage, 16 rounds | 1.59 s | 0.15 s | 10.7x |
+| W=32, preimage, 8 rounds | 1.41 s | 0.16 s | 8.6x |
+| W=32, preimage, 12 rounds | 2.71 s | 0.24 s | 11.4x |
+| W=32, preimage, 16 rounds | 5.09 s | 0.32 s | 16.1x |
+
+That is a property of the encoding, not of the solver: these formulas are
+unit-heavy after a few decisions (every gate is a definitional clause), and the
+watched-literal engine avoids rescanning the whole formula per node. `scan` stays the
+default elsewhere because it is the readable reference the certificates are produced
+with.
+
+`scripts/sha_round_frontier.py` therefore defaults to `--propagation watched` and
+keeps the flag so the comparison can be repeated. No solver behaviour changed, and
+no default outside these scripts was touched.
