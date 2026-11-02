@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
 
 <img src=".github/assets/logo.svg" alt="CQ-HECS logo" width="720"/>
 
@@ -337,6 +337,18 @@ rest of CQ-HECS: no claim without a check that ran.
   reason when the module cannot be loaded. No SIMD variant is built, so that tier
   stays visibly unavailable.
 
+- On-device campaign: scripts/device_research_campaign.py drives a full session over
+  the USB console (no WLAN) and scripts/evaluate_device_traces.py re-derives every
+  trace on the PC. Measured: 8 blocks, 512 rounds, all accepted by the replay **and**
+  by a host build of the same C source, digests matching the Python reference.
+- Reduced-round frontier (scripts/sha_round_frontier.py): a preimage with one free
+  message word finishes through 16 rounds at W=8/16/32 and stops at 17-18 with a 10 s
+  budget; the 64-round verification instance takes 0.99 s because every message bit is
+  fixed. Watched propagation is 8.6-16.1x faster than the scan reference on these
+  formulas, with identical verdicts.
+- The P-vs-NP boundary is written down rather than implied:
+  [esearch/sha_forge/P_VS_NP_BOUNDARY.md](research/sha_forge/P_VS_NP_BOUNDARY.md)
+  states the three reasons these experiments cannot bear on it.
 Status: **validated on the miner** (2026-11-02). A 64-round software trace served
 by the device was accepted unchanged by the Python reference replay, with the same
 output state as the host implementation; `sha256d("abc")` and a 4 MiB WLAN backup
