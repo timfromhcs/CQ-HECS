@@ -71,6 +71,13 @@ Python-Engine; behauptet wird nur Übereinstimmung auf einem erklärten Korpus.
   über `vercel curl`, weil das Deployment durch Vercel Deployment Protection geschützt ist;
   das Skript sagt das, statt eine öffentliche URL zu behaupten.
 
+- **Korpus mit unabhängigem Orakel:** sechs OpenQASM-Fälle werden vom Browser-Parser
+  gelesen und mit **Qiskit 2.5.1 Statevector** bei `1e-12` verglichen; ein Test vertauscht
+  ein CNOT und muss fehlschlagen. Messung auf 12/16/20 Qubits: 0,20 / 4,08 / 111,5 ms
+  Median. WebGPU hat hier **keine** Zahl — das mitgelieferte Chromium liefert keinen
+  Adapter, also steht dort `NOT RUN` statt einer geratenen Zahl.
+  [`docs/CONFORMANCE.md`](docs/CONFORMANCE.md).
+
 Details: [`docs/WEB_ENGINES.md`](docs/WEB_ENGINES.md).
 
 ## OMNIWAVE

@@ -1,0 +1,73 @@
+{
+  "schema": "hcs.web.circuit-conformance.v1",
+  "generated_by": "scripts/export_web_circuit_conformance.py",
+  "oracle": "Qiskit 2.5.1 Statevector",
+  "notes": [
+    "qubit q is bit q of the basis index (little-endian, Qiskit convention)",
+    "probabilities are |amplitude|^2 in basis-index order",
+    "the QASM text is the case: the browser parses and compiles it itself"
+  ],
+  "tolerance": 1e-12,
+  "cases": [
+    {
+      "name": "bell",
+      "qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\nh q[0];\ncx q[0],q[1];\n",
+      "probabilities": [
+        0.4999999999999999,
+        0.0,
+        0.0,
+        0.4999999999999999
+      ]
+    },
+    {
+      "name": "ghz-3",
+      "qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[3];\nh q[0];\ncx q[0],q[1];\ncx q[1],q[2];\n",
+      "probabilities": [
+        0.4999999999999999,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.4999999999999999
+      ]
+    },
+    {
+      "name": "s-interference",
+      "qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[1];\nh q[0];\ns q[0];\nh q[0];\n",
+      "probabilities": [
+        0.4999999999999999,
+        0.4999999999999999
+      ]
+    },
+    {
+      "name": "rx-rz",
+      "qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[1];\nrx(0.7) q[0];\nrz(0.4) q[0];\n",
+      "probabilities": [
+        0.882421093642244,
+        0.11757890635775574
+      ]
+    },
+    {
+      "name": "controlled-phase",
+      "qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\nh q[0];\nh q[1];\ncp(1.0471975511965976) q[0],q[1];\nh q[0];\nh q[1];\n",
+      "probabilities": [
+        0.8124999999999996,
+        0.062499999999999944,
+        0.062499999999999944,
+        0.06249999999999992
+      ]
+    },
+    {
+      "name": "control-direction",
+      "qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\nx q[0];\ncx q[1],q[0];\n",
+      "probabilities": [
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ]
+    }
+  ]
+}
