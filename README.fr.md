@@ -54,6 +54,22 @@ de chaque moteur.
   et `cadical` sur deux ; l'ordre déclaré y coûte 0,12 s et 0,16 s — c'est écrit, pas caché.
   Tableaux et données brutes : [`docs/UNIFIED_SOLVER.md`](docs/UNIFIED_SOLVER.md).
 
+## Provenance (`hcs.run.v2`)
+
+Une fiche de provenance par exécution, commune à la CLI, au Studio et au navigateur : le
+texte d'entrée exact et son SHA-256, le type/précision/mode du moteur, la graine, la version
+logicielle et la révision source, les trois types d'erreur séparés (approximation, virgule
+flottante, échantillonnage) et les limites déclarées. L'empreinte porte toujours sur la
+charge utile stockée dans la fiche : elle se vérifie sans autre fichier.
+
+- CLI : `cq-hecs sat solve --cnf … --provenance card.json`
+- Navigateur : l'export du laboratoire écrit le même schéma
+- Les anciennes fiches v1 (`cqhecs.web.run/1.1`) sont **refusées** avec un renvoi vers la
+  régénération, jamais réinterprétées.
+
+Détails : [`docs/PROVENANCE.md`](docs/PROVENANCE.md), migration :
+[`MIGRATION_V5.md`](MIGRATION_V5.md).
+
 ## Moteurs navigateur (Vercel, WebAssembly, WebGPU)
 
 Les mêmes circuits tournent dans le navigateur via trois moteurs : un cœur

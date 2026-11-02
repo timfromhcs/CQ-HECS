@@ -29,19 +29,21 @@ Four classical simulation paths · one result contract · fail-closed by design
 
 ---
 
-> **Status: `v4.2.0` (2026-11-02).** The external baseline is measured, not missing:
+> **Status: `v5.0.0` (2026-11-02).** One provenance contract for every surface:
 >
-> - **CaDiCaL 1.9.5 measured** (python-sat 1.9.dev17 in a Python 3.12 environment). Both
->   runs - with and without the optional backend - report **0 disagreements** between the
->   four engines; CaDiCaL's UNSAT answers are DRAT-checked, not labelled. With CaDiCaL
->   present the fastest engine was `watched` on three families and `cadical` on two; the
->   declared order costs 0.12 s and 0.16 s there and the documents say so.
-> - **Unified solver** (`cqhecs/unified.py`, `--engine unified`): one contract over watched
->   DPLL, OMNIWAVE, CaDiCaL and the scan reference, with one evidence record.
-> - **Browser:** circuit corpus against **Qiskit 2.5.1**, measured WASM table
->   (0.20 / 4.08 / 111.5 ms at 12/16/20 qubits), WebGPU honestly `NOT RUN` on this host.
+> - **`hcs.run.v2`** (`cqhecs/provenance.py`, `web/src/provenance.ts`,
+>   `docs/provenance/hcs.run.v2.schema.json`): one card per run - the exact input text and
+>   its SHA-256, engine kind/precision/mode, seed, software version and source revision,
+>   the three separate error kinds, and the stated limits. The CLI writes it with
+>   `--provenance PATH`; the browser's Export uses it; both validate against the same schema
+>   file. A v1 card is refused with a pointer to regenerate, never silently re-read.
+> - **CaDiCaL 1.9.5 measured** (python-sat 1.9.dev17, Python 3.12): 0 disagreements across
+>   four engines; the declared order wins 3 of 5 families and costs 0.12 s / 0.16 s on the
+>   other two, which the documents say out loud.
+> - **Browser:** circuit corpus against Qiskit 2.5.1, measured WASM table
+>   (0.20 / 4.08 / 111.5 ms at 12/16/20 qubits), WebGPU honestly `NOT RUN` here.
 >
-> **Previous release: `v4.1.0` (2026-11-02).** One solving surface, a proven-correct
+> **Previous release: `v4.2.0` (2026-11-02).** One solving surface, a proven-correct
 > OMNIWAVE propagation, and a browser build that can be checked instead of believed:
 >
 > - **Unified solver.** `cqhecs/unified.py` and `--engine unified` put watched DPLL,
@@ -421,7 +423,7 @@ equivariance, zero-noise identity, and channel composition order.
   live at https://cq-hecs-web.vercel.app; source in [`web/`](web/).
 - **MCP:** `cq-hecs mcp`, a stdio JSON-RPC server for agents (run, analyze,
   SAT solve/models, hardware evidence).
-- **Standalone:** `cqhecs-4.2.0-windows-x64.zip` on the release page; unzip
+- **Standalone:** `cqhecs-5.0.0-windows-x64.zip` on the release page; unzip
   and run `cq-hecs\cq-hecs.exe`. `scripts/build_exe.ps1` rebuilds it.
 
 ### CQ-HECS Studio
@@ -651,8 +653,8 @@ choco install vulkan-sdk cmake ninja -y --no-progress
 
 ```bash
 python -m build
-# dist/cqhecs-4.2.0-py3-none-any.whl
-# dist/cqhecs-4.2.0.tar.gz
+# dist/cqhecs-5.0.0-py3-none-any.whl
+# dist/cqhecs-5.0.0.tar.gz
 ```
 
 Published wheels, sdists, SHA-256 checksums, and the SPDX SBOM are attached to

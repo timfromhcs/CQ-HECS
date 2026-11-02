@@ -61,6 +61,42 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 Not included: any ESP-Miner firmware change, WLAN backup route, research firmware, ASIC job path, flash or restore
 (see `research/sha_forge/BLOCKERS.md`). The only hardware data are read-only stock-firmware measurements.
 
+## [5.0.0] - 2026-11-02
+
+One provenance contract across the surfaces. This is a major release because the browser's
+exported run card changes shape and schema id; nothing in the Python API was removed.
+
+### Added
+
+- **`hcs.run.v2`** (`cqhecs/provenance.py`, `web/src/provenance.ts`,
+  `docs/provenance/hcs.run.v2.schema.json`): one card for a run - the exact input text and
+  its SHA-256, the engine kind/precision/mode, the seed, the software version and source
+  revision, the three separate error kinds and the stated limits. The digest is always over
+  the payload stored in the card, so a card can be checked on its own.
+- **CLI `--provenance PATH`** on `cq-hecs sat solve`, for every engine including
+  `--engine unified`; additive, `--json-out` is unchanged.
+- A shared validator on both sides: `cqhecs.provenance.validate` and a Node schema check in
+  `web/tests/provenance.test.ts`, against the same JSON Schema file.
+
+### Changed (breaking for the web export only)
+
+- The browser run card is `hcs.run.v2` instead of `cqhecs.web.run/1.1`:
+  `app_version` → `software.version`, `input.qasm` → `input.payload`,
+  `input_digest` → `input.digest`, `limitations` → `limits`, and `engine.mode` is new.
+  See `MIGRATION_V5.md`.
+- A v1 card is **refused** by the validator with a pointer to regenerate - it has no
+  payload field, so its digest cannot be reproduced from the card alone.
+
+### Fixed
+
+- The run card no longer omits the sampling seed: the UI chooses it and the card carries it,
+  so a sampled result can be replayed.
+
+### Not claimed
+
+- The card records what the software did; it does not prove a run happened.
+- The circuit-simulation CLI path does not write cards yet (SAT and the browser do).
+
 ## [4.2.0] - 2026-11-02
 
 The external baseline is measured instead of missing: CaDiCaL is installed in a supported

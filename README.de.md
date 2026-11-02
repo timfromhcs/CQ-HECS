@@ -57,6 +57,22 @@ Proof-Status jeder Engine.
   da, statt versteckt zu werden. Tabellen und Rohdaten:
   [`docs/UNIFIED_SOLVER.md`](docs/UNIFIED_SOLVER.md).
 
+## Herkunft (`hcs.run.v2`)
+
+Ein Herkunftsschein pro Lauf, gemeinsam für CLI, Studio und Browser: exakter Eingabetext
+und sein SHA-256, Engine-Art/Präzision/Modus, Seed, Softwareversion und Quellrevision, die
+drei getrennten Fehlerarten (Approximation, Gleitkomma, Sampling) und die genannten
+Grenzen. Der Digest liegt immer über der im Schein gespeicherten Nutzlast — ein Schein ist
+ohne weitere Datei prüfbar.
+
+- CLI: `cq-hecs sat solve --cnf … --provenance card.json`
+- Browser: Export im Labor schreibt dasselbe Schema
+- Alte v1-Karten (`cqhecs.web.run/1.1`) werden **abgelehnt** mit Hinweis auf Neuerzeugung,
+  nicht stillschweigend umgedeutet.
+
+Details: [`docs/PROVENANCE.md`](docs/PROVENANCE.md), Migration:
+[`MIGRATION_V5.md`](MIGRATION_V5.md).
+
 ## Browser-Engines (Vercel, WebAssembly, WebGPU)
 
 Dieselben Schaltungen laufen im Browser über drei Engines: einen Rust/WebAssembly-Kern in

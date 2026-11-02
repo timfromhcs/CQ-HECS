@@ -10,7 +10,7 @@ import { loadProfiles, profileNoise, type DeviceProfile } from "./profiles";
 import { pigeonhole, random3Sat, toDimacs, type SweepPoint } from "./sat";
 import type { EngineInfo, EngineKind, Noise, RunResult, WorkerRequest, WorkerResponse } from "./protocol";
 import type { CodeEditor } from "./editor";
-import { sha256Hex } from "./digest";
+import { buildRunCard } from "./provenance";
 import { trajectoryCount } from "./simulate";
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
@@ -577,23 +577,23 @@ function renderProvenance(r: RunResult) {
 }
 
 async function exportResult() {
-  if (!lastResult) return;
-  // The digest is over the QASM text the run used, so a reader can verify the card
-  // against the circuit without trusting this page.
-  const inputDigest = lastRunInput?.qasm ? await sha256Hex(lastRunInput.qasm).catch(() => null) : null;
-  const document_ = {
-    schema: "cqhecs.web.run/1.1",
-    app_version: __APP_VERSION__,
-    source_revision: __SOURCE_SHA__,
-    created_at: new Date().toISOString(),
-    input: lastRunInput,
-    input_digest: inputDigest,
-    digest_algorithm: "SHA-256 over the QASM text in input.qasm",
-    engine: { kind: lastResult.engine, precision: lastResult.engine === "wasm" ? "f64" : "f32" },
-    result: lastResult,
-    limitations: [t("prov.not")],
-  };
-  const blob = new Blob([JSON.stringify(document_, null, 2)], { type: "application/json" });
+  if (!lastResult || !lastRunInput) return;
+  // One shared contract with the CLI (`hcs.run.v2`): the digest is over the QASM text the
+  // run used, so the card can be checked without trusting this page.
+  const card = await buildRunCard(
+    {
+      version: __APP_VERSION__,
+      revision: __SOURCE_SHA__,
+      qasm: lastRunInput.qasm,
+      shots: lastRunInput.shots,
+      engineRequested: lastRunInput.engine,
+      noise: lastRunInput.noise,
+      seed: lastRunInput.seed,
+    },
+    lastResult,
+    [t("prov.not")],
+  );
+  const blob = new Blob([JSON.stringify(card, null, 2)], { type: "application/json" });
   const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `cqhecs-run-${Date.now()}.json` });
   a.click();
   URL.revokeObjectURL(a.href);

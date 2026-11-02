@@ -488,20 +488,55 @@ def cmd_noise_fit(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _write_provenance(args, source_text: str, *, engine_kind: str, status: str, elapsed_ms: float, detail=None) -> None:
+    """Write an ``hcs.run.v2`` card when the caller asked for one.
+
+    The card carries the exact DIMACS text and its digest, so it can be checked without
+    the original file. A refusal (payload too large, empty payload) is reported as an error
+    rather than written as a half-card.
+    """
+    path = getattr(args, "provenance", None)
+    if not path:
+        return
+    from cqhecs import provenance
+
+    card = provenance.build(
+        software=provenance.Software("cqhecs", __version__, provenance.source_revision()),
+        input_kind="cnf",
+        payload=source_text,
+        engine_kind=engine_kind,
+        precision="exact-integer",
+        mode="EXACT",
+        status=status,
+        elapsed_ms=elapsed_ms,
+        seed=int(args.seed) if getattr(args, "random", None) is not None else None,
+        limits=[
+            "SAT/UNSAT refers to this formula only; UNKNOWN is a timeout, not a proof.",
+            "The digest covers the DIMACS text in input.payload.",
+        ],
+        detail=detail or {},
+    )
+    written = card.write(path)
+    LOG.info("provenance card: %s", written)
+
+
 def cmd_sat(args: argparse.Namespace) -> int:
     """Sound DIMACS solving and an empirical random-3-SAT sweep."""
     from cqhecs.sat import parse_dimacs, random_3sat, solve, sweep
 
     if args.sat_command == "solve":
         try:
+            source_text = ""
             if args.file:
-                text = Path(args.file).read_text("utf-8")
-                formula = parse_dimacs(text, source=args.file)
+                source_text = Path(args.file).read_text("utf-8")
+                formula = parse_dimacs(source_text, source=args.file)
             elif args.cnf:
-                formula = parse_dimacs(args.cnf, source="argument")
+                source_text = args.cnf
+                formula = parse_dimacs(source_text, source="argument")
             elif args.random is not None:
                 ratio = args.ratio if args.ratio is not None else 4.26
                 formula = random_3sat(args.random, int(round(ratio * args.random)), seed=args.seed)
+                source_text = formula.to_dimacs()
             else:
                 LOG.error("provide a DIMACS file, --cnf TEXT, or --random N")
                 return EXIT_USAGE
@@ -529,6 +564,18 @@ def cmd_sat(args: argparse.Namespace) -> int:
             if args.json_out:
                 Path(args.json_out).parent.mkdir(parents=True, exist_ok=True)
                 Path(args.json_out).write_text(json.dumps(payload, indent=2) + "\n", "utf-8")
+            _write_provenance(
+                args,
+                source_text,
+                engine_kind="unified",
+                status=document.status,
+                elapsed_ms=sum(attempt.elapsed_seconds for attempt in document.attempts) * 1000.0,
+                detail={
+                    "decided_by": document.engine,
+                    "attempts": [attempt.to_dict() for attempt in document.attempts],
+                    "formula_sha256": document.formula_sha256,
+                },
+            )
             if args.format == "json":
                 _emit_json(payload)
             else:
@@ -588,6 +635,18 @@ def cmd_sat(args: argparse.Namespace) -> int:
         if args.json_out:
             Path(args.json_out).parent.mkdir(parents=True, exist_ok=True)
             Path(args.json_out).write_text(json.dumps(payload, indent=2) + "\n", "utf-8")
+        _write_provenance(
+            args,
+            source_text,
+            engine_kind=str(getattr(args, "engine", "dpll") or "dpll"),
+            status=result.status,
+            elapsed_ms=float(result.elapsed_ms),
+            detail={
+                "engine": result.engine,
+                "certified": bool(getattr(result, "certified", False)),
+                "formula_sha256": result.formula_sha256,
+            },
+        )
         if args.format == "json":
             _emit_json(payload)
         else:
@@ -1357,6 +1416,10 @@ def build_parser() -> argparse.ArgumentParser:
                              help="OMNIWAVE: branching order (auto uses BFS on parity-heavy formulas, JW elsewhere)")
     p_sat_solve.add_argument("--batch-size", type=int, default=64, help="OMNIWAVE: fronts per batch")
     p_sat_solve.add_argument("--proof-out", default=None, help="OMNIWAVE: write the checked DRAT proof here")
+    p_sat_solve.add_argument(
+        "--provenance", default=None, metavar="PATH",
+        help="Write an hcs.run.v2 provenance card (input digest, engine, limits) here",
+    )
     p_sat_count = sat_sub.add_parser("count", help="Exact model count (#SAT)")
     p_sat_count.add_argument("file", nargs="?", help="DIMACS .cnf file")
     p_sat_count.add_argument("--cnf", default=None, help="DIMACS text")
