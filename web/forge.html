@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>HCS SHA Forge · Real Silicon. Reproducible Science.</title>
+  <meta name="description" content="SHA-256 round analyzer, SHA-256d header replay and an optional local TimsMiner research node. Deterministic demo, no hardware required. Made with love by timfromhcs & hcsmedia." />
+  <meta name="theme-color" content="#0b0d14" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/src/forge/forge.css" />
+</head>
+<body>
+  <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
+  <header class="top">
+    <a class="brand" href="/forge.html"><span class="mark" aria-hidden="true">◈</span> HCS SHA <b>Forge</b></a>
+    <nav aria-label="Views"><div class="tabs" id="tabs" role="tablist" aria-label="Views">
+      <button role="tab" data-tab="overview" aria-selected="true" data-i18n="tab.overview">Overview</button>
+      <button role="tab" data-tab="analyzer" aria-selected="false" data-i18n="tab.analyzer">Round Analyzer</button>
+      <button role="tab" data-tab="miner" aria-selected="false" data-i18n="tab.miner">Miner Lab</button>
+      <button role="tab" data-tab="bench" aria-selected="false" data-i18n="tab.bench">Engine Benchmarks</button>
+      <button role="tab" data-tab="evidence" aria-selected="false" data-i18n="tab.evidence">Evidence</button>
+    </div></nav>
+    <div class="right">
+      <span id="env-badge" class="badge demo" role="status">DEMO</span>
+      <label class="sr" for="lang" data-i18n="lang">Language</label>
+      <select id="lang"><option value="en">English</option><option value="de">Deutsch</option><option value="fr">Français</option></select>
+      <a class="link" href="/" data-i18n="back">CQ-HECS Web</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="panel" data-panel="overview">
+      <p class="kicker" data-i18n="tagline">Real Silicon. Reproducible Science.</p>
+      <h1 data-i18n="ov.title">SHA-256, step by step — and an optional physical node.</h1>
+      <p class="lead" data-i18n="ov.lead"></p>
+      <div class="cards">
+        <article class="card"><h2 data-i18n="ov.c1.t"></h2><p data-i18n="ov.c1.d"></p></article>
+        <article class="card"><h2 data-i18n="ov.c2.t"></h2><p data-i18n="ov.c2.d"></p></article>
+        <article class="card"><h2 data-i18n="ov.c3.t"></h2><p data-i18n="ov.c3.d"></p></article>
+      </div>
+      <h2 data-i18n="ov.bound.t">What is measured, and what is not</h2>
+      <table class="grid"><thead><tr><th data-i18n="ov.th.source">Source</th><th data-i18n="ov.th.what">What it shows</th><th data-i18n="ov.th.not">What it never shows</th></tr></thead>
+        <tbody id="boundary"></tbody></table>
+      <div class="state" id="state-card" aria-live="polite"></div>
+    </section>
+
+    <section class="panel" data-panel="analyzer" hidden>
+      <h1 data-i18n="an.title">SHA Round Analyzer</h1>
+      <p class="note" data-i18n="an.note"></p>
+      <form id="an-form" class="form" autocomplete="off" novalidate>
+        <label for="an-mode" data-i18n="an.mode">Input</label>
+        <select id="an-mode">
+          <option value="text" data-i18n="an.mode.text">Text message</option>
+          <option value="hex" data-i18n="an.mode.hex">Hex bytes</option>
+          <option value="header" data-i18n="an.mode.header">Bitcoin 80-byte header (SHA-256d)</option>
+        </select>
+        <label for="an-input" data-i18n="an.input">Message</label>
+        <textarea id="an-input" rows="3" spellcheck="false">abc</textarea>
+        <label for="an-rounds" data-i18n="an.rounds">Rounds (1–64)</label>
+        <input id="an-rounds" type="number" min="1" max="64" value="64" />
+        <div class="row">
+          <button type="submit" class="btn primary" data-i18n="an.run">Compute trace</button>
+          <button type="button" id="an-genesis" class="btn" data-i18n="an.genesis">Load genesis header</button>
+          <button type="button" id="an-export" class="btn" data-i18n="an.export" disabled>Export trace JSON</button>
+        </div>
+      </form>
+      <p id="an-error" class="error" role="alert" hidden></p>
+      <div id="an-out" hidden>
+        <p class="srcbadge" data-i18n="an.src">SOFTWARE_REPLAY — computed in your browser, not read from any ASIC.</p>
+        <dl class="kv" id="an-summary"></dl>
+        <h2 data-i18n="an.pad">Padding</h2><pre id="an-pad" tabindex="0"></pre>
+        <div class="row"><label for="an-block" data-i18n="an.block">Block</label><select id="an-block"></select></div>
+        <h2 data-i18n="an.rounds.t">Rounds</h2>
+        <div class="row">
+          <label for="an-slider" data-i18n="an.pick">Round</label>
+          <input id="an-slider" type="range" min="0" max="63" value="0" />
+          <output id="an-round-label" for="an-slider"></output>
+        </div>
+        <div id="an-detail" class="detail" aria-live="polite"></div>
+        <div class="tablewrap" tabindex="0" role="region" aria-label="Round table">
+          <table class="grid mono" id="an-table"></table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" data-panel="miner" hidden>
+      <h1 data-i18n="mi.title">Miner Lab · TimsMiner / BM1366 Research Node</h1>
+      <p class="note" data-i18n="mi.note"></p>
+      <div class="cards">
+        <article class="card"><h2 data-i18n="mi.id">Device identity</h2><p id="mi-id"></p></article>
+        <article class="card"><h2 data-i18n="mi.state">Connection state</h2><p id="mi-state"></p></article>
+      </div>
+      <div class="row">
+        <label for="mi-url" data-i18n="mi.url">Local bridge address</label>
+        <input id="mi-url" type="text" value="http://127.0.0.1:8765" inputmode="url" />
+        <button id="mi-connect" class="btn primary" data-i18n="mi.connect">Connect local TimsMiner</button>
+      </div>
+      <p id="mi-msg" class="note" role="status"></p>
+      <h2 data-i18n="mi.meas.t">Measured baseline (physical node)</h2>
+      <p class="srcbadge measured" id="mi-meas-badge"></p>
+      <p class="note" id="mi-meas-note"></p>
+      <dl class="kv" id="mi-meas-kv"></dl>
+      <figure>
+        <svg id="mi-meas-chart" viewBox="0 0 600 160" role="img" aria-labelledby="mi-meas-chart-t mi-meas-chart-d"><title id="mi-meas-chart-t"></title><desc id="mi-meas-chart-d"></desc></svg>
+        <figcaption id="mi-meas-cap"></figcaption>
+      </figure>
+      <details><summary data-i18n="mi.table">Chart as table</summary>
+        <div class="tablewrap" tabindex="0" role="region" aria-label="Measured table"><table class="grid mono" id="mi-meas-table"></table></div></details>
+      <h2 data-i18n="mi.tele">Telemetry</h2>
+      <p class="srcbadge" id="mi-src"></p>
+      <figure>
+        <svg id="mi-chart" viewBox="0 0 600 160" role="img" aria-labelledby="mi-chart-t mi-chart-d"><title id="mi-chart-t"></title><desc id="mi-chart-d"></desc></svg>
+        <figcaption id="mi-cap"></figcaption>
+      </figure>
+      <details><summary data-i18n="mi.table">Chart as table</summary>
+        <div class="tablewrap" tabindex="0" role="region" aria-label="Telemetry table"><table class="grid mono" id="mi-table"></table></div></details>
+      <div class="row locked">
+        <button class="btn" disabled data-i18n="mi.arm">Arm research</button>
+        <button class="btn" disabled data-i18n="mi.start">Start bounded test</button>
+        <button class="btn" disabled data-i18n="mi.restore">Restore original firmware</button>
+      </div>
+      <p class="note" data-i18n="mi.locked"></p>
+    </section>
+
+    <section class="panel" data-panel="bench" hidden>
+      <h1 data-i18n="be.title">Engine Benchmarks</h1>
+      <p class="note" data-i18n="be.note"></p>
+      <div class="row"><button id="be-run" class="btn primary" data-i18n="be.run">Probe engines &amp; run small benchmark</button></div>
+      <p id="be-msg" class="note" role="status"></p>
+      <div id="be-selected" class="state" hidden></div>
+      <table class="grid" id="be-decisions" hidden><thead><tr><th>Engine</th><th>Status</th><th data-i18n="be.reason">Reason</th></tr></thead><tbody></tbody></table>
+      <table class="grid mono" id="be-results" hidden><thead><tr><th data-i18n="be.workload">Workload</th><th data-i18n="be.unit">Unit</th><th data-i18n="be.value">Value</th></tr></thead><tbody></tbody></table>
+      <p class="note" data-i18n="be.units"></p>
+    </section>
+
+    <section class="panel" data-panel="evidence" hidden>
+      <h1 data-i18n="ev.title">Evidence Ledger</h1>
+      <p class="note" data-i18n="ev.note"></p>
+      <div class="row"><button id="ev-export" class="btn primary" data-i18n="ev.export">Export session JSON</button></div>
+      <pre id="ev-pre" tabindex="0"></pre>
+    </section>
+  </main>
+
+  <footer class="foot"><span data-i18n="tagline">Real Silicon. Reproducible Science.</span> · <span data-i18n="credit">Made with love by timfromhcs &amp; hcsmedia.</span></footer>
+  <script type="module" src="/src/forge/main.ts"></script>
+</body>
+</html>

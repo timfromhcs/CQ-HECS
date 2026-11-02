@@ -177,7 +177,14 @@ jobs:
   windows-native:
     name: Windows C++20, Vulkan & full Python suite
     runs-on: windows-latest
-    timeout-minutes: 60
+    # Run 41352339322 hit the previous 60-minute budget while the pytest step was
+    # still making progress (the job was in "Full Python suite" from 21:33Z and
+    # still running at 22:30Z). There is no evidence of a hang: the slowest
+    # property test takes 0.06 s of call time when the machine is idle. Windows
+    # runners are simply much slower than the Linux one (11m40s), so the budget
+    # is raised and --durations now records which files dominate the next run
+    # instead of guessing. The coverage-authoritative run stays on Linux.
+    timeout-minutes: 150
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -236,7 +243,7 @@ jobs:
           CQ_HECS_REQUIRE_NATIVE: "1"
         run: |
           New-Item -ItemType Directory -Force -Path test-results | Out-Null
-          python -m pytest tests/ -q --junitxml=test-results/pytest.xml
+          python -m pytest tests/ -q --durations=25 -p no:cacheprovider --junitxml=test-results/pytest.xml
 
       - name: Source-level mutation gate
         env:

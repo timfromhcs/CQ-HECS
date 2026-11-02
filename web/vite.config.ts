@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 // Build provenance shown in the result details: the CQ-HECS version from the single
 // source of truth and the exact source commit (Vercel sets VERCEL_GIT_COMMIT_SHA).
@@ -28,5 +29,13 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(version()),
     __SOURCE_SHA__: JSON.stringify(sourceSha()),
   },
-  build: { target: "es2022", sourcemap: false, chunkSizeWarningLimit: 800 },
+  build: {
+    target: "es2022", sourcemap: false, chunkSizeWarningLimit: 800,
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        forge: fileURLToPath(new URL("./forge.html", import.meta.url)),
+      },
+    },
+  },
 });

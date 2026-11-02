@@ -8,6 +8,25 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Added — HCS SHA Forge (feature branch `feat/sha-forge-hardware-lab`, read-only, no hardware contact)
+
+- **`cqhecs.sha`**: readable FIPS 180-4 SHA-256 reference (reduced rounds, explicit IV, SHA-256d), per-round traces
+  (`hcs.sha.trace.v1`, tagged `SOFTWARE_REPLAY`) with tamper-rejecting replay, nonce-candidate replay, and a typed
+  `ShaTask`/`ShaResult` contract separate from `SimulationResult`.
+- **`cqhecs.hardware`** (optional, never imported by circuit simulation): explicit miner state machine, device allowlist
+  (only `timsminer`; `blackharkminer` and `timminer2` excluded), `hcs.sha.miner.v1` normaliser, backup-manifest and
+  restore-preview checks, and a loopback-only read-only bridge (`python -m cqhecs.hardware.bridge`, `--simulate` for no LAN).
+- **Web `/forge.html`**: Round Analyzer, deterministic labelled demo Miner Lab, backend probe (WebGPU u32 kernel with CPU
+  self-test, visible fallbacks), evidence export, EN/DE/FR. A "SHA Forge" link was added to the main navigation.
+- Hardening found by break testing (each with a regression test): bridge handles bad/negative `Content-Length`, truncated bodies, idle and aborted clients, caps connections, throttles device reads; analyzer input capped at 8 KiB.
+- Measured results: `cqhecs.hardware.results` builds a secret-free `hcs.sha.forge.baseline.v1` bundle from a raw capture (`scripts/sha_forge_baseline.py`, `scripts/sha_forge_publish_results.py`); the Miner Lab shows it as MEASURED, separate from the DEMO fixture. Included: a 60-minute read-only baseline of the stock firmware on timsminer.
+- Tests: 160 new Python tests (`test_sha_*`, `test_hardware_policy`), 16 web unit tests and 27 Playwright/axe tests. Full suite: 2570 passed, 109 skipped.
+- Research record `research/sha_forge/`; docs `docs/LOCAL_BRIDGE.md`, `MINER_BACKUP_RESTORE.md`, `SHA_ROUND_ANALYZER.md`,
+  `TIMSMINER_RESEARCH_MODE.md`, `WEBGPU_WASM_BACKENDS.md`.
+
+Not included: any ESP-Miner firmware change, WLAN backup route, research firmware, ASIC job path, flash or restore
+(see `research/sha_forge/BLOCKERS.md`). The only hardware data are read-only stock-firmware measurements.
+
 ## [4.0.0] - 2026-11-01
 
 Explainable planning, an exact variable-elimination #SAT backend and per-observable
