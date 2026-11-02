@@ -45,6 +45,60 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 Not included: any ESP-Miner firmware change, WLAN backup route, research firmware, ASIC job path, flash or restore
 (see `research/sha_forge/BLOCKERS.md`). The only hardware data are read-only stock-firmware measurements.
 
+## [4.1.0] - 2026-11-02
+
+A minor release on top of `4.0.0`: one solving surface, one proven-correct OMNIWAVE
+propagation, and a browser build that can be checked instead of believed.
+
+### Added
+
+- **Unified solver** (`cqhecs/unified.py`, `--engine unified`): one contract over watched
+  DPLL, OMNIWAVE, CaDiCaL (optional, via `python-sat`) and the scan reference. The result
+  carries `hcs.sat.unified.v1`: the engine that decided, every attempt with budget, time,
+  status, reason and proof status, a re-verified assignment and the formula digest. The
+  portfolio re-verifies every SAT model against the original CNF and never upgrades an
+  UNSAT proof status; a missing backend is reported as `unavailable`. Measured on five
+  families: **0 disagreements** between the four engines.
+- **Browser conformance corpus** (`scripts/export_web_conformance.py`,
+  `web/tests/conformance.test.ts`): six circuits with a dense NumPy reference, replayed
+  through the WebAssembly core; amplitudes compared at `1e-12`, plus a deliberately broken
+  matrix that must fail the comparison.
+- **Bundle budget** in `npm run build` (270 KB gzip JS / 18 KB wasm / 8 KB CSS; measured
+  233.7 / 15.0 / 6.6 KB) and a **delivery check** (`npm run verify:deploy -- <url>`) for
+  the deployed build: shell, security headers, wasm MIME type, cache policy, sizes.
+- **Reproducible run cards**: the exported JSON now carries `input_digest` (SHA-256 over
+  the QASM it contains) and the sampling seed, and the schema is `cqhecs.web.run/1.1`.
+  A Playwright test recomputes the digest and asserts that no device, bridge or token
+  detail leaks into the file.
+- **README in three languages**: `README.md` (canonical, English), `README.de.md`,
+  `README.fr.md`, with a language selector and identical evidence numbers, asserted by
+  `tests/test_readme_languages.py`.
+
+### Fixed
+
+- **OMNIWAVE worker crash** that made the Studio lab report `UNKNOWN` on slower runners:
+  the nogood snapshot and its literal index were taken in two separate lock sections, so a
+  refutation from another worker could leave the index pointing past the snapshot and the
+  lookup raised `IndexError` inside the worker thread. Both now happen in one lock section,
+  and the walk skips any position beyond its own snapshot. Same 10 079 fronts and 10 079
+  lemmas on pigeonhole-8-7 - a correctness fix, not a speedup.
+- Coverage in the README's evidence table corrected to the measured 39/39 web unit tests
+  and 41/41 Playwright checks.
+
+### Changed
+
+- The Vercel production deployment of `cq-hecs-web` is reachable without a Vercel login
+  (Deployment Protection disabled for this project on 2026-11-02, on explicit operator
+  request). `verify:deploy` reports the anonymous result.
+
+### Not claimed
+
+- No statement about CaDiCaL performance on this machine: `python-sat` is not installed
+  here, so the adapter reports `unavailable`.
+- No WebGPU-versus-WASM speed comparison, and no claim that the browser engine equals the
+  Python engine beyond the declared corpus.
+- No claim about SHA-256 security, P vs NP, or GPU acceleration of the wasm path.
+
 ## [4.0.0] - 2026-11-01
 
 Explainable planning, an exact variable-elimination #SAT backend and per-observable

@@ -77,15 +77,44 @@ sizes.
 
 ### Result on 2026-11-02
 
-`10/10 checks passed` against the production deployment of commit `1d38df2`
-(`https://cq-hecs-3au7h073x-hcsmediacorp.vercel.app`), observed through `vercel curl`.
+`10/10 checks passed` against the production deployment of commit `e7e5c1e`
+(`https://cq-hecs-web.vercel.app`), **anonymously, without `--via-cli`**.
 
-**Important caveat, and a finding:** that deployment is protected by Vercel Deployment
-Protection. An anonymous request gets Vercel's login page (HTTP 200, `Log in to Vercel`),
-which is why the check has to go through the CLI. The script detects that page and exits
-with code 3 instead of reporting the app as broken. A bypassed request proves the build is
-correct; it does **not** prove the URL is public. Whether the demo should be public is an
-owner decision, not something an agent changes on its own.
+Earlier the same check needed `vercel curl`, because the project was behind Vercel
+Deployment Protection: an anonymous request got Vercel's login page (HTTP 200). On explicit
+operator request that protection was disabled for this project on 2026-11-02
+(`ssoProtection: null`), and the check now observes the real application over the public
+alias. The script still detects a protection page and exits with code 3 if it ever appears
+again, instead of blaming the application.
+
+The public alias is `https://cq-hecs-web.vercel.app`; `cq-hecs-web-hcsmediacorp.vercel.app`
+and `cq-hecs-web-git-main-hcsmediacorp.vercel.app` serve the same build.
+
+### First-visit weight
+
+The entry chunk is `main-*.js` at **104.1 KB raw (39.0 KB gzip)**. The editor is **not**
+part of it: `src/main.ts` imports `./editor` dynamically in `ensureEditor()`, so the
+`editor-*.js` chunk (502.4 KB raw / 169.2 KB gzip, CodeMirror) is fetched only when the
+code lab opens. A Playwright test asserts exactly that: no editor request on `/` and
+`#/lab`, and one after `#/code`.
+
+## Reproducible run cards
+
+`#/lab` → *Export* writes `cqhecs-run-<timestamp>.json` with schema
+`cqhecs.web.run/1.1`:
+
+| Field | Meaning |
+|---|---|
+| `app_version`, `source_revision` | version from `scripts/version.py` and the build's commit |
+| `input.qasm`, `input.shots`, `input.engine`, `input.noise` | what was run |
+| `input.seed` | the sampling seed, chosen by the UI so the card can be replayed |
+| `input_digest` | SHA-256 over the exact QASM text in `input.qasm` |
+| `engine.kind`, `engine.precision` | `wasm`/`f64` or `webgpu`/`f32` |
+| `result` | counts, exact probabilities, amplitudes, Bloch vectors, elapsed time |
+| `limitations` | the same non-claim the UI shows |
+
+The Playwright test recomputes the digest in Node, asserts `engine.precision` is `f64` for
+a WASM run, and asserts the file contains no bridge URL, BSSID, wallet or token string.
 
 ## What is not claimed
 

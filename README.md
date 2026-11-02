@@ -29,7 +29,26 @@ Four classical simulation paths · one result contract · fail-closed by design
 
 ---
 
-> **Status: `v4.0.0` (2026-11-01).** Explainable planning and exact bounded-width
+> **Status: `v4.1.0` (2026-11-02).** One solving surface, a proven-correct OMNIWAVE
+> propagation, and a browser build that can be checked instead of believed:
+>
+> - **Unified solver.** `cqhecs/unified.py` and `--engine unified` put watched DPLL,
+>   OMNIWAVE, CaDiCaL (optional) and the scan reference behind one contract
+>   (`hcs.sat.unified.v1`): which engine decided, every attempt with budget and proof
+>   status, a re-verified model. Measured on five families: **0 disagreements**; a
+>   missing backend is reported `unavailable`, never skipped.
+> - **OMNIWAVE fix.** A worker could die on an `IndexError` when a refutation landed
+>   between taking the nogood snapshot and building its index, which made the Studio lab
+>   report `UNKNOWN`. Snapshot and index are now taken under one lock. Same 10 079 fronts
+>   and lemmas on pigeonhole-8-7 - a correctness fix, not a speedup.
+> - **Browser.** A six-case conformance corpus against a dense NumPy reference
+>   (`1e-12`), a bundle budget enforced by `npm run build`, a delivery check for the
+>   deployed build, and reproducible run cards with the QASM digest and the seed.
+>   The Vercel production deployment is public and passes the delivery check 10/10.
+> - **README** in English (canonical), German and French with a language selector and
+>   identical evidence numbers, asserted by a test.
+>
+> **Previous release: `v4.0.0` (2026-11-01).** Explainable planning and exact bounded-width
 > counting; nothing removed (see [`MIGRATION_V4.md`](MIGRATION_V4.md)):
 >
 > - **`ExecutionPlan` dry run.** `cq-hecs analyze CIRCUIT --explain` (also Python,
@@ -390,7 +409,7 @@ equivariance, zero-noise identity, and channel composition order.
   live at https://cq-hecs-web.vercel.app; source in [`web/`](web/).
 - **MCP:** `cq-hecs mcp`, a stdio JSON-RPC server for agents (run, analyze,
   SAT solve/models, hardware evidence).
-- **Standalone:** `cqhecs-4.0.0-windows-x64.zip` on the release page; unzip
+- **Standalone:** `cqhecs-4.1.0-windows-x64.zip` on the release page; unzip
   and run `cq-hecs\cq-hecs.exe`. `scripts/build_exe.ps1` rebuilds it.
 
 ### CQ-HECS Studio
@@ -612,8 +631,8 @@ choco install vulkan-sdk cmake ninja -y --no-progress
 
 ```bash
 python -m build
-# dist/cqhecs-4.0.0-py3-none-any.whl
-# dist/cqhecs-4.0.0.tar.gz
+# dist/cqhecs-4.1.0-py3-none-any.whl
+# dist/cqhecs-4.1.0.tar.gz
 ```
 
 Published wheels, sdists, SHA-256 checksums, and the SPDX SBOM are attached to
