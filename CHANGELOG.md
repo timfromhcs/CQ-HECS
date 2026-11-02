@@ -8,6 +8,22 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Added — circuit conformance corpus and a measured engine table
+
+- **Circuit-level corpus** (`scripts/export_web_circuit_conformance.py`,
+  `web/tests/circuit_conformance.test.ts`): six OpenQASM cases replayed through the
+  browser's own parser, compiler and WebAssembly core, with **Qiskit 2.5.1 Statevector** as
+  the oracle at `1e-12`. A test swaps one CNOT and requires a mismatch, so the corpus
+  cannot pass for any circuit.
+- **Engine measurement** (`web/scripts/measure_engines.mjs`): WASM f64 on 12/16/20 qubits,
+  five repetitions each, setup/execution/readout separated. Medians 0.20 ms / 4.08 ms /
+  111.5 ms; the raw samples are in `web/e2e-results/engine-benchmark.json`.
+- **WebGPU probe** (`web/scripts/probe_webgpu.mjs`): three launch configurations and one
+  headed run, all without `navigator.gpu` on 2026-11-02, so the GPU column is `NOT RUN`
+  rather than a borrowed number.
+- Docs: `docs/CONFORMANCE.md` records both corpora, the measurement and the non-claims, and
+  states the status against `PLAN_HORIZON_8_V5.md`.
+
 ### Added — browser engine conformance, bundle budget and delivery check
 
 - **Conformance corpus** (`scripts/export_web_conformance.py`,

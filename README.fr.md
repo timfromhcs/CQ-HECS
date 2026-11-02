@@ -70,6 +70,13 @@ déclaré.
   Vercel Deployment Protection ; le script le dit au lieu de prétendre que l'URL est
   publique.
 
+- **Corpus avec un oracle indépendant :** six cas OpenQASM lus par l'analyseur du
+  navigateur et comparés à **Qiskit 2.5.1 Statevector** à `1e-12` ; un test inverse un CNOT
+  et doit échouer. Mesure sur 12/16/20 qubits : 0,20 / 4,08 / 111,5 ms en médiane. WebGPU
+  n'a **aucun** chiffre ici — le Chromium fourni n'expose pas d'adaptateur, donc la colonne
+  indique `NOT RUN` au lieu d'un nombre inventé.
+  [`docs/CONFORMANCE.md`](docs/CONFORMANCE.md).
+
 Détails : [`docs/WEB_ENGINES.md`](docs/WEB_ENGINES.md).
 
 ## OMNIWAVE

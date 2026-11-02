@@ -443,13 +443,18 @@ and the only claim is that they agree on a declared corpus.
   dense NumPy reference; `web/tests/conformance.test.ts` replays them through the wasm
   core and compares amplitudes, not only probabilities, at `1e-12`. One test breaks a
   matrix entry on purpose so the corpus cannot pass vacuously.
+- **Circuit corpus with an independent oracle:** six OpenQASM cases are parsed by the
+  browser's own parser and compared with **Qiskit 2.5.1 Statevector** at `1e-12`; a test
+  swaps one CNOT and requires a mismatch. Engine measurement on 12/16/20 qubits:
+  0.20 / 4.08 / 111.5 ms median. WebGPU has **no** number here - the bundled Chromium
+  exposes no adapter, so the column is `NOT RUN`, not guessed.
+  Both corpora, the measurement and the non-claims: [`docs/CONFORMANCE.md`](docs/CONFORMANCE.md).
 - **Bundle budget:** `npm run build` fails above 270 KB gzip JavaScript, 18 KB wasm and
   8 KB CSS. Measured 2026-11-02: 233.5 KB / 15.0 KB / 6.6 KB.
 - **Delivery check:** `npm run verify:deploy -- <url>` checks the shell, the security
-  headers, the wasm MIME type and cache policy, and the transport sizes. The production
-  deployment of the current `main` passed 10/10 - through `vercel curl`, because the
-  deployment is protected by Vercel Deployment Protection; the script says so instead of
-  pretending the URL is public.
+  headers, the wasm MIME type and cache policy, and the transport sizes. The public
+  production deployment passes 10/10 anonymously; the script still detects a protection
+  page and exits 3 if it ever returns.
 
 Details and the precision contract: [`docs/WEB_ENGINES.md`](docs/WEB_ENGINES.md).
 

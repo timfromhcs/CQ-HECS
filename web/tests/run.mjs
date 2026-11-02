@@ -3,7 +3,7 @@ import { build } from "esbuild";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const names = ["core", "conformance", "forge", "wasm"];
+const names = ["circuit_conformance", "conformance", "core", "forge", "wasm"];
 const outfiles = [];
 for (const name of names) {
   const outfile = fileURLToPath(new URL(`./${name}.test.bundle.mjs`, import.meta.url));
