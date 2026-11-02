@@ -96,3 +96,25 @@ backup metadata, 4 MiB backup download matching its digest, disarm, resume.
   capabilities document says `asic_access: none`.
 - Nothing about 64-round preimage search; the 64-round trace is a *verification*
   computation of a caller-supplied block, not a search (see `SAT_SHA.md`).
+
+## OTA over WLAN (2026-11-02) - the documented path, exercised once
+
+The operator asked for a flash over WLAN with a restart, with USB disconnected. This
+was the first OTA on the unit; the four earlier flashes were USB writes to `0x10000`.
+
+| Item | Value |
+|---|---|
+| Image | per-device variant, `2b57c6dc…ad00ff`, 2 774 928 bytes, `v4.0.2-rc1-sha-research` |
+| Upload | `POST /api/system/OTA`, **HTTP 200 in 23.2 s**, sent once (the closed connection after upload is the documented ambiguous case and was not resent) |
+| After reboot | running from **`ota_0`**, same hostname/board/ASIC/MAC, mining resumed by itself at 393-524 GH/s, 54-56 °C |
+| Research API | `enabled`, `disarmed`, thermal 56 °C, build id `52e04b3e92fb7a1b`, partition `ota_0` |
+| Fallbacks still present | `factory` = previous research image, `ota_1` = `v4.0.0-stable-timsminer`, plus the verified USB full-flash backup |
+
+The image hash equals the last USB-written image, so the build is reproducible from
+the committed tree. Recovery order if needed: `POST /api/system/boot` to `factory` or
+`ota_1` over WLAN, then the USB backup. There is no automatic rollback
+(`CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE` is off), which is why this note lists the
+fallbacks explicitly.
+
+What this does not cover: an image that fails before it serves HTTP - that still
+needs USB.
