@@ -1,3 +1,6 @@
+<!-- Language selector: keep the three files in sync (tests/test_readme_languages.py) -->
+<p align="right"><b>English</b> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a></p>
+
 <div align="center">
 
 <img src=".github/assets/logo.svg" alt="CQ-HECS logo" width="720"/>
@@ -70,7 +73,7 @@ Four classical simulation paths · one result contract · fail-closed by design
 > - **Still open.** The OpenAI/Anthropic ETH proofs are *claimed* and Lean-
 >   formalized at pinned revisions, not peer-reviewed by this project. The Lean
 >   build status is recorded in `research/v6/`; P vs NP stays open.
-> - **OMNIWAVE (experimental).** A multi-front exact SAT search
+> - **OMNIWAVE.** A multi-front exact SAT search
 >   (`--engine omniwave`, CLI/MCP, Studio **OMNIWAVE lab** with live data and
 >   pause/resume/cancel). The default `--branch auto` uses Jeroslow-Wang on
 >   pigeonhole/random formulas and BFS on parity-heavy formulas; measured UNSAT
@@ -347,7 +350,8 @@ rest of CQ-HECS: no claim without a check that ran.
   fixed. Watched propagation is 8.6-16.1x faster than the scan reference on these
   formulas, with identical verdicts.
 - The P-vs-NP boundary is written down rather than implied:
-  [esearch/sha_forge/P_VS_NP_BOUNDARY.md](research/sha_forge/P_VS_NP_BOUNDARY.md)
+  [
+esearch/sha_forge/P_VS_NP_BOUNDARY.md](research/sha_forge/P_VS_NP_BOUNDARY.md)
   states the three reasons these experiments cannot bear on it.
 Status: **validated on the miner** (2026-11-02). A 64-round software trace served
 by the device was accepted unchanged by the Python reference replay, with the same
@@ -462,11 +466,30 @@ exact integer serialized as a string, or `UNKNOWN`). The older
 the `SAT_VERIFIED`/`UNSAT_PROVEN`/`TIMEOUT_UNKNOWN` vocabulary. The Studio and
 `cq-hecs sat` use the standalone engine.
 
+### Unified solver
+
+One entry point over four engines - the built-in DPLL (scan and watched), OMNIWAVE and
+CaDiCaL when `python-sat` is installed - with one result contract and one evidence
+record: which engine decided, every attempt with its budget, and the proof status each
+engine carried.
+
+- `unified.solve_unified(formula)` returns `hcs.sat.unified.v1`: status, engine, order,
+  budget fractions, attempts, verified assignment, certificate step count, formula
+  digest.
+- The portfolio re-verifies every SAT model against the original CNF and never upgrades
+  an UNSAT proof status; a missing optional backend is reported as `unavailable`, not
+  skipped.
+- CLI: `cq-hecs sat solve --cnf ... --engine unified`, or `--format json` for the record.
+- Measured on five families: **zero disagreements** between the four engines, with the
+  portfolio overhead at 0.00-0.04 s. Details and the table:
+  [`docs/UNIFIED_SOLVER.md`](docs/UNIFIED_SOLVER.md),
+  [`research/sha_forge/UNIFIED_SOLVER.md`](research/sha_forge/UNIFIED_SOLVER.md).
+
 ### Which engine runs where
 
 | Surface | Quantum engine | SAT engine |
 | :--- | :--- | :--- |
-| Python / CLI / Qiskit / MCP / Studio | routed paths A–D (CPU), density matrix ≤ 10 qubits for noise | `cqhecs.sat` DPLL (+ optional CaDiCaL), `count_models`, experimental OMNIWAVE (`cqhecs.omniwave`) |
+| Python / CLI / Qiskit / MCP / Studio | routed paths A–D (CPU), density matrix ≤ 10 qubits for noise | `cqhecs.sat` DPLL (+ optional CaDiCaL), `count_models`, OMNIWAVE (`cqhecs.omniwave`, exhaustive + checked proofs, see [`docs/OMNIWAVE.md`](docs/OMNIWAVE.md)) |
 | Native C++20 / C ABI | the C++20 core behind the C ABI (CTest 21/21); 13 SPIR-V shaders validated and dispatched on a software ICD in CI, **no end-to-end GPU circuit simulator** | `cq_solve_sat` (no proof object); `cq_omniwave_bcp_eval` (one batched BCP pass for OMNIWAVE, CPU-verified) |
 | Web (browser) | its own state vector: WASM f64 (exact up to rounding), WebGPU f32 (single precision, cross-checked ≤ 20 qubits); **not** paths A–D | its own TS DPLL with replay-checked tree-resolution certificates, `countModels`; no CaDiCaL |
 | Windows build (`cq-hecs.exe`) | same as Python/CLI | same as Python (CaDiCaL only if built with `python-sat`) |
@@ -764,8 +787,8 @@ Measured on the exact head SHA `c854560` of `dev/sha-forge-hardware-lab`
 | CTest (native, Release) | **21/21** |
 | Source mutation | **60/60** killed |
 | SPIR-V shaders + Vulkan dispatch | green |
-| Web unit tests | **33/33** |
-| Playwright + axe (browser) | **40/40** |
+| Web unit tests | **39/39** |
+| Playwright + axe (browser) | **41/41** |
 | Web build | `tsc --noEmit` clean, `dist/forge.html` + assets produced |
 | Version consistency | all surfaces report `4.0.0` |
 | Lint | `flake8 --select=E9,F` clean on `cqhecs`, `python_bridge`, `scripts`, `tests` |
