@@ -413,6 +413,27 @@ the existing package).
 
 See [`docs/STUDIO.md`](docs/STUDIO.md) for the API and the security model.
 
+### Browser engines (Vercel, WebAssembly, WebGPU)
+
+The same circuits run in the browser through three engines: a Rust/WebAssembly f64 core
+(exact path), a WGSL/WebGPU f32 path (fast path, used only when an adapter exists) and a
+TypeScript CPU fallback. They are an independent implementation, not the Python engine,
+and the only claim is that they agree on a declared corpus.
+
+- **Conformance corpus:** `scripts/export_web_conformance.py` writes six circuits with a
+  dense NumPy reference; `web/tests/conformance.test.ts` replays them through the wasm
+  core and compares amplitudes, not only probabilities, at `1e-12`. One test breaks a
+  matrix entry on purpose so the corpus cannot pass vacuously.
+- **Bundle budget:** `npm run build` fails above 270 KB gzip JavaScript, 18 KB wasm and
+  8 KB CSS. Measured 2026-11-02: 233.5 KB / 15.0 KB / 6.6 KB.
+- **Delivery check:** `npm run verify:deploy -- <url>` checks the shell, the security
+  headers, the wasm MIME type and cache policy, and the transport sizes. The production
+  deployment of the current `main` passed 10/10 - through `vercel curl`, because the
+  deployment is protected by Vercel Deployment Protection; the script says so instead of
+  pretending the URL is public.
+
+Details and the precision contract: [`docs/WEB_ENGINES.md`](docs/WEB_ENGINES.md).
+
 ### Sound SAT surface
 
 The supported standalone surface is `cqhecs/sat.py` and `cq-hecs sat`:

@@ -8,10 +8,11 @@
   "scripts": {
     "wasm": "cd wasm && cargo build --release --target wasm32-unknown-unknown && node ../scripts/copy-wasm.mjs",
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node scripts/check_bundle_budget.mjs",
     "preview": "vite preview",
     "test": "node tests/run.mjs",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "verify:deploy": "node scripts/verify_deployment.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",

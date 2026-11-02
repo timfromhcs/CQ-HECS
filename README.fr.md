@@ -51,6 +51,27 @@ de chaque moteur.
 - Mesuré sur cinq familles : **zéro désaccord** entre les quatre moteurs, surcoût du
   portefeuille 0,00–0,04 s. Détails : [`docs/UNIFIED_SOLVER.md`](docs/UNIFIED_SOLVER.md).
 
+## Moteurs navigateur (Vercel, WebAssembly, WebGPU)
+
+Les mêmes circuits tournent dans le navigateur via trois moteurs : un cœur
+Rust/WebAssembly en f64 (chemin exact), un chemin WGSL/WebGPU en f32 (chemin rapide,
+seulement avec un adaptateur) et un repli CPU en TypeScript. Ce sont des implémentations
+indépendantes, pas le moteur Python ; la seule affirmation est leur accord sur un corpus
+déclaré.
+
+- **Corpus de conformité :** six circuits avec une référence NumPy dense, rejoués dans le
+  cœur WASM ; les amplitudes (pas seulement les probabilités) sont comparées à `1e-12`.
+  Un test casse volontairement une entrée de matrice et doit échouer.
+- **Budget de bundle :** `npm run build` échoue au-delà de 270 Ko gzip de JavaScript,
+  18 Ko de WASM et 8 Ko de CSS ; mesuré le 2026-11-02 : 233,5 / 15,0 / 6,6 Ko.
+- **Contrôle de livraison :** `npm run verify:deploy -- <url>` vérifie la coquille, les
+  en-têtes de sécurité, le type MIME et la politique de cache du WASM. Le déploiement de
+  production de `1d38df2` a passé 10/10 — via `vercel curl`, car il est protégé par
+  Vercel Deployment Protection ; le script le dit au lieu de prétendre que l'URL est
+  publique.
+
+Détails : [`docs/WEB_ENGINES.md`](docs/WEB_ENGINES.md).
+
 ## OMNIWAVE
 
 Recherche exhaustive par cubes avec preuves UNSAT vérifiées, plus une heuristique de
