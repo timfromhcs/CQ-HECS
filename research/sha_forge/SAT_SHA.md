@@ -339,3 +339,26 @@ cd E:/qCSHA/CQ-HECS
 $env:PYTHONPATH="."
 python scripts/sha_round_frontier.py --out <results dir> --timeout 10
 ```
+
+## 9. Which propagation engine these CNFs want (measured)
+
+The same cells as section 8, one repetition each, 30 s budget, both engines from
+`cqhecs/sat.py`, identical verdicts in every row:
+
+| Instance | `propagation="scan"` | `propagation="watched"` | Speed-up |
+|---|---:|---:|---:|
+| W=8, preimage, 16 rounds | 0.62 s | 0.07 s | 8.7x |
+| W=16, preimage, 16 rounds | 1.59 s | 0.15 s | 10.7x |
+| W=32, preimage, 8 rounds | 1.41 s | 0.16 s | 8.6x |
+| W=32, preimage, 12 rounds | 2.71 s | 0.24 s | 11.4x |
+| W=32, preimage, 16 rounds | 5.09 s | 0.32 s | 16.1x |
+
+That is a property of the encoding, not of the solver: these formulas are
+unit-heavy after a few decisions (every gate is a definitional clause), and the
+watched-literal engine avoids rescanning the whole formula per node. `scan` stays the
+default elsewhere because it is the readable reference the certificates are produced
+with.
+
+`scripts/sha_round_frontier.py` therefore defaults to `--propagation watched` and
+keeps the flag so the comparison can be repeated. No solver behaviour changed, and
+no default outside these scripts was touched.

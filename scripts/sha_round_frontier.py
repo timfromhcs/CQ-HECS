@@ -39,10 +39,14 @@ from cqhecs.sha import preimage_sat as ps  # noqa: E402
 BLOCK = bytes((i * 37 + 11) & 0xFF for i in range(64))
 
 
-def solve_cell(instance, timeout: float) -> dict:
+def solve_cell(instance, timeout: float, propagation: str = "watched") -> dict:
     cnf = instance.to_cnf()
     started = time.perf_counter()
-    result = sat.solve(cnf, timeout_seconds=timeout, certify=False)
+    # Watched-literal propagation is the default here because it was measured to be
+    # 8.7x - 16.1x faster than the scan engine on exactly these instances, with
+    # identical verdicts (SAT_SHA.md section 9). The flag stays so the comparison can
+    # be repeated.
+    result = sat.solve(cnf, timeout_seconds=timeout, certify=False, propagation=propagation)
     elapsed = time.perf_counter() - started
     return {
         "status": result.status,
@@ -59,17 +63,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--timeout", type=float, default=10.0, help="seconds per cell")
     parser.add_argument("--max-rounds-toy", type=int, default=24)
     parser.add_argument("--max-rounds-full", type=int, default=16)
+    parser.add_argument("--propagation", default="watched", choices=("scan", "watched"))
     args = parser.parse_args(argv)
 
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    report: dict = {"block": BLOCK.hex(), "timeout_s": args.timeout, "cells": []}
+    report: dict = {"block": BLOCK.hex(), "timeout_s": args.timeout, "propagation": args.propagation, "cells": []}
 
     for width in (8, 16):
         for rounds in range(2, args.max_rounds_toy + 1, 2):
             instance = ps.build_partial_preimage_instance(BLOCK, rounds, [0], width=width)
             cell = {"kind": "preimage", "width": width, "rounds": rounds, "free_words": [0]}
-            cell.update(solve_cell(instance, args.timeout))
+            cell.update(solve_cell(instance, args.timeout, args.propagation))
             report["cells"].append(cell)
             print(f"W={width:<2} preimage r={rounds:<2} {cell['status']:<8} {cell['seconds']:>6.2f}s  "
                   f"({cell['vars']} vars / {cell['clauses']} clauses)")
