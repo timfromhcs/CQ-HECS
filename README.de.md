@@ -54,6 +54,25 @@ Proof-Status jeder Engine.
   des Portfolios 0,00–0,04 s. Details:
   [`docs/UNIFIED_SOLVER.md`](docs/UNIFIED_SOLVER.md).
 
+## Browser-Engines (Vercel, WebAssembly, WebGPU)
+
+Dieselben Schaltungen laufen im Browser über drei Engines: einen Rust/WebAssembly-Kern in
+f64 (exakter Pfad), einen WGSL/WebGPU-Pfad in f32 (schneller Pfad, nur mit Adapter) und
+einen TypeScript-CPU-Fallback. Sie sind eine unabhängige Implementierung, nicht die
+Python-Engine; behauptet wird nur Übereinstimmung auf einem erklärten Korpus.
+
+- **Konformitätskorpus:** sechs Schaltungen mit einer dichten NumPy-Referenz werden durch
+  den WASM-Kern gespielt; verglichen werden Amplituden (nicht nur Wahrscheinlichkeiten)
+  mit `1e-12`. Ein Test verfälscht absichtlich einen Matrixeintrag und muss fehlschlagen.
+- **Bundle-Budget:** `npm run build` schlägt über 270 KB gzip JavaScript, 18 KB WASM und
+  8 KB CSS fehl; gemessen am 2026-11-02: 233,5 / 15,0 / 6,6 KB.
+- **Delivery-Check:** `npm run verify:deploy -- <url>` prüft Shell, Security-Header,
+  WASM-MIME-Typ und Cache-Policy. Das Production-Deployment von `1d38df2` bestand 10/10 -
+  über `vercel curl`, weil das Deployment durch Vercel Deployment Protection geschützt ist;
+  das Skript sagt das, statt eine öffentliche URL zu behaupten.
+
+Details: [`docs/WEB_ENGINES.md`](docs/WEB_ENGINES.md).
+
 ## OMNIWAVE
 
 Erschöpfende Cube-Suche mit geprüften UNSAT-Beweisen, plus eine optionale gelernte

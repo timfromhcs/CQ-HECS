@@ -8,6 +8,24 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Added — browser engine conformance, bundle budget and delivery check
+
+- **Conformance corpus** (`scripts/export_web_conformance.py`,
+  `web/tests/conformance.test.ts`): six circuits with a dense NumPy reference, replayed
+  through the WebAssembly core; amplitudes compared at `1e-12`, plus a deliberately
+  broken matrix that must fail the comparison.
+- **Bundle budget** (`web/scripts/check_bundle_budget.mjs`): `npm run build` now fails
+  above 270 KB gzip JavaScript, 18 KB wasm, 8 KB CSS. Measured 2026-11-02: 233.5 / 15.0 /
+  6.6 KB.
+- **Delivery check** (`web/scripts/verify_deployment.mjs`, `npm run verify:deploy`):
+  observes a deployed build (shell, security headers, wasm MIME type and cache policy,
+  transport sizes). It detects Vercel Deployment Protection and exits with code 3 instead
+  of reporting the login page as an application failure. The production deployment of
+  `1d38df2` passed 10/10 through `vercel curl`; the deployment is **not** public without
+  Vercel authentication, which is an owner decision and is documented as such.
+- Docs: `docs/WEB_ENGINES.md` records the precision contract (f32 WebGPU vs f64 wasm),
+  the corpus semantics, the budgets and what is not claimed.
+
 ### Added — HCS SHA Forge (feature branch `feat/sha-forge-hardware-lab`, read-only, no hardware contact)
 
 - **`cqhecs.sha`**: readable FIPS 180-4 SHA-256 reference (reduced rounds, explicit IV, SHA-256d), per-round traces
