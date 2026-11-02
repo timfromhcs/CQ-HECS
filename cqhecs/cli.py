@@ -508,6 +508,37 @@ def cmd_sat(args: argparse.Namespace) -> int:
         except (OSError, ValueError) as exc:
             LOG.error("%s", exc)
             return EXIT_USAGE
+        if getattr(args, "engine", "dpll") == "unified":
+            # One contract over every engine: the result document names the engine that
+            # decided, every attempt with its budget, and the proof status it carried.
+            from cqhecs.unified import solve_unified
+
+            document = solve_unified(formula, timeout_seconds=args.timeout)
+            payload = {
+                "schema_version": JSON_SCHEMA_VERSION,
+                "version": __version__,
+                "formula": {
+                    "num_vars": formula.num_vars,
+                    "num_clauses": formula.num_clauses,
+                    "sha256": formula.sha256,
+                    "original_sha256": formula.original_sha256,
+                    "source": formula.source,
+                },
+                "result": document.to_dict(),
+            }
+            if args.json_out:
+                Path(args.json_out).parent.mkdir(parents=True, exist_ok=True)
+                Path(args.json_out).write_text(json.dumps(payload, indent=2) + "\n", "utf-8")
+            if args.format == "json":
+                _emit_json(payload)
+            else:
+                print(f"Formula    : {formula.num_vars} vars, {formula.num_clauses} clauses")
+                print(f"Status     : {document.status} (engine: {document.engine or '-'})")
+                for attempt in document.attempts:
+                    print(
+                        f"  {attempt.engine:<9} {attempt.status:<11} {attempt.elapsed_seconds:6.3f}s  {attempt.reason[:60]}"
+                    )
+            return EXIT_OK if document.decided else EXIT_UNRESOLVED
         if getattr(args, "engine", "dpll") == "cadical":
             from cqhecs.sat_external import BackendUnavailable, solve_external
 
@@ -1313,7 +1344,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_sat_solve.add_argument("--json-out", default=None, help="Write the full result JSON here")
     p_sat_solve.add_argument("--show-model", action="store_true", help="Print the satisfying assignment")
     p_sat_solve.add_argument(
-        "--engine", choices=["dpll", "watched", "cadical", "omniwave"], default="dpll",
+        "--engine", choices=["dpll", "watched", "cadical", "omniwave", "unified"], default="dpll",
         help="dpll (built-in reference), watched (same search with two-watched-literal propagation), "
         "cadical (optional extra: pip install cqhecs[sat]) "
         "or omniwave (experimental multi-front search; UNSAT only with a checked DRAT proof)",

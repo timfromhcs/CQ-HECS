@@ -1,3 +1,6 @@
+<!-- Language selector: keep the three files in sync (tests/test_readme_languages.py) -->
+<p align="right"><b>English</b> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a></p>
+
 <div align="center">
 
 <img src=".github/assets/logo.svg" alt="CQ-HECS logo" width="720"/>
@@ -463,6 +466,25 @@ exact integer serialized as a string, or `UNKNOWN`). The older
 the `SAT_VERIFIED`/`UNSAT_PROVEN`/`TIMEOUT_UNKNOWN` vocabulary. The Studio and
 `cq-hecs sat` use the standalone engine.
 
+### Unified solver
+
+One entry point over four engines - the built-in DPLL (scan and watched), OMNIWAVE and
+CaDiCaL when `python-sat` is installed - with one result contract and one evidence
+record: which engine decided, every attempt with its budget, and the proof status each
+engine carried.
+
+- `unified.solve_unified(formula)` returns `hcs.sat.unified.v1`: status, engine, order,
+  budget fractions, attempts, verified assignment, certificate step count, formula
+  digest.
+- The portfolio re-verifies every SAT model against the original CNF and never upgrades
+  an UNSAT proof status; a missing optional backend is reported as `unavailable`, not
+  skipped.
+- CLI: `cq-hecs sat solve --cnf ... --engine unified`, or `--format json` for the record.
+- Measured on five families: **zero disagreements** between the four engines, with the
+  portfolio overhead at 0.00-0.04 s. Details and the table:
+  [`docs/UNIFIED_SOLVER.md`](docs/UNIFIED_SOLVER.md),
+  [`research/sha_forge/UNIFIED_SOLVER.md`](research/sha_forge/UNIFIED_SOLVER.md).
+
 ### Which engine runs where
 
 | Surface | Quantum engine | SAT engine |
@@ -765,8 +787,8 @@ Measured on the exact head SHA `c854560` of `dev/sha-forge-hardware-lab`
 | CTest (native, Release) | **21/21** |
 | Source mutation | **60/60** killed |
 | SPIR-V shaders + Vulkan dispatch | green |
-| Web unit tests | **33/33** |
-| Playwright + axe (browser) | **40/40** |
+| Web unit tests | **39/39** |
+| Playwright + axe (browser) | **41/41** |
 | Web build | `tsc --noEmit` clean, `dist/forge.html` + assets produced |
 | Version consistency | all surfaces report `4.0.0` |
 | Lint | `flake8 --select=E9,F` clean on `cqhecs`, `python_bridge`, `scripts`, `tests` |
