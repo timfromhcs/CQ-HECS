@@ -7,7 +7,7 @@ D) Certified Classical Approximation (Sparse-Pauli-Dynamics) with proven error b
 Hardware-Aware Quantum Bridge: Truthful backend profiles, Kraus noise models, and provider boundaries
 """
 
-__version__ = "4.1.0"
+__version__ = "4.2.0"
 
 from cqhecs.backend import CQHecsBackend
 from cqhecs.provider import (
