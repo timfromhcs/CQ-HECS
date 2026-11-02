@@ -48,8 +48,11 @@ de chaque moteur.
   jamais un statut de preuve UNSAT ; un backend optionnel absent est signalé comme
   `unavailable`, jamais ignoré.
 - CLI : `cq-hecs sat solve --cnf ... --engine unified`.
-- Mesuré sur cinq familles : **zéro désaccord** entre les quatre moteurs, surcoût du
-  portefeuille 0,00–0,04 s. Détails : [`docs/UNIFIED_SOLVER.md`](docs/UNIFIED_SOLVER.md).
+- Mesuré sur cinq familles, deux fois : **zéro désaccord**, une fois sans le backend
+  optionnel (Python 3.14 ici, sans `python-sat`) et une fois avec **CaDiCaL 1.9.5** dans un
+  environnement Python 3.12. Avec CaDiCaL, `watched` était le plus rapide sur trois familles
+  et `cadical` sur deux ; l'ordre déclaré y coûte 0,12 s et 0,16 s — c'est écrit, pas caché.
+  Tableaux et données brutes : [`docs/UNIFIED_SOLVER.md`](docs/UNIFIED_SOLVER.md).
 
 ## Moteurs navigateur (Vercel, WebAssembly, WebGPU)
 

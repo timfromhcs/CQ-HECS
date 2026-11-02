@@ -61,6 +61,31 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 Not included: any ESP-Miner firmware change, WLAN backup route, research firmware, ASIC job path, flash or restore
 (see `research/sha_forge/BLOCKERS.md`). The only hardware data are read-only stock-firmware measurements.
 
+## [4.2.0] - 2026-11-02
+
+The external baseline is measured instead of missing: CaDiCaL is installed in a supported
+environment and appears in the pier-to-pier comparison with real numbers.
+
+### Changed
+
+- **CaDiCaL is measured.** `docs/UNIFIED_SOLVER.md` and
+  `research/sha_forge/UNIFIED_SOLVER.md` now carry two runs: without the optional backend
+  (this host's Python 3.14 has no `python-sat`, reported as `unavailable`) and with
+  **python-sat 1.9.dev17 / CaDiCaL 1.9.5** in a Python 3.12 environment. Both runs:
+  **0 disagreements** between the four engines; CaDiCaL's UNSAT answers were DRAT-checked
+  by `cqhecs.drat`.
+- **The declared engine order is now checked against the measurement.** With CaDiCaL
+  present, the fastest engine was `watched` on pigeonhole and Tseitin and `cadical` on
+  random 3-SAT and the SHA-256 encoding. The order stays `watched -> omniwave -> cadical ->
+  scan` and the document states what that costs (0.12 s and 0.16 s on two families) and
+  that changing it would be a schema-visible decision needing a held-out benchmark.
+
+### Not claimed
+
+- No statement that the portfolio beats CaDiCaL; on two of five families it is slower by
+  design.
+- No asymptotic claim from five instances, and no claim about industrial workloads.
+
 ## [4.1.0] - 2026-11-02
 
 A minor release on top of `4.0.0`: one solving surface, one proven-correct OMNIWAVE

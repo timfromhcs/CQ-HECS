@@ -50,8 +50,11 @@ Proof-Status jeder Engine.
   UNSAT-Proof-Status niemals hoch; ein fehlendes optionales Backend wird als
   `unavailable` gemeldet, nicht übersprungen.
 - CLI: `cq-hecs sat solve --cnf ... --engine unified`.
-- Gemessen auf fünf Familien: **null Abweichungen** zwischen den vier Engines, Overhead
-  des Portfolios 0,00–0,04 s. Details:
+- Gemessen auf fünf Familien, zweimal: **null Abweichungen**, einmal ohne optionales
+  Backend (Python 3.14 hier ohne `python-sat`) und einmal mit **CaDiCaL 1.9.5** in einer
+  Python-3.12-Umgebung. Mit CaDiCaL war `watched` auf drei Familien am schnellsten und
+  `cadical` auf zwei; die deklarierte Reihenfolge kostet dort 0,12 s und 0,16 s — das steht
+  da, statt versteckt zu werden. Tabellen und Rohdaten:
   [`docs/UNIFIED_SOLVER.md`](docs/UNIFIED_SOLVER.md).
 
 ## Browser-Engines (Vercel, WebAssembly, WebGPU)

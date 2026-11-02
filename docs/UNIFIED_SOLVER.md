@@ -62,9 +62,49 @@ happened. That layer is this module.
 - You want the fastest possible answer on a hard instance: `cadical` alone (when
   installed) is still far ahead of everything here.
 
-## Measured (2026-11-02, one machine, 12 s budget per engine)
+## Measured (2026-11-02, one machine, 30 s budget per engine)
 
-`scripts/unified_solver_benchmark.py` regenerates this table.
+`scripts/unified_solver_benchmark.py` regenerates this table. Two environments matter, and
+both are named:
+
+* **without CaDiCaL** — the default developer interpreter here (Python 3.14, no
+  `python-sat`), where the adapter correctly reports `unavailable`;
+* **with CaDiCaL** — a Python 3.12 environment with `python-sat 1.9.dev17`, which provides
+  **CaDiCaL 1.9.5**. The project itself requires Python `<3.14`, so this is also the
+  environment the optional extra is meant for.
+
+### With CaDiCaL installed (`python-sat 1.9.dev17`, CaDiCaL 1.9.5)
+
+| Instance | vars | watched | omniwave | cadical | scan | portfolio | fastest |
+|---|---:|---|---|---|---|---|---|
+| pigeonhole-7-6 | 42 | UNSAT 0.19 s | UNSAT 0.99 s | UNSAT 0.21 s | UNSAT 0.37 s | UNSAT via watched, 0.19 s | watched |
+| pigeonhole-8-7 | 56 | UNSAT 2.90 s | UNSAT 33.7 s | UNSAT 5.58 s | UNSAT 5.58 s | UNSAT via watched, 2.61 s | watched |
+| Tseitin 3x3 | 12 | UNSAT 0.002 s | UNSAT 0.004 s | UNSAT 0.004 s | UNSAT 0.006 s | UNSAT via watched, 0.003 s | watched |
+| random 3-SAT 70 vars | 70 | UNSAT 0.26 s | UNSAT 0.24 s | UNSAT 0.14 s | UNSAT 0.77 s | UNSAT via watched, 0.26 s | **cadical** |
+| SHA-256 W=16 r=8 | 6 673 | SAT 0.16 s | SAT 0.33 s | SAT 0.05 s | SAT 0.55 s | SAT via watched, 0.21 s | **cadical** |
+
+**Disagreements between engines: 0.** Four independent implementations, five instances,
+same verdict - the property that matters. CaDiCaL's UNSAT answers went through
+`cqhecs.drat`, so the column is not an unchecked label.
+
+### What the measurements say about the order
+
+The declared order is `watched → omniwave → cadical → scan`. Against this table it picks the
+fastest engine on **3 of 5** families and pays one extra attempt on the other two:
+
+| Family | Fastest | What the portfolio pays |
+|---|---|---|
+| pigeonhole (7-6, 8-7), Tseitin | watched | nothing - it wins the first attempt |
+| random 3-SAT | cadical | +0.12 s (0.26 s instead of 0.14 s) |
+| SHA-256 W16 r8 | cadical | +0.16 s (0.21 s instead of 0.05 s) |
+
+That overhead is why the order stays as it is for now, and the reason is stated rather than
+hidden: the watched engine needs no optional dependency, returns a model that is re-verified
+against the original CNF, and on these families is within tenths of a second of CaDiCaL.
+Changing the order on evidence would be a schema-visible decision (the result records the
+order), so it needs its own held-out benchmark rather than a swap after one table.
+
+### Without CaDiCaL (the earlier run, Python 3.14)
 
 | Instance | vars | watched | omniwave | cadical | scan | portfolio |
 |---|---:|---|---|---|---|---|
@@ -74,9 +114,6 @@ happened. That layer is this module.
 | random 3-SAT 70 vars | 70 | UNSAT 0.1 s | UNSAT 0.2 s | unavailable | UNSAT 0.4 s | UNSAT via watched, 0.14 s |
 | SHA-256 W=16 r=8 | 6 673 | SAT 0.1 s | SAT 0.2 s | unavailable | SAT 0.4 s | SAT via watched, 0.10 s |
 
-**Disagreements between engines: 0.** That is the property that matters - four
-independent implementations on the same formula, same verdict.
-
-The portfolio's overhead is the price of the attempt record (0.00-0.04 s here). With
-`python-sat` installed, `cadical` joins the order with its own share; the table will show
-it, and no number in this document has to change.
+The difference between the two runs is timing noise on the same machine plus the second
+run's larger budget (30 s instead of 12 s, so OMNIWAVE reaches a verdict on pigeonhole-8-7
+instead of timing out). Neither run is a speedup claim; both are the same tree.
