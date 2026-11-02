@@ -325,6 +325,39 @@ def test_status_word_encoding_round_trips():
         assert bcp.code_lit(bcp.lit_code(lit)) == lit
 
 
+def test_propagation_skips_an_indexed_position_beyond_the_snapshot():
+    """An index that points past the list must be skipped, never crash the worker.
+
+    This is the shape of the race that made
+    ``test_studio.py::test_omniwave_lab_runs_to_a_checked_proof`` return UNKNOWN on a
+    slower CI runner. The old code took the nogood snapshot and built its index in two
+    separate lock sections: a refutation from another worker could land in between, the
+    index then pointed one entry past the snapshot, and the unguarded lookup raised
+    ``IndexError`` inside the worker thread. The thread died, coverage never reached 1.0
+    and the run reported UNKNOWN although the search itself was fine.
+
+    The engine now takes the snapshot and extends the index in one lock section, which
+    makes the two consistent; the guard is the second line of defence for any caller that
+    supplies its own snapshot. The test builds that state directly so it is deterministic.
+    """
+    formula = random_3sat(12, 40, seed=7)
+    engine = OmniwaveEngine(formula, OmniwaveConfig(waves=1, workers=1))
+    engine._nogoods.append((-1, -2))
+    real_extend = engine._extend_nogood_index
+
+    def extend_then_lose_the_race(nogoods):
+        index = real_extend(nogoods)
+        # Another worker indexed a nogood this snapshot does not contain; the literal -1
+        # is exactly the one the walk below will look up.
+        index.setdefault(-1, []).append(len(nogoods))
+        return index
+
+    engine._extend_nogood_index = extend_then_lose_the_race
+    outcome, value = engine._propagate((1,))
+    assert outcome in ("conflict", "sat", "open")
+    assert value[1] is True
+
+
 # ---------------------------------------------------------------- CPU/GPU parity and batch modes
 
 def _random_fronts(rng, n, count, max_lits=10):

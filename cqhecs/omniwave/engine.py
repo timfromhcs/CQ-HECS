@@ -264,7 +264,9 @@ class OmniwaveEngine:
         occurrences = self._occurrences()
         with self._lock:
             nogoods = tuple(self._nogoods)
-        nogood_occurrences = self._nogood_occurrences()
+            # Extend the nogood index under the same lock that guards the list, so a
+            # concurrent refutation cannot leave a half-built index behind.
+            nogood_occurrences = self._extend_nogood_index(nogoods)
         propagations = 0
 
         while True:
@@ -276,6 +278,9 @@ class OmniwaveEngine:
                 false_literal = -literal
                 for table, database in ((occurrences, clauses), (nogood_occurrences, nogoods)):
                     for index in table.get(false_literal, ()):
+                        if index >= len(database):
+                            # The index can only have grown since the snapshot was taken.
+                            continue
                         state, open_literal = self._clause_state(database[index], value)
                         if state == -1:
                             self._count("propagations", propagations)
@@ -332,22 +337,28 @@ class OmniwaveEngine:
             self._occ = occ
         return occ
 
-    def _nogood_occurrences(self) -> Dict[int, Tuple[int, ...]]:
-        """Literal -> nogood indices, rebuilt when the nogood list has grown."""
-        with self._lock:
-            count = len(self._nogoods)
-        cached = getattr(self, "_nogood_index", None)
-        if cached is not None and cached[0] == count:
-            return cached[1]
-        index: Dict[int, List[int]] = {}
-        with self._lock:
-            nogoods = tuple(self._nogoods)
-        for position, clause in enumerate(nogoods):
-            for literal in clause:
+    def _extend_nogood_index(self, nogoods) -> Dict[int, Tuple[int, ...]]:
+        """Literal -> nogood indices, extended incrementally.
+
+        Rebuilding the whole index whenever a nogood is appended is quadratic: every
+        refutation grows the list, and the next propagation walks it again. That is what
+        made the Studio's UNSAT run flip to UNKNOWN on a slower CI runner. Only the new
+        entries are indexed here. Lock is held by the caller.
+        """
+        index = getattr(self, "_nogood_index", None)
+        indexed = getattr(self, "_nogood_indexed", 0)
+        if index is None:
+            index = {}
+        for position in range(indexed, len(nogoods)):
+            for literal in nogoods[position]:
                 index.setdefault(literal, []).append(position)
-        built = {literal: tuple(positions) for literal, positions in index.items()}
-        self._nogood_index = (count, built)
-        return built
+        self._nogood_index = index
+        self._nogood_indexed = len(nogoods)
+        # The live index is returned: copying it per call made pigeonhole-8-7 slower
+        # (40 s against 30 s) because the copy cost grew with every refutation. The
+        # propagation loop bounds-checks each position against its own snapshot of the
+        # nogood list, so a concurrent append cannot make it read past the end.
+        return index
 
     def _count(self, name: str, amount: int = 1) -> None:
         with self._lock:
