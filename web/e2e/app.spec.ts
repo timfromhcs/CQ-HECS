@@ -58,16 +58,17 @@ test("Bell run: only 00/11, provenance shown, JSON export downloads", async ({ p
   const file = await download;
   expect(file.suggestedFilename()).toMatch(/^cqhecs-run-\d+\.json$/);
 
-  // The exported card must be reproducible, not decorative: the digest has to be the
-  // SHA-256 of the QASM it carries, the seed has to be there, and no device or bridge
-  // detail may leak into a file the user shares.
+  // The exported card must be reproducible, not decorative: it is the shared `hcs.run.v2`
+  // contract, the digest has to be the SHA-256 of the payload it carries, the seed has to
+  // be there, and no device or bridge detail may leak into a file the user shares.
   const raw = readFileSync((await file.path())!, "utf8");
   const card = JSON.parse(raw);
-  expect(card.schema).toBe("cqhecs.web.run/1.1");
-  expect(card.input_digest).toBe(createHash("sha256").update(card.input.qasm, "utf8").digest("hex"));
-  expect(card.engine).toEqual({ kind: "wasm", precision: "f64" });
-  expect(Number.isInteger(card.input.seed)).toBe(true);
+  expect(card.schema).toBe("hcs.run.v2");
+  expect(card.input.digest).toBe(createHash("sha256").update(card.input.payload, "utf8").digest("hex"));
+  expect(card.engine).toEqual({ kind: "wasm", precision: "f64", mode: "SAMPLED" });
+  expect(Number.isInteger(card.seed)).toBe(true);
   expect(card.result.counts).toBeTruthy();
+  expect(card.limits.length).toBeGreaterThan(0);
   expect(raw).not.toMatch(/bssid|\bwallet\b|\btoken\b|bridge_url|192\.168\./i);
 });
 

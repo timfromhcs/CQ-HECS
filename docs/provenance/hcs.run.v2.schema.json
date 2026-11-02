@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/timfromhcs/CQ-HECS/docs/provenance/hcs.run.v2.schema.json",
+  "title": "hcs.run.v2 - one provenance card for every run",
+  "description": "Shared by the Python CLI, the Studio export and the browser. The digest is always over input.payload, so a card can be checked without any other file. The three error kinds are separate and may be null; null means 'not quantified', never 'zero'.",
+  "type": "object",
+  "required": ["schema", "created_at", "software", "input", "engine", "result", "limits"],
+  "additionalProperties": true,
+  "properties": {
+    "schema": { "const": "hcs.run.v2" },
+    "created_at": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T" },
+    "software": {
+      "type": "object",
+      "required": ["name", "version", "source_revision"],
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+" },
+        "source_revision": { "type": "string", "minLength": 7 }
+      }
+    },
+    "input": {
+      "type": "object",
+      "required": ["kind", "payload", "digest_algorithm", "digest"],
+      "additionalProperties": true,
+      "properties": {
+        "kind": { "enum": ["circuit", "cnf"] },
+        "payload": { "type": "string", "minLength": 1, "description": "The exact text that was run: QASM for a circuit, DIMACS for a CNF." },
+        "digest_algorithm": { "const": "SHA-256" },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "engine": {
+      "type": "object",
+      "required": ["kind", "precision", "mode"],
+      "additionalProperties": true,
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "precision": { "enum": ["f64", "f32", "exact-integer", "n/a"] },
+        "mode": { "enum": ["EXACT", "SAMPLED", "NOISY_CLASSICAL", "REAL_HARDWARE", "REFUSED"] }
+      }
+    },
+    "seed": { "type": ["integer", "null"] },
+    "result": {
+      "type": "object",
+      "required": ["status", "elapsed_ms", "error"],
+      "additionalProperties": true,
+      "properties": {
+        "status": { "type": "string", "minLength": 1 },
+        "elapsed_ms": { "type": "number", "minimum": 0 },
+        "error": {
+          "type": "object",
+          "required": ["approximation", "numerical", "sampling"],
+          "additionalProperties": true,
+          "properties": {
+            "approximation": { "type": ["number", "null"], "minimum": 0 },
+            "numerical": { "type": ["number", "null"], "minimum": 0 },
+            "sampling": { "type": ["number", "null"], "minimum": 0 }
+          }
+        }
+      }
+    },
+    "limits": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+  }
+}

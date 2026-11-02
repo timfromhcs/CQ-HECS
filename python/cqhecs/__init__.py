@@ -6,4 +6,4 @@ Canonical version: ``scripts/version.py``.
 from .provider import CQHecsBackend, CQHecsProvider
 
 __all__ = ["CQHecsBackend", "CQHecsProvider"]
-__version__ = "4.2.0"
+__version__ = "5.0.0"
