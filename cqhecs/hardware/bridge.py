@@ -238,6 +238,22 @@ class _Handler(BaseHTTPRequestHandler):
         auth = self.headers.get("Authorization", "")
         return auth[7:] if auth.startswith("Bearer ") else None
 
+    def _reject(self, status: int, body: dict):
+        """Reply early to a POST without parsing it.
+
+        The request body has not been read yet. Closing a socket that still holds unread data makes Linux
+        send a TCP RST, and the client can then lose the response (observed: the 429 of the rate limiter
+        arrived as RemoteDisconnected on every other request). So read the declared body first, within the
+        same MAX_BODY bound as _body(), then reply.
+        """
+        cl = self.headers.get("Content-Length")
+        if cl and cl.isascii() and cl.isdigit() and 0 < int(cl) <= MAX_BODY:
+            try:
+                self.rfile.read(int(cl))
+            except OSError:  # a stalled client is dropped, as in _body()
+                self.close_connection = True
+        self._send(status, body)
+
     def _body(self):
         cl = self.headers.get("Content-Length")
         if cl is not None and not cl.isascii() or cl is not None and not cl.isdigit():
@@ -316,13 +332,13 @@ class _Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         path = self.path.split("?", 1)[0]
         if path in GET_ROUTES:
-            return self._send(405, {"error": "METHOD_NOT_ALLOWED"})
+            return self._reject(405, {"error": "METHOD_NOT_ALLOWED"})
         if path not in POST_ROUTES:
-            return self._send(404, {"error": "NOT_FOUND"})
+            return self._reject(404, {"error": "NOT_FOUND"})
         if self._origin() is None:
-            return self._send(403, {"error": "ORIGIN_NOT_ALLOWED"})
+            return self._reject(403, {"error": "ORIGIN_NOT_ALLOWED"})
         if not self.owner.rate_ok():
-            return self._send(429, {"error": "RATE_LIMITED"})
+            return self._reject(429, {"error": "RATE_LIMITED"})
         data = self._body()
         if data is None:
             return
