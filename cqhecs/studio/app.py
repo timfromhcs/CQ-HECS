@@ -15,6 +15,8 @@ import threading
 import webbrowser
 from dataclasses import dataclass
 from http import HTTPStatus
+import hmac
+import secrets
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
@@ -946,9 +948,19 @@ class StudioHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
-    def __init__(self, address: Tuple[str, int], state: StudioState):
+    def __init__(self, address: Tuple[str, int], state: StudioState, token: Optional[str] = None):
         self.state = state
+        # Per-launch bearer token for every /api/ route. A web page open in the user's browser can reach a
+        # loopback server (cross-site simple POST, DNS rebinding); without this token it cannot start jobs.
+        self.token = token or secrets.token_urlsafe(32)
         super().__init__(address, StudioHandler)
+        bind_host = str(address[0])
+        names = {"127.0.0.1", "localhost", "[::1]"}
+        if bind_host not in ("", "0.0.0.0", "::"):
+            names.add(f"[{bind_host}]" if ":" in bind_host else bind_host)
+        port = self.server_address[1]
+        self.allowed_hosts = frozenset(f"{name}:{port}" for name in names)
+        self.allowed_origins = frozenset(f"http://{host}" for host in self.allowed_hosts)
 
     def handle_error(self, request: Any, client_address: Any) -> None:
         # A browser closing a keep-alive connection is not an engine error.
@@ -988,11 +1000,51 @@ class StudioHandler(BaseHTTPRequestHandler):
     def _error(self, status: int, code: str, message: str) -> None:
         self._json(status, {"error": {"code": code, "message": message}})
 
+    def _discard(self, length: int) -> None:
+        """Read and drop a declared request body (bounded). Closing a socket that still holds unread
+        data makes Linux send a TCP RST, and the client can lose the response."""
+        remaining = min(length, 4 * MAX_BODY)
+        try:
+            while remaining > 0:
+                chunk = self.rfile.read(min(65536, remaining))
+                if not chunk:
+                    break
+                remaining -= len(chunk)
+        except OSError:
+            self.close_connection = True
+        if length > 4 * MAX_BODY:
+            self.close_connection = True
+
+    def _refuse(self, status: int, code: str, message: str) -> None:
+        """Reject a request before its body is parsed."""
+        declared = self.headers.get("Content-Length", "")
+        if declared.isascii() and declared.isdigit():
+            self._discard(int(declared))
+        self._error(status, code, message)
+
+    def _guard(self, api: bool) -> bool:
+        """Host allow-list, Origin allow-list, and (for /api/) the per-launch bearer token."""
+        if self.headers.get("Host", "") not in self.server.allowed_hosts:
+            self._refuse(400, "bad_host", "unexpected Host header")
+            return False
+        origin = self.headers.get("Origin")
+        if origin is not None and origin not in self.server.allowed_origins:
+            self._refuse(403, "origin_not_allowed", "cross-origin requests are not accepted")
+            return False
+        if api:
+            scheme, _, value = self.headers.get("Authorization", "").partition(" ")
+            if scheme.lower() != "bearer" or not hmac.compare_digest(value.encode("utf-8"), self.server.token.encode("utf-8")):
+                self._refuse(401, "unauthorized", "missing or invalid token; open the URL printed by `cq-hecs studio`")
+                return False
+        return True
+
     def _read_json(self) -> Dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0") or 0)
         if length <= 0:
             return {}
         if length > MAX_BODY:
+            self._discard(length)
+            self.close_connection = True
             raise StudioError("request body is larger than 1 MB", status=413, code="body_too_large")
         raw = self.rfile.read(length)
         try:
@@ -1006,6 +1058,8 @@ class StudioHandler(BaseHTTPRequestHandler):
     # -- routes ---------------------------------------------------------
     def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
+        if not self._guard(api=path.startswith("/api/")):
+            return
         try:
             if path == "/":
                 return self._static("index.html")
@@ -1039,8 +1093,18 @@ class StudioHandler(BaseHTTPRequestHandler):
         except Exception as exc:  # noqa: BLE001
             return self._error(500, "internal_error", f"{type(exc).__name__}: {exc}")
 
+    def do_OPTIONS(self) -> None:  # noqa: N802
+        # No CORS: the Studio never grants cross-origin access, so preflights are simply refused.
+        if self._guard(api=False):
+            self._refuse(405, "method_not_allowed", "OPTIONS is not supported")
+
     def do_POST(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
+        if not self._guard(api=True):
+            return
+        if self.headers.get("Content-Type", "").split(";")[0].strip().lower() != "application/json":
+            self._refuse(415, "unsupported_media_type", "POST bodies must be application/json")
+            return
         try:
             body = self._read_json()
             if path == "/api/simulate":
@@ -1082,6 +1146,12 @@ class StudioHandler(BaseHTTPRequestHandler):
         return self._send(HTTPStatus.OK, body, _STATIC_FILES[name])
 
 
+def launch_url(server: StudioHTTPServer) -> str:
+    """URL to open in a browser. The token travels in the fragment, which is never sent to a server."""
+    host = str(server.server_address[0]) or "127.0.0.1"
+    return f"http://{host}:{server.server_address[1]}/#token={server.token}"
+
+
 def create_server(
     host: str = "127.0.0.1",
     port: int = 8765,
@@ -1100,10 +1170,11 @@ def serve(
     server = create_server(host, port, root)
     url = f"http://{host}:{server.server_address[1]}/"
     print(f"CQ-HECS Studio {__version__} on {url}")
+    print(f"Open (the token is in the fragment, keep this URL private): {launch_url(server)}")
     print("Local only. Press Ctrl+C to stop.")
     print(server.state.dataset.note)
     if open_browser:
-        threading.Timer(0.6, lambda: webbrowser.open(url)).start()
+        threading.Timer(0.6, lambda: webbrowser.open(launch_url(server))).start()
     try:
         server.serve_forever(poll_interval=0.25)
     except KeyboardInterrupt:

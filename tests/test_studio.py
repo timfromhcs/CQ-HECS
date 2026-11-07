@@ -32,7 +32,11 @@ def server():
 
 
 def _get(server, path):
-    with urllib.request.urlopen(f"http://127.0.0.1:{server.server_address[1]}{path}", timeout=30) as response:
+    request = urllib.request.Request(
+        f"http://127.0.0.1:{server.server_address[1]}{path}",
+        headers={"Authorization": f"Bearer {server.token}"},
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
         return response.status, response.read()
 
 
@@ -40,7 +44,7 @@ def _post(server, path, payload):
     request = urllib.request.Request(
         f"http://127.0.0.1:{server.server_address[1]}{path}",
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {server.token}"},
         method="POST",
     )
     try:

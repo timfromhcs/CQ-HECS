@@ -1,3 +1,10 @@
+// The per-launch token arrives in the URL fragment (never sent to the server). Read it before any code
+// rewrites the fragment, keep it in memory, and send it as a bearer header on every API call.
+const AUTH_TOKEN = (() => {
+  const match = /(?:^|[#&])token=([^&]+)/.exec(location.hash);
+  return match ? decodeURIComponent(match[1]) : "";
+})();
+
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
@@ -66,7 +73,7 @@ function toast(message) {
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${AUTH_TOKEN}` },
     ...options,
   });
   const payload = await response.json().catch(() => ({}));
