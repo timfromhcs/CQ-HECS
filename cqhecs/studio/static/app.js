@@ -2,7 +2,12 @@
 // rewrites the fragment, keep it in memory, and send it as a bearer header on every API call.
 const AUTH_TOKEN = (() => {
   const match = /(?:^|[#&])token=([^&]+)/.exec(location.hash);
-  return match ? decodeURIComponent(match[1]) : "";
+  const token = match ? decodeURIComponent(match[1]) : "";
+  if (token) {
+    // The token now lives only in memory: drop it from the address bar, history and bookmarks.
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+  return token;
 })();
 
 const $ = (sel, root = document) => root.querySelector(sel);

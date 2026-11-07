@@ -274,3 +274,12 @@ def test_the_body_of_an_oversized_post_is_never_parsed_as_another_request(server
     ).encode()
     body = smuggled + b" " * (MAX_BODY + 10 - len(smuggled))
     assert _responses_on_one_keepalive_connection(server, {"Content-Type": "application/json", **auth(server)}, body) == 1
+
+
+def test_the_frontend_removes_the_token_from_the_address_bar_after_reading_it():
+    """Master P1 step 3: use the fragment only for the first hand-off, then strip it (history, bookmarks, screenshots)."""
+    js = (ROOT / "cqhecs" / "studio" / "static" / "app.js").read_text(encoding="utf-8")
+    start = js.index("const AUTH_TOKEN")
+    block = js[start: js.index("})();", start)]
+    assert "replaceState" in block and "location.pathname" in block
+    assert block.index("exec(location.hash)") < block.index("replaceState")
