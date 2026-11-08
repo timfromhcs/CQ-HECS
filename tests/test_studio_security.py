@@ -238,7 +238,7 @@ def _responses_on_one_keepalive_connection(server, head_headers, body, wait=0.6)
     """Send one POST on a keep-alive connection and count the HTTP responses that come back."""
     head = {"Host": f"127.0.0.1:{port_of(server)}", "Content-Length": str(len(body))}
     head.update(head_headers)
-    raw = (f"POST /api/sat/solve HTTP/1.1\r\n" + "".join(f"{k}: {v}\r\n" for k, v in head.items()) + "\r\n").encode() + body
+    raw = ("POST /api/sat/solve HTTP/1.1\r\n" + "".join(f"{k}: {v}\r\n" for k, v in head.items()) + "\r\n").encode() + body
     with socket.create_connection(("127.0.0.1", port_of(server)), timeout=wait) as sock:
         sock.sendall(raw)
         data = b""
@@ -283,3 +283,54 @@ def test_the_frontend_removes_the_token_from_the_address_bar_after_reading_it():
     block = js[start: js.index("})();", start)]
     assert "replaceState" in block and "location.pathname" in block
     assert block.index("exec(location.hash)") < block.index("replaceState")
+
+
+def test_a_rejected_post_with_a_stalled_body_releases_its_connection(server, monkeypatch):
+    from cqhecs.studio.app import StudioHandler
+
+    monkeypatch.setattr(StudioHandler, "body_read_timeout_s", 0.15, raising=False)
+    with socket.create_connection(("127.0.0.1", port_of(server)), timeout=1) as sock:
+        sock.sendall((
+            "POST /api/sat/solve HTTP/1.1\r\n"
+            f"Host: 127.0.0.1:{port_of(server)}\r\n"
+            "Content-Length: 1000\r\nContent-Type: application/json\r\n\r\n"
+        ).encode())
+        response = sock.recv(65536)
+        assert response.startswith(b"HTTP/1.1 401")
+        while sock.recv(65536):
+            pass
+    assert server.calls == []
+
+
+def test_rejected_body_drain_deadline_is_not_extended_by_trickling_bytes(server, monkeypatch):
+    import time
+    from cqhecs.studio.app import StudioHandler
+
+    monkeypatch.setattr(StudioHandler, "body_read_timeout_s", 0.15)
+    stop = threading.Event()
+    with socket.create_connection(("127.0.0.1", port_of(server)), timeout=1) as sock:
+        sock.sendall((
+            "POST /api/sat/solve HTTP/1.1\r\n"
+            f"Host: 127.0.0.1:{port_of(server)}\r\n"
+            "Content-Length: 1000\r\nContent-Type: application/json\r\n\r\n"
+        ).encode())
+
+        def trickle():
+            while not stop.wait(0.02):
+                try:
+                    sock.sendall(b"x")
+                except OSError:
+                    return
+
+        sender = threading.Thread(target=trickle)
+        sender.start()
+        started = time.monotonic()
+        try:
+            response = sock.recv(65536)
+            assert response.startswith(b"HTTP/1.1 401")
+            assert time.monotonic() - started < 0.8
+        finally:
+            stop.set()
+            sender.join(timeout=1)
+        assert not sender.is_alive()
+    assert server.calls == []

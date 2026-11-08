@@ -12,6 +12,7 @@ import json
 import os
 import re
 import threading
+import time
 import webbrowser
 from dataclasses import dataclass
 from http import HTTPStatus
@@ -976,6 +977,8 @@ class StudioHandler(BaseHTTPRequestHandler):
     server: StudioHTTPServer
     server_version = f"CQ-HECS-Studio/{__version__}"
     protocol_version = "HTTP/1.1"
+    timeout = 5.0  # bound idle request headers and ordinary body reads
+    body_read_timeout_s = 5.0
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A003
         return
@@ -1004,14 +1007,24 @@ class StudioHandler(BaseHTTPRequestHandler):
         """Read and drop a declared request body (bounded). Closing a socket that still holds unread
         data makes Linux send a TCP RST, and the client can lose the response."""
         remaining = min(length, 4 * MAX_BODY)
+        deadline = time.monotonic() + self.body_read_timeout_s
+        old_timeout = self.connection.gettimeout()
         try:
             while remaining > 0:
-                chunk = self.rfile.read(min(65536, remaining))
+                budget = deadline - time.monotonic()
+                if budget <= 0:
+                    raise TimeoutError("request body drain deadline exceeded")
+                self.connection.settimeout(budget)
+                # read1 returns after one underlying read, so a trickling client
+                # cannot keep extending a per-recv timeout indefinitely.
+                chunk = self.rfile.read1(min(65536, remaining))
                 if not chunk:
                     break
                 remaining -= len(chunk)
         except OSError:
             self.close_connection = True
+        finally:
+            self.connection.settimeout(old_timeout)
         if length > 4 * MAX_BODY:
             self.close_connection = True
 
