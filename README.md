@@ -432,6 +432,13 @@ equivariance, zero-noise identity, and channel composition order.
 has no build step and no new runtime dependency (standard-library HTTP server +
 the existing package).
 
+Open the private URL printed by the command: its fragment carries a per-launch
+API token. The page keeps the token in memory and removes it from the address
+bar; after reloading, reopen the printed URL. API clients must send
+`Authorization: Bearer <token>` and JSON POST bodies. Requests require an allowed
+Host/Origin, and rejected request bodies have a bounded drain deadline. The
+server remains a local tool, not a production remote service.
+
 ![CQ-HECS Studio overview](docs/assets/studio-overview.png)
 
 - **Circuit lab:** QASM or preset, forced path, shots, seed, ideal / `M-FIT` /

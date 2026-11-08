@@ -8,6 +8,17 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Security — local Studio request guard
+
+- Require a per-launch bearer token for Studio API calls, validate Host and
+  Origin, and accept only JSON POST bodies. The launch URL passes the token in
+  its fragment; the page removes it from the address bar after reading it.
+- Drain bounded rejected bodies before responding to avoid TCP resets and
+  request-body reuse; enforce a drain deadline and idle socket timeout.
+- Drain bounded rejected hardware-bridge POST bodies before early replies so
+  rate-limit and other rejection responses survive delayed body delivery.
+
+
 ### Added — circuit conformance corpus and a measured engine table
 
 - **Circuit-level corpus** (`scripts/export_web_circuit_conformance.py`,
