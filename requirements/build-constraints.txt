@@ -1,0 +1,18 @@
+# Pins for the tools that build the release wheel and sdist.
+#
+# Use as a pip constraint file through the environment, not only as `-c`:
+#
+#   PIP_CONSTRAINT=requirements/build-constraints.txt python -m build
+#
+# `pip`/`build` create an isolated build environment and resolve
+# `[build-system] requires` in it. A `-c` flag or a constraint on the outer
+# virtualenv does NOT reach that inner environment; the PIP_CONSTRAINT
+# environment variable does. After a build, the pinned setuptools version is
+# recorded in the wheel's `*.dist-info/WHEEL` ("Generator: setuptools (X)").
+#
+# This file only constrains versions; it does not add dependencies. Update the
+# pins deliberately, together with a green CI run. setuptools matches
+# constraints/ci-py311.txt.
+build==1.5.0
+setuptools==81.0.0
+wheel==0.47.0
