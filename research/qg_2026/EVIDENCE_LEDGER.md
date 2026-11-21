@@ -22,6 +22,9 @@ Digests for generated manifests are written by the runner at generation time.
 | BMV QPU analysis | `research/qg_2026/processed/bmv_qpu_analysis.json` | (see file) | OPENQUANTUM_QPU | correlators + 95% intervals |
 | BMV phase-scan raw | `research/qg_2026/raw/bmv_scan2/*/result.json` | `EVIDENCE_MANIFEST.json` (24 files) | **OPENQUANTUM_QPU** | 4 circuits (θ=π/8, 3π/8) |
 | BMV phase-scan (combined) | `research/qg_2026/processed/bmv_phase_scan.json` | (see file) | OPENQUANTUM_QPU | 13 points, 5 θ values |
+| SYK QPU v3 raw | `research/qg_2026/raw/syk_qpu_v3/*/result.json` | `EVIDENCE_MANIFEST.json` (12 files) | **OPENQUANTUM_QPU** | corrected; mirror 0.947, forward 0.118 |
+| SYK QPU v3 analysis | `research/qg_2026/processed/syk_qpu_v3_analysis.json` | (see file) | OPENQUANTUM_QPU | INCONCLUSIVE (F-10) |
+| SYK QPU v1 (INVALID) | `research/qg_2026/raw/syk_qpu/*/result.json` | `EVIDENCE_MANIFEST.json` (12 files) | OPENQUANTUM_QPU | invalid design (F-09), retained |
 
 No `OPENQUANTUM_QPU` or `OPENQUANTUM_SIMULATOR` evidence exists yet (blocker B-1).
 Historical `research/v3/evidence/openquantum/**` remains untouched and is **not** part of

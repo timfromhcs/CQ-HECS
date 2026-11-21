@@ -2,7 +2,7 @@
   "authorised_spark_ceiling": 25.0,
   "backend": "rigetti:cepheus-1-108q",
   "campaign_id": "qg-2026-01",
-  "note": "Stage-2 smoke (4) + Stage-3 BMV (9) + phase-scan extension (4); 17/25 Spark.",
+  "note": "smoke 4 + BMV 9 + BMV scan 4 + SYK v1(invalid) 2 + SYK v3 2 = 21/25.",
   "plan": "Public Plan",
   "priority": "Standard Queue",
   "quoted_total_credits": 4.0,
@@ -47,5 +47,5 @@
   "schema": "cqhecs.qg.quote_ledger.v1",
   "shot_count": 1000,
   "spark_balance_at_quote": 25.0,
-  "spent_credits": 17.0
+  "spent_credits": 21.0
 }

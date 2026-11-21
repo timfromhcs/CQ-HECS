@@ -1,0 +1,66 @@
+{
+  "backend": "rigetti:cepheus-1-108q",
+  "files": [
+    {
+      "bytes": 1195405,
+      "path": "syk-forward-v3\\calibration.json",
+      "sha256": "ce87654bacd9b4cfeb9952d8cd820c530acae5e3f6ce5c06c83c15c9fdf9e6e1"
+    },
+    {
+      "bytes": 163,
+      "path": "syk-forward-v3\\counts.csv",
+      "sha256": "1f6d5d14e5b1f634ecd8c80fbcc182e6e8fbe37490724eaec7de893deed553a3"
+    },
+    {
+      "bytes": 24505,
+      "path": "syk-forward-v3\\histogram.png",
+      "sha256": "22de27f6377bd086936fb1396b8429aa3d83ec2ace68883662296e498ba91cea"
+    },
+    {
+      "bytes": 469,
+      "path": "syk-forward-v3\\job.json",
+      "sha256": "519187ad400eee46aa6566ffb888b17187fbdd95d1b31ebfb8d5403b822edf4f"
+    },
+    {
+      "bytes": 123,
+      "path": "syk-forward-v3\\result.json",
+      "sha256": "1a662ca02a6177ffec5da96a6cd3c8dd9db9bb1e34495d8f1cbedf2e9c39f3d3"
+    },
+    {
+      "bytes": 391,
+      "path": "syk-forward-v3\\summary.md",
+      "sha256": "46f8f0d282240d8d2c932a92deffb019f321891de45b0e19e7472d85be14cc35"
+    },
+    {
+      "bytes": 1195405,
+      "path": "syk-mirror-v3\\calibration.json",
+      "sha256": "ce87654bacd9b4cfeb9952d8cd820c530acae5e3f6ce5c06c83c15c9fdf9e6e1"
+    },
+    {
+      "bytes": 120,
+      "path": "syk-mirror-v3\\counts.csv",
+      "sha256": "112f679474e398c57d57816a47fac95d9fd63cb798e40219c2c0fec3e558be25"
+    },
+    {
+      "bytes": 19665,
+      "path": "syk-mirror-v3\\histogram.png",
+      "sha256": "b6fc8dc6662833ec24a290ff6382661ef101a3df632671e7294b8ac7ebac9aa9"
+    },
+    {
+      "bytes": 469,
+      "path": "syk-mirror-v3\\job.json",
+      "sha256": "be63bcee70c3a1ebc92739c90d8bd9cbc6e635b3113bcad146c187e5f80afca1"
+    },
+    {
+      "bytes": 84,
+      "path": "syk-mirror-v3\\result.json",
+      "sha256": "5c70ff9cf8f149429270732e22f0009bbb59bd1312f597d8f55dd423c391e3f0"
+    },
+    {
+      "bytes": 330,
+      "path": "syk-mirror-v3\\summary.md",
+      "sha256": "fbaf8354c0343dc65a676ea689b7ba047ed92fc3835cd80809f5794b481632f6"
+    }
+  ],
+  "schema": "cqhecs.qg.evidence_manifest.v1"
+}

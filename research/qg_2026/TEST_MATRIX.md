@@ -26,5 +26,6 @@
 | OQ doctor/discover | `python scripts/run_qg_openquantum_campaign.py doctor` | DONE | login OK (org Tim Stark, Spark 25) |
 | OQ QPU smoke | 4 × `oq.py submit`/`results` (Rigetti) | DONE | 4/4 Completed; in-support 0.90/0.95/0.91/0.98 |
 | OQ BMV QPU | 9 × `oq.py submit`/`results` (Rigetti) | DONE | 9/9 Completed; ⟨Y⊗Z⟩ 0.01→0.62→0.85 vs sinθ |
+| OQ SYK QPU v3 | 2 × `oq.py submit`/`results` (Rigetti) | DONE / INCONCLUSIVE | mirror 0.947, forward 0.118 vs ideal 0.233 (F-10) |
 
 Rule: an unavailable gate is `NOT_RUN`/`BLOCKED`, never green by inference.

@@ -21,14 +21,17 @@
 - **Spark spent: 4 / 25.** Remaining: 21.
 
 ### Next scientific step (Stage 3 — BMV)
-Preregister a BMV phase/witness family on a live QPU within the remaining ~21 Spark and
-compare against the declared noise model.
 
 **Stage 3 status:** preregistered (`QPU_BMV.md`) and **complete** — full 5-point phase scan
 (θ ∈ {0, π/8, π/4, 3π/8, π/2}) in {Y⊗Z, Z⊗Y} plus X⊗X at 3 points; 13 jobs, 1000 shots,
 Public/Standard; **13 credits** (cumulative **17 / 25**). Result (F-08): ⟨Y⊗Z⟩ = 0.014/0.298/
 0.616/0.734/0.854 and ⟨Z⊗Y⟩ = 0.012/0.386/0.666/0.820/0.874 across the scan; θ=0 null ~0;
 measured value ≈ 0.85–1.0 × sinθ. Raw evidence: `raw/bmv_qpu/`, `raw/bmv_scan2/`.
+
+**Stage 4 status:** SYK Trotter test. v1 run **INVALID** (F-09). Corrected **v3** results:
+mirror P(000)=0.947 [0.933,0.961], forward P(000)=0.118 [0.098,0.138] vs Trotter ideal 0.2326 —
+mutually inconsistent under any single noise level → **INCONCLUSIVE** (F-10). No SYK hardware
+claim. Cumulative spend **21 / 25**.
 - Remote: branch pushed; **PR #54** open (https://github.com/timfromhcs/CQ-HECS/pull/54); CI running.
 
 ## Next action (do this first on resume)

@@ -84,6 +84,22 @@ recorded as **INVALID** evidence; a corrected v3 (`qasm/syk_qpu_v3/`) with verif
 a true `forward + forward.inverse()` mirror was preregistered and submitted. This is a
 compilation-and-design finding, not a hardware result.
 
+## F-10 — Stage-4 SYK QPU test INCONCLUSIVE (forward vs mirror mutually inconsistent)
+Corrected v3 (`raw/syk_qpu_v3/`, semantics verified by re-simulation): the true return-to-zero
+mirror gave **P(000)=0.947** [0.933, 0.961], but the forward circuit gave **P(000)=0.118**
+[0.098, 0.138] against a Trotter ideal of **0.2326**.
+
+These two hardware results are mutually inconsistent under a standard noise model. An Aer
+depolarizing scan found **no single two-qubit error rate** that yields both a near-uniform
+forward (0.118) and a near-perfect mirror (0.947): reproducing the forward needs strong noise,
+which collapses the mirror to ~0.1–0.2. A pure forward state whose Z-basis distribution is flat
+cannot in general be recovered to `000` at 94.7% by the exact inverse.
+
+Conclusion: the SYK QPU comparison is **INCONCLUSIVE**; no SYK hardware claim is made. Candidate
+follow-up: transpile forward and mirror through one pipeline (shared layout, e.g. the Qiskit
+plugin sampler) and fit a device-noise model on held-out calibration. Recorded as a
+first-class inconclusive result.
+
 ## Negative / not-yet results
 - No Trotter/randomised evolution yet (QG-SYK-02) → `NOT_RUN`.
 - No QPU evidence (QG-SYK-03) → `BLOCKED` (B-1).

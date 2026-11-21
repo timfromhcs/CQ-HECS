@@ -115,3 +115,19 @@ Commit: `ab27578` — "feat(qg): Quantum Gravity research layer + campaign runne
   mirror; transpiled to backend-supported gates; validated for `rigetti:cepheus-1-108q`.
 - Ideal P(000): forward 0.428, mirror 1.0. Preregistered (`QPU_SYK.md`); **2 jobs submitted**,
   cumulative **19 / 25**. Results pending.
+
+## 2026-11-21 — session 1 (continued): SYK v1 invalid → corrected v3
+
+- Re-simulating the exported v1 QASM showed the hardware ran the **Trotter** circuit
+  (sim P(000) forward 0.2326, mirror 0.0103), not the **exact** exponential the preregistration
+  cited; the mirror was also not a true inverse. Recorded as **F-09 (INVALID)**.
+- Regenerated corrected **v3**: forward Trotter ideal 0.232584; mirror = `forward + inverse`
+  (true return-to-zero, ideal 1.0, `optimization_level=0`); each exported QASM re-simulated to
+  match its ideal. Submitted 2 jobs; cumulative **21 / 25**.
+
+## 2026-11-21 — session 1 (continued): SYK v3 results → INCONCLUSIVE (F-10)
+
+- v3: mirror P(000)=0.947 [0.933,0.961] (near-perfect return-to-zero) but forward P(000)=0.118
+  vs Trotter ideal 0.2326. An Aer noise scan shows no single error rate reproduces both →
+  mutually inconsistent. Recorded **INCONCLUSIVE** (F-10); no SYK hardware claim.
+- Evidence: `raw/syk_qpu_v3/` (+ manifest), `processed/syk_qpu_v3_analysis.json`. Spark 21/25.

@@ -53,7 +53,9 @@ sweep; a CI crossing the null is `INCONCLUSIVE`, never "almost supported".
 - Status: PROPOSED (evolution implemented next slice).
 
 ### QG-SYK-03 — QPU returns the sign/time-dependent SYK signal consistent with the model
-- Requires B-1 + a live QPU + frozen manifest. `BLOCKED`. Preregistered EVAL split only.
+- Requires B-1 + a live QPU + frozen manifest. B-1 resolved; a live QPU was used.
+- Status: **INCONCLUSIVE** — the corrected v3 forward and mirror results are mutually
+  inconsistent under a standard noise model (F-09, F-10); no SYK hardware claim is made.
 
 ### QG-SYK-04 — Mirror-circuit performance predicts target-observable decay
 - Paired circuit/mirror experiments; predeclared comparison; statistical uncertainty.
