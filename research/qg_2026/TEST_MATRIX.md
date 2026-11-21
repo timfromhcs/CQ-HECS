@@ -23,7 +23,7 @@
 | Web unit | `cd web && npm test` | NOT_RUN | M9 |
 | Web E2E + axe | `npm run e2e` | NOT_RUN | M9 |
 | Mutation | `python scripts/run_mutation_tests.py` | NOT_RUN | M13 |
-| OQ doctor/discover | `python scripts/run_qg_openquantum_campaign.py doctor` | BLOCKED | B-1 |
-| OQ quote/submit | (runner) | BLOCKED | B-1 |
+| OQ doctor/discover | `python scripts/run_qg_openquantum_campaign.py doctor` | DONE | login OK (org Tim Stark, Spark 25) |
+| OQ QPU smoke | 4 × `oq.py submit`/`results` (Rigetti) | DONE | 4/4 Completed; in-support 0.90/0.95/0.91/0.98 |
 
 Rule: an unavailable gate is `NOT_RUN`/`BLOCKED`, never green by inference.

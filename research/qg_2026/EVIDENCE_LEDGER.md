@@ -13,6 +13,11 @@ Digests for generated manifests are written by the runner at generation time.
 | Contract tests | `tests/test_quantum_gravity_contracts.py` | (see git) | SYNTHETIC_OR_FIXTURE | schema/observable/qasm contracts |
 | Campaign runner tests | `tests/test_quantum_gravity_campaign.py` | (see git) | SYNTHETIC_OR_FIXTURE | generate/validate/gating |
 | Open Quantum probe | session log (not stored) | n/a | n/a | 401 with Client-ID-as-token; **0 credits spent** |
+| **QPU smoke raw counts** | `research/qg_2026/raw/qpu_smoke/*/counts.csv` | manifest `EVIDENCE_MANIFEST.json` | **OPENQUANTUM_QPU** | Rigetti Cepheus-1-108q, 1000 shots, real hardware |
+| QPU calibration snapshot | `research/qg_2026/raw/qpu_smoke/*/calibration.json` | `DDF76F4C…615E7F` (all 4 identical) | OPENQUANTUM_QPU | device calibration at run time |
+| QPU smoke analysis | `research/qg_2026/processed/qpu_smoke_analysis.json` | (see file) | OPENQUANTUM_QPU | in-support fractions |
+| QPU job ledger | `research/qg_2026/JOB_LEDGER.jsonl` | append-only | n/a | 4 submitted + collected |
+| QPU run manifest | `research/qg_2026/raw/qpu_smoke/EVIDENCE_MANIFEST.json` | 24 files | OPENQUANTUM_QPU | SHA-256 per artifact |
 
 No `OPENQUANTUM_QPU` or `OPENQUANTUM_SIMULATOR` evidence exists yet (blocker B-1).
 Historical `research/v3/evidence/openquantum/**` remains untouched and is **not** part of

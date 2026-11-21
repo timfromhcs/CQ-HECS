@@ -75,3 +75,11 @@ Commit: `ab27578` — "feat(qg): Quantum Gravity research layer + campaign runne
 - Preregistered Stage-2 smoke (`QPU_SMOKE.md`); validated 4 circuits; quoted 4 credits
   (Public/Standard) on `rigetti:cepheus-1-108q`; **submitted 4 jobs** (JOB_LEDGER.jsonl).
 - B-1 → FIXED. Results pending collection.
+
+## 2026-11-21 — session 1 (continued): QPU smoke results (REAL HARDWARE)
+
+- All 4 jobs reached `Completed`; counts + calibration downloaded.
+- In-support fractions: basis 0.899, bell 0.954, ghz3 0.906, mirror 0.979.
+- Bit order = little-endian (q0 rightmost). `|1>`-state error ~10% (excited-state/readout).
+- Evidence: `research/qg_2026/raw/qpu_smoke/` + `EVIDENCE_MANIFEST.json`;
+  analysis `processed/qpu_smoke_analysis.json`. Spark spent 4/25.

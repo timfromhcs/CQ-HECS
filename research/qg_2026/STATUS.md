@@ -11,12 +11,18 @@
 - In progress / next: M6 runner (read-only phases work; quote/submit gated), M9/M10/M11/M12.
 - Blocker: **B-1 RESOLVED** (Client Secret supplied; login OK). Live QPU work proceeding.
 
-## Live QPU campaign (Stage 2 smoke)
+## Live QPU campaign (Stage 2 smoke) — COMPLETE
 
 - Backend `rigetti:cepheus-1-108q` (live `QPU`), 1000 shots/circuit, Public/Standard.
-- 4 preregistered circuits; quoted **4 credits** total; **4 submitted**, 0 refunded so far.
-- Job ids: `9e8ae264…`, `fadc0f89…`, `e9641514…`, `24e61d7d…` (see `JOB_LEDGER.jsonl`).
-- Results pending; collected under `research/qg_2026/raw/qpu_smoke/`.
+- 4 preregistered circuits; quoted **4 credits**; **4 submitted, 4 Completed**. No refunds.
+- Job ids: `9e8ae264…`, `fadc0f89…`, `e9641514…`, `24e61d7d…`.
+- Result (in-support): basis 0.899, bell 0.954, ghz3 0.906, mirror 0.979. Bit order: little-endian.
+- Raw evidence: `research/qg_2026/raw/qpu_smoke/` (+ `EVIDENCE_MANIFEST.json`).
+- **Spark spent: 4 / 25.** Remaining: 21.
+
+### Next scientific step (Stage 3 — BMV)
+Preregister a BMV phase/witness family on a live QPU within the remaining ~21 Spark and
+compare against the declared noise model.
 - Remote: branch pushed; **PR #54** open (https://github.com/timfromhcs/CQ-HECS/pull/54); CI running.
 
 ## Next action (do this first on resume)

@@ -35,6 +35,23 @@ mutually commuting, the spectrum is integer, and the `+1` subspace is preserved
 (`tests/test_quantum_gravity_gauge.py`). A finite constraint model; **not** a
 quantum-gravity or LQG result.
 
+## F-07 — Open Quantum QPU transport validated on Rigetti Cepheus-1-108q (real hardware)
+Four preregistered jobs ran on a live `QPU` (Public/Standard, 4 Spark credits). Raw counts and
+the calibration snapshot are under `research/qg_2026/raw/qpu_smoke/` with an evidence manifest.
+
+| circuit | ideal support | observed in-support | dominant |
+|---|---|---|---|
+| basis (`x q0`) | {01} | 0.899 | `01` (0.899) |
+| bell | {00,11} | 0.954 | `11` (0.485) |
+| ghz3 | {000,111} | 0.906 | `000` (0.471) |
+| mirror (`x;x`) | {00} | 0.979 | `00` (0.979) |
+
+- Bit order is **little-endian** (q0 = rightmost character): `x q[0]` returns `01`.
+- The `|1>`-preparation circuit is ~10% worse than the `|0>` return-to-zero (97.9%):
+  consistent with excited-state decay / asymmetric readout. A **device-characterisation**
+  result; not a gravity result.
+- Count totals equal shots; measurement registers and calibration retrieval validated.
+
 ## Negative / not-yet results
 - No Trotter/randomised evolution yet (QG-SYK-02) → `NOT_RUN`.
 - No QPU evidence (QG-SYK-03) → `BLOCKED` (B-1).

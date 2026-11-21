@@ -80,6 +80,8 @@ oq.py
 research/qg_2026/.secrets/
 *.sdkkey.json
 oq-sdk-key.json
+# oq.py default results directory (curated copies live under research/qg_2026/raw/)
+openquantum_runs/
 
 # Python & Testing Caches
 __pycache__/

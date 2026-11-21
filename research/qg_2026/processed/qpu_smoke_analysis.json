@@ -1,0 +1,80 @@
+{
+  "backend": "rigetti:cepheus-1-108q",
+  "circuits": {
+    "qg-smoke-basis": {
+      "counts": {
+        "00": 91,
+        "01": 899,
+        "10": 2,
+        "11": 8
+      },
+      "dominant_fraction": 0.899,
+      "dominant_outcome": "01",
+      "ideal_support": [
+        "01"
+      ],
+      "in_support_count": 899,
+      "in_support_fraction": 0.899,
+      "note": "x q[0] -> q0=1; returned rightmost=1 => little-endian",
+      "shots": 1000
+    },
+    "qg-smoke-bell": {
+      "counts": {
+        "00": 469,
+        "01": 28,
+        "10": 18,
+        "11": 485
+      },
+      "dominant_fraction": 0.485,
+      "dominant_outcome": "11",
+      "ideal_support": [
+        "00",
+        "11"
+      ],
+      "in_support_count": 954,
+      "in_support_fraction": 0.954,
+      "note": "Bell (00/11)",
+      "shots": 1000
+    },
+    "qg-smoke-ghz3": {
+      "counts": {
+        "000": 471,
+        "001": 16,
+        "010": 6,
+        "011": 37,
+        "100": 15,
+        "101": 2,
+        "110": 18,
+        "111": 435
+      },
+      "dominant_fraction": 0.471,
+      "dominant_outcome": "000",
+      "ideal_support": [
+        "000",
+        "111"
+      ],
+      "in_support_count": 906,
+      "in_support_fraction": 0.906,
+      "note": "GHZ-3 (000/111)",
+      "shots": 1000
+    },
+    "qg-smoke-mirror": {
+      "counts": {
+        "00": 979,
+        "01": 9,
+        "10": 11,
+        "11": 1
+      },
+      "dominant_fraction": 0.979,
+      "dominant_outcome": "00",
+      "ideal_support": [
+        "00"
+      ],
+      "in_support_count": 979,
+      "in_support_fraction": 0.979,
+      "note": "x;x -> |00>",
+      "shots": 1000
+    }
+  },
+  "schema": "cqhecs.qg.qpu_smoke_analysis.v1"
+}
