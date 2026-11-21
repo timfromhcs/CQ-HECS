@@ -536,32 +536,6 @@ class PathAStabilizerBackend:
             }
         )
 
-    def _parse_qiskit(self, qc: Any) -> List[Tuple[str, List[int]]]:
-        instructions = []
-        for instruction in qc.data:
-            op = instruction.operation
-            name = op.name.lower()
-            q_idx = [qc.find_bit(q).index for q in instruction.qubits]
-            if name in ("barrier", "measure", "id"):
-                continue
-            instructions.append((name, q_idx))
-        return instructions
-
-    def _parse_qasm_str(self, qasm_str: str) -> List[Tuple[str, List[int]]]:
-        import re
-        gate_pattern = re.compile(r"([a-zA-Z0-9_]+)(?:\(([^)]*)\))?\s+([^;]+);")
-        instructions = []
-        for line in qasm_str.splitlines():
-            line = line.strip()
-            if not line or line.startswith("//") or line.startswith("openqasm") or line.startswith("include") or line.startswith("qreg") or line.startswith("creg"):
-                continue
-            m = gate_pattern.search(line)
-            if m:
-                gname = m.group(1).lower()
-                args_str = m.group(3)
-                q_matches = re.findall(r"\[(\d+)\]", args_str)
-                q_idx = [int(x) for x in q_matches]
-                if gname in ("barrier", "measure", "id"):
-                    continue
-                instructions.append((gname, q_idx))
-        return instructions
+    # The regex QASM parser and the Qiskit-object parser that used to live here were an
+    # unused duplicate of cqhecs.circuit_parsing.parse_circuit; they are removed so the
+    # two cannot drift. execute() calls parse_circuit directly (D10, W3-02).

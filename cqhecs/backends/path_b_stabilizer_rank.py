@@ -54,6 +54,9 @@ class StabilizerRankSimulator:
     def __init__(self, num_qubits: int, max_rank_branches: int = 16384):
         self.n = num_qubits
         self.max_rank_branches = max_rank_branches
+        #: Sum of |weight| over branches skipped by the numerical-zero policy
+        #: (|weight| <= 1e-15). 0.0 means nothing was dropped (D10).
+        self.discarded_branch_weight_mass = 0.0
 
     def execute_circuit(
         self,
@@ -121,10 +124,12 @@ class StabilizerRankSimulator:
                 "Circuit should be routed to Path C or Path D."
             )
 
-        # 2. For small to moderate circuits (n <= 16), evaluate statevectors directly
+        # 2. For small to moderate circuits evaluate statevectors directly, up to
+        #    MAX_STATEVECTOR_QUBITS. Above that the dense statevector is refused.
         if self.n <= self.MAX_STATEVECTOR_QUBITS:
             dim = 1 << self.n
             total_statevector = np.zeros(dim, dtype=np.complex128)
+            self.discarded_branch_weight_mass = 0.0
 
             for branch in range(num_branches):
                 branch_weight = complex(1.0, 0.0)
@@ -147,6 +152,10 @@ class StabilizerRankSimulator:
                 if abs(branch_weight) > 1e-15:
                     branch_sv = self._evolve_clifford_statevector(branch_circuit)
                     total_statevector += branch_weight * branch_sv
+                else:
+                    # Numerical-zero policy: record the discarded amplitude mass so
+                    # the result can report it instead of claiming "no dropped terms".
+                    self.discarded_branch_weight_mass += abs(branch_weight)
 
             # Compute Born-rule measurement probabilities
             probs = np.abs(total_statevector) ** 2
@@ -353,14 +362,18 @@ class PathBStabilizerRankBackend:
 
     Correctness class
     -----------------
-    The rank decomposition is *algebraically* exact - every non-Clifford gate is
-    expanded into a finite sum over Clifford branches with no approximation and
-    no dropped terms, so ``error_bound`` is 0.0.
+    The rank decomposition is *algebraically* exact: every non-Clifford gate is
+    expanded into a finite sum over Clifford branches. A branch whose complex
+    weight has magnitude below ``1e-15`` (a numerical-zero policy, like Path C's
+    numerical-rank floor) is not evolved; the accumulated discarded amplitude mass
+    is reported as ``metadata["discarded_branch_weight_mass"]`` and bounds
+    ``error_bound``, so ``exact=True`` does not hide it.
 
     It is evaluated in IEEE-754 double precision, and the returned ``counts``
     are a finite-shot sample. Both are reported separately as
     ``numerical_error_bound`` and ``sampling_error_bound``; ``exact=True`` means
-    no approximation was applied, not that the arithmetic is symbolic.
+    no approximation beyond the documented numerical-zero policy, not that the
+    arithmetic is symbolic.
     """
 
     #: Gates the Clifford branch simulator can apply directly, derived from the
@@ -411,12 +424,17 @@ class PathBStabilizerRankBackend:
 
         sim = StabilizerRankSimulator(n_q, max_rank_branches=self.max_rank_branches)
         counts = sim.execute_circuit(instructions, shots=shots, seed=seed)
+        discarded = float(sim.discarded_branch_weight_mass)
+        dropped = discarded > 0.0
 
         t1 = time.perf_counter()
         return SimulationResult(
             path="B",
             exact=True,
-            error_bound=0.0,
+            # A dropped branch contributes at most its |weight| to the amplitude
+            # (each Clifford branch state has unit norm), so the discarded mass is
+            # a bounded deliberate-approximation error, reported rather than hidden.
+            error_bound=discarded,
             unresolved=False,
             counts=counts,
             # Support size is the number of distinct measurement outcomes,
@@ -431,11 +449,15 @@ class PathBStabilizerRankBackend:
                 "shots": shots,
                 "seed": seed,
                 "method": "Bravyi-Smith-Smolin Stabilizer Rank Decomposition",
-                "truncation_applied": False,
+                "truncation_applied": dropped,
+                "discarded_branch_weight_mass": discarded,
                 "numerical_mode": "float64-exact-decomposition",
                 "numerical_note": (
-                    "Decomposition is algebraically exact (no dropped terms). "
-                    "Arithmetic is float64; counts are a finite-shot sample."
+                    "Decomposition is expanded over every Clifford branch; branches "
+                    "with |weight| <= 1e-15 are dropped by the numerical-zero policy "
+                    "and their total weight is reported as "
+                    "discarded_branch_weight_mass. Arithmetic is float64; counts are "
+                    "a finite-shot sample."
                 ),
             }
         )
