@@ -47,6 +47,7 @@ Base `25e16e5` (v5.0.0), branch `agent/v6-rc`. Full detail: `WAVE3_REPORT.md`.
 | (this commit) | W4-20 skip budget; W4-14 i18n parity | budget 105 skips/11 reasons; web 73/73 |
 | (this commit) | W4-16 CPU-only verify; W4-22 CI wiring | test_native_cpu_only 4; YAML ok |
 | (this commit) | W4-11 WASM base URL + core hash | web unit 76/76; e2e 42/42; build green |
+| (this commit) | W4-13 theme default + contrast gate | token contrast OK; e2e 42/42 |
 
 Note (W4-21): the W3-10 proof-deadline change made the existing OMNIWAVE mutant
 "accepts an undecided proof check" survive, because a zero proof budget now short-circuits

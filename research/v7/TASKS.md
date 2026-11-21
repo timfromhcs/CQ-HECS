@@ -76,7 +76,7 @@ Waves 4–11: NOT STARTED.
 | W4-10 | Run-card error scope | NOT STARTED |
 | W4-11 | WASM base URL fix + hash check | DONE (base-aware URL; served-core SHA-256 in engine info) |
 | W4-12 | Keyboard/touch composer | NOT STARTED |
-| W4-13 | prefers-color-scheme + token contrast | NOT STARTED |
+| W4-13 | prefers-color-scheme + token contrast | DONE (OS default + toggle first-click fix; contrast gate in build) |
 | W4-14 | Output-sink XSS + i18n key parity | PARTIAL: i18n parity test added; forge has a hostile-text XSS e2e; main-page XSS assertion deferred |
 | W4-15 | Mobile viewport projects | NOT STARTED |
 | W4-16 | Verify CPU-only core loader-free | DONE (test_native_cpu_only 4: build, CTest, no Vulkan loader, capability) |

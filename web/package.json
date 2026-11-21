@@ -8,7 +8,7 @@
   "scripts": {
     "wasm": "cd wasm && cargo build --release --target wasm32-unknown-unknown && node ../scripts/copy-wasm.mjs",
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && node scripts/check_bundle_budget.mjs",
+    "build": "tsc --noEmit && vite build && node scripts/check_bundle_budget.mjs && node scripts/check_token_contrast.mjs",
     "preview": "vite preview",
     "test": "node tests/run.mjs",
     "e2e": "playwright test",

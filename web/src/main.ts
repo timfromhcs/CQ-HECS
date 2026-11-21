@@ -172,10 +172,18 @@ function setupChrome() {
   onLangChange(relocalize);
   setLang(initial);
 
+  // Theme: a stored choice wins; otherwise follow the OS preference (W4-13). Always set
+  // data-theme so the toggle's first click flips a known value instead of reading undefined.
+  let theme: "light" | "dark";
   try {
     const stored = localStorage.getItem("theme");
-    if (stored === "light" || stored === "dark") document.documentElement.dataset.theme = stored;
-  } catch { /* storage blocked */ }
+    theme = stored === "light" || stored === "dark"
+      ? stored
+      : (window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  } catch {
+    theme = "dark";
+  }
+  document.documentElement.dataset.theme = theme;
   $("#theme").addEventListener("click", () => {
     const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
