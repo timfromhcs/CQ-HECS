@@ -4,14 +4,16 @@
 
 CQ-HECS (Classical Quantum High-Efficiency Compute Simulator) is an open-source compute engine written in C++20 and Vulkan 1.3. The Python package, the `cq-hecs` CLI and the four classical backends run entirely on the CPU and need no Vulkan SDK; the native core uses Vulkan 1.3 SPIR-V compute shaders.
 
+Software version: 5.0.0 (the single source is `scripts/version.py`; do not hard-code it elsewhere).
+
 ## Core Capabilities & Architectural Invariants
 
 - **Vulkan 1.3 Compute Backend (native core only)**: Standardized SPIR-V compute shaders for tensor network contraction and ring arithmetic, without proprietary CUDA lock-in. Verification status is per-platform; see the hardware matrix in README.md. No physical GPU execution has been verified in the current release cycle.
 - **Exact Giles-Selinger Ring Arithmetic Z[1/sqrt(2), i]**: Bit-exact algebraic tracking for Clifford+T circuits without floating-point rounding drift (unitary integrity U^dagger U = I).
 - **Four-Path Classical Architecture**:
   - Path A: Stabilizer-Tableau O(N^2) for pure Clifford (T = 0).
-  - Path B: Exact Stabilizer-Rank decomposition (Bravyi-Smith-Smolin) for low T-count (T <= 14).
-  - Path C: MPS with unbounded bond dimension for Area-Law entanglement. No truncation budget; the discarded singular-value mass is measured and reported as numerical_error_bound. Runs on the CPU.
+  - Path B: Low-T branch decomposition over a dense statevector (Bravyi-Smith-Smolin expansion; <= 14 branched gates). A measured comparison (research/v7/evidence/PATHB_DOMINANCE.json) found a plain dense statevector faster on every case, so Path B is a low-T method, not a stabilizer-rank advantage.
+  - Path C: MPS with unbounded bond dimension for Area-Law entanglement. No truncation budget; the discarded singular-value mass is reported **only as a diagnostic** (`metadata["discarded_spectral_mass_diagnostic"]`). `numerical_error_bound` stays `None` because the per-SVD discarded mass does not compose into a state-norm bound. Runs on the CPU.
   - Path D: Heisenberg-Picture Sparse-Pauli-Dynamics with mathematically certified error bound (Delta <= sum |c_P|); reports certified expectation values (single-qubit Z and parity Z_q Z_r) rather than a joint bitstring distribution, and flags unresolved=True if tolerance is exceeded.
 - **Honest Complexity Boundaries**:
   - No claims of quantum supremacy or collapsing complexity classes (BPP != BQP).

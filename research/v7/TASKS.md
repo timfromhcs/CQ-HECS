@@ -48,10 +48,10 @@ Base `25e16e5` (v5.0.0), branch `agent/v6-rc`. Detail in `WAVE3_REPORT.md`.
 | W3-10 | Deadline covers proof checking | DEFERRED (BLOCKERS B-005) |
 | W3-11 | python-sat child-process isolation | NOT RUN (no python-sat) |
 | W3-12 | Shared web noise predicate (D5) | DONE |
-| W3-13 | Forge axe tags | NOT STARTED |
-| W3-14 | Rust toolchain pin | NOT STARTED |
+| W3-13 | Forge axe tags | NOT STARTED (needs e2e) |
+| W3-14 | Rust toolchain pin | DONE (pin added; wasm rebuild-hash check NOT RUN) |
 | W3-15 | MCP input bounds (D7) | DONE |
-| W3-16 | llms.txt refresh | NOT STARTED |
+| W3-16 | llms.txt refresh | DONE |
 | W3-17 | Pinned build constraints | DONE |
 | W3-18 | Version surfaces / SECURITY.md | DONE |
 | W3-19 | Ledger/baseline reconciliation (D11) | DONE (mutant count; baseline numbers in WAVE3_REPORT) |

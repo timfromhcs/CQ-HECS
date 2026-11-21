@@ -1,0 +1,7 @@
+# Pin the Rust toolchain for the WASM core so `npm run wasm` is reproducible.
+# The committed web/public/cqhecs_core.wasm was built with this channel; a rebuild
+# with a different channel is expected to change the hash.
+[toolchain]
+channel = "1.96.0"
+targets = ["wasm32-unknown-unknown"]
+profile = "minimal"
