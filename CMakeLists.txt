@@ -81,15 +81,14 @@ if(WIN32)
     endif()
 endif()
 
-# Vulkan is REQUIRED for the native (C++) build.
-#
-# The public headers (tensor_network.hpp, constraint_solver.hpp) include
-# vulkan/vulkan.h unconditionally, so the Vulkan SDK must be present to compile.
-# This is stated plainly rather than implied: the Python package and the four
-# classical backends do NOT require Vulkan and run entirely on the CPU, so
-# CPU-only operation is real for the Python surface. The native binary, its
-# tests and the nanobind extension do require the SDK.
-option(CQ_ENABLE_VULKAN "Build the Vulkan compute integration (requires the Vulkan SDK)" ON)
+# Two native configurations (AGENTS_V6.md W3 / T6-03):
+#   -DCQ_ENABLE_VULKAN=ON  (default) full build; requires the Vulkan SDK.
+#   -DCQ_ENABLE_VULKAN=OFF CPU-only: the CPU-pure targets (cq_hecs_core C-ABI
+#     library, stabilizer/MPS/statevector/exact-ring/SAT-parser tests). The CLI,
+#     the cq_hecs C-ABI facade, VRTS300/ConstraintSolver, examples and the Vulkan
+#     tests are excluded, and no binary links the Vulkan loader
+#     (tests/test_native_cpu_only.py). The Python package never needs Vulkan.
+option(CQ_ENABLE_VULKAN "Build the Vulkan compute integration (requires the Vulkan SDK); OFF = CPU-only build" ON)
 option(CQ_ENABLE_SANITIZERS "Enable Address and UB sanitizers (GNU/Clang)" OFF)
 
 if(CQ_ENABLE_SANITIZERS)
@@ -109,18 +108,21 @@ if(CQ_ENABLE_VULKAN)
     set(CQ_HAVE_VULKAN ON)
     message(STATUS "Vulkan: ${Vulkan_LIBRARY} (version ${Vulkan_VERSION})")
 else()
-    message(FATAL_ERROR
-        "CQ_ENABLE_VULKAN=OFF is not supported: the native headers include "
-        "vulkan/vulkan.h unconditionally. If you only need the Python package "
-        "and its four classical backends, simply do not build the native "
-        "component - it does not require Vulkan.")
+    # CPU-only build (T6-03). Everything that includes <vulkan/vulkan.h> -- the
+    # CLI, the C-ABI facade, the VRTS300/ConstraintSolver engines, the examples
+    # and the Vulkan tests -- is EXCLUDED rather than stubbed, so a CPU binary
+    # can never claim a GPU path. Only the CPU-pure targets below are built and
+    # none of them links the Vulkan loader.
+    message(STATUS "CQ_ENABLE_VULKAN=OFF: CPU-only native build (Vulkan targets excluded)")
 endif()
 
 # -----------------------------------------------------------------------------
 # Automated Vulkan 1.3 SPIR-V Shader Compilation Target (glslangValidator)
 # -----------------------------------------------------------------------------
-find_program(GLSLANG_VALIDATOR glslangValidator HINTS "$ENV{VULKAN_SDK}/bin" "$ENV{VULKAN_SDK}/Bin")
-if(GLSLANG_VALIDATOR)
+if(CQ_HAVE_VULKAN)
+    find_program(GLSLANG_VALIDATOR glslangValidator HINTS "$ENV{VULKAN_SDK}/bin" "$ENV{VULKAN_SDK}/Bin")
+endif()
+if(CQ_HAVE_VULKAN AND GLSLANG_VALIDATOR)
     message(STATUS "Found glslangValidator for automated SPIR-V compilation: ${GLSLANG_VALIDATOR}")
     file(GLOB_RECURSE SHADER_COMP_FILES "${CMAKE_SOURCE_DIR}/shaders/*.comp")
     set(SPIRV_BINARY_FILES "")
@@ -138,7 +140,7 @@ if(GLSLANG_VALIDATOR)
         list(APPEND SPIRV_BINARY_FILES ${SPV_OUT})
     endforeach()
     add_custom_target(vulkan_shaders ALL DEPENDS ${SPIRV_BINARY_FILES})
-else()
+elseif(CQ_HAVE_VULKAN)
     message(WARNING "glslangValidator not found. Using pre-compiled SPIR-V shaders.")
 endif()
 
@@ -148,6 +150,12 @@ include_directories(
     ${Vulkan_INCLUDE_DIRS}
 )
 
+# CPU-pure objects shared by the CPU-only and the Vulkan builds.
+add_library(cq_hecs_cpu_objects OBJECT src/sat_solver.cpp src/sat_solver.hpp)
+set_target_properties(cq_hecs_cpu_objects PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(cq_hecs_cpu_objects PRIVATE include src)
+
+if(CQ_HAVE_VULKAN)
 set(VRTS_SOURCES
     src/lattice.cpp
     src/cordic_engine.cpp
@@ -253,6 +261,8 @@ target_link_libraries(ghz300_example PRIVATE ${Vulkan_LIBRARIES})
 add_executable(maxcut_example examples/maxcut_example.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
 target_link_libraries(maxcut_example PRIVATE ${Vulkan_LIBRARIES})
 
+endif()  # CQ_HAVE_VULKAN: Vulkan-dependent core, CLI, C-ABI facade and examples
+
 option(CQ_BUILD_TESTS "Build test suite" ON)
 option(CQHECS_BUILD_TESTS "Build test suite" ON)
 option(CQHECS_HEADLESS "Enable Headless SwiftShader / Software Vulkan ICD" OFF)
@@ -312,10 +322,13 @@ add_executable(test_300q_stress tests/cpp/test_300q_stress.cpp src/vulkan/vulkan
 target_include_directories(test_300q_stress PRIVATE include src)
 target_link_libraries(test_300q_stress PRIVATE ${Vulkan_LIBRARIES})
 
+if(CQ_HAVE_VULKAN)
 add_executable(test_qasm_contract tests/test_qasm_contract.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
 target_link_libraries(test_qasm_contract PRIVATE ${Vulkan_LIBRARIES})
+endif()
 
-add_executable(test_sat_parser tests/cpp/test_sat_parser.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
+add_executable(test_sat_parser tests/cpp/test_sat_parser.cpp $<TARGET_OBJECTS:cq_hecs_cpu_objects>)
+target_include_directories(test_sat_parser PRIVATE include src)
 # A deliberately false assertion must abort even in Release (GEMINI.md 3.5).
 add_executable(test_release_assert_meta tests/cpp/test_release_assert_meta.cpp)
 add_executable(test_vulkan_device_policy tests/cpp/test_vulkan_device_policy.cpp)
@@ -334,17 +347,29 @@ add_executable(test_qpu_facade_contract tests/cpp/test_qpu_facade_contract.cpp)
 target_include_directories(test_qpu_facade_contract PRIVATE include src)
 target_link_libraries(test_qpu_facade_contract PRIVATE ${Vulkan_LIBRARIES})
 
+if(CQ_HAVE_VULKAN)
 add_executable(test_vulkan_compute_contract tests/cpp/test_vulkan_compute_contract.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
 target_include_directories(test_vulkan_compute_contract PRIVATE include src)
 target_link_libraries(test_vulkan_compute_contract PRIVATE ${Vulkan_LIBRARIES})
+endif()
 
 # 7. CTest Verification Suite
 enable_testing()
+if(CQ_HAVE_VULKAN)
 add_test(NAME test_reversibility COMMAND test_reversibility)
+endif()
+if(CQ_HAVE_VULKAN)
 add_test(NAME test_ghz300 COMMAND test_ghz300)
+endif()
+if(CQ_HAVE_VULKAN)
 add_test(NAME test_constraint_solver COMMAND test_constraint_solver)
+endif()
+if(CQ_HAVE_VULKAN)
 add_test(NAME cq_hecs_cpp_hardening COMMAND test_engine_cpp)
+endif()
+if(CQ_HAVE_VULKAN)
 add_test(NAME cq_hecs_full_verification COMMAND cq_hecs test)
+endif()
 add_test(NAME test_bitexact_and_stress COMMAND test_bitexact_and_stress)
 add_test(NAME test_exact_algebra COMMAND test_exact_algebra)
 add_test(NAME test_stabilizer COMMAND test_stabilizer)
@@ -353,7 +378,9 @@ add_test(NAME test_stress_limits COMMAND test_stress_limits)
 add_test(NAME test_exact_ring COMMAND test_exact_ring)
 add_test(NAME test_stabilizer_extreme COMMAND test_stabilizer_extreme)
 add_test(NAME test_300q_stress COMMAND test_300q_stress)
+if(CQ_HAVE_VULKAN)
 add_test(NAME test_qasm_contract COMMAND test_qasm_contract)
+endif()
 add_test(NAME test_sat_parser COMMAND test_sat_parser)
 add_test(NAME test_release_assert_meta COMMAND test_release_assert_meta)
 set_tests_properties(test_release_assert_meta PROPERTIES WILL_FAIL TRUE)
@@ -361,8 +388,10 @@ add_test(NAME test_vulkan_device_policy COMMAND test_vulkan_device_policy)
 add_test(NAME test_statevector_contract COMMAND test_statevector_contract)
 add_test(NAME test_mps_contract COMMAND test_mps_contract)
 add_test(NAME test_qpu_facade_contract COMMAND test_qpu_facade_contract)
+if(CQ_HAVE_VULKAN)
 add_test(NAME test_vulkan_compute_contract COMMAND test_vulkan_compute_contract)
 set_tests_properties(test_vulkan_compute_contract PROPERTIES SKIP_RETURN_CODE 77)
+endif()
 
 # 8. Nanobind Python C++20 Modules
 find_package(Python 3.11 COMPONENTS Interpreter Development.Module QUIET)

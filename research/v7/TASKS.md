@@ -29,3 +29,7 @@ record everything else honestly as not promoted.
 | M17 | Local release-candidate gates | DONE (SBOM/checksums and Windows package are release-time steps, NOT RUN) |
 | M18 | Remote CI/preview loop | IN_PROGRESS |
 | M19 | Release decision | NOT STARTED -- publishing requires explicit user authorization |
+
+## W3 / T6-03 status
+
+DONE locally: CPU-only configure/build/CTest, loader-free binaries. OPEN: CI lane for `-DCQ_ENABLE_VULKAN=OFF`, C-ABI capability flag, CPU-vs-Vulkan differential tests (T6-04).
