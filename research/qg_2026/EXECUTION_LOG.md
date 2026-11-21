@@ -83,3 +83,10 @@ Commit: `ab27578` — "feat(qg): Quantum Gravity research layer + campaign runne
 - Bit order = little-endian (q0 rightmost). `|1>`-state error ~10% (excited-state/readout).
 - Evidence: `research/qg_2026/raw/qpu_smoke/` + `EVIDENCE_MANIFEST.json`;
   analysis `processed/qpu_smoke_analysis.json`. Spark spent 4/25.
+
+## 2026-11-21 — session 1 (continued): BMV QPU witness submitted (Stage 3)
+
+- Preregistered `QPU_BMV.md`: 9 circuits (θ ∈ {0, π/4, π/2} × {Y⊗Z, Z⊗Y, X⊗X}), locally
+  verified (`<Y⊗Z>=<Z⊗Y>=sinθ`, `<X⊗X>=1`).
+- Quoted 9 credits on `rigetti:cepheus-1-108q` (Public/Standard); **9 jobs submitted**,
+  cumulative **13 / 25**. Results pending.

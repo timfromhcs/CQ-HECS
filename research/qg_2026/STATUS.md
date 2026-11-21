@@ -23,6 +23,10 @@
 ### Next scientific step (Stage 3 — BMV)
 Preregister a BMV phase/witness family on a live QPU within the remaining ~21 Spark and
 compare against the declared noise model.
+
+**Stage 3 status:** preregistered (`QPU_BMV.md`) and **submitted** — 9 circuits (θ ∈ {0, π/4, π/2} ×
+bases {Y⊗Z, Z⊗Y, X⊗X}), 1000 shots, Public/Standard, **9 credits** (cumulative **13 / 25**).
+Results pending collection under `research/qg_2026/raw/bmv_qpu/`.
 - Remote: branch pushed; **PR #54** open (https://github.com/timfromhcs/CQ-HECS/pull/54); CI running.
 
 ## Next action (do this first on resume)
