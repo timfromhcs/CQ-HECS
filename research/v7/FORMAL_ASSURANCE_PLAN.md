@@ -28,8 +28,8 @@ the repo.
 
 | ID | Lemma (specification) | Code invariant | Python test | Lean status |
 |---|---|---|---|---|
-| L-STAB-01 | A Clifford gate update preserves the symplectic (tableau) form | `path_a_stabilizer.py` `apply_*` | `test_four_path_architecture.py`, mutation `qubit_bit_order`/`cz_conjugation` | NOT_STARTED |
-| L-PAULI-01 | Pauli multiplication and phase rules; `U†PU` for the supported gates | `path_d_sparse_pauli.py`, `expectation.py` | `test_path_d_pauli_observables.py`, mutation `pauli_y_phase` | NOT_STARTED |
+| L-STAB-01 | A Clifford gate update preserves the symplectic (tableau) form | `path_a_stabilizer.py` `apply_*` | `test_four_path_architecture.py`, `test_stabilizer_spec_correspondence.py`, mutation `qubit_bit_order`/`cz_conjugation` | **FORMALIZED_LEMMA** (bit part: `CQHECS/Stabilizer.lean`; single-qubit sign rules: `CQHECS/Pauli.lean`); CX/CZ/SWAP sign and measurement NOT formalized |
+| L-PAULI-01 | Pauli multiplication and phase rules; `U†PU` for the supported gates | `path_d_sparse_pauli.py`, `expectation.py` | `test_path_d_pauli_observables.py`, `test_path_d_spec_correspondence.py`, mutation `pauli_y_phase` | **FORMALIZED_LEMMA** (multiplication and commutation rule: `CQHECS/Pauli.lean`); general `U^dag P U` for non-Clifford gates NOT formalized |
 | L-BOUND-01 | `|⟨O_exact⟩ − ⟨O_kept⟩| ≤ Σ_{P∈D} |c_P|` under the code's truncation convention | Path D per-observable bound | F-003; mutation `pauli_bound_accounting` | **FORMALIZED_LEMMA** (`truncation_bound` + Path-D form `expectation_truncation_bound`); `evidence/LEAN_BUILD.md` |
 | L-SEP-01 | `#F = Σ_s #F_L(s)·#F_R(s)` for a separator; count-preserving transformations | `sat_separator.py` | `test_sat_separator.py`, mutation `separator_count` | NOT_STARTED |
 | L-XOR-01 | An extracted parity equation is entailed by the CNF, with a witness | not shipped (W9) | — | NOT_STARTED |
@@ -67,3 +67,10 @@ is `FORMALIZED_LEMMA` only.
   `eth`-artifact build itself was not re-run to completion this session; that is `NOT RUN`.
 - **L-BOUND-01 / L-BOUND-01b are `FORMALIZED_LEMMA`.** Next: **L-STAB-01** (stabilizer symplectic
   invariant) and the Comparator/nanoda statement checks.
+- **L-STAB-01 (partial) and L-PAULI-01 (partial) are `FORMALIZED_LEMMA`** (A5, 2026-11-21;
+  `evidence/waveA_A5.md`). `lake build` 8710 jobs green; every new theorem depends only on
+  `[propext, Classical.choice, Quot.sound]`. Assurance is a **specification theorem**: the Lean
+  models (`PauliVec`, `Gate.act`, `herm`, `pauli`) are stated by hand next to the Python and are
+  linked to it only by the Python tests `test_stabilizer_spec_correspondence.py` and
+  `test_path_d_spec_correspondence.py`. That is NOT `REFINEMENT_LINKED`, `STATEMENT_MATCHED` or
+  `KERNEL_RECHECKED`.

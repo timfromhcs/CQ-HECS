@@ -99,3 +99,27 @@ Windows EXE (W14) are hard gates.
 ## W3 / T6-03 status
 
 DONE locally: CPU-only configure/build/CTest, loader-free binaries. OPEN: CI lane for `-DCQ_ENABLE_VULKAN=OFF`, C-ABI capability flag, CPU-vs-Vulkan differential tests (T6-04).
+
+## Wave A (V7 plan, 2026-11-21) — status (evidence: research/v7/evidence/waveA_A1..A5.md)
+
+| ID | Task | Status |
+|---|---|---|
+| W4-01 | Threaded MCP execution + cancel | DONE (compute abandoned, not stopped; documented) |
+| W4-03 | Shared service layer, `cq-hecs plan`, parity corpus | DONE (`analyze --explain` not migrated) |
+| W4-04 | OpenAPI 3.1 + `/api/v1` | DONE (openapi_spec_validator NOT RUN) |
+| W4-05 | MCP negotiation/annotations/outputSchema | DONE (2025-06-18 only) |
+| W4-08 | Separator width calibration | DONE (preflight -> UNKNOWN) |
+| W4-09 | WebGPU device-loss + WASM fallback | DONE (real GPU loss NOT RUN) |
+| W4-12 | Keyboard/touch composer | DONE |
+| W4-14 | Main-page XSS assertion | DONE |
+| W4-15 | Mobile viewport projects | DONE (Chromium emulation only) |
+| W4-17 | VkResult checks + fault injection | DONE |
+| W4-18 | C ABI hardening | DONE |
+| W4-19 | Sanitizer lane | PARTIAL (MSVC ASan ran; GCC/Clang ASan+UBSan NOT RUN) |
+| W3-11 | python-sat child isolation | DONE (3.13; 3.14 NOT RUN) |
+| T6-04 | CPU vs Vulkan BCP differential | PARTIAL (AMD hardware only; software ICD/Linux NOT RUN) |
+| T6-06 | Low-memory/WebGPU-absent tests | DONE |
+| W5 | Lean Path A invariant + Pauli rules; Path A/D spec tests | DONE at specification level (not refinement) |
+| — | MaxSAT typed contract + CLI wiring | DONE |
+| — | LRAT / drat-trim / cake_lpr lanes | NOT RUN (no checkers installed) |
+| — | Baseline delta 2896/109 vs 2899/105 | EXPLAINED: 4 skips from missing qiskit-ibm-runtime on PATH Python 3.13 |

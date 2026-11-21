@@ -14,3 +14,37 @@ A green `lake build` plus this audit is `FORMALIZED_LEMMA` for the named lemma o
 #print axioms CQHECS.truncation_bound
 
 #print axioms CQHECS.expectation_truncation_bound
+
+#print axioms CQHECS.pauli_mul
+
+#print axioms CQHECS.pauli_comm
+
+#print axioms CQHECS.sgd_mul_sg
+
+#print axioms CQHECS.hh_mul_hh
+
+#print axioms CQHECS.h_conj
+
+#print axioms CQHECS.s_conj
+
+#print axioms CQHECS.x_conj
+
+#print axioms CQHECS.z_conj
+
+#print axioms CQHECS.y_conj
+
+#print axioms CQHECS.omega_hGate
+
+#print axioms CQHECS.omega_sGate
+
+#print axioms CQHECS.omega_swapGate
+
+#print axioms CQHECS.omega_cxGate
+
+#print axioms CQHECS.omega_czGate
+
+#print axioms CQHECS.omega_run
+
+#print axioms CQHECS.omega_xRow_zRow
+
+#print axioms CQHECS.tableau_invariant
