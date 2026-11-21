@@ -1,7 +1,8 @@
 # FORMAL_ASSURANCE_PLAN.md — Lean workspace and theorem backlog (V7 W4, §7)
 
 Created 2026-11-21 on branch `agent/v6-rc`. Plan for the CQ-HECS formal-assurance workspace.
-Status: **PLANNED / IN_PROGRESS** (Lean toolchain installing; no theorem proved yet). This is a
+Status: **IN_PROGRESS** (Lean workspace builds on the pinned toolchain; L-BOUND-01 and L-BOUND-01b
+formalized with a standard-axiom audit; L-STAB-01 next). This is a
 plan and an honest boundary statement, not a claim of verification.
 
 ## 1. Goal and boundary
@@ -29,7 +30,7 @@ the repo.
 |---|---|---|---|---|
 | L-STAB-01 | A Clifford gate update preserves the symplectic (tableau) form | `path_a_stabilizer.py` `apply_*` | `test_four_path_architecture.py`, mutation `qubit_bit_order`/`cz_conjugation` | NOT_STARTED |
 | L-PAULI-01 | Pauli multiplication and phase rules; `U†PU` for the supported gates | `path_d_sparse_pauli.py`, `expectation.py` | `test_path_d_pauli_observables.py`, mutation `pauli_y_phase` | NOT_STARTED |
-| L-BOUND-01 | `|⟨O_exact⟩ − ⟨O_kept⟩| ≤ Σ_{P∈D} |c_P|` under the code's truncation convention | Path D per-observable bound | F-003; mutation `pauli_bound_accounting` | NOT_STARTED |
+| L-BOUND-01 | `|⟨O_exact⟩ − ⟨O_kept⟩| ≤ Σ_{P∈D} |c_P|` under the code's truncation convention | Path D per-observable bound | F-003; mutation `pauli_bound_accounting` | **FORMALIZED_LEMMA** (`truncation_bound` + Path-D form `expectation_truncation_bound`); `evidence/LEAN_BUILD.md` |
 | L-SEP-01 | `#F = Σ_s #F_L(s)·#F_R(s)` for a separator; count-preserving transformations | `sat_separator.py` | `test_sat_separator.py`, mutation `separator_count` | NOT_STARTED |
 | L-XOR-01 | An extracted parity equation is entailed by the CNF, with a witness | not shipped (W9) | — | NOT_STARTED |
 | L-SAT-01 | Exhaustive split coverage ⇒ parent resolution lemma (OMNIWAVE/DPLL soundness) | `omniwave/engine.py`, `sat.py` | `test_omniwave.py`, `omniwave_sound` mutant | NOT_STARTED |
@@ -61,7 +62,8 @@ is `FORMALIZED_LEMMA` only.
 - elan installed; **Lean 4.33.1 / Lake 5.0.0 present** (see `evidence/LEAN_ENV.md`).
 - External artifacts downloaded for statement comparison: `anthropics/formal-math` (pinned
   `16a5ce4…`, containing `eth`, `zeta23`, `3sum-apsp`) and `openai/math`.
-- The `eth` artifact build (`lake exe cache get` + `lake build` + `PrintAxioms.lean`) is running
-  in the background; result recorded in `EXECUTION_LOG.md`.
-- No CQ-HECS lemma is written or proved yet. First target: **L-BOUND-01** (smallest, directly
-  tied to a shipped, tested inequality) and **L-STAB-01**.
+- **The CQ-HECS workspace builds** (`lake build`, 8708 jobs, exit 0) and both `Bound.lean` lemmas
+  pass the axiom audit (`[propext, Classical.choice, Quot.sound]`) — `evidence/LEAN_BUILD.md`. The
+  `eth`-artifact build itself was not re-run to completion this session; that is `NOT RUN`.
+- **L-BOUND-01 / L-BOUND-01b are `FORMALIZED_LEMMA`.** Next: **L-STAB-01** (stabilizer symplectic
+  invariant) and the Comparator/nanoda statement checks.

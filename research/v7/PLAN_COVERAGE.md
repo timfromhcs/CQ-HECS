@@ -22,7 +22,7 @@ correctness/security/release condition wins (recorded in `DECISIONS.md` D-008).
 | W1 | Claim/interface/architecture freeze | **PARTIAL** | additive contracts (D-007, D-008); ExecutionPlan schema + `hcs.run.v2` error_scope published; `CLAIM_AUDIT.md` first cut + feature matrix; DE/FR/ARCHITECTURE/docs claim audit owed |
 | W2 | Research and SOTA replication | **PARTIAL** | `HYPOTHESIS_REGISTER_V7.md` (consolidated claims + transfer classes) and `SAT_PROOF_REVIEW.md` created; `LITERATURE_MAP.md` pinning (Lean-Quantum/Lean-QIT/FloatLib, 2D TN, MPE, QEC/RL, SAT Comp 2026) and `QUANTUM_SIMULATION_RESEARCH.md`/`NOISE_QEC_RESEARCH.md` owed |
 | W3 | Test harness and evidence ledger | **PARTIAL** | skip budget (`SKIP_BUDGET.json`), mutation 64/64, ExecutionPlan schema contract, QG doc-consistency gate, `evidence/` ledgers done; unified fixture/digest policy + cross-surface conformance fixtures owed |
-| W4 | Lean formal workspace | **IN_PROGRESS** | Lean 4.33.1 / Lake 5.0.0 installed via elan; `FORMAL_ASSURANCE_PLAN.md` written; external artifacts downloaded (`anthropics/formal-math` pinned `16a5ce4…`, `openai/math`) with exact ETH statements recorded in `evidence/LEAN_ENV.md`; `eth` build running; no CQ-HECS lemma proved yet |
+| W4 | Lean formal workspace | **IN_PROGRESS** | Lean 4.33.1 / Lake 5.0.0 installed via elan; `FORMAL_ASSURANCE_PLAN.md` written; external artifacts downloaded (`anthropics/formal-math` pinned `16a5ce4…`, `openai/math`) with exact ETH statements recorded in `evidence/LEAN_ENV.md`; **`formal/` workspace builds (8708 jobs, exit 0) and L-BOUND-01 + L-BOUND-01b pass the axiom audit (`evidence/LEAN_BUILD.md`)**; L-STAB-01, the Comparator/nanoda statement checks and the `eth`-artifact build still owed |
 | W5 | Formalize/harden Paths A and D | **NOT_STARTED** | A: D1 shot contract fixed; D: D3-adjacent Pauli label unchanged |
 | W6 | Paths B/C numerical assurance | **PARTIAL** | Path B dropped-mass reported + bounded (W3-02); Path C label audited (W3-03) |
 | W7 | New simulator paths E/F/G | **NOT_STARTED** | research-only; router unchanged |
@@ -126,7 +126,8 @@ precise claim, assumptions, transfer class and falsification criteria.
    `FEATURE_COVERAGE.*` are created (first cuts; `TODO_VERIFY` cells to close).
 2. **W2:** carry the PLAN.md hypotheses into the V7 hypothesis register (claim, assumptions,
    transfer class, falsification) and produce the literature/claim matrices.
-3. **W4 (Lean):** IN_PROGRESS — elan + Lean/Mathlib 4.33.1 installing; `FORMAL_ASSURANCE_PLAN.md`
-   written; external artifacts downloaded. First lemmas: L-BOUND-01, L-STAB-01.
+3. **W4 (Lean):** IN_PROGRESS — `formal/` builds (8708 jobs, exit 0); L-BOUND-01 and L-BOUND-01b
+   are `FORMALIZED_LEMMA` with a standard-axiom audit. Next lemmas: L-STAB-01; then the
+   Comparator/nanoda statement checks.
 4. **W1/W3:** unify the fixture/digest policy and add cross-surface conformance fixtures.
 5. Then continue in V7 order; keep **W13 (Web)** and **W14 (EXE)** on the critical path.

@@ -28,5 +28,10 @@ A green build is `FORMALIZED_LEMMA` for the named lemma only. Comparator/nanoda 
 
 | Lemma | File | Status |
 |---|---|---|
-| L-BOUND-01 (Path D truncation bound, real-arithmetic form) | `CQHECS/Bound.lean` | written; build pending |
+| L-BOUND-01 (Path D truncation bound, real-arithmetic form) | `CQHECS/Bound.lean` | **FORMALIZED_LEMMA** — `lake build` green; `#print axioms` → `[propext, Classical.choice, Quot.sound]` |
+| L-BOUND-01b (Path D form `\|∑ cᵢeᵢ\| ≤ ∑\|cᵢ\|` with `\|⟨P⟩\| ≤ 1`) | `CQHECS/Bound.lean` | **FORMALIZED_LEMMA** — same build and axiom audit |
 | L-STAB-01, L-PAULI-01, L-SEP-01, L-SAT-01, L-RESULT-01 | — | backlog |
+
+`FORMALIZED_LEMMA` means the named specification statement builds with only the standard axioms; it
+is **not** a refinement proof of the Python/C++ implementation (V7 §7.4). Exact commands and output:
+`research/v7/evidence/LEAN_BUILD.md`.
