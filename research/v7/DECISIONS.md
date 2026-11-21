@@ -48,3 +48,28 @@ deadline half (W3-10 — the proof check is bounded by the remaining deadline in
 label) is NOT REPRODUCED as a defect (F-004). W3-11 (python-sat child-process isolation)
 is NOT RUN because python-sat is not installed where this session ran.
 
+## D-007 Version decision: v6.0.0 (2026-11-21, Wave 4)
+Wave 4 exit decision (PLAN_V6 decision 1). **The next release is `6.0.0`, not `5.1.0`,
+because a caller-visible breaking change shipped in Wave 3.** Migration file:
+`MIGRATION_V6.md` (authored at Wave 10).
+
+Breaking change (major reason):
+
+- **Path A shot contract (D1, W3-01).** A wide (n > 30) non-all-equal circuit no longer
+  returns a silently truncated count; it draws every requested shot or raises
+  `PathAShotBudgetError`. A caller that relied on the old ~100-shot behaviour must pass
+  `max_resample_shots` explicitly. This changes the meaning of a public result field
+  (`counts` sum / `sampled_shots`), so it is a breaking change.
+
+Additive changes (no break; listed for the migration doc):
+
+- SAT: `UnifiedResult.certified`/`proof_level`, `SATResult.proof_status`,
+  `solve_unified(require_certified=...)`, `hcs.sat.count.v1` schema id.
+- Hardware: `BackendProfile.uncovered_gates`, `FakeHardwareBackend(uncovered_gate_policy)`,
+  `SimulationResult.uncovered_gates`; synthetic profiles carry no capture timestamp.
+- MCP: server-side input bounds (out-of-range input is refused).
+- Web run card: explicit engine precision (`f64`/`f32`/`n/a`) and a WebGPU `cross_check_tv`.
+
+`scripts/check_version.py` must keep passing on whatever `scripts/version.py` reports; the
+bump itself happens at Wave 10 (W10-01), not here.
+

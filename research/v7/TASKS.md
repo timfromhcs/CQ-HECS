@@ -60,6 +60,34 @@ Base `25e16e5` (v5.0.0), branch `agent/v6-rc`. Detail in `WAVE3_REPORT.md`.
 
 Waves 4–11: NOT STARTED.
 
+## AGENTS_V6.md Wave 4 (2026-11-21) — status
+
+| ID | Task | Status |
+|---|---|---|
+| W4-01 | Threaded MCP execution + cancel contract | NOT STARTED |
+| W4-02 | `isError` tool results + `-32602` for bad arguments | NOT STARTED |
+| W4-03 | Shared service layer + `cq-hecs plan` + parity corpus | NOT STARTED |
+| W4-04 | Publish JSON Schemas + OpenAPI 3.1 + `/api/v1` aliases | NOT STARTED |
+| W4-05 | MCP protocol negotiation, annotations, outputSchema | NOT STARTED |
+| W4-06 | `doctor` solver line + Studio token via env/file | NOT STARTED |
+| W4-07 | `hcs.sat.count.v1` typed count contract | DONE |
+| W4-08 | Separator width calibration | NOT STARTED |
+| W4-09 | WebGPU device-loss handling | NOT STARTED |
+| W4-10 | Run-card error scope | NOT STARTED |
+| W4-11 | WASM base URL fix + hash check | NOT STARTED |
+| W4-12 | Keyboard/touch composer | NOT STARTED |
+| W4-13 | prefers-color-scheme + token contrast | NOT STARTED |
+| W4-14 | Output-sink XSS + i18n key parity | NOT STARTED |
+| W4-15 | Mobile viewport projects | NOT STARTED |
+| W4-16 | Verify CPU-only core loader-free | NOT STARTED |
+| W4-17 | VkResult checks + fault injection | NOT STARTED |
+| W4-18 | C ABI hardening | NOT STARTED |
+| W4-19 | Sanitizer lane | NOT STARTED |
+| W4-20 | Skip budget | NOT STARTED |
+| W4-21 | Mutation targets for QG/router/plan/scheduler | NOT STARTED |
+| W4-22 | CI wiring | NOT STARTED |
+| W4-23 | Version decision record | DONE (D-007: v6.0.0) |
+
 ## W3 / T6-03 status
 
 DONE locally: CPU-only configure/build/CTest, loader-free binaries. OPEN: CI lane for `-DCQ_ENABLE_VULKAN=OFF`, C-ABI capability flag, CPU-vs-Vulkan differential tests (T6-04).

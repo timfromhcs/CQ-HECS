@@ -54,6 +54,10 @@ UNKNOWN = "UNKNOWN"
 #: ``engine`` and this field. Nothing was removed.
 RESULT_CONTRACT_VERSION = "1.2"
 
+#: Schema id for an exact model-count document (``count_models``). The count is always a
+#: decimal string (never a JSON number) so a value above 2**53 survives JSON (W4-07).
+COUNT_SCHEMA = "hcs.sat.count.v1"
+
 #: Values of ``SATResult.certification``.
 CERTIFICATIONS = ("MODEL_VERIFIED", "TREE_RESOLUTION_CHECKED", "DRAT_CHECKED", "UNCERTIFIED", "NONE")
 
@@ -1092,6 +1096,7 @@ def count_models(
     if sep["status"] == COUNTED:
         value = sep["count"]
         return {
+            "schema": COUNT_SCHEMA,
             "status": COUNTED,
             "count": str(value),
             "satisfiable": value > 0,
@@ -1112,6 +1117,7 @@ def count_models(
 
     if method == "separator":
         return {
+            "schema": COUNT_SCHEMA,
             "status": UNKNOWN,
             "count": None,
             "satisfiable": None,
@@ -1262,6 +1268,7 @@ def _count_models_dpll(
                 "claimed (method='separator' or 'auto' may decide this formula)"
             )
     return {
+        "schema": COUNT_SCHEMA,
         "status": status,
         "count": str(value) if value is not None else None,
         "satisfiable": None if value is None else value > 0,
