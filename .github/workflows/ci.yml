@@ -174,6 +174,42 @@ jobs:
             .coverage
           if-no-files-found: warn
 
+  linux-native-cpu-only:
+    name: Linux C++20 CPU-only (no Vulkan SDK installed)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+
+      - name: Install toolchain (deliberately WITHOUT libvulkan-dev / glslang)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++-12
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 100
+          if dpkg -s libvulkan-dev >/dev/null 2>&1; then
+            echo "libvulkan-dev present on runner image; removing to prove independence"
+            sudo apt-get remove -y libvulkan-dev
+          fi
+
+      - name: Configure CPU-only
+        run: cmake -B build-cpu -G Ninja -DCMAKE_BUILD_TYPE=Release -DCQ_ENABLE_VULKAN=OFF
+
+      - name: Build and test CPU-only
+        run: |
+          cmake --build build-cpu --parallel "$(nproc)"
+          ctest --test-dir build-cpu --output-on-failure -j"$(nproc)"
+
+      - name: No binary links the Vulkan loader
+        run: |
+          pip install pytest
+          python -m pytest tests/test_native_cpu_only.py -q
+
   windows-native:
     name: Windows C++20, Vulkan & full Python suite
     runs-on: windows-latest

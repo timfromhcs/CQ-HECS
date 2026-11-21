@@ -72,5 +72,18 @@ def test_no_binary_imports_the_vulkan_loader(cpu_build):
     assert offenders == [], f"CPU-only build links the Vulkan loader: {offenders}"
 
 
+def test_core_reports_cpu_only_capability(cpu_build):
+    import ctypes
+    import json
+
+    libs = [p for p in (cpu_build / "bin").rglob("*cq_hecs_core*")
+            if p.suffix.lower() in {".dll", ".so", ".dylib"}]
+    assert libs, "cq_hecs_core library not built"
+    lib = ctypes.CDLL(str(libs[0]))
+    lib.cq_core_build_capabilities.restype = ctypes.c_char_p
+    caps = json.loads(lib.cq_core_build_capabilities().decode())
+    assert caps == {"cpu_core": True, "vulkan_linked": False}
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))

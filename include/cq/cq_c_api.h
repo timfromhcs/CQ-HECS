@@ -20,6 +20,10 @@ extern "C" {
 
 typedef void* CQSimulatorHandle;
 
+/* JSON describing how this library was built, e.g.
+   {"cpu_core":true,"vulkan_linked":false}. Static string; do not free. */
+CQ_API const char* cq_core_build_capabilities(void);
+
 CQ_API CQSimulatorHandle cq_create_simulator(uint32_t num_qubits, uint32_t max_bond_dim);
 CQ_API void cq_destroy_simulator(CQSimulatorHandle handle);
 CQ_API void cq_reset(CQSimulatorHandle handle);

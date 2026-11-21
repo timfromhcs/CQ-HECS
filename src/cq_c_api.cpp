@@ -5,7 +5,21 @@
 #include <cstring>
 #include <sstream>
 
+#ifndef CQ_NATIVE_VULKAN
+#define CQ_NATIVE_VULKAN 0
+#endif
+
 extern "C" {
+
+// Reports the build configuration so callers never infer a GPU path from the
+// presence of the library. cq_hecs_core itself is CPU-only in both configurations.
+CQ_API const char* cq_core_build_capabilities(void) {
+#if CQ_NATIVE_VULKAN
+    return "{\"cpu_core\":true,\"vulkan_linked\":true}";
+#else
+    return "{\"cpu_core\":true,\"vulkan_linked\":false}";
+#endif
+}
 
 CQ_API CQSimulatorHandle cq_create_simulator(uint32_t num_qubits, uint32_t max_bond_dim) {
     auto* engine = new cq::HybridEngine(num_qubits, max_bond_dim);
