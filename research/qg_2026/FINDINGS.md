@@ -74,6 +74,16 @@ under `research/qg_2026/raw/bmv_qpu/` and `raw/bmv_scan2/`; the combined scan is
   finite-shot 95% intervals are in `processed/bmv_phase_scan.json`.
 - Scientific status: the declared finite two-qubit **model** is reproduced on hardware within the
   noise envelope. This does **not** establish a gravitational interaction (see L-A3, L-A4).
+## F-09 — Stage-4 SYK v1 run INVALID (exact-vs-Trotter mislabel + non-inverse mirror)
+The first SYK submission (`raw/syk_qpu/`) compared the hardware against the **exact** matrix
+exponential (ideal P(000) 0.428 forward, 1.0 mirror) while the circuit actually executed was the
+**first-order Trotter** approximation (ideal 0.232584), and the "mirror" (`evolve(T)` then
+`evolve(-T)`) is not a true inverse, so it was not a return-to-zero test. Re-simulating the
+exported QASM confirms sim P(000)=0.2326 (forward) and 0.0103 (that mirror). The run is therefore
+recorded as **INVALID** evidence; a corrected v3 (`qasm/syk_qpu_v3/`) with verified semantics and
+a true `forward + forward.inverse()` mirror was preregistered and submitted. This is a
+compilation-and-design finding, not a hardware result.
+
 ## Negative / not-yet results
 - No Trotter/randomised evolution yet (QG-SYK-02) → `NOT_RUN`.
 - No QPU evidence (QG-SYK-03) → `BLOCKED` (B-1).
