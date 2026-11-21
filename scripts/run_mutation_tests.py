@@ -805,11 +805,25 @@ def check_router_unsupported_gates() -> bool:
     return "t" not in EntanglementAdaptiveRouter()._unsupported_gates(props, "A")
 
 
+def check_scheduler_planner_only_not_complete() -> bool:
+    """True if the planner-only scheduler reports a submission as completed."""
+    from cqhecs.scheduler import VulkanComputeScheduler
+
+    scheduler = VulkanComputeScheduler()
+    submission = scheduler.submit_workload("pipeline", scheduler.calculate_optimal_dispatch(16, 16, 1))
+    try:
+        scheduler.record_completion(submission, "planner_only")
+    except ValueError:
+        return False  # correct: a planner-only backend cannot complete work
+    return bool(submission.completed)
+
+
 CHECKS: Dict[str, Callable[[], bool]] = {
     "separator_count": check_separator_count,
     "qg_majorana_anticommutation": check_qg_majorana_anticommutation,
     "qg_bmv_concurrence": check_qg_bmv_concurrence,
     "router_unsupported_gates": check_router_unsupported_gates,
+    "scheduler_planner_only_not_complete": check_scheduler_planner_only_not_complete,
     "pauli_y_phase": check_pauli_y_phase,
     "pauli_bound_accounting": check_pauli_bound_accounting,
     "plan_forced_refusal": check_plan_forced_refusal,
@@ -1442,6 +1456,14 @@ MUTANTS: List[SourceMutant] = [
         replacement="        return []\n",
         check="router_unsupported_gates",
         mechanism="the router stops noticing gates a path cannot run, so it can select an incapable path",
+    ),
+    SourceMutant(
+        name="Scheduler marks planner-only work complete",
+        target="cqhecs/scheduler.py",
+        original='        if not backend or backend == "planner_only":\n',
+        replacement="        if not backend:\n",
+        check="scheduler_planner_only_not_complete",
+        mechanism="a planner-only submission can be recorded complete, so planned GPU work looks dispatched",
     ),
 ]
 
