@@ -49,6 +49,13 @@ The v3 circuits fix this (`qasm/syk_qpu_v3/`): forward Trotter ideal **0.232584*
 `optimization_level=0`). Each exported QASM is re-loaded and simulated to confirm it matches
 its ideal before submission. **2 circuits × 1 credit = 2 credits** (cumulative → **21 / 25**).
 
+## v5 — connected-triple retry (2026-11-21)
+v4 (v3 circuits with `disable_qubit_rewiring=true`) **failed** because the logical qubits 0/1/2
+map to disconnected physical qubits on this device. v5 (`qasm/syk_qpu_v5/`) maps the same circuit
+onto the connected physical triple **0–9–10** (edges 0–9, 9–10) with `disable_qubit_rewiring=true`,
+so forward and mirror share one layout. Ideals verified by re-simulation: forward 0.232584,
+mirror 1.0. **2 circuits × 1 credit = 2 credits** (final; cumulative → **25 / 25**).
+
 ## Non-claims
 A finite-N digital SYK circuit is a model experiment. No black-hole, wormhole, graviton or
 "spacetime" claim; sparsification/finite-size and Trotter limits apply.
