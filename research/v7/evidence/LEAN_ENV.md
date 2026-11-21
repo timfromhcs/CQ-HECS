@@ -26,7 +26,8 @@ not redistribution.
     (Alpöge & Furman, arXiv:2608.13637).
   - **`3sum-apsp/`** — *Truly Subquadratic 3SUM and Truly Subcubic APSP* (Alman & Vassilevska
     Williams).
-- `openai/math` (shallow clone) — holds the OpenAI ETH preprint and its Lean scope note.
+- `openai/math` (shallow clone) at `4eaee87548250b2682affda7d05d947c05554bae` — holds the OpenAI
+  ETH preprint and its Lean scope note.
 
 ## 3. The `eth` artifact: exact statements and method
 
