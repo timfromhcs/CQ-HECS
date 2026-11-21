@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -300,38 +301,135 @@ def cmd_discover(args: argparse.Namespace) -> int:
 
 
 # --------------------------------------------------------------------------------------
-# quote / submit (gated on credentials + a live backend)
+# quote / submit / collect (delegate to the official Open Quantum CLI, oq.py)
 # --------------------------------------------------------------------------------------
+def _oq_path(args: argparse.Namespace) -> str:
+    return getattr(args, "oq", None) or os.environ.get("OPENQUANTUM_OQ") or "oq.py"
+
+
+def _oq(args: argparse.Namespace, *command: str) -> Dict[str, Any]:
+    cmd = [sys.executable, _oq_path(args), *command, "--json"]
+    proc = subprocess.run(
+        cmd, capture_output=True, text=True,
+        env={**os.environ, "OPENQUANTUM_HIDE_CITATION_NOTICE": "1"},
+    )
+    payload: Dict[str, Any] = {}
+    if proc.stdout.strip():
+        try:
+            payload = json.loads(proc.stdout)
+        except json.JSONDecodeError:
+            payload = {"raw_stdout": proc.stdout[-500:]}
+    payload["_exit_code"] = proc.returncode
+    return payload
+
+
+def _load_set(set_dir: Path) -> Dict[str, Any]:
+    for name in ("MANIFEST.json", "CIRCUIT_MANIFEST.json"):
+        candidate = set_dir / name
+        if candidate.is_file():
+            manifest = json.loads(candidate.read_text("utf-8"))
+            circuits = manifest.get("circuits", [])
+            for circuit in circuits:
+                circuit.setdefault("file", circuit.get("qasm_file"))
+            return {"dir": set_dir, "circuits": circuits}
+    raise FileNotFoundError(f"no MANIFEST.json or CIRCUIT_MANIFEST.json under {set_dir}")
+
+
 def cmd_quote(args: argparse.Namespace) -> int:
-    print(json.dumps({
-        "status": "BLOCKED",
-        "code": "QG_BLOCKED",
-        "reason": "credentials_or_backend_required",
-        "detail": "quote needs a live account; resolve blocker B-1 then run `doctor` first",
-        "backend": args.backend,
-        "next_action": "python scripts/run_qg_openquantum_campaign.py doctor",
-    }, indent=2))
-    return 2
+    """Price every circuit in the set (Public/Standard). Spends nothing."""
+    campaign_dir = _campaign_dir(args)
+    try:
+        circuit_set = _load_set(Path(args.set))
+    except FileNotFoundError as exc:
+        print(json.dumps({"status": "FAILED", "detail": str(exc)}, indent=2))
+        return 1
+    quotes = []
+    total = 0.0
+    for circuit in circuit_set["circuits"]:
+        qasm = circuit_set["dir"] / circuit["file"]
+        result = _oq(args, "quote", str(qasm), "-b", args.backend, "-s", str(args.shots),
+                     "--plan", "public", "--priority", "standard", "-c", "phys:oth")
+        if result.get("_exit_code") != 0 or "preparation_id" not in result:
+            print(json.dumps({"status": "FAILED", "circuit": circuit.get("circuit_id"), "detail": result}, indent=2))
+            return 1
+        selected = result["selected"]
+        cost = float(selected["total_cost"])
+        total += cost
+        quotes.append({
+            "circuit_id": circuit.get("circuit_id"), "qasm_file": circuit["file"],
+            "preparation_id": result["preparation_id"], "shots": args.shots,
+            "plan": selected["plan"], "priority": selected["priority"], "quoted_credits": cost,
+        })
+    ledger = {
+        "schema": "cqhecs.qg.quote_ledger.v1", "campaign_id": DEFAULT_CAMPAIGN_ID,
+        "set": str(circuit_set["dir"]), "backend": args.backend, "shot_count": args.shots,
+        "authorised_spark_ceiling": AUTHORISED_SPARK_CEILING, "quotes": quotes,
+        "quoted_total_credits": total, "spent_credits": _load_ledger_spend(campaign_dir),
+    }
+    _write_json(campaign_dir / "QUOTE_LEDGER.json", ledger)
+    print(json.dumps({"status": "OK", "quotes": len(quotes), "quoted_total_credits": total, "spend": 0.0}, indent=2))
+    return 0
 
 
 def cmd_submit(args: argparse.Namespace) -> int:
+    """Submit the quoted jobs under the cumulative Spark budget guard."""
     campaign_dir = _campaign_dir(args)
+    ledger_path = campaign_dir / "QUOTE_LEDGER.json"
+    if not ledger_path.is_file():
+        print(json.dumps({"status": "FAILED", "detail": "run `quote` first"}, indent=2))
+        return 1
+    ledger = json.loads(ledger_path.read_text("utf-8"))
     spent = _load_ledger_spend(campaign_dir)
-    remaining = min(AUTHORISED_SPARK_CEILING, AUTHORISED_SPARK_CEILING) - spent
-    print(json.dumps({
-        "status": "BLOCKED",
-        "code": "QG_BLOCKED",
-        "reason": "credentials_or_backend_required",
-        "detail": "submit is gated behind a valid quote and a resolved account (B-1)",
-        "authorised_ceiling": AUTHORISED_SPARK_CEILING,
-        "already_submitted_credits": spent,
-        "remaining_authorised": remaining,
-    }, indent=2))
-    return 2
+    proposed = float(ledger.get("quoted_total_credits", 0.0))
+    if not args.yes:
+        print(json.dumps({"status": "REFUSED", "detail": "pass --yes to spend", "proposed_total": proposed}, indent=2))
+        return 2
+    if spent + proposed > min(AUTHORISED_SPARK_CEILING, args.budget):
+        print(json.dumps({"status": "REFUSED", "detail": "would exceed budget",
+                          "spent": spent, "proposed": proposed, "budget": args.budget}, indent=2))
+        return 2
+    set_name = Path(ledger.get("set", "set")).name
+    job_log = campaign_dir / "JOB_LEDGER.jsonl"
+    submitted = 0
+    for quote in ledger["quotes"]:
+        out = campaign_dir / "raw" / set_name / quote["circuit_id"]
+        result = _oq(args, "submit", "--prep", quote["preparation_id"], "--yes", "--no-wait",
+                     "--calibration", "--max-credits", f"{args.max_credits:g}", "--out", str(out))
+        event = {
+            "schema": "cqhecs.qg.job_ledger.v1", "event": "submitted", "at": _utc(),
+            "circuit_id": quote["circuit_id"], "preparation_id": quote["preparation_id"],
+            "provider_job_id": result.get("job_id") or result.get("id"), "backend": ledger.get("backend"),
+            "shots": quote.get("shots"), "plan": quote.get("plan"), "priority": quote.get("priority"),
+            "quoted_credits": quote.get("quoted_credits"), "status": result.get("status"), "out": str(out),
+        }
+        with job_log.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(event, sort_keys=True) + "\n")
+        submitted += 1
+    print(json.dumps({"status": "OK", "submitted": submitted, "cumulative_credits": spent + proposed}, indent=2))
+    return 0
 
 
 def cmd_collect(args: argparse.Namespace) -> int:
-    print(json.dumps({"status": "NOT_RUN", "detail": "no submitted jobs yet (B-1)"}, indent=2))
+    """Wait for and download any submitted job lacking a collected event."""
+    campaign_dir = _campaign_dir(args)
+    job_log = campaign_dir / "JOB_LEDGER.jsonl"
+    if not job_log.is_file():
+        print(json.dumps({"status": "NOT_RUN", "detail": "no jobs yet"}, indent=2))
+        return 0
+    events = [json.loads(line) for line in job_log.read_text("utf-8").splitlines() if line.strip()]
+    collected = {e["provider_job_id"] for e in events if e.get("event") == "collected"}
+    pending = [e for e in events if e.get("event") == "submitted" and e["provider_job_id"] not in collected]
+    for event in pending:
+        out = Path(event["out"])
+        out.mkdir(parents=True, exist_ok=True)
+        _oq(args, "wait", event["provider_job_id"], "--timeout", str(args.timeout))
+        _oq(args, "results", event["provider_job_id"], "--calibration", "--out", str(out))
+        with job_log.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps({
+                "schema": "cqhecs.qg.job_ledger.v1", "event": "collected", "at": _utc(),
+                "circuit_id": event["circuit_id"], "provider_job_id": event["provider_job_id"], "out": str(out),
+            }, sort_keys=True) + "\n")
+    print(json.dumps({"status": "OK", "collected": len(pending)}, indent=2))
     return 0
 
 
@@ -366,11 +464,17 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("validate")
     quote = sub.add_parser("quote")
     quote.add_argument("--backend", required=True, help="live backend short code (e.g. qr:sim)")
+    quote.add_argument("--set", required=True, help="directory with MANIFEST.json (circuit set)")
     quote.add_argument("--shots", type=int, default=1000)
+    quote.add_argument("--oq", default=None, help="path to oq.py (Open Quantum CLI)")
     submit = sub.add_parser("submit")
     submit.add_argument("--budget", type=float, default=AUTHORISED_SPARK_CEILING)
     submit.add_argument("--yes", action="store_true")
-    sub.add_parser("collect")
+    submit.add_argument("--max-credits", type=float, default=10.0, help="per-job hard cap")
+    submit.add_argument("--oq", default=None)
+    collect = sub.add_parser("collect")
+    collect.add_argument("--timeout", type=float, default=1800)
+    collect.add_argument("--oq", default=None)
     sub.add_parser("analyse")
     sub.add_parser("report")
     return parser

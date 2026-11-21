@@ -59,8 +59,71 @@ def test_report_writes_file(tmp_path):
     assert report["submitted_credits"] == 0.0
 
 
-def test_quote_and_submit_are_gated_without_credentials(tmp_path):
+FAKE_OQ = '''
+import sys, json
+cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+if cmd == "quote":
+    print(json.dumps({"preparation_id": "prep-1",
+                      "selected": {"plan": "Public Plan", "priority": "Standard Queue", "total_cost": 1}}))
+elif cmd == "submit":
+    print(json.dumps({"job_id": "job-1", "status": "Created"}))
+elif cmd == "wait":
+    print("Completed")
+elif cmd == "results":
+    print(json.dumps({"status": "Completed"}))
+else:
+    print(json.dumps({}))
+'''
+
+
+def _make_set(tmp_path):
+    setdir = tmp_path / "set"
+    setdir.mkdir()
+    (setdir / "c0.qasm").write_bytes(b"OPENQASM 2.0;\n")
+    (setdir / "MANIFEST.json").write_text(
+        json.dumps({"circuits": [{"circuit_id": "c0", "file": "c0.qasm", "qasm_sha256": "x"}]}),
+        encoding="utf-8",
+    )
+    fake = tmp_path / "oq.py"
+    fake.write_text(FAKE_OQ, encoding="utf-8")
+    return setdir, fake
+
+
+def test_quote_then_submit_with_fake_oq(tmp_path):
     module = _load_module()
     campaign = tmp_path / "qg_2026"
-    assert module.main(["--campaign", str(campaign), "quote", "--backend", "qr:sim"]) == 2
-    assert module.main(["--campaign", str(campaign), "submit"]) == 2
+    setdir, fake = _make_set(tmp_path)
+    code = module.main(["--campaign", str(campaign), "quote", "--backend", "rigetti:cepheus-1-108q",
+                        "--set", str(setdir), "--shots", "1000", "--oq", str(fake)])
+    assert code == 0
+    ledger = json.loads((campaign / "QUOTE_LEDGER.json").read_text("utf-8"))
+    assert ledger["quoted_total_credits"] == 1.0
+    assert ledger["quotes"][0]["preparation_id"] == "prep-1"
+
+    # submit without --yes is refused
+    assert module.main(["--campaign", str(campaign), "submit", "--oq", str(fake)]) == 2
+    # submit with --yes spends
+    assert module.main(["--campaign", str(campaign), "submit", "--yes", "--oq", str(fake)]) == 0
+    events = [json.loads(l) for l in (campaign / "JOB_LEDGER.jsonl").read_text("utf-8").splitlines() if l.strip()]
+    assert any(e.get("event") == "submitted" and e["provider_job_id"] == "job-1" for e in events)
+
+
+def test_submit_respects_budget(tmp_path):
+    module = _load_module()
+    campaign = tmp_path / "qg_2026"
+    setdir, fake = _make_set(tmp_path)
+    module.main(["--campaign", str(campaign), "quote", "--backend", "rigetti:cepheus-1-108q",
+                 "--set", str(setdir), "--oq", str(fake)])
+    assert module.main(["--campaign", str(campaign), "submit", "--yes", "--budget", "0", "--oq", str(fake)]) == 2
+
+
+def test_collect_with_fake_oq(tmp_path):
+    module = _load_module()
+    campaign = tmp_path / "qg_2026"
+    setdir, fake = _make_set(tmp_path)
+    module.main(["--campaign", str(campaign), "quote", "--backend", "rigetti:cepheus-1-108q",
+                 "--set", str(setdir), "--oq", str(fake)])
+    module.main(["--campaign", str(campaign), "submit", "--yes", "--oq", str(fake)])
+    assert module.main(["--campaign", str(campaign), "collect", "--oq", str(fake)]) == 0
+    events = [json.loads(l) for l in (campaign / "JOB_LEDGER.jsonl").read_text("utf-8").splitlines() if l.strip()]
+    assert any(e.get("event") == "collected" for e in events)

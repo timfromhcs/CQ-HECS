@@ -94,10 +94,15 @@ python scripts/run_qg_openquantum_campaign.py validate
 python scripts/run_qg_openquantum_campaign.py doctor
 python scripts/run_qg_openquantum_campaign.py discover --org <organisation-uuid>
 
-# gated until a live account is configured
-python scripts/run_qg_openquantum_campaign.py quote  --backend <live-short-code>
-python scripts/run_qg_openquantum_campaign.py submit --budget 25 --yes
+# quote and submit a preregistered circuit set (set dir holds MANIFEST.json; --oq is oq.py)
+python scripts/run_qg_openquantum_campaign.py quote  --backend rigetti:cepheus-1-108q \
+       --set research/qg_2026/qasm/qpu_smoke --shots 1000 --oq <path-to-oq.py>
+python scripts/run_qg_openquantum_campaign.py submit --budget 25 --yes --oq <path-to-oq.py>
+python scripts/run_qg_openquantum_campaign.py collect --oq <path-to-oq.py>
 ```
+
+`quote` spends nothing; `submit` enforces the cumulative 25-Spark ceiling itself and refuses
+without `--yes`.
 
 ### Credentials (never committed)
 
