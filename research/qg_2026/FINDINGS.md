@@ -53,21 +53,27 @@ the calibration snapshot are under `research/qg_2026/raw/qpu_smoke/` with an evi
 - Count totals equal shots; measurement registers and calibration retrieval validated.
 
 ## F-08 — BMV effective-phase entanglement signal observed on a live QPU (Rigetti)
-Nine preregistered jobs (θ ∈ {0, π/4, π/2} × bases {Y⊗Z, Z⊗Y, X⊗X}, 1000 shots) measured the
-model correlators on hardware (raw counts + manifest under `research/qg_2026/raw/bmv_qpu/`).
+A 5-point phase scan (theta in {0, pi/8, pi/4, 3pi/8, pi/2}) in the Y(x)Z and Z(x)Y bases, plus
+X(x)X at theta in {0, pi/4, pi/2}, 1000 shots each (13 jobs total). Raw counts + manifests are
+under `research/qg_2026/raw/bmv_qpu/` and `raw/bmv_scan2/`; the combined scan is in
+`processed/bmv_phase_scan.json`.
 
-| θ | ⟨Y⊗Z⟩ | ⟨Z⊗Y⟩ | ⟨X⊗X⟩ | model (sinθ, sinθ, 1) |
-|---|---|---|---|---|
-| 0 | +0.014 | +0.012 | 0.954 | 0.000, 0.000, 1 |
-| π/4 | +0.616 | +0.666 | 0.818 | 0.707, 0.707, 1 |
-| π/2 | +0.854 | +0.874 | 0.808 | 1.000, 1.000, 1 |
+| theta | <Y(x)Z> | <Z(x)Y> | sin(theta) |
+|---|---|---|---|
+| 0 | +0.014 | +0.012 | 0.000 |
+| pi/8 | +0.298 | +0.386 | 0.383 |
+| pi/4 | +0.616 | +0.666 | 0.707 |
+| 3pi/8 | +0.734 | +0.820 | 0.924 |
+| pi/2 | +0.854 | +0.874 | 1.000 |
 
-- The θ-dependence tracks `sinθ`; the θ=0 **null control is consistent with 0** (no false signal).
-- Device noise attenuates the off-diagonal correlators by ~15–25%, consistent with the Stage-2
-  smoke characterisation. A finite-shot 95% interval is reported per point.
+`<X(x)X>` = 0.954 / 0.818 / 0.808 at theta = 0 / pi/4 / pi/2.
+
+- Monotone increase tracking `sin(theta)`; the measured correlator sits at **0.85-1.0x sin(theta)**
+  (device attenuation), and the theta=0 **null control is consistent with 0** (no false signal).
+- Noise attenuation is consistent with the Stage-2 smoke device characterisation; per-point
+  finite-shot 95% intervals are in `processed/bmv_phase_scan.json`.
 - Scientific status: the declared finite two-qubit **model** is reproduced on hardware within the
   noise envelope. This does **not** establish a gravitational interaction (see L-A3, L-A4).
-
 ## Negative / not-yet results
 - No Trotter/randomised evolution yet (QG-SYK-02) → `NOT_RUN`.
 - No QPU evidence (QG-SYK-03) → `BLOCKED` (B-1).

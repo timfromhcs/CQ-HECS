@@ -20,6 +20,8 @@ Digests for generated manifests are written by the runner at generation time.
 | QPU run manifest | `research/qg_2026/raw/qpu_smoke/EVIDENCE_MANIFEST.json` | 24 files | OPENQUANTUM_QPU | SHA-256 per artifact |
 | **BMV QPU raw counts** | `research/qg_2026/raw/bmv_qpu/*/result.json` | `EVIDENCE_MANIFEST.json` (54 files) | **OPENQUANTUM_QPU** | 9 circuits, 1000 shots, Rigetti |
 | BMV QPU analysis | `research/qg_2026/processed/bmv_qpu_analysis.json` | (see file) | OPENQUANTUM_QPU | correlators + 95% intervals |
+| BMV phase-scan raw | `research/qg_2026/raw/bmv_scan2/*/result.json` | `EVIDENCE_MANIFEST.json` (24 files) | **OPENQUANTUM_QPU** | 4 circuits (θ=π/8, 3π/8) |
+| BMV phase-scan (combined) | `research/qg_2026/processed/bmv_phase_scan.json` | (see file) | OPENQUANTUM_QPU | 13 points, 5 θ values |
 
 No `OPENQUANTUM_QPU` or `OPENQUANTUM_SIMULATOR` evidence exists yet (blocker B-1).
 Historical `research/v3/evidence/openquantum/**` remains untouched and is **not** part of

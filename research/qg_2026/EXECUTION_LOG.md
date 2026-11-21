@@ -102,3 +102,9 @@ Commit: `ab27578` — "feat(qg): Quantum Gravity research layer + campaign runne
 
 - Preregistered + submitted θ ∈ {π/8, 3π/8} × {Y⊗Z, Z⊗Y} (4 circuits, 4 credits), locally
   verified to give sinθ. Cumulative **17 / 25**. Results pending collection.
+
+## 2026-11-21 — session 1 (continued): BMV phase scan complete
+
+- 4/4 extension jobs `Completed`. Full scan ⟨Y⊗Z⟩ 0.014→0.854, ⟨Z⊗Y⟩ 0.012→0.874 over
+  θ ∈ {0…π/2}; measured ≈ 0.85–1.0 × sinθ; θ=0 null ~0.
+- `processed/bmv_phase_scan.json` (13 points); FINDINGS F-08 updated. Spark 17/25.

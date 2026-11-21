@@ -1,0 +1,126 @@
+{
+  "backend": "rigetti:cepheus-1-108q",
+  "files": [
+    {
+      "bytes": 1195405,
+      "path": "bmv-s1-YZ\\calibration.json",
+      "sha256": "ce87654bacd9b4cfeb9952d8cd820c530acae5e3f6ce5c06c83c15c9fdf9e6e1"
+    },
+    {
+      "bytes": 90,
+      "path": "bmv-s1-YZ\\counts.csv",
+      "sha256": "2a42d030cfb2be7357c4f29e331ac0d8eda032459d66419ffc4d0519f99112ba"
+    },
+    {
+      "bytes": 20328,
+      "path": "bmv-s1-YZ\\histogram.png",
+      "sha256": "fca3e7159aa16e565278f7ab9a93e63db0c2df856da4b39fc67b73be11bade70"
+    },
+    {
+      "bytes": 469,
+      "path": "bmv-s1-YZ\\job.json",
+      "sha256": "918bbc209e4f3d74ac4ad8feead8f3a097ebf451cbb052cd24e1706ab6754ec9"
+    },
+    {
+      "bytes": 59,
+      "path": "bmv-s1-YZ\\result.json",
+      "sha256": "9e8b3d7ce255f99106232540b0b705999d1aeea38ebd500ae07ded524e253949"
+    },
+    {
+      "bytes": 283,
+      "path": "bmv-s1-YZ\\summary.md",
+      "sha256": "0274c9676c1902ddf245704ce548d5f2105604510f824407eb1f8422f077a9bd"
+    },
+    {
+      "bytes": 1195405,
+      "path": "bmv-s1-ZY\\calibration.json",
+      "sha256": "ce87654bacd9b4cfeb9952d8cd820c530acae5e3f6ce5c06c83c15c9fdf9e6e1"
+    },
+    {
+      "bytes": 91,
+      "path": "bmv-s1-ZY\\counts.csv",
+      "sha256": "e89526dd6d3d0510634a3b5d071a3b42698cd340f12582359e421b2d58e692b6"
+    },
+    {
+      "bytes": 22324,
+      "path": "bmv-s1-ZY\\histogram.png",
+      "sha256": "9c85336e11dcdb7b8b94a0c5b5a4440e6a9a24666ab2cc14ce4ff49baa7a8dac"
+    },
+    {
+      "bytes": 469,
+      "path": "bmv-s1-ZY\\job.json",
+      "sha256": "c33e9e1edf79b65a094196c600c2f4d55c9854a9208d2ff7dfca7f778be14bbd"
+    },
+    {
+      "bytes": 59,
+      "path": "bmv-s1-ZY\\result.json",
+      "sha256": "08acf1af2ff01d817a4098c15a7335128ba074587273d1c297fa86714b6da2ac"
+    },
+    {
+      "bytes": 283,
+      "path": "bmv-s1-ZY\\summary.md",
+      "sha256": "308e3b0ae6c68f81eddaea0e019b81653069207c76cba2a953cf0deb541bd0fd"
+    },
+    {
+      "bytes": 1195405,
+      "path": "bmv-s2-YZ\\calibration.json",
+      "sha256": "ce87654bacd9b4cfeb9952d8cd820c530acae5e3f6ce5c06c83c15c9fdf9e6e1"
+    },
+    {
+      "bytes": 87,
+      "path": "bmv-s2-YZ\\counts.csv",
+      "sha256": "bf60df8274f690310b598e88f7a6965944e6f330b908e0a122e8ae8145bbacf9"
+    },
+    {
+      "bytes": 18288,
+      "path": "bmv-s2-YZ\\histogram.png",
+      "sha256": "0b2de5234a5f146681945ceec7a17a344482a69db60e83ef9195aaa69c7dc12d"
+    },
+    {
+      "bytes": 469,
+      "path": "bmv-s2-YZ\\job.json",
+      "sha256": "b5a6b39a516c1847fd85dd6622be5e438a8e25732345d4db9aa60a5382dc794f"
+    },
+    {
+      "bytes": 57,
+      "path": "bmv-s2-YZ\\result.json",
+      "sha256": "5fdac4fdc3f0259d8c7016ff50c47ce59d86d8b3b2db40f298f4577f163f0594"
+    },
+    {
+      "bytes": 281,
+      "path": "bmv-s2-YZ\\summary.md",
+      "sha256": "14fd4e36154b3243cd93f03b2d5d0c0cb31bfceeb310524eca1cf6f707f5b39f"
+    },
+    {
+      "bytes": 1195405,
+      "path": "bmv-s2-ZY\\calibration.json",
+      "sha256": "ce87654bacd9b4cfeb9952d8cd820c530acae5e3f6ce5c06c83c15c9fdf9e6e1"
+    },
+    {
+      "bytes": 87,
+      "path": "bmv-s2-ZY\\counts.csv",
+      "sha256": "fc8869a6d3dc91ff6c73f372f7adc14535ba98cf73a20118445a169a34b85f7b"
+    },
+    {
+      "bytes": 18254,
+      "path": "bmv-s2-ZY\\histogram.png",
+      "sha256": "d940b5cb479a0d8bdcd06cdcb399fa8f6d434c721d93ac56580d646eadf38ad6"
+    },
+    {
+      "bytes": 469,
+      "path": "bmv-s2-ZY\\job.json",
+      "sha256": "fc5444d2badeee0c05b5ddaddcf49f9f34d21fc4197d0140950c7519b61d1f68"
+    },
+    {
+      "bytes": 57,
+      "path": "bmv-s2-ZY\\result.json",
+      "sha256": "e059ff9041dbee70904519f39fab44002e33c8459f51c585db53d07eab19b843"
+    },
+    {
+      "bytes": 281,
+      "path": "bmv-s2-ZY\\summary.md",
+      "sha256": "8c561f46a11460d11980e5e47839a33cfd352f5773b102362ae63b3c6d6c1591"
+    }
+  ],
+  "schema": "cqhecs.qg.evidence_manifest.v1"
+}
