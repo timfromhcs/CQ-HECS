@@ -65,7 +65,7 @@ Waves 4–11: NOT STARTED.
 | ID | Task | Status |
 |---|---|---|
 | W4-01 | Threaded MCP execution + cancel contract | NOT STARTED |
-| W4-02 | `isError` tool results + `-32602` for bad arguments | NOT STARTED |
+| W4-02 | `isError` tool results + `-32602` for bad arguments | DONE |
 | W4-03 | Shared service layer + `cq-hecs plan` + parity corpus | NOT STARTED |
 | W4-04 | Publish JSON Schemas + OpenAPI 3.1 + `/api/v1` aliases | NOT STARTED |
 | W4-05 | MCP protocol negotiation, annotations, outputSchema | NOT STARTED |

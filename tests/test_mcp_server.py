@@ -55,12 +55,31 @@ def test_run_and_sat_tools_return_content():
     assert sat_payload["result"]["model_verified"] is True
 
 
-def test_unknown_tool_is_a_jsonrpc_error():
+def test_unknown_tool_is_invalid_params():
     (response,) = _session([
         {"jsonrpc": "2.0", "id": 5, "method": "tools/call",
          "params": {"name": "does_not_exist", "arguments": {}}},
     ])
-    assert response["error"]["code"] == -32000
+    assert response["error"]["code"] == -32602
+
+
+def test_missing_required_argument_is_invalid_params():
+    (response,) = _session([
+        {"jsonrpc": "2.0", "id": 51, "method": "tools/call",
+         "params": {"name": "cqhecs_sat_solve", "arguments": {}}},
+    ])
+    assert response["error"]["code"] == -32602
+    assert "cnf" in response["error"]["message"]
+
+
+def test_a_tool_that_fails_returns_iserror_not_a_transport_error():
+    (response,) = _session([
+        {"jsonrpc": "2.0", "id": 52, "method": "tools/call",
+         "params": {"name": "cqhecs_analyze", "arguments": {"circuit": "this is not a circuit"}}},
+    ])
+    assert "error" not in response
+    assert response["result"]["isError"] is True
+    assert response["result"]["content"][0]["type"] == "text"
 
 
 def test_sat_models_and_hardware_tools():

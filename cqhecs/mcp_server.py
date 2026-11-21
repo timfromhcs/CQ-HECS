@@ -173,6 +173,17 @@ def _text(value: Any) -> Dict[str, Any]:
     return {"content": [{"type": "text", "text": json.dumps(value, indent=2, default=str)}]}
 
 
+class ToolArgumentsError(ValueError):
+    """A tool call had missing or invalid arguments -> JSON-RPC -32602 (invalid params)."""
+
+
+def _require(arguments: Dict[str, Any], key: str) -> Any:
+    if key not in arguments or arguments[key] is None:
+        raise ToolArgumentsError(f"missing required argument {key!r}")
+    return arguments[key]
+
+
+
 #: Server-side input bounds, matched to the Studio's (cqhecs/studio/app.py). A
 #: model may send anything; the server refuses out-of-range values instead of
 #: passing them to an engine that would run unbounded (D7).
@@ -189,9 +200,9 @@ def _bounded_int(value: Any, name: str, low: int, high: int, default: int) -> in
     try:
         parsed = int(value)
     except (TypeError, ValueError) as exc:
-        raise ValueError(f"{name} must be an integer") from exc
+        raise ToolArgumentsError(f"{name} must be an integer") from exc
     if parsed < low or parsed > high:
-        raise ValueError(f"{name} must be in [{low}, {high}]")
+        raise ToolArgumentsError(f"{name} must be in [{low}, {high}]")
     return parsed
 
 
@@ -201,9 +212,9 @@ def _bounded_float(value: Any, name: str, low: float, high: float, default: floa
     try:
         parsed = float(value)
     except (TypeError, ValueError) as exc:
-        raise ValueError(f"{name} must be a number") from exc
+        raise ToolArgumentsError(f"{name} must be a number") from exc
     if not (low <= parsed <= high):
-        raise ValueError(f"{name} must be in [{low}, {high}]")
+        raise ToolArgumentsError(f"{name} must be in [{low}, {high}]")
     return parsed
 
 
@@ -220,7 +231,7 @@ def _tool_run(arguments: Dict[str, Any]) -> Dict[str, Any]:
     state = StudioState(ROOT)
     return state.simulate(
         {
-            "source": arguments["circuit"],
+            "source": _require(arguments, "circuit"),
             "shots": arguments.get("shots", 1024),
             "seed": arguments.get("seed", 42),
             "path": arguments.get("path", "auto"),
@@ -234,7 +245,7 @@ def _tool_analyze(arguments: Dict[str, Any]) -> Dict[str, Any]:
     from cqhecs.circuit_library import build_builtin_circuit
     from cqhecs.circuit_parsing import parse_circuit
 
-    source = arguments["circuit"]
+    source = _require(arguments, "circuit")
     if source.startswith("preset:"):
         circuit = build_builtin_circuit(source[len("preset:") :])
     else:
@@ -248,7 +259,7 @@ def _tool_plan(arguments: Dict[str, Any]) -> Dict[str, Any]:
     from cqhecs.circuit_library import build_builtin_circuit
     from cqhecs.execution_plan import build_execution_plan
 
-    source = arguments["circuit"]
+    source = _require(arguments, "circuit")
     if source.startswith("preset:"):
         circuit = build_builtin_circuit(source[len("preset:") :])
     else:
@@ -264,7 +275,7 @@ def _tool_plan(arguments: Dict[str, Any]) -> Dict[str, Any]:
 def _tool_sat(arguments: Dict[str, Any]) -> Dict[str, Any]:
     from cqhecs.sat import parse_dimacs, solve
 
-    formula = parse_dimacs(arguments["cnf"], source="mcp")
+    formula = parse_dimacs(_require(arguments, "cnf"), source="mcp")
     timeout = _bounded_float(arguments.get("timeout"), "timeout", *_TIMEOUT_RANGE, default=5.0)
     if arguments.get("engine", "dpll") == "cadical":
         from cqhecs.sat_external import solve_external
@@ -311,7 +322,7 @@ def _tool_sat(arguments: Dict[str, Any]) -> Dict[str, Any]:
 def _tool_models(arguments: Dict[str, Any]) -> Dict[str, Any]:
     from cqhecs.sat import enumerate_models, parse_dimacs
 
-    formula = parse_dimacs(arguments["cnf"], source="mcp")
+    formula = parse_dimacs(_require(arguments, "cnf"), source="mcp")
     return enumerate_models(
         formula,
         limit=_bounded_int(arguments.get("limit"), "limit", *_MODELS_LIMIT_RANGE, default=10),
@@ -351,7 +362,7 @@ def _tool_hardware(_arguments: Dict[str, Any]) -> Dict[str, Any]:
 def _tool_qg_preview(arguments: Dict[str, Any]) -> Dict[str, Any]:
     from cqhecs.quantum_gravity.circuits import bmv_qasm, sha256_text
 
-    theta = float(arguments["theta"])
+    theta = float(_require(arguments, "theta"))
     qasm = bmv_qasm(theta)
     return {
         "status": "OK",
@@ -367,7 +378,7 @@ def _tool_qg_run_local(arguments: Dict[str, Any]) -> Dict[str, Any]:
     from cqhecs.quantum_gravity.models import BMVEffectivePhaseModel
 
     model = BMVEffectivePhaseModel(
-        theta=float(arguments["theta"]),
+        theta=float(_require(arguments, "theta")),
         local_phase_a=float(arguments.get("local_phase_a", 0.0)),
         local_phase_b=float(arguments.get("local_phase_b", 0.0)),
     )
@@ -402,7 +413,7 @@ def _call(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
     if name == "cqhecs_sat_count":
         from cqhecs.sat import count_models, parse_dimacs
 
-        formula = parse_dimacs(arguments["cnf"], source="mcp")
+        formula = parse_dimacs(_require(arguments, "cnf"), source="mcp")
         return _text({"result": count_models(
             formula,
             timeout_seconds=_bounded_float(arguments.get("timeout"), "timeout", *_TIMEOUT_RANGE, default=5.0),
@@ -422,7 +433,7 @@ def _call(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         return _text(_tool_qg_preview(arguments))
     if name == "cqhecs_qg_run_local":
         return _text(_tool_qg_run_local(arguments))
-    raise ValueError(f"unknown tool {name!r}")
+    raise ToolArgumentsError(f"unknown tool {name!r}")
 
 
 def handle(message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -452,8 +463,13 @@ def handle(message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         arguments = params.get("arguments") or {}
         try:
             return _ok(request_id, _call(name, arguments))
+        except ToolArgumentsError as exc:
+            # Invalid or missing arguments are a protocol error (invalid params).
+            return _error(request_id, -32602, str(exc))
         except Exception as exc:  # noqa: BLE001
-            return _error(request_id, -32000, f"{type(exc).__name__}: {exc}")
+            # A tool that ran but failed returns a successful response flagged isError,
+            # so the caller sees the tool failure instead of a transport error (W4-02).
+            return _ok(request_id, {"isError": True, "content": [{"type": "text", "text": f"{type(exc).__name__}: {exc}"}]})
     return _error(request_id, -32601, f"method not found: {method}")
 
 
