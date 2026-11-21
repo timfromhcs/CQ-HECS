@@ -54,7 +54,20 @@ per bit SWAP = I − 2·singlet, group by singlet number → ℓ+1 operators; me
 regroup into K classes. This rederives only 3-SAT ∈ O(2^{δn}) for every δ > 0, not the sharper
 bound.
 
-## 4. Boundary (unchanged by this download)
+## 4. The `openai/math` artifact: ETH scope note (paper-vs-formalized nuance)
+
+`lean/docs/378.md` (verbatim scope): for fixed k ≥ 2, Lean proves a deterministic machine exactly
+counts satisfying assignments of a canonically encoded k-CNF on n variables in time
+`(L+1)^{O_k(1)}·2^{O_k(n(log log n)²/√(log n))}` with at most `(L+1)^{O_k(1)}` visited tape cells,
+where L is the encoding bit length. The October-25 manuscript gives the sharper bound
+`(n+m)^{O_k(1)}·2^{O_k(n log log n/√(log n))}`, improving to `2^{O_{k,D}(n/√(log n))}` when
+m ≤ D·n. Comparator statement: `lean/ComparatorChallenges/SubexponentialSAT.lean`.
+
+This is exactly the PLAN.md §3.1 nuance: the Lean note and the abstract state **different**
+runtime formulas (one in L, one in n/m); they must never be cited interchangeably, and neither
+amounts to a practical SAT result.
+
+## 5. Boundary (unchanged by this download)
 
 - These are **external** AI-authored research artifacts; this download does not review them and
   does not make CQ-HECS prove ETH/LRAT/etc.
@@ -62,7 +75,7 @@ bound.
   `LITERATURE_MAP.md` exactly; do not cite the abstract and the Lean scope note interchangeably.
 - No CQ-HECS lemma is `FORMALIZED_LEMMA` yet; see `FORMAL_ASSURANCE_PLAN.md`.
 
-## 5. Build status
+## 6. Build status
 
 `cd eth && lake exe cache get && lake build && lake env lean scripts/PrintAxioms.lean` was started
 in the background this session; result recorded when it completes (see `EXECUTION_LOG.md`). A
