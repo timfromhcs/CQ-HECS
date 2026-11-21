@@ -7,9 +7,11 @@
 
 - Branch: `research/quantum-gravity-studio` (from `main` `fa1cc87`).
 - Done this session: **M0–M5** (local vertical slice), **M8 local** (Studio API + MCP + CLI),
-  Track A noise model, Track C bounded gauge toy.
-- In progress / next: M6 runner (read-only phases work; quote/submit gated), M9/M10/M11/M12.
-- Blocker: **B-1 RESOLVED** (Client Secret supplied; login OK). Live QPU work proceeding.
+  Track A noise model, Track C bounded gauge toy, and a **real-QPU campaign** (smoke, BMV phase
+  scan, SYK).
+- In progress / next: M6 runner (functional), M9/M10/M11/M12; SYK hardware follow-up (F-10).
+- Blocker: **B-1 RESOLVED**. Live QPU work done (21/25 Spark). **Key wiped** — a new key is
+  needed for further runs; rotate the used key at the portal.
 
 ## Live QPU campaign (Stage 2 smoke) — COMPLETE
 

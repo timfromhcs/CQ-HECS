@@ -131,3 +131,10 @@ Commit: `ab27578` — "feat(qg): Quantum Gravity research layer + campaign runne
   vs Trotter ideal 0.2326. An Aer noise scan shows no single error rate reproduces both →
   mutually inconsistent. Recorded **INCONCLUSIVE** (F-10); no SYK hardware claim.
 - Evidence: `raw/syk_qpu_v3/` (+ manifest), `processed/syk_qpu_v3_analysis.json`. Spark 21/25.
+
+## 2026-11-21 — session 1 (continued): key rotation
+
+- Ran `oq.py forget`: local key file deleted, saved SDK accounts cleared; local temp secret
+  files removed. **User action required:** delete/disable the key used in this session at
+  <https://www.openquantum.com/keys> (its secret was shared in chat) and create a new one only
+  when needed. Remaining authorised Spark: 4 (needs a new key to use).
