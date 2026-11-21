@@ -55,6 +55,20 @@ Note (W4-21): the W3-10 proof-deadline change made the existing OMNIWAVE mutant
 before the mutated line. The check now uses a tiny positive budget so it still exercises
 the undecided branch; the mutant is killed again. Recorded because it shows the mutation
 suite doing its job across waves.
+
+## V7 alignment (2026-11-21)
+
+| Step | Item | Result |
+|---|---|---|
+| 711fa5e | Adopt `AGENTS_V7.md` as the governing contract; `PLAN_COVERAGE.md` | D-008; V6/V7/PLAN mapping |
+| 2a21864 | Cross-surface `FEATURE_COVERAGE.{md,json}` (V7 §16.1) | 13 capability areas |
+| 7dc75d2 | First-cut `CLAIM_AUDIT.md`; two README truthfulness fixes | W1 |
+| f24af4f | Map PLAN.md M0–M12 + hypotheses onto V7 waves | W2 |
+| b193066 | Scheduler mutation target (`scheduler.py` exists); 64/64 | W4-21 corrected |
+| 040ba67 | `SOURCE_TREE_MAP.md` (W0); Lean W4 NOT_RUN at the time | W0 |
+| 4dc62ec | `BASELINE_V7.md` (W0) | 2899 py / 64 mutant / web 77+e2e 42 |
+| f65a449 | `HYPOTHESIS_REGISTER_V7.md`, `SAT_PROOF_REVIEW.md`, `FORMAL_ASSURANCE_PLAN.md` | W2/W4 |
+| (this) | Lean 4.33.1 installed; `formal-math`+`openai/math` downloaded; `evidence/LEAN_ENV.md` | W4 |
 | deferred | W3-10 deadline; W3-02/03/04/11/13/14/16/18/19/20/21; web e2e | see WAVE3_REPORT / BLOCKERS |
 | W0 (2026-11-21) | AGENTS_V6 baseline on 25e16e5 | PASS: 2814 passed/109 skipped; web 61/61; CTest 21/21 (see BASELINE_W0.md) |
 | W3 / T6-03 (2026-11-21) | `-DCQ_ENABLE_VULKAN=OFF` CPU-only native build | PASS: new `tests/test_native_cpu_only.py` red->green (configure, build, CTest, no binary contains the Vulkan loader name; detector positive-controlled: Vulkan-build binaries match). Vulkan build still CTest 21/21. CPU build runs 15 CPU-pure tests; Vulkan targets excluded, not stubbed. NOT YET: CPU/Vulkan differential tests (T6-04), capability reporting in C ABI, CI lane. |

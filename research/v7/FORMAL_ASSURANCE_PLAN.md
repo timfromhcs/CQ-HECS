@@ -58,8 +58,10 @@ is `FORMALIZED_LEMMA` only.
 
 ## 6. Current status
 
-- elan installed; Lean/Mathlib 4.33.1 toolchain installing (see `EXECUTION_LOG.md`).
-- External artifacts downloaded for reference/statement comparison: `anthropics/formal-math`
-  (pinned `16a5ce4…`) and `openai/math` — evidence recorded under `research/v7/evidence/`.
+- elan installed; **Lean 4.33.1 / Lake 5.0.0 present** (see `evidence/LEAN_ENV.md`).
+- External artifacts downloaded for statement comparison: `anthropics/formal-math` (pinned
+  `16a5ce4…`, containing `eth`, `zeta23`, `3sum-apsp`) and `openai/math`.
+- The `eth` artifact build (`lake exe cache get` + `lake build` + `PrintAxioms.lean`) is running
+  in the background; result recorded in `EXECUTION_LOG.md`.
 - No CQ-HECS lemma is written or proved yet. First target: **L-BOUND-01** (smallest, directly
   tied to a shipped, tested inequality) and **L-STAB-01**.
