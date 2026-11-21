@@ -11,8 +11,9 @@ Executable surfaces use the §0.2 categories. A method is listed only with its a
   (possibly with per-probe local phases `Rz(α)`, `Rz(β)` that must cancel from all
   entanglement measures).
 - **Derived results (unit-tested against the dense matrix):**
-  - state = `cos(θ/2)|Φ+> − i sin(θ/2)|Φ−>` (up to documented local phases),
-  - concurrence `C(θ)=|sin θ|`, negativity `𝒩(θ)=|sin θ|/2`.
+  - state = `(e^{-iθ/2}|Φ+> + e^{+iθ/2}|Ψ+>)/√2` up to a global phase,
+  - entangling invariant `Φ = -2θ`,
+  - concurrence `C(θ)=|sin θ|`, negativity `N(θ)=|sin θ|/2`, CHSH max `2√(1+C²)`.
 - **Observables:** statevector, concurrence, negativity, entanglement entropy, CHSH.
 - **Nulls:** θ=0 (separable); explicit LOCC/classical channel (separability preserved).
 - **Engine surfaces:** `CLASSICAL_REFERENCE` (numpy/Qiskit Statevector), `CQ_HECS_CPU`.

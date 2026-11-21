@@ -46,3 +46,12 @@ Commit: `ab27578` — "feat(qg): Quantum Gravity research layer + campaign runne
 
 - Added `cq-hecs qg {catalog,preview,run-local}` with `--format json`; local, exact,
   spend = 0. Tests: `test_cli_contract.py` 37 passed. flake8 clean.
+
+## 2026-11-21 — session 1 (continued): Track A noise model (QG-BMV-03)
+
+- Added `cqhecs/quantum_gravity/noise.py`: Kraus channels (dephasing, amplitude damping,
+  single/two-qubit depolarizing), asymmetric readout, seeded sampling, rigorous Hoeffding
+  `Z⊗Z` estimator, and `witness_under_noise` (NOISY_CLASSICAL).
+- Tests: `test_quantum_gravity_noise.py` 14 passed (trace/positivity, monotone witness
+  decay, separable null under noise). Honest status: channel model verified locally;
+  the device comparison stays `NOT_RUN` (B-1).

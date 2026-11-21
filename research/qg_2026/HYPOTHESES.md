@@ -30,10 +30,13 @@ sweep; a CI crossing the null is `INCONCLUSIVE`, never "almost supported".
 - Reject if any null produces entanglement (would indicate a construction bug).
 
 ### QG-BMV-03 — Declared noise preserves/destroys the witness in predicted regions
-- Model: dephasing, amplitude damping, phase noise, asymmetric readout on `QG-BMV-01`.
-- Method: noisy density matrix (small) + Monte Carlo shot estimator with CI.
+- Model: dephasing, amplitude damping, single/two-qubit depolarizing, asymmetric readout
+  on `QG-BMV-01` (`cqhecs.quantum_gravity.noise`, `qg.noise.uniform.v1`).
+- Method: noisy density matrix (exact model) + rigorous Hoeffding interval for `Z⊗Z`.
 - Acceptance: measured witness vs the noisy model prediction within the model's own
   numerical tolerance; classify regions where TV is non-discriminating explicitly.
+- Status: `SUPPORTED_WITHIN_MODEL` for channel correctness and monotonicity (local tests);
+  the preregistered **device** comparison (`QPU`/simulator) is `NOT_RUN` (B-1).
 - Budget: local ONLY unless a QPU check is separately preregistered (gated by B-1).
 
 ### QG-SYK-01 — Small-N sparse SYK mapping preserves algebra and spectrum

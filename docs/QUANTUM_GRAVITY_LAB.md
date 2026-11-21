@@ -30,6 +30,7 @@ cqhecs/quantum_gravity/
   hamiltonians.py  # Track B: seeded sparse q=4 SYK    (qg.syk.q4.v1)
   references.py    # exact evolution, Loschmidt, Trotter error, OTOC
   circuits.py      # deterministic OpenQASM 2.0 + circuit manifests
+  noise.py         # declared Kraus channels + finite-shot witness estimator (NOISY_CLASSICAL)
   results.py       # cqhecs.qg.experiment.v1 experiment envelope
   errors.py        # typed refusals (QGUnsupported / QGResourceError / QGBlocker)
 ```

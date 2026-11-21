@@ -22,8 +22,13 @@ The seeded q=4 SYK Hamiltonian built from the Jordan–Wigner Majorana map is He
 respects the anticommutator algebra, and matches the dense independent spectrum to
 float64 tolerance (`tests/test_quantum_gravity_syk.py`). No claim about spacetime.
 
+## F-05 — Declared noise channels are trace-preserving; the witness degrades monotonically
+The Kraus channels (dephasing, amplitude damping, single/two-qubit depolarizing) are
+trace-preserving and positive on random states; the negativity witness falls
+monotonically with the declared noise, and the θ=0 null stays separable under noise
+(`tests/test_quantum_gravity_noise.py`). A modelled device, **not** a measurement.
+
 ## Negative / not-yet results
-- No noisy witness scan yet (QG-BMV-03) → `NOT_RUN`.
 - No Trotter/randomised evolution yet (QG-SYK-02) → `NOT_RUN`.
 - No QPU evidence (QG-SYK-03) → `BLOCKED` (B-1).
 None of these may be reported as supported.

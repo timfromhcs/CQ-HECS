@@ -38,6 +38,7 @@ from cqhecs.quantum_gravity.observables import (
     negativity_2qubit,
     partial_transpose,
 )
+from cqhecs.quantum_gravity.noise import NoiseConfig, witness_under_noise
 from cqhecs.quantum_gravity.results import (
     QGExperimentResult,
     SchemaVersionError,
@@ -61,6 +62,8 @@ __all__ = [
     "entanglement_entropy",
     "negativity_2qubit",
     "partial_transpose",
+    "NoiseConfig",
+    "witness_under_noise",
     "QGExperimentResult",
     "SchemaVersionError",
     "UNCERTAINTY_CLASSES",

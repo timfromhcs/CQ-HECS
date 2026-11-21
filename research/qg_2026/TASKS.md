@@ -25,7 +25,7 @@ Actionable backlog. `[ ]` open, `[x]` done, `[~]` in progress, `[!]` blocked.
 - [x] `observables.py` concurrence, negativity, entropy, CHSH, PT
 - [x] null controls (theta=0; local-only LOCC) with separability tests
 - [x] dense oracle cross-check + unitary/phase unit tests
-- [ ] noisy (dephasing/amp-damp/readout) witness robustness scan
+- [x] noisy (dephasing/amp-damp/depolarizing/readout) witness model + Hoeffding estimator
 
 ## M4 — SYK reference
 - [x] `fermions.py` Majorana algebra + Jordan-Wigner mapping
