@@ -52,6 +52,9 @@ jobs:
       - name: Audit for silent truncation
         run: python scripts/verify_no_silent_truncation.py
 
+      - name: QG documentation consistency
+        run: python scripts/qg_doc_consistency.py
+
       - name: Build wheel and sdist
         run: |
           python -m build
@@ -153,6 +156,11 @@ jobs:
             -m pytest tests/ -q --junitxml=test-results/pytest.xml
           python -m coverage report -m --fail-under=70
           python -m coverage xml -o test-results/coverage.xml
+
+      - name: Skip-budget report (records this lane's skip profile)
+        # The enforced --check uses a lane-specific budget; each lane records its own
+        # profile here (uploaded as an artifact) so it can be committed and enforced.
+        run: python scripts/skip_budget.py --junitxml test-results/pytest.xml --record --budget test-results/skip-budget-linux.json
 
       - name: Source-level mutation gate
         env:
@@ -280,6 +288,9 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path test-results | Out-Null
           python -m pytest tests/ -q --durations=25 -p no:cacheprovider --junitxml=test-results/pytest.xml
+
+      - name: Skip-budget report (records this lane's skip profile)
+        run: python scripts/skip_budget.py --junitxml test-results/pytest.xml --record --budget test-results/skip-budget-windows.json
 
       - name: Source-level mutation gate
         env:

@@ -45,6 +45,7 @@ Base `25e16e5` (v5.0.0), branch `agent/v6-rc`. Full detail: `WAVE3_REPORT.md`.
 | (this commit) | W4-21 QG/router mutation targets | mutation 63/63 killed |
 | ce24fbf | W4-04 ExecutionPlan JSON Schema | test_schema_contracts 5 (jsonschema) |
 | (this commit) | W4-20 skip budget; W4-14 i18n parity | budget 105 skips/11 reasons; web 73/73 |
+| (this commit) | W4-16 CPU-only verify; W4-22 CI wiring | test_native_cpu_only 4; YAML ok |
 
 Note (W4-21): the W3-10 proof-deadline change made the existing OMNIWAVE mutant
 "accepts an undecided proof check" survive, because a zero proof budget now short-circuits
