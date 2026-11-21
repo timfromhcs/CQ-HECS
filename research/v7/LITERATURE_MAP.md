@@ -26,3 +26,25 @@ independent oracles.
 Brute-force enumeration (n <= 11) and the existing DPLL counter for #SAT; Qiskit
 `Statevector.expectation_value(Pauli)` and `cqhecs.backends.dense_reference` for
 Path D; the shared gate manifest and the existing router for the plan.
+
+## V7 additions (2026-11-21, W2)
+
+Sources for the V7 wave targets. Full statement/method detail for the formal artifacts is in
+`evidence/LEAN_ENV.md`. Search date 2026-11-21; the formal artifacts were downloaded and their
+statement files read.
+
+| Topic | Source (pinned) | Status | Relation / caution |
+|---|---|---|---|
+| ETH refutation + #k-SAT counting (formalized) | `anthropics/formal-math` @ `16a5ce41304fcdaea4e0be7c132e1c361dc26da5`; `eth/` | AI-authored research artifact, Apache-2.0 | `MainResults.lean` states `ETHIsFalse` and `MainTheorem` on Mathlib `Turing.FinTM2`; Comparator + nanoda check statements/kernel. External evidence, not a CQ-HECS proof. Paper-vs-formalized runtime nuance (PLAN.md §3.1) must be stated exactly. |
+| Zeta zeros (formalized) | `anthropics/formal-math` `zeta23/`; L. Alpöge, R. Furman, arXiv:2608.13637 | AI/author artifact | Not integrated; context only. Never cite as a CQ-HECS result. |
+| 3SUM / APSP (formalized) | `anthropics/formal-math` `3sum-apsp/`; J. Alman, V. Vassilevska Williams | AI/author artifact | Not integrated; context only. |
+| OpenAI ETH preprint + Lean scope | `openai/math` (repo) | AI-authored preprint | The abstract bound and the Lean scope bound differ; do not cite interchangeably. |
+| Lean-Quantum / Lean-QIT | github.com/Hayata-Yamasaki-Group/lean-quantum; github.com/QuAIR/Lean-QIT | to pin in W2 | Reusable state/channel/operator interfaces for the L-* backlog. |
+| FloatLib | github.com/lean-dojo/FloatLib | to pin in W2 | Numerical theorems connecting execution to rounding/exactness. |
+| 2D tensor networks | Rudolph & Tindall, doi:10.1038/s41534-026-01372-2 | to read in W7 | Path E candidate: hardware-topology-aware contraction. |
+| Matrix Product Evolution | Kawabe et al., arXiv:2608.03472 | to read in W7 | Path G candidate. |
+| QEC / RL calibration | Sivak et al., Nature (2026), doi:10.1038/s41586-026-10759-2 | to read in W10 | Research-only, hardware-gated. |
+| SAT Competition 2026 rules | satcompetition.github.io/2026/rules.html | to read in W9 | Benchmark/competition discipline; no winner claim. |
+
+Each entry must be re-opened and its exact revision/DOI confirmed before any claim depends on it.
+
