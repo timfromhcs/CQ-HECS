@@ -48,6 +48,7 @@ Base `25e16e5` (v5.0.0), branch `agent/v6-rc`. Full detail: `WAVE3_REPORT.md`.
 | (this commit) | W4-16 CPU-only verify; W4-22 CI wiring | test_native_cpu_only 4; YAML ok |
 | (this commit) | W4-11 WASM base URL + core hash | web unit 76/76; e2e 42/42; build green |
 | (this commit) | W4-13 theme default + contrast gate | token contrast OK; e2e 42/42 |
+| (this commit) | W4-10 run-card error scope | web 77/77; build green |
 
 Note (W4-21): the W3-10 proof-deadline change made the existing OMNIWAVE mutant
 "accepts an undecided proof check" survive, because a zero proof budget now short-circuits

@@ -43,6 +43,24 @@ export function modeOf(noise: unknown): "SAMPLED" | "NOISY_CLASSICAL" {
   return isNoisy(noise as NoiseLike | null | undefined) ? "NOISY_CLASSICAL" : "SAMPLED";
 }
 
+/** Why each error kind is null (W4-10): a null means "not quantified", not "zero". */
+function errorScope(input: CardInput, result: CardResult): Record<string, string> {
+  const precision =
+    result.engine === "webgpu"
+      ? "float32 (~1e-7 per amplitude)"
+      : result.engine === "wasm"
+        ? "float64 (~1e-16 per operation)"
+        : "unknown precision";
+  return {
+    approximation: "no deliberate truncation in the browser engines; no numerical-rank floor is applied",
+    numerical: `${precision}; not separately quantified in the browser`,
+    sampling:
+      input.shots > 0
+        ? `${input.shots} shots; finite-shot sampling, no total-variation bound is computed in the browser`
+        : "not sampled",
+  };
+}
+
 export async function buildRunCard(
   input: CardInput,
   result: CardResult,
@@ -82,6 +100,7 @@ export async function buildRunCard(
       status: "OK",
       elapsed_ms: result.elapsedMs,
       error: { approximation: null, numerical: null, sampling: null },
+      error_scope: errorScope(input, result),
       counts: result.counts ?? {},
       exact: result.exact ?? [],
       amplitudes: result.amplitudes ?? [],

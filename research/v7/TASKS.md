@@ -73,7 +73,7 @@ Waves 4–11: NOT STARTED.
 | W4-07 | `hcs.sat.count.v1` typed count contract | DONE |
 | W4-08 | Separator width calibration | NOT STARTED |
 | W4-09 | WebGPU device-loss handling | NOT STARTED |
-| W4-10 | Run-card error scope | NOT STARTED |
+| W4-10 | Run-card error scope | DONE (browser card + schema `error_scope`; Python parity deferred to W4-03) |
 | W4-11 | WASM base URL fix + hash check | DONE (base-aware URL; served-core SHA-256 in engine info) |
 | W4-12 | Keyboard/touch composer | NOT STARTED |
 | W4-13 | prefers-color-scheme + token contrast | DONE (OS default + toggle first-click fix; contrast gate in build) |
