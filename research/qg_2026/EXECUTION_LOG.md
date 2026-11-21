@@ -55,3 +55,8 @@ Commit: `ab27578` — "feat(qg): Quantum Gravity research layer + campaign runne
 - Tests: `test_quantum_gravity_noise.py` 14 passed (trace/positivity, monotone witness
   decay, separable null under noise). Honest status: channel model verified locally;
   the device comparison stays `NOT_RUN` (B-1).
+
+## 2026-11-21 — session 1 (continued): full-suite gate
+
+- `python -m pytest tests/ -q` → **2789 passed, 105 skipped, 1 deselected** (~5:49).
+- Commits on `research/quantum-gravity-studio`: `ab27578`, `a126e08`, `9138a5b`, `9ff9ad6`.

@@ -17,7 +17,7 @@
 | QG noise/witness | `pytest tests/test_quantum_gravity_noise.py -q` | DONE | 14 passed |
 | Studio + security regression | `pytest tests/test_studio.py tests/test_studio_security.py -q` | DONE | 37 passed |
 | CLI smoke | `python -m cqhecs.cli selftest --cases 2` | DONE | PASS |
-| Full Python suite | `pytest tests/ -q` | NOT_RUN | M13 |
+| Full Python suite | `pytest tests/ -q` | DONE | 2789 passed, 105 skipped, 1 deselected (~5:49) |
 | Native CTest | `cmake … && ctest` | NOT_RUN | M10 |
 | Web unit | `cd web && npm test` | NOT_RUN | M9 |
 | Web E2E + axe | `npm run e2e` | NOT_RUN | M9 |

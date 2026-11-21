@@ -27,7 +27,7 @@
 | M0 Baseline & safety | DONE |
 | M1 Literature map | DONE (map drafted; DOI re-verify at M13) |
 | M2 Hypotheses/prereg | DONE (registry + protocol + matrix + ledgers) |
-| M3 BMV effective-phase | DONE (local; noisy scan QG-BMV-03 NOT_RUN) |
+| M3 BMV effective-phase | DONE (local; noise model QG-BMV-03 verified, device comparison NOT_RUN) |
 | M4 SYK reference | DONE (exact; Trotter implemented, QG-SYK-02 partial) |
 | M5 Contract integration | DONE (`cqhecs.quantum_gravity`, `cqhecs.qg.experiment.v1`, docs) |
 | M6 OQ adapter/runner | IN_PROGRESS — BLOCKED for quote/submit (B-1) |
