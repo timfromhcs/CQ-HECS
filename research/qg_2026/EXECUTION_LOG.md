@@ -147,3 +147,13 @@ Commit: `ab27578` — "feat(qg): Quantum Gravity research layer + campaign runne
 - **BMV drift repeat**: θ=π/2 in {Y⊗Z, Z⊗Y} (identical circuit bytes) as a held-out drift check.
   2 jobs.
 - Cumulative spend **25 / 25**. Results pending collection.
+
+## 2026-11-21 — session 1 (continued): final parameter point + refund handling
+
+- SYK v4 (no-rewiring) **failed** ("has disconnected qubits $0 and $2"); the platform requires
+  contiguous virtual qubits, so a connected-triple retry cannot work. The 2 credits were
+  refunded; ledger records `failed`/`refunded` events.
+- Used the refunded 2 credits on a preregistered `<X⊗X>` follow-up at θ ∈ {π/8, 3π/8} (to
+  characterise the observed XX(θ) trend: 0.954/0.818/0.808 at θ=0/π4/π2). 2 jobs submitted.
+- Net cumulative spend **25 / 25**. BMV θ=π/2 drift repeat: YZ 0.820 (Δ-0.034), ZY 0.812 (Δ-0.062)
+  vs the original run — consistent.
