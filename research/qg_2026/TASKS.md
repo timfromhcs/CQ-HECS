@@ -46,3 +46,10 @@ Actionable backlog. `[ ]` open, `[x]` done, `[~]` in progress, `[!]` blocked.
 - [ ] quote/submit/collect verified against a live account (needs B-1)
 
 ## M7..M14 — see `PLAN.md` §2 (not started)
+
+## M8 — Studio API + MCP (local part)
+- [x] `GET /api/qg/v1/{health,catalog,models}`
+- [x] `POST /api/qg/v1/experiments/{validate,preview,run-local}` (loopback + token, spend=0)
+- [x] MCP tools `cqhecs_qg_catalog`, `cqhecs_qg_circuit_preview`, `cqhecs_qg_run_local`
+- [ ] Open Quantum proxy routes (quote/submit/status/results) — gated by B-1
+- [ ] Studio UI panel for the QG lab (M9)

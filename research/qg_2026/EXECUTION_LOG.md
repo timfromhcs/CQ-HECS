@@ -27,3 +27,17 @@ Append-only. UTC ISO-8601. One entry per coherent checkpoint.
 - flake8 (`--select=E9,F`) clean on all new files.
 
 (Commit SHA recorded below once pushed.)
+
+Commit: `ab27578` — "feat(qg): Quantum Gravity research layer + campaign runner (qg-2026-01)".
+
+## 2026-11-21 — session 1 (continued): M8 local API + MCP
+
+- Added Studio routes `GET /api/qg/v1/{health,catalog,models}` and
+  `POST /api/qg/v1/experiments/{validate,preview,run-local}` (StudioState methods,
+  loopback + bearer token; every response tagged `CLASSICAL_REFERENCE`; spend 0).
+- Added MCP tools `cqhecs_qg_catalog`, `cqhecs_qg_circuit_preview`, `cqhecs_qg_run_local`
+  (stdio, local-only).
+- Tests: `test_quantum_gravity_studio.py` 5 passed; `test_mcp_server.py` 9 passed;
+  `test_studio.py`+`test_studio_security.py` 37 passed. flake8 (E9,F) clean.
+- Fix note: the first placement of the QG methods landed inside a module-level helper;
+  relocated into `StudioState` (verified `hasattr(StudioState, "qg_health")`).

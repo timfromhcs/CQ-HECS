@@ -59,6 +59,22 @@ fermion-parity commutation and the spectrum are checked against independent orac
 dense Majorana-matrix product and Qiskit `SparsePauliOp`). Dense construction is capped at
 8 qubits (dim 256); larger widths raise `QGResourceError` instead of allocating.
 
+## Local API + MCP (no network, no spend)
+
+Studio routes (loopback + bearer token, `127.0.0.1` only):
+
+```
+GET  /api/qg/v1/health            GET  /api/qg/v1/catalog            GET  /api/qg/v1/models
+POST /api/qg/v1/experiments/validate
+POST /api/qg/v1/experiments/preview       # QASM + SHA-256, spend = 0
+POST /api/qg/v1/experiments/run-local     # exact CLASSICAL_REFERENCE run
+```
+
+MCP tools (stdio JSON-RPC, `cqhecs/mcp_server.py`):
+
+`cqhecs_qg_catalog`, `cqhecs_qg_circuit_preview`, `cqhecs_qg_run_local` — all local; none
+contacts Open Quantum or spends credits.
+
 ## Running it
 
 ```

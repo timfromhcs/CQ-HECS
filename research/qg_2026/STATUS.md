@@ -32,7 +32,7 @@
 | M5 Contract integration | DONE (`cqhecs.quantum_gravity`, `cqhecs.qg.experiment.v1`, docs) |
 | M6 OQ adapter/runner | IN_PROGRESS — BLOCKED for quote/submit (B-1) |
 | M7 QPU campaign | BLOCKED (B-1, credits) |
-| M8 Studio API + MCP | NOT_RUN |
+| M8 Studio API + MCP | IN_PROGRESS (local routes + 3 MCP tools done; paid OQ proxy pending B-1) |
 | M9 Web/Studio UI | NOT_RUN |
 | M10 CPU/Vulkan split | NOT_RUN |
 | M11 WebGPU path | NOT_RUN |

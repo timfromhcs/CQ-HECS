@@ -129,6 +129,35 @@ TOOLS: List[Dict[str, Any]] = [
         "description": "Summarize the committed real-QPU and independent-oracle evidence.",
         "inputSchema": {"type": "object", "properties": {}},
     },
+    {
+        "name": "cqhecs_qg_catalog",
+        "description": "Quantum Gravity lab: theories, models, observables, execution surfaces and limits (local, no network, no spend).",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "cqhecs_qg_circuit_preview",
+        "description": "Generate the BMV effective-phase QASM and its SHA-256. Local only; never quotes or spends.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "theta": {"type": "number", "minimum": -6.2832, "maximum": 6.2832, "description": "coupling phase (radians)"},
+            },
+            "required": ["theta"],
+        },
+    },
+    {
+        "name": "cqhecs_qg_run_local",
+        "description": "Run the exact two-qubit BMV model locally (CLASSICAL_REFERENCE) and return probabilities and entanglement observables. No network.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "theta": {"type": "number", "minimum": -6.2832, "maximum": 6.2832},
+                "local_phase_a": {"type": "number"},
+                "local_phase_b": {"type": "number"},
+            },
+            "required": ["theta"],
+        },
+    },
 ]
 
 
@@ -276,6 +305,46 @@ def _tool_hardware(_arguments: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
+def _tool_qg_preview(arguments: Dict[str, Any]) -> Dict[str, Any]:
+    from cqhecs.quantum_gravity.circuits import bmv_qasm, sha256_text
+
+    theta = float(arguments["theta"])
+    qasm = bmv_qasm(theta)
+    return {
+        "status": "OK",
+        "execution_surface": "CLASSICAL_REFERENCE",
+        "spend_credits": 0.0,
+        "network": "none",
+        "qasm": qasm,
+        "qasm_sha256": sha256_text(qasm),
+    }
+
+
+def _tool_qg_run_local(arguments: Dict[str, Any]) -> Dict[str, Any]:
+    from cqhecs.quantum_gravity.models import BMVEffectivePhaseModel
+
+    model = BMVEffectivePhaseModel(
+        theta=float(arguments["theta"]),
+        local_phase_a=float(arguments.get("local_phase_a", 0.0)),
+        local_phase_b=float(arguments.get("local_phase_b", 0.0)),
+    )
+    state = model.state()
+    probabilities = {format(index, "02b"): float(abs(state[index]) ** 2) for index in range(4)}
+    return {
+        "status": "COMPLETED",
+        "execution_surface": "CLASSICAL_REFERENCE",
+        "precision": "f64",
+        "probabilities": probabilities,
+        "observables": {
+            "concurrence": model.concurrence(),
+            "negativity": model.negativity(),
+            "entanglement_entropy": model.entropy(),
+            "chsh_max": model.chsh_max(),
+        },
+        "limitations": ["finite two-qubit model; not a gravitational measurement"],
+    }
+
+
 def _call(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
     if name == "cqhecs_run":
         return _text(_tool_run(arguments))
@@ -302,6 +371,14 @@ def _call(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         return _text({"devices": [summary(p) for p in list_profiles()]})
     if name == "cqhecs_hardware":
         return _text(_tool_hardware(arguments))
+    if name == "cqhecs_qg_catalog":
+        from cqhecs.quantum_gravity import catalog
+
+        return _text(catalog())
+    if name == "cqhecs_qg_circuit_preview":
+        return _text(_tool_qg_preview(arguments))
+    if name == "cqhecs_qg_run_local":
+        return _text(_tool_qg_run_local(arguments))
     raise ValueError(f"unknown tool {name!r}")
 
 

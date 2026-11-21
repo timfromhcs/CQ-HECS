@@ -11,6 +11,9 @@
 | QG runner | `pytest tests/test_quantum_gravity_campaign.py -q` | DONE | 6 passed |
 | QG focused regression | BMV+SYK+contracts+runner + reference/provenance/execution/path_d | DONE | 335 passed |
 | QG generate/validate | `python scripts/run_qg_openquantum_campaign.py generate\|validate` | DONE | status OK, digests match |
+| QG Studio API | `pytest tests/test_quantum_gravity_studio.py -q` | DONE | 5 passed |
+| QG MCP tools | `pytest tests/test_mcp_server.py -q` | DONE | 9 passed (incl. `cqhecs_qg_*`) |
+| Studio + security regression | `pytest tests/test_studio.py tests/test_studio_security.py -q` | DONE | 37 passed |
 | CLI smoke | `python -m cqhecs.cli selftest --cases 2` | DONE | PASS |
 | Full Python suite | `pytest tests/ -q` | NOT_RUN | M13 |
 | Native CTest | `cmake … && ctest` | NOT_RUN | M10 |
