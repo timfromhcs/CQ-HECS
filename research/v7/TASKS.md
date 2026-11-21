@@ -67,7 +67,7 @@ Waves 4–11: NOT STARTED.
 | W4-01 | Threaded MCP execution + cancel contract | NOT STARTED |
 | W4-02 | `isError` tool results + `-32602` for bad arguments | DONE |
 | W4-03 | Shared service layer + `cq-hecs plan` + parity corpus | NOT STARTED |
-| W4-04 | Publish JSON Schemas + OpenAPI 3.1 + `/api/v1` aliases | NOT STARTED |
+| W4-04 | Publish JSON Schemas + OpenAPI 3.1 + `/api/v1` aliases | PARTIAL: ExecutionPlan schema published + validated; OpenAPI/aliases deferred |
 | W4-05 | MCP protocol negotiation, annotations, outputSchema | NOT STARTED |
 | W4-06 | `doctor` solver line + Studio token via env/file | DONE |
 | W4-07 | `hcs.sat.count.v1` typed count contract | DONE |

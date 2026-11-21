@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/timfromhcs/CQ-HECS/docs/schemas/execution_plan.schema.json",
+  "title": "cqhecs.execution_plan/1 - a dry-run execution plan",
+  "description": "Produced by cqhecs.execution_plan.build_execution_plan(...).to_dict() and surfaced identically by Python, the CLI (cq-hecs analyze --format json), MCP (cqhecs_plan) and Studio. All estimates are heuristic and never a guarantee; a refusal is a typed, top-level object rather than a silent path switch.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "software_version", "input_digest", "normalized_circuit_digest",
+    "num_qubits", "num_gates", "circuit_depth", "one_qubit_gate_count", "two_qubit_gate_count",
+    "multi_qubit_gate_count", "non_clifford_count", "estimated_t_count", "interaction_graph_summary",
+    "connectivity_summary", "estimated_entanglement_features", "measurement_and_dynamic_features",
+    "candidate_paths", "selected_path", "selection_reason", "forced_path",
+    "estimated_peak_memory_bytes", "estimated_work_units", "known_hard_limits",
+    "unsupported_operations", "required_result_contract", "fallback_policy", "estimate_quality",
+    "estimate_inputs", "refusal", "would_execute", "plan_digest"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "cqhecs.execution_plan/1" },
+    "software_version": { "type": "string", "minLength": 1 },
+    "input_digest": { "type": "string", "minLength": 1 },
+    "normalized_circuit_digest": { "type": "string", "minLength": 1 },
+    "num_qubits": { "type": "integer", "minimum": 0 },
+    "num_gates": { "type": "integer", "minimum": 0 },
+    "circuit_depth": { "type": "integer", "minimum": 0 },
+    "one_qubit_gate_count": { "type": "integer", "minimum": 0 },
+    "two_qubit_gate_count": { "type": "integer", "minimum": 0 },
+    "multi_qubit_gate_count": { "type": "integer", "minimum": 0 },
+    "non_clifford_count": { "type": "integer", "minimum": 0 },
+    "estimated_t_count": { "type": "integer", "minimum": 0 },
+    "interaction_graph_summary": { "type": "object" },
+    "connectivity_summary": { "type": "object" },
+    "estimated_entanglement_features": { "type": "object" },
+    "measurement_and_dynamic_features": { "type": "object" },
+    "candidate_paths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "capable", "capability_blockers", "policy_notes"]
+      }
+    },
+    "selected_path": { "type": ["string", "null"] },
+    "selection_reason": { "type": ["string", "null"] },
+    "forced_path": { "type": ["string", "null"] },
+    "estimated_peak_memory_bytes": { "type": "integer", "minimum": 0 },
+    "estimated_work_units": { "type": "integer", "minimum": 0 },
+    "known_hard_limits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "limit", "value"],
+        "properties": {
+          "path": { "type": "string" },
+          "limit": { "type": "string" },
+          "value": { "type": ["string", "number", "boolean"] }
+        }
+      }
+    },
+    "unsupported_operations": { "type": "array", "items": { "type": ["string", "object"] } },
+    "required_result_contract": { "type": ["string", "null"] },
+    "fallback_policy": { "type": "object" },
+    "estimate_quality": { "type": "string" },
+    "estimate_inputs": { "type": "object" },
+    "refusal": {
+      "type": ["object", "null"],
+      "properties": { "code": { "type": "string" }, "message": { "type": "string" } }
+    },
+    "would_execute": { "type": "boolean" },
+    "plan_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}
