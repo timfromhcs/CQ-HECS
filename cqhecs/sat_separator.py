@@ -245,6 +245,19 @@ def _sum_out(factor: _Factor, variable: int) -> _Factor:
     return scope & ~bit, out
 
 
+def predicted_table_bound(induced_width: int) -> int:
+    """Worst-case entries in any table the elimination can build (W4-08).
+
+    Eliminating a variable with ``w`` neighbours joins factors over at most
+    ``w + 1`` variables, so a joined table holds at most ``2**(w + 1)`` entries.
+    The tables are sparse dicts, so the observed peak is often far smaller; this
+    is an upper bound used for preflight refusal, not a runtime estimate.
+    """
+    if induced_width < 0:
+        raise ValueError("induced_width must be >= 0")
+    return 1 << (induced_width + 1)
+
+
 def count_by_elimination(
     num_vars: int,
     clauses: Iterable[Sequence[int]],
@@ -252,6 +265,7 @@ def count_by_elimination(
     max_table_entries: int = 500_000,
     deadline: Optional[float] = None,
     plan: Optional[EliminationPlan] = None,
+    preflight: bool = False,
 ) -> Dict[str, object]:
     """
     Exact model count by variable elimination.
@@ -260,6 +274,11 @@ def count_by_elimination(
     or ``None``), the plan's ``induced_width`` when computed, ``max_table`` (the
     largest table actually materialised) and, for ``UNKNOWN``, a ``reason``.
     The count is over all ``2**num_vars`` assignments.
+
+    With ``preflight=True`` the call returns ``UNKNOWN`` *before allocating any
+    table* when :func:`predicted_table_bound` of the plan's induced width exceeds
+    ``max_table_entries`` (conservative: a sparse run might have fit). Either way
+    ``predicted_table_bound`` is reported next to the observed ``max_table``.
     """
     if num_vars < 0:
         raise ValueError("num_vars must be >= 0")
@@ -282,6 +301,13 @@ def count_by_elimination(
             plan = plan_elimination(num_vars, normal, deadline=deadline)
         info["induced_width"] = plan.induced_width
         info["free_variables"] = plan.num_free_variables
+        bound = predicted_table_bound(plan.induced_width)
+        info["predicted_table_bound"] = bound
+        if preflight and bound > max_table_entries:
+            raise SeparatorBudget(
+                f"preflight: induced width {plan.induced_width} predicts up to {bound} "
+                f"table entries, above the budget {max_table_entries}; nothing was allocated"
+            )
         factors: List[_Factor] = []
         peak = 0
         for clause in normal:

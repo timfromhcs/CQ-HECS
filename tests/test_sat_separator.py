@@ -271,3 +271,54 @@ def test_cli_mcp_studio_accept_the_method_and_agree_on_the_count():
     assert studio["result"]["count"] == expected
     with pytest.raises(StudioError):
         state.sat_count({"cnf": CNF_TEXT, "method": "nope"})
+
+
+# --- W4-08: width calibration and preflight ------------------------------------
+
+
+@pytest.mark.parametrize("seed", range(120))
+def test_observed_peak_table_never_exceeds_the_predicted_width_bound(seed):
+    rng = random.Random(10_000 + seed)
+    n = rng.randint(3, 14)
+    formula = random_3sat(n, rng.randint(1, 3 * n), seed=seed)
+    got = sep.count_by_elimination(n, formula.clauses, max_table_entries=10**9)
+    assert got["status"] == sep.COUNTED
+    assert got["max_table"] <= got["predicted_table_bound"] == 2 ** (got["induced_width"] + 1)
+
+
+def test_predicted_table_bound_values_and_validation():
+    assert sep.predicted_table_bound(0) == 2
+    assert sep.predicted_table_bound(14) == 32768
+    with pytest.raises(ValueError):
+        sep.predicted_table_bound(-1)
+
+
+def test_auto_width_limit_fits_inside_the_default_table_budget():
+    """The auto-routing width limit must not itself exceed the default budget."""
+    assert sep.predicted_table_bound(AUTO_SEPARATOR_MAX_WIDTH) <= 500_000
+
+
+def test_preflight_refuses_before_allocating_and_never_returns_a_count():
+    # Clique-like formula: wide. Bound 2**(w+1) far above the tiny budget.
+    n = 12
+    clauses = [(i, j) for i in range(1, n + 1) for j in range(i + 1, n + 1)]
+    refused = sep.count_by_elimination(n, clauses, max_table_entries=64, preflight=True)
+    assert refused["status"] == sep.UNKNOWN and refused["count"] is None
+    assert "preflight" in refused["reason"] and "nothing was allocated" in refused["reason"]
+    assert refused["max_table"] == 0  # no table was materialised
+    assert refused["predicted_table_bound"] > 64
+
+
+def test_preflight_accepts_low_width_and_agrees_with_brute_force():
+    n = 10
+    clauses = [(i, i + 1) for i in range(1, n)]
+    got = sep.count_by_elimination(n, clauses, max_table_entries=1000, preflight=True)
+    assert got["status"] == sep.COUNTED
+    assert got["count"] == brute(n, clauses)
+
+
+def test_preflight_is_off_by_default_so_sparse_runs_still_succeed():
+    n = 12
+    clauses = [(i, j) for i in range(1, n + 1) for j in range(i + 1, n + 1)]
+    got = sep.count_by_elimination(n, clauses, max_table_entries=500_000)
+    assert got["status"] == sep.COUNTED and got["count"] == brute(n, clauses)

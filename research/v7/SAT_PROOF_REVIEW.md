@@ -56,3 +56,17 @@ The shipped pipeline is sound and honest about its scope: it certifies models an
 refutations, refuses to upgrade a verdict, and treats budget exhaustion as undecided. It does
 **not** claim external or formal verification, and no CQ-HECS artifact is `FORMALLY_VERIFIED`.
 W9 materialises the external/LRAT lanes; W4/FORMAL_ASSURANCE materialises any Lean lemma.
+
+## Wave A (A4) addendum, 2026-11-21
+
+- Adapter isolation (W3-11): `sat_external.solve_external_isolated` runs CaDiCaL in a child; the
+  parent re-verifies models and DRAT proofs, so the child is untrusted. Crash/hang/garbage => UNKNOWN.
+  The python-sat abort 0xC0000409 was reproduced on Python 3.13.13 at interpreter exit after a
+  `with_proof` SAT solve; it is recorded in the result note, not suppressed.
+- DRAT tamper matrix on the fixed pigeonhole vector: `tests/test_drat_tamper.py`. Trust label stays
+  `DRAT_CHECKED`; `EXTERNAL_DRAT_CHECKED`, `LRAT_CHECKED`, `CAKELPR_CHECKED_VECTOR` remain NOT RUN (no in-repo LRAT reader).
+- MaxSAT: `max_sat_checked` (`hcs.sat.maxsat.v1`) never reports a size limit as an optimum; the optimum
+  is exhaustive and re-verified, still with no proof certificate (item 3 above remains true).
+- Separator #SAT: `preflight=True` refuses before allocation using the `2**(w+1)` bound (item 4 above
+  remains true: an exact count, not a proof).
+- Details: `research/v7/evidence/waveA_A4.md`.

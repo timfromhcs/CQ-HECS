@@ -1346,6 +1346,87 @@ def max_sat(
     }
 
 
+MAXSAT_CONTRACT = "hcs.sat.maxsat.v1"
+
+
+def max_sat_checked(
+    formula: CNF,
+    clause_weights: Optional[Sequence[float]] = None,
+    *,
+    max_vars: int = 20,
+) -> Dict[str, Any]:
+    """
+    Typed MaxSAT contract: ``OPTIMAL`` only when exhaustive enumeration ran.
+
+    Unlike :func:`max_sat` this never raises on the size limit. Above ``max_vars``
+    it returns ``status="UNKNOWN"`` with ``limit_reached=True`` and no optimum or
+    assignment: a limit is not an optimum. An ``OPTIMAL`` result is re-verified
+    here (the reported weight is recomputed from the returned assignment and the
+    unsatisfied/satisfied partition is checked). The optimality *claim* rests on
+    exhaustive enumeration, not on a proof certificate:
+    ``optimality_certificate`` is always ``None``.
+    """
+    base = {
+        "contract": MAXSAT_CONTRACT,
+        "num_vars": formula.num_vars,
+        "num_clauses": formula.num_clauses,
+        "formula_sha256": formula.sha256,
+        "formula_original_sha256": formula.original_sha256,
+        "optimality_certificate": None,
+    }
+    if clause_weights is not None:
+        weights = [float(w) for w in clause_weights]
+        if len(weights) != formula.num_clauses:
+            raise ValueError("clause_weights must have one entry per clause")
+        if any(w < 0 or w != w for w in weights):
+            raise ValueError("clause_weights must be non-negative numbers")
+    if formula.num_vars > max_vars:
+        return {
+            **base,
+            "status": UNKNOWN,
+            "limit_reached": True,
+            "satisfied_weight": None,
+            "assignment": None,
+            "reason": (
+                f"{formula.num_vars} variables exceed the exact limit {max_vars}; "
+                "no optimum is claimed"
+            ),
+            "trust": "NONE",
+        }
+    result = max_sat(formula, clause_weights, max_vars=max_vars)
+    assignment = result["assignment"]
+    weights = (
+        [1.0] * formula.num_clauses
+        if clause_weights is None
+        else [float(w) for w in clause_weights]
+    )
+    satisfied = [
+        i for i, clause in enumerate(formula.clauses)
+        if any(assignment[abs(lit)] == (lit > 0) for lit in clause)
+    ]
+    recomputed = sum(weights[i] for i in satisfied)
+    if satisfied != result["satisfied_clauses"] or abs(recomputed - result["satisfied_weight"]) > 1e-9:
+        return {
+            **base,
+            "status": UNKNOWN,
+            "limit_reached": False,
+            "satisfied_weight": None,
+            "assignment": None,
+            "reason": "internal re-verification of the optimum failed; result refused",
+            "trust": "NONE",
+        }
+    return {
+        **base,
+        **{k: result[k] for k in ("total_weight", "satisfied_clauses", "unsatisfied_clauses", "method")},
+        "status": "OPTIMAL",
+        "limit_reached": False,
+        "satisfied_weight": recomputed,
+        "assignment": assignment,
+        "reason": None,
+        "trust": "EXHAUSTIVE_ENUMERATION_REVERIFIED",
+    }
+
+
 def sweep(
     sizes: Sequence[int] = (10, 15, 20, 25, 30),
     ratios: Sequence[float] = (3.0, 3.5, 4.0, 4.26, 4.5, 5.0),
