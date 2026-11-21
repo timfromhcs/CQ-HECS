@@ -73,3 +73,13 @@ suite doing its job across waves.
 | W0 (2026-11-21) | AGENTS_V6 baseline on 25e16e5 | PASS: 2814 passed/109 skipped; web 61/61; CTest 21/21 (see BASELINE_W0.md) |
 | W3 / T6-03 (2026-11-21) | `-DCQ_ENABLE_VULKAN=OFF` CPU-only native build | PASS: new `tests/test_native_cpu_only.py` red->green (configure, build, CTest, no binary contains the Vulkan loader name; detector positive-controlled: Vulkan-build binaries match). Vulkan build still CTest 21/21. CPU build runs 15 CPU-pure tests; Vulkan targets excluded, not stubbed. NOT YET: CPU/Vulkan differential tests (T6-04), capability reporting in C ABI, CI lane. |
 | W3 cont. (2026-11-21) | CI lane `linux-native-cpu-only` (no libvulkan installed), `cq_core_build_capabilities()` C ABI | PASS locally: CPU build reports vulkan_linked=false, Vulkan build true; Vulkan CTest 21/21; CI lane not yet run remotely |
+
+## V7 continuation (2026-11-21) — resuming after the interrupted W4 session
+
+| Step | Item | Result |
+|---|---|---|
+| Baseline | `python -m pytest tests/ -q` on `agent/v6-rc` (HEAD `79a5c12`) | **2899 passed, 105 skipped, 1 deselected** (538.6 s) — matches `BASELINE_V7.md` |
+| B-008 | hardware-bridge oversized-body drain (D3/W3 sibling) | `_Handler._drain_declared()` before the 413/reject reply, mirroring `studio.app._discard`; new `test_oversized_body_is_consumed_before_the_413` red->green; `test_sha_bridge*` 34 passed; BLOCKERS B-008 -> FIXED |
+| W4 (Lean) | `formal/` build after the interrupted session | `lake exe cache get` exit 0 (319 s); `lake build` exit 0, 8708 jobs (Mathlib rebuilt from source despite the cache; the first piped attempt stalled and was re-run with plain redirection) |
+| W4 (Lean) | `formal/CQHECS/Bound.lean` + `scripts/PrintAxioms.lean` | L-BOUND-01 and L-BOUND-01b (Path D form) build; `#print axioms` → `[propext, Classical.choice, Quot.sound]`; `evidence/LEAN_BUILD.md` |
+| W3-11 | python-sat child-process isolation | still NOT RUN (python-sat not installed; B-007) |

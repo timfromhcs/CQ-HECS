@@ -45,6 +45,9 @@ See `research/v7/WAVE3_REPORT.md`, `research/v7/migration/*.md` and
   request-body reuse; enforce a drain deadline and idle socket timeout.
 - Drain bounded rejected hardware-bridge POST bodies before early replies so
   rate-limit and other rejection responses survive delayed body delivery.
+- The hardware bridge also drains an **oversized** body before its `413`, so an
+  over-limit POST reaches the client as `413` instead of a connection abort
+  (`ConnectionAborted`); see `research/v7/BLOCKERS.md` B-008.
 
 
 ### Added — circuit conformance corpus and a measured engine table

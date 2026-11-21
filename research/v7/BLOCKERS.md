@@ -74,20 +74,29 @@ Fix attempted: none needed. Remaining: the Studio/Web UI copy that renders a res
 Status: FIXED (audit complete: NOT REPRODUCED as a defect; see FINDINGS F-004)
 ```
 
-## B-008 Flaky loopback test: test_sha_bridge.py::test_strict_json_validation
+## B-008 Oversized bridge POST aborted the client (FIXED)
 ```
 ID: B-008
-Severity: Low (test reliability)
-Category: RESOURCE
-Affected: tests/test_sha_bridge.py::test_strict_json_validation (SHA hardware bridge)
-Minimal reproduction: full-suite run under load once raised ConnectionAbortedError [WinError 10053]; the same test and its whole file pass deterministically in isolation and on re-run.
-Expected: a loopback HTTP test must not depend on host scheduling under load.
-Observed: a transient socket abort fails the test.
-Root cause (or unknown): loopback socket read racing a client-side close under CPU load; not caused by this session's changes (the bridge code is untouched).
-Fix attempted: none this session.
-Remaining risk: a full-suite run can report one spurious failure; the release gate must re-run a failed test before treating it as a defect.
-Next safe action: make the bridge test retry/robust to ConnectionAborted (Wave 7/10 hardening).
-Status: OPEN
+Severity: Low (test reliability) -> FIXED
+Category: RESOURCE / INTEROP
+Affected: cqhecs/hardware/bridge.py (`_Handler._body` 413 path); tests/test_sha_bridge.py::test_strict_json_validation
+Minimal reproduction: POST /pair with a Content-Length of 5000. The 413 path replied without
+  reading the declared body; closing the socket with unread data then surfaced to the client as
+  ConnectionAbortedError [WinError 10053] (and, once, as a flaky full-suite failure under load).
+Root cause: `_body()` wrote 413 for `n > MAX_BODY` without consuming the request body. `_reject()`
+  already drained a rejected body for exactly this reason (its docstring records the limiter's 429
+  arriving as RemoteDisconnected), but the oversized-body path was missed.
+Fix: `_Handler._drain_declared()` consumes a plausible declared body (`0 < Content-Length <=
+  DRAIN_CAP = 1 MiB`) under a monotonic deadline before `_body()`/`_reject()` reply, mirroring
+  `cqhecs/studio/app.py::_discard` (`read1` + deadline, so a trickling client cannot extend the
+  drain). An implausible length (non-digit or > DRAIN_CAP) is still rejected at once instead of
+  waiting for bytes a hostile client may never send.
+Evidence: `tests/test_sha_bridge.py::test_oversized_body_is_consumed_before_the_413` is red on the
+  un-drained path and green with the fix; `test_sha_bridge.py` + `test_sha_bridge_adversarial.py`
+  34 passed.
+Remaining risk: a body larger than DRAIN_CAP is still not fully drained, so a >1 MiB request may
+  still abort the client; that is bounded and no worse than before.
+Status: FIXED
 ```
 
 ## B-007 python-sat / external proof checkers not exercised here
