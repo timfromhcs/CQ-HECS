@@ -108,3 +108,10 @@ Commit: `ab27578` — "feat(qg): Quantum Gravity research layer + campaign runne
 - 4/4 extension jobs `Completed`. Full scan ⟨Y⊗Z⟩ 0.014→0.854, ⟨Z⊗Y⟩ 0.012→0.874 over
   θ ∈ {0…π/2}; measured ≈ 0.85–1.0 × sinθ; θ=0 null ~0.
 - `processed/bmv_phase_scan.json` (13 points); FINDINGS F-08 updated. Spark 17/25.
+
+## 2026-11-21 — session 1 (continued): SYK Trotter QPU test submitted (Stage 4)
+
+- Built a 3-qubit (N=6) `qg.syk.q4.v1` first-order Trotter circuit (t=1.0) and a forward+inverse
+  mirror; transpiled to backend-supported gates; validated for `rigetti:cepheus-1-108q`.
+- Ideal P(000): forward 0.428, mirror 1.0. Preregistered (`QPU_SYK.md`); **2 jobs submitted**,
+  cumulative **19 / 25**. Results pending.
