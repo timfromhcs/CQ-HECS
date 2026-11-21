@@ -48,17 +48,16 @@ score is not read as a harness tuned to pass.
 ## B-005 Total deadline does not yet cover proof checking (D3, W3-10)
 ```
 ID: B-005
-Severity: Medium (honesty)
+Severity: Medium (honesty) -> FIXED
 Category: RESOURCE
-Affected: cqhecs/sat_external.py (proof budget max(10, 2*timeout)), cqhecs/omniwave/engine.py (60 s proof add-on)
-Minimal reproduction: solve_external with a tiny timeout and check_proof=True can spend up to max(10, 2*timeout) in check_drat after the search.
-Expected: the stated total timeout bounds search + proof check; no deadline-exhausted certificate is reported as checked.
-Observed: the proof check can overrun the search timeout; the verdict is still UNSAT and now correctly certified=False, so no false "checked", but the wall time exceeds the caller's budget.
-Root cause: the proof budget is computed from the search timeout, not from the remaining deadline.
-Fix attempted: none yet (a correct fix threads the remaining grand deadline from unified into each engine).
-Remaining risk: a caller with a hard latency budget can be surprised by the proof-check overrun. No correctness/overclaim risk.
-Next safe action: thread `proof_deadline` through _attempt -> solve_external/OmniwaveEngine.
-Status: DEFERRED (recorded, not fixed)
+Affected: cqhecs/sat_external.py, cqhecs/omniwave/engine.py
+Fix: the external adapter's proof budget is now the remaining time within the stated
+  deadline (_proof_budget: timeout - elapsed, unless an explicit override is given); the
+  OMNIWAVE engine caps its proof check by the remaining time as well. A search that
+  refutes the formula but has no time left for the proof returns UNKNOWN, not a false UNSAT.
+Evidence: tests/test_unified_deadline.py (6 tests); tests/test_omniwave.py and
+  tests/test_unified_solver.py still pass (472 passed).
+Status: FIXED
 ```
 
 ## B-006 Path C "exact" label audit (D12, W3-03)

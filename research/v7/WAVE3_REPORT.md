@@ -52,6 +52,8 @@ done, not a plan. It supersedes `PLAN_V6_DRAFT.md` where the two differ.
 | W3-20 | — | Licence/dataset register: every external marked `UNVERIFIED` until opened. | `research/v7/LICENCE_REGISTER.md` |
 | W3-16 | — | `llms.txt` corrected (Path C diagnostic not a bound; Path B as a dense branch-sum) + version line; links resolve. | `tests/test_llms_txt.py` (4) |
 | W3-14 | — | `web/wasm/rust-toolchain.toml` pins Rust 1.96.0 + the wasm32 target. | pin added; wasm rebuild NOT RUN |
+| W3-10 | D3 | The proof check is bounded by the remaining deadline in both `sat_external` and OMNIWAVE; an exhausted deadline yields UNKNOWN, not a false UNSAT. | `tests/test_unified_deadline.py` (6) |
+| W3-13 | — | Forge axe tags gain `wcag22aa`. | forge axe 5/5; full Playwright e2e 42/42 |
 
 ## Gates run (this checkout)
 
@@ -64,24 +66,19 @@ done, not a plan. It supersedes `PLAN_V6_DRAFT.md` where the two differ.
 | Python | `python -m pytest tests/ -q` | **2871 passed, 105 skipped, 1 deselected** (375 s; W0 baseline: 2814/109). One loopback test flaked once under load (`test_sha_bridge`, `ConnectionAborted`) and passes on re-run — see B-008. |
 | Mutation | `python scripts/run_mutation_tests.py` | 60/60 killed |
 | Web unit + build | `cd web && npm test && npm run build` | 71/71; tsc + bundle budget green |
+| Web e2e | `cd web && npx playwright test` | 42/42 passed (30 s) |
 
 ## Not run / deferred (honest)
 
-- **W3-10** (total deadline covers proof checking in `sat_external`/OMNIWAVE). Deferred: a correct
-  fix bounds the proof budget by the *remaining* grand deadline, which needs a deadline threaded
-  from `unified` into each engine. The current `max(10, 2×timeout)` overrun is documented but not
-  yet fixed. See `BLOCKERS.md` B-005.
+- **W3-11** (python-sat child-process isolation): NOT RUN — `python-sat` is not installed here,
+  so the external solver path cannot be exercised. See `BLOCKERS.md` B-007.
 - **W3-02 / W3-03 / W3-04** (Path B hygiene, Path C exact-label audit, Path B vs dense): DONE (W3-02 dropped-mass + parser dedup; W3-03 audit not reproduced; W3-04 dense dominates).
-- **W3-11** (python-sat child-process isolation): NOT RUN — `python-sat` is not installed here.
-- **W3-13 / W3-14 / W3-16**: W3-14 (Rust pin) and W3-16 (llms.txt) DONE; W3-13 (Forge axe tags) not started (needs e2e).
-- Web e2e (`npm run e2e`): NOT RUN (Playwright browsers not verified here).
+- **W3-13 / W3-14 / W3-16**: DONE (Forge axe `wcag22aa`; Rust pin; llms.txt). The wasm rebuild-hash check is NOT RUN (no rebuild performed).
 - Native CTest: not re-run after the prior agent's CPU-only work (W0 recorded 21/21).
-- W3-10, D12 and the whole of Waves 4–11 remain open.
+- Wave 3 is complete except W3-11. Waves 4–11 remain.
 
 ## Next steps (highest value first)
 
-1. W3-10 deadline threading (D3 second half).
-2. W3-03 Path C "exact" label audit (D12) across CLI/Studio/web.
-3. W3-13 / W3-14 / W3-16 (web/axe, Rust pin, llms.txt).
-4. Open the `UNVERIFIED` licence-register rows before any release.
-5. Enter Wave 4 (contracts/schemas) once Wave 3 exits.
+1. W3-11 (python-sat child-process isolation) on a host where python-sat is installed.
+2. Open the `UNVERIFIED` licence-register rows before any release.
+3. Enter Wave 4 (contracts / schemas / native hardening).

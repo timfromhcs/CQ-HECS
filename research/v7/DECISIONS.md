@@ -42,9 +42,9 @@ router in Wave 3 — a router change is an H4-ROUTE-01 hypothesis with its own h
 regret/refusal gate and belongs to Wave 6. No product behaviour changes here.
 
 ## D-006 Wave 3 defect dispositions (2026-11-21)
-D3 second half (W3-10 deadline covers proof checking) is DEFERRED (B-005) rather than
-half-fixed: a correct fix threads the remaining grand deadline from `unified` into each
-engine, and a partial fix (bounding one engine's proof budget) would still let search +
-proof exceed the caller's total. The verdict-honesty half of D3 (rejected proof is never
-"checked") is fixed. D12 (Path C exact label) is NOT REPRODUCED as a defect (F-004).
+D3 is fully fixed: the verdict-honesty half (a rejected proof is never "checked") and the
+deadline half (W3-10 — the proof check is bounded by the remaining deadline in both
+`sat_external` and OMNIWAVE; an exhausted deadline yields UNKNOWN). D12 (Path C exact
+label) is NOT REPRODUCED as a defect (F-004). W3-11 (python-sat child-process isolation)
+is NOT RUN because python-sat is not installed where this session ran.
 

@@ -125,7 +125,7 @@ for (const tab of TABS) {
   test(`axe: ${tab} has no violations`, async ({ page }) => {
     await page.goto(`/forge.html?lang=en#${tab}`);
     if (tab === "bench") { await page.click("#be-run"); await expect(page.locator("#be-selected")).toBeVisible({ timeout: 30_000 }); }
-    const res = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+    const res = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
     expect(res.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
   });
 }

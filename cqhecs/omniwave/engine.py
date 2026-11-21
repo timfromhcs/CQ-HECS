@@ -651,7 +651,15 @@ class OmniwaveEngine:
             if not self.config.check_proof:
                 return SATResult(status=UNKNOWN, assignment=None, elapsed_ms=elapsed(), model_verified=False,
                                  note="search covered the whole space, but proof checking is disabled; UNKNOWN", **common)
-            check = check_drat(self.formula.clauses, self._proof, timeout_seconds=self.config.proof_timeout_seconds)
+            # The proof check must fit inside the caller's total deadline: it gets only
+            # what the search did not consume, capped by the configured proof timeout (W3-10).
+            remaining = max(0.0, float(self.config.timeout_seconds) - (time.perf_counter() - started))
+            budget = min(float(self.config.proof_timeout_seconds), remaining)
+            if budget <= 0.0:
+                return SATResult(status=UNKNOWN, assignment=None, elapsed_ms=elapsed(), model_verified=False,
+                                 note="search covered the whole space, but the solve deadline is exhausted "
+                                      "before proof checking; UNKNOWN", **common)
+            check = check_drat(self.formula.clauses, self._proof, timeout_seconds=budget)
             if check.valid is True:
                 return SATResult(status=UNSAT, assignment=None, elapsed_ms=elapsed(), model_verified=False,
                                  certified=True, proof_system="DRAT",

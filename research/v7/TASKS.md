@@ -45,10 +45,10 @@ Base `25e16e5` (v5.0.0), branch `agent/v6-rc`. Detail in `WAVE3_REPORT.md`.
 | W3-07 | Deterministic synthetic profile (D4) | DONE |
 | W3-08 | Frozen SAT baseline | DONE |
 | W3-09 | `certified` / `proof_level` (D3) | DONE |
-| W3-10 | Deadline covers proof checking | DEFERRED (BLOCKERS B-005) |
+| W3-10 | Deadline covers proof checking | DONE (both engines bound the proof check by the remaining deadline) |
 | W3-11 | python-sat child-process isolation | NOT RUN (no python-sat) |
 | W3-12 | Shared web noise predicate (D5) | DONE |
-| W3-13 | Forge axe tags | NOT STARTED (needs e2e) |
+| W3-13 | Forge axe tags | DONE (wcag22aa added; forge axe 5/5, full e2e 42/42) |
 | W3-14 | Rust toolchain pin | DONE (pin added; wasm rebuild-hash check NOT RUN) |
 | W3-15 | MCP input bounds (D7) | DONE |
 | W3-16 | llms.txt refresh | DONE |

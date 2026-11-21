@@ -47,6 +47,20 @@ def backend_version() -> str:
     return f"CaDiCaL 1.9.5 via python-sat {pysat.__version__}"
 
 
+def _proof_budget(
+    timeout_seconds: float, elapsed_seconds: float, explicit: Optional[float]
+) -> float:
+    """Time left within the stated total for the DRAT proof check (W3-10).
+
+    The proof check must fit inside the caller's total deadline, so by default it
+    gets only what the search did not use. An explicit positive budget overrides
+    that (a documented escape hatch for a caller who allows a longer proof check).
+    """
+    if explicit is not None:
+        return max(0.0, float(explicit))
+    return max(0.0, float(timeout_seconds) - float(elapsed_seconds))
+
+
 def solve_external(
     formula: CNF,
     timeout_seconds: float = 10.0,
@@ -94,18 +108,22 @@ def solve_external(
             proof_status = "disabled"
             note = f"{backend_version()}; proof checking disabled; uncertified"
         else:
-            budget = proof_timeout_seconds if proof_timeout_seconds is not None else max(10.0, 2 * timeout_seconds)
-            check = check_drat(formula.clauses, proof or [], timeout_seconds=budget)
-            certified = check.valid is True
-            if check.valid is True:
-                proof_status = "accepted"
-                note = f"{backend_version()}; DRAT proof checked by cqhecs.drat ({check.lemmas} lemmas)"
-            elif check.valid is None:
+            budget = _proof_budget(timeout_seconds, elapsed_ms / 1000.0, proof_timeout_seconds)
+            if budget <= 0.0:
                 proof_status = "undecided"
-                note = f"{backend_version()}; DRAT check undecided ({check.reason}); uncertified"
+                note = f"{backend_version()}; DRAT check skipped: the solve deadline is exhausted; uncertified"
             else:
-                proof_status = "rejected"
-                note = f"{backend_version()}; DRAT proof rejected ({check.reason}); uncertified"
+                check = check_drat(formula.clauses, proof or [], timeout_seconds=budget)
+                certified = check.valid is True
+                if check.valid is True:
+                    proof_status = "accepted"
+                    note = f"{backend_version()}; DRAT proof checked by cqhecs.drat ({check.lemmas} lemmas)"
+                elif check.valid is None:
+                    proof_status = "undecided"
+                    note = f"{backend_version()}; DRAT check undecided ({check.reason}); uncertified"
+                else:
+                    proof_status = "rejected"
+                    note = f"{backend_version()}; DRAT proof rejected ({check.reason}); uncertified"
     else:
         status = UNKNOWN
         note = f"timeout after {float(timeout_seconds):.6g} s; result not decided"
