@@ -1,0 +1,15 @@
+{
+  "job": {
+    "id": "b2353e98-5ee6-4d34-82c5-2f05e49b753b",
+    "status": "Completed",
+    "message": null,
+    "submitted_at": "2026-11-21T01:10:17.358Z",
+    "execution_plan_id": "072f7eb6-574b-4bae-aafa-d3399c4abe7a",
+    "queue_priority_id": "0f7b91a3-d1bf-46fb-af9c-55b77fa72bed",
+    "job_preparation_id": "13be3699-f1f1-4eaf-873c-120fa50802f6",
+    "transaction_id": null,
+    "has_output": true,
+    "has_calibration": true
+  },
+  "quote": {}
+}

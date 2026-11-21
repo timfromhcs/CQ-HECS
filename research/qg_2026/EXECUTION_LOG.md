@@ -90,3 +90,10 @@ Commit: `ab27578` — "feat(qg): Quantum Gravity research layer + campaign runne
   verified (`<Y⊗Z>=<Z⊗Y>=sinθ`, `<X⊗X>=1`).
 - Quoted 9 credits on `rigetti:cepheus-1-108q` (Public/Standard); **9 jobs submitted**,
   cumulative **13 / 25**. Results pending.
+
+## 2026-11-21 — session 1 (continued): BMV QPU results (REAL HARDWARE)
+
+- 9/9 jobs `Completed`. Correlators: ⟨Y⊗Z⟩ 0.014/0.616/0.854 and ⟨Z⊗Y⟩ 0.012/0.666/0.874 for
+  θ=0/π4/π2; ⟨X⊗X⟩ 0.954/0.818/0.808. θ=0 null consistent with 0.
+- Records: FINDINGS F-08, `processed/bmv_qpu_analysis.json`, `raw/bmv_qpu/EVIDENCE_MANIFEST.json`.
+- Spark spent **13 / 25** (0 refunded).
