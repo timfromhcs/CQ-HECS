@@ -1,0 +1,136 @@
+{
+  "backend": "rigetti:cepheus-1-108q",
+  "points": [
+    {
+      "basis": "XX",
+      "circuit_id": "bmv-t0-XX",
+      "correlator": 0.954,
+      "expected_sin": 0.0,
+      "ratio": null,
+      "shots": 1000,
+      "std_err": 0.009480717272443056,
+      "theta": 0.0
+    },
+    {
+      "basis": "XX",
+      "circuit_id": "bmv-t1-XX",
+      "correlator": 0.818,
+      "expected_sin": 0.7071067811865476,
+      "ratio": 1.1568266940211915,
+      "shots": 1000,
+      "std_err": 0.01818999725123674,
+      "theta": 0.7853981633974483
+    },
+    {
+      "basis": "XX",
+      "circuit_id": "bmv-t2-XX",
+      "correlator": 0.808,
+      "expected_sin": 1.0,
+      "ratio": 0.808,
+      "shots": 1000,
+      "std_err": 0.018631586083852333,
+      "theta": 1.5707963267948966
+    },
+    {
+      "basis": "YZ",
+      "circuit_id": "bmv-t0-YZ",
+      "correlator": 0.014,
+      "expected_sin": 0.0,
+      "ratio": null,
+      "shots": 1000,
+      "std_err": 0.03161967741770937,
+      "theta": 0.0
+    },
+    {
+      "basis": "YZ",
+      "circuit_id": "bmv-s1-YZ",
+      "correlator": 0.298,
+      "expected_sin": 0.3826834323650898,
+      "ratio": 0.7787115270663204,
+      "shots": 1000,
+      "std_err": 0.030186023255804995,
+      "theta": 0.39269908169872414
+    },
+    {
+      "basis": "YZ",
+      "circuit_id": "bmv-t1-YZ",
+      "correlator": 0.616,
+      "expected_sin": 0.7071067811865476,
+      "ratio": 0.8711555544218265,
+      "shots": 1000,
+      "std_err": 0.024910720583716562,
+      "theta": 0.7853981633974483
+    },
+    {
+      "basis": "YZ",
+      "circuit_id": "bmv-s2-YZ",
+      "correlator": 0.734,
+      "expected_sin": 0.9238795325112867,
+      "ratio": 0.7944758750146171,
+      "shots": 1000,
+      "std_err": 0.021476591908401108,
+      "theta": 1.1780972450961724
+    },
+    {
+      "basis": "YZ",
+      "circuit_id": "bmv-t2-YZ",
+      "correlator": 0.854,
+      "expected_sin": 1.0,
+      "ratio": 0.854,
+      "shots": 1000,
+      "std_err": 0.01645247701715459,
+      "theta": 1.5707963267948966
+    },
+    {
+      "basis": "ZY",
+      "circuit_id": "bmv-t0-ZY",
+      "correlator": 0.012,
+      "expected_sin": 0.0,
+      "ratio": null,
+      "shots": 1000,
+      "std_err": 0.031620499679796334,
+      "theta": 0.0
+    },
+    {
+      "basis": "ZY",
+      "circuit_id": "bmv-s1-ZY",
+      "correlator": 0.386,
+      "expected_sin": 0.3826834323650898,
+      "ratio": 1.0086666088845626,
+      "shots": 1000,
+      "std_err": 0.029171972850666097,
+      "theta": 0.39269908169872414
+    },
+    {
+      "basis": "ZY",
+      "circuit_id": "bmv-t1-ZY",
+      "correlator": 0.666,
+      "expected_sin": 0.7071067811865476,
+      "ratio": 0.9418662325404813,
+      "shots": 1000,
+      "std_err": 0.023589065263379977,
+      "theta": 0.7853981633974483
+    },
+    {
+      "basis": "ZY",
+      "circuit_id": "bmv-s2-ZY",
+      "correlator": 0.82,
+      "expected_sin": 0.9238795325112867,
+      "ratio": 0.887561604239763,
+      "shots": 1000,
+      "std_err": 0.01809972375479803,
+      "theta": 1.1780972450961724
+    },
+    {
+      "basis": "ZY",
+      "circuit_id": "bmv-t2-ZY",
+      "correlator": 0.874,
+      "expected_sin": 1.0,
+      "ratio": 0.874,
+      "shots": 1000,
+      "std_err": 0.01536632682198319,
+      "theta": 1.5707963267948966
+    }
+  ],
+  "schema": "cqhecs.qg.bmv_phase_scan.v1"
+}

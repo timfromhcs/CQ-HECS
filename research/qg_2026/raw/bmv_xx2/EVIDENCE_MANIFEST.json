@@ -1,0 +1,66 @@
+{
+  "backend": "rigetti:cepheus-1-108q",
+  "files": [
+    {
+      "bytes": 1195269,
+      "path": "bmv-x1-XX\\calibration.json",
+      "sha256": "e4200229793105c9a01ec18bf25ff2ba277d28ee76244ca5ae24baad610be2b3"
+    },
+    {
+      "bytes": 88,
+      "path": "bmv-x1-XX\\counts.csv",
+      "sha256": "60acc63f44c28a1cabf66901d2d93255f525a264374280f2e51e00c0bb86ba67"
+    },
+    {
+      "bytes": 19396,
+      "path": "bmv-x1-XX\\histogram.png",
+      "sha256": "8706d336f682308518d201dbd8ab1f59930e293bc20824ee5ba4c5ea06fb45f1"
+    },
+    {
+      "bytes": 469,
+      "path": "bmv-x1-XX\\job.json",
+      "sha256": "60e1992e7cd44a4103da02d2900b332545b80c729ef964a6c0ddf724a045723d"
+    },
+    {
+      "bytes": 56,
+      "path": "bmv-x1-XX\\result.json",
+      "sha256": "8f0d0250a0830cb9e5ffe5ef559671c8edf4aec7683bd2d0f23cf131561a9985"
+    },
+    {
+      "bytes": 280,
+      "path": "bmv-x1-XX\\summary.md",
+      "sha256": "fb6827789e6706380f58e8b1c2aed46f7c399f248fff56c2eaf0db1b5a14a538"
+    },
+    {
+      "bytes": 1195269,
+      "path": "bmv-x2-XX\\calibration.json",
+      "sha256": "e4200229793105c9a01ec18bf25ff2ba277d28ee76244ca5ae24baad610be2b3"
+    },
+    {
+      "bytes": 88,
+      "path": "bmv-x2-XX\\counts.csv",
+      "sha256": "756696dccb68051e5120981ddaf947f2d6533becd54aaeb82b9b254635178e2b"
+    },
+    {
+      "bytes": 19539,
+      "path": "bmv-x2-XX\\histogram.png",
+      "sha256": "2f0b64a5a1f58dec7860db1af7ec3850356661b0a553d3b903483dd4e67026bb"
+    },
+    {
+      "bytes": 469,
+      "path": "bmv-x2-XX\\job.json",
+      "sha256": "aed21a8fd66c7dd1d02a6fc6c0b37bd9f0a9ee7e26662d61396823881877551b"
+    },
+    {
+      "bytes": 57,
+      "path": "bmv-x2-XX\\result.json",
+      "sha256": "2ce097041ae7caf23f7aea9387d0f5885f7e79a1e8e47d80886543fb28e6aaa6"
+    },
+    {
+      "bytes": 281,
+      "path": "bmv-x2-XX\\summary.md",
+      "sha256": "53cb065ef2de6cc6aaf1f1dac0fc273dcc1dd92052b565e4e1219643fceb5787"
+    }
+  ],
+  "schema": "cqhecs.qg.evidence_manifest.v1"
+}

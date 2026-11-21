@@ -1,0 +1,66 @@
+{
+  "backend": "rigetti:cepheus-1-108q",
+  "files": [
+    {
+      "bytes": 1195269,
+      "path": "bmv-drift-t2-YZ\\calibration.json",
+      "sha256": "e4200229793105c9a01ec18bf25ff2ba277d28ee76244ca5ae24baad610be2b3"
+    },
+    {
+      "bytes": 89,
+      "path": "bmv-drift-t2-YZ\\counts.csv",
+      "sha256": "e1583c6ddb83e532ac49b165a975e8af6e181fb277acc2bcdcf2904471154030"
+    },
+    {
+      "bytes": 18081,
+      "path": "bmv-drift-t2-YZ\\histogram.png",
+      "sha256": "3476a63f6c7b5e3da9404909616dce68c3c5216df8ac88bbf16d5964ee3d5036"
+    },
+    {
+      "bytes": 469,
+      "path": "bmv-drift-t2-YZ\\job.json",
+      "sha256": "300a11a7440a4c769e74e36b68ae8e686fc898acb5a7daf53e6d6a6ee1b11c68"
+    },
+    {
+      "bytes": 57,
+      "path": "bmv-drift-t2-YZ\\result.json",
+      "sha256": "ab2076001ada60b0e8665bbdbd14214756baddd2a07265023fe1de5394051786"
+    },
+    {
+      "bytes": 281,
+      "path": "bmv-drift-t2-YZ\\summary.md",
+      "sha256": "e233ec6396b1e749892b05362246f24d0a0a6d3f45589b9209655807bc25be9c"
+    },
+    {
+      "bytes": 1195269,
+      "path": "bmv-drift-t2-ZY\\calibration.json",
+      "sha256": "e4200229793105c9a01ec18bf25ff2ba277d28ee76244ca5ae24baad610be2b3"
+    },
+    {
+      "bytes": 89,
+      "path": "bmv-drift-t2-ZY\\counts.csv",
+      "sha256": "9ef31494f66e2140c1cd6d03b8caa56461eb7204dd5d43455f8439495aa07d5a"
+    },
+    {
+      "bytes": 18242,
+      "path": "bmv-drift-t2-ZY\\histogram.png",
+      "sha256": "74316a55640f5a1c16c77902d52d8774dc85c667829f21314dcd126d8d635282"
+    },
+    {
+      "bytes": 469,
+      "path": "bmv-drift-t2-ZY\\job.json",
+      "sha256": "9dc1d961f67bdd80bd4a35635f402dab339f33dcb03f042cb2823c1fa5cc8b70"
+    },
+    {
+      "bytes": 57,
+      "path": "bmv-drift-t2-ZY\\result.json",
+      "sha256": "c6ccb55002728c4a52d3a314ea899184855216f0b04646a0e68534f0d55cee6e"
+    },
+    {
+      "bytes": 281,
+      "path": "bmv-drift-t2-ZY\\summary.md",
+      "sha256": "0af25c342d4c3b760e5db5f237e70a605107f19fdce08843818de2c27e574e3e"
+    }
+  ],
+  "schema": "cqhecs.qg.evidence_manifest.v1"
+}

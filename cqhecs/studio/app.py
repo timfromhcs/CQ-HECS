@@ -842,6 +842,104 @@ class StudioState:
     def reference(self) -> Dict[str, Any]:
         return self.suite()
 
+    # -- Quantum Gravity lab (cqhecs.quantum_gravity) -------------------
+    # Local, exact, credential-free. No route here ever contacts Open Quantum.
+    def qg_health(self) -> Dict[str, Any]:
+        from cqhecs.quantum_gravity import catalog
+
+        data = catalog()
+        return {
+            "ok": True,
+            "campaign": data["campaign_default"],
+            "methods": len(data["methods"]),
+            "execution_surfaces": data["execution_surfaces"],
+            "physical_surfaces": data["physical_surfaces"],
+            "openquantum_credentials_present": bool(
+                os.environ.get("OPENQUANTUM_CLIENT_ID") and os.environ.get("OPENQUANTUM_CLIENT_SECRET")
+            ),
+            "network": "local-only",
+        }
+
+    def qg_catalog(self) -> Dict[str, Any]:
+        from cqhecs.quantum_gravity import catalog
+
+        return catalog()
+
+    def qg_models(self) -> Dict[str, Any]:
+        from cqhecs.quantum_gravity.hamiltonians import build_syk
+        from cqhecs.quantum_gravity.models import BMVEffectivePhaseModel
+
+        return {
+            "bmv": BMVEffectivePhaseModel(theta=0.0).manifest(),
+            "syk": build_syk(4, seed=20260101, scale=0.5).manifest(),
+        }
+
+    @staticmethod
+    def _bounded_float(request: Mapping[str, Any], key: str, default: float, *, low: float = -100.0, high: float = 100.0) -> float:
+        value = request.get(key, default)
+        try:
+            number = float(value)
+        except (TypeError, ValueError) as exc:
+            raise StudioError(f"{key} must be a number", code="invalid_request") from exc
+        if not (low <= number <= high):
+            raise StudioError(f"{key} out of range [{low}, {high}]", code="invalid_request")
+        return number
+
+    def qg_validate(self, request: Mapping[str, Any]) -> Dict[str, Any]:
+        from cqhecs.quantum_gravity.models import BMVEffectivePhaseModel
+
+        theta = self._bounded_float(request, "theta", 0.0)
+        phase_a = self._bounded_float(request, "local_phase_a", 0.0)
+        phase_b = self._bounded_float(request, "local_phase_b", 0.0)
+        model = BMVEffectivePhaseModel(theta=theta, local_phase_a=phase_a, local_phase_b=phase_b)
+        return {
+            "status": "OK",
+            "execution_surface": "CLASSICAL_REFERENCE",
+            "model": model.manifest(),
+            "concurrence_oracle": model.analytic_concurrence(),
+            "entangling_phase": model.entangling_phase_invariant(),
+        }
+
+    def qg_preview(self, request: Mapping[str, Any]) -> Dict[str, Any]:
+        from cqhecs.quantum_gravity.circuits import bmv_qasm, sha256_text
+
+        theta = self._bounded_float(request, "theta", 0.0)
+        qasm = bmv_qasm(theta)
+        return {
+            "status": "OK",
+            "execution_surface": "CLASSICAL_REFERENCE",
+            "spend_credits": 0.0,
+            "network": "none",
+            "qubits": 2,
+            "qasm": qasm,
+            "qasm_sha256": sha256_text(qasm),
+        }
+
+    def qg_run_local(self, request: Mapping[str, Any]) -> Dict[str, Any]:
+        from cqhecs.quantum_gravity.models import BMVEffectivePhaseModel
+
+        theta = self._bounded_float(request, "theta", 0.0)
+        phase_a = self._bounded_float(request, "local_phase_a", 0.0)
+        phase_b = self._bounded_float(request, "local_phase_b", 0.0)
+        model = BMVEffectivePhaseModel(theta=theta, local_phase_a=phase_a, local_phase_b=phase_b)
+        state = model.state()
+        probabilities = {format(index, "02b"): float(abs(state[index]) ** 2) for index in range(4)}
+        return {
+            "status": "COMPLETED",
+            "execution_surface": "CLASSICAL_REFERENCE",
+            "precision": "f64",
+            "qubits": 2,
+            "bit_order": "q0q1 (q0 most significant)",
+            "probabilities": probabilities,
+            "observables": {
+                "concurrence": model.concurrence(),
+                "negativity": model.negativity(),
+                "entanglement_entropy": model.entropy(),
+                "chsh_max": model.chsh_max(),
+            },
+            "limitations": ["finite two-qubit model; not a gravitational measurement"],
+        }
+
 
 def _width_histogram(formula: CNF) -> Dict[str, int]:
     histogram: Dict[str, int] = {}
@@ -943,7 +1041,6 @@ def _research_payload() -> Dict[str, Any]:
             "CQ-HECS research/v2_4: audit of the openai/math corpus.",
         ],
     }
-
 
 class StudioHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
@@ -1100,6 +1197,12 @@ class StudioHandler(BaseHTTPRequestHandler):
                 query = parse_qs(urlparse(self.path).query)
                 name = (query.get("name") or ["bell"])[0]
                 return self._json(HTTPStatus.OK, self.server.state.preset(name))
+            if path == "/api/qg/v1/health":
+                return self._json(HTTPStatus.OK, self.server.state.qg_health())
+            if path == "/api/qg/v1/catalog":
+                return self._json(HTTPStatus.OK, self.server.state.qg_catalog())
+            if path == "/api/qg/v1/models":
+                return self._json(HTTPStatus.OK, self.server.state.qg_models())
             return self._error(HTTPStatus.NOT_FOUND, "not_found", f"no route for {path}")
         except StudioError as exc:
             return self._error(exc.status, exc.code, str(exc))
@@ -1138,6 +1241,12 @@ class StudioHandler(BaseHTTPRequestHandler):
             if path == "/api/reload":
                 self.server.state.reload()
                 return self._json(HTTPStatus.OK, self.server.state.health())
+            if path == "/api/qg/v1/experiments/validate":
+                return self._json(HTTPStatus.OK, self.server.state.qg_validate(body))
+            if path == "/api/qg/v1/experiments/preview":
+                return self._json(HTTPStatus.OK, self.server.state.qg_preview(body))
+            if path == "/api/qg/v1/experiments/run-local":
+                return self._json(HTTPStatus.OK, self.server.state.qg_run_local(body))
             return self._error(HTTPStatus.NOT_FOUND, "not_found", f"no route for {path}")
         except (StudioError, CNFFormatError) as exc:
             status = getattr(exc, "status", 400)

@@ -305,5 +305,28 @@ class TestCliSatEngines(unittest.TestCase):
         self.assertEqual(json.loads(out)["omniwave"]["branch"], "jw")
 
 
+class TestCliQuantumGravity(unittest.TestCase):
+    def test_qg_catalog_json(self):
+        code, out, err = run_cli("--format", "json", "qg", "catalog")
+        self.assertEqual(code, EXIT_OK, msg=err)
+        self.assertEqual(json.loads(out)["schema"], "cqhecs.qg.catalog.v1")
+
+    def test_qg_preview_json_reports_digest_and_zero_spend(self):
+        code, out, err = run_cli("--format", "json", "qg", "preview", "--theta", "0.5")
+        self.assertEqual(code, EXIT_OK, msg=err)
+        doc = json.loads(out)
+        self.assertEqual(doc["spend_credits"], 0.0)
+        self.assertTrue(doc["qasm_sha256"])
+
+    def test_qg_run_local_json(self):
+        import math
+
+        code, out, err = run_cli("--format", "json", "qg", "run-local", "--theta", str(math.pi / 2))
+        self.assertEqual(code, EXIT_OK, msg=err)
+        doc = json.loads(out)
+        self.assertEqual(doc["execution_surface"], "CLASSICAL_REFERENCE")
+        self.assertAlmostEqual(doc["observables"]["concurrence"], 1.0, places=9)
+
+
 if __name__ == "__main__":
     unittest.main()

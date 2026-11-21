@@ -1,0 +1,53 @@
+{
+  "authorised_spark_ceiling": 25.0,
+  "backend": "rigetti:cepheus-1-108q",
+  "campaign_id": "qg-2026-01",
+  "note": "smoke 4 + BMV 9 + scan 4 + SYK v1 2 + drift 2 + SYK v3 2 + xx 2 = 25 charged; SYK v4 2 failed+refunded. Full credits 0.",
+  "plan": "Public Plan",
+  "priority": "Standard Queue",
+  "quoted_total_credits": 4.0,
+  "quotes": [
+    {
+      "circuit_id": "qg-smoke-basis",
+      "plan": "Public Plan",
+      "preparation_id": "2f4c8abe-53bb-4d1e-a9f1-ceb1b74a85ac",
+      "priority": "Standard Queue",
+      "qasm_file": "qg-smoke-basis.qasm",
+      "quoted_credits": 1.0,
+      "shots": 1000
+    },
+    {
+      "circuit_id": "qg-smoke-bell",
+      "plan": "Public Plan",
+      "preparation_id": "48b78b1a-4fd9-40bb-b48c-25ae6b6b7aa7",
+      "priority": "Standard Queue",
+      "qasm_file": "qg-smoke-bell.qasm",
+      "quoted_credits": 1.0,
+      "shots": 1000
+    },
+    {
+      "circuit_id": "qg-smoke-ghz3",
+      "plan": "Public Plan",
+      "preparation_id": "c40e5b1c-9736-4a98-9e48-9dfcfda0a700",
+      "priority": "Standard Queue",
+      "qasm_file": "qg-smoke-ghz3.qasm",
+      "quoted_credits": 1.0,
+      "shots": 1000
+    },
+    {
+      "circuit_id": "qg-smoke-mirror",
+      "plan": "Public Plan",
+      "preparation_id": "e11de583-8cf9-4dbe-b54e-657c54fbe950",
+      "priority": "Standard Queue",
+      "qasm_file": "qg-smoke-mirror.qasm",
+      "quoted_credits": 1.0,
+      "shots": 1000
+    }
+  ],
+  "refunded_credits": 2.0,
+  "schema": "cqhecs.qg.quote_ledger.v1",
+  "shot_count": 1000,
+  "spark_balance_at_quote": 25.0,
+  "spent_credits": 25.0,
+  "submitted_credits": 27.0
+}

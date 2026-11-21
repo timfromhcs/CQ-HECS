@@ -129,3 +129,18 @@ def test_sat_solve_tool_with_the_omniwave_engine():
     data = json.loads(reply["result"]["content"][0]["text"])
     assert data["result"]["status"] == "UNSAT" and data["result"]["certification"] == "DRAT_CHECKED"
     assert data["result"]["engine"] == "omniwave" and data["omniwave"]["covered"] == 1.0
+
+
+def test_qg_tools_are_local_and_correct():
+    catalog, preview, run = _session([
+        {"jsonrpc": "2.0", "id": 14, "method": "tools/call", "params": {"name": "cqhecs_qg_catalog", "arguments": {}}},
+        {"jsonrpc": "2.0", "id": 15, "method": "tools/call", "params": {"name": "cqhecs_qg_circuit_preview", "arguments": {"theta": 0.5}}},
+        {"jsonrpc": "2.0", "id": 16, "method": "tools/call", "params": {"name": "cqhecs_qg_run_local", "arguments": {"theta": 1.5707963267948966}}},
+    ])
+    cat = json.loads(catalog["result"]["content"][0]["text"])
+    assert cat["schema"] == "cqhecs.qg.catalog.v1"
+    prev = json.loads(preview["result"]["content"][0]["text"])
+    assert prev["spend_credits"] == 0.0 and prev["network"] == "none" and prev["qasm_sha256"]
+    local = json.loads(run["result"]["content"][0]["text"])
+    assert local["execution_surface"] == "CLASSICAL_REFERENCE"
+    assert abs(local["observables"]["concurrence"] - 1.0) < 1e-9

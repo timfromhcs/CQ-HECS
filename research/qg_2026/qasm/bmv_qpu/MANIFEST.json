@@ -1,0 +1,77 @@
+{
+  "circuits": [
+    {
+      "basis": "YZ",
+      "circuit_id": "bmv-t0-YZ",
+      "expected_correlator": 0.0,
+      "file": "bmv-t0-YZ.qasm",
+      "sha256": "eb59bedd9f1352f62e3d144773472d10c391a612fb92a54f78ed216adc42fc10",
+      "theta": 0.0
+    },
+    {
+      "basis": "ZY",
+      "circuit_id": "bmv-t0-ZY",
+      "expected_correlator": 0.0,
+      "file": "bmv-t0-ZY.qasm",
+      "sha256": "3b849747b7afa308176c35725623a2fe39ff6d2043d6d058842d7bdaf9f2acae",
+      "theta": 0.0
+    },
+    {
+      "basis": "XX",
+      "circuit_id": "bmv-t0-XX",
+      "expected_correlator": 1.0,
+      "file": "bmv-t0-XX.qasm",
+      "sha256": "9e3406c2ccd794a8f6322d93beeca87449b38c45f99011b0475ca203b4632dfa",
+      "theta": 0.0
+    },
+    {
+      "basis": "YZ",
+      "circuit_id": "bmv-t1-YZ",
+      "expected_correlator": 0.7071067811865476,
+      "file": "bmv-t1-YZ.qasm",
+      "sha256": "a09563b964c61f694893da787c8f2cd1bf99b25b224cdce54a617e307ede802f",
+      "theta": 0.7853981633974483
+    },
+    {
+      "basis": "ZY",
+      "circuit_id": "bmv-t1-ZY",
+      "expected_correlator": 0.7071067811865476,
+      "file": "bmv-t1-ZY.qasm",
+      "sha256": "434b6cbcd5208aa2e057f03da3fbf71bbdf08f6d420b9f20eaa8714587e37c59",
+      "theta": 0.7853981633974483
+    },
+    {
+      "basis": "XX",
+      "circuit_id": "bmv-t1-XX",
+      "expected_correlator": 1.0,
+      "file": "bmv-t1-XX.qasm",
+      "sha256": "7b86fdbab8b771040b5c526eb840a4fd28f91d4b1cc20d35644a3e8cd3c1c5e7",
+      "theta": 0.7853981633974483
+    },
+    {
+      "basis": "YZ",
+      "circuit_id": "bmv-t2-YZ",
+      "expected_correlator": 1.0,
+      "file": "bmv-t2-YZ.qasm",
+      "sha256": "8dac5f2eaf0da92fd521751afaf6f4fa61fcc195c58c789aee20242904f767b7",
+      "theta": 1.5707963267948966
+    },
+    {
+      "basis": "ZY",
+      "circuit_id": "bmv-t2-ZY",
+      "expected_correlator": 1.0,
+      "file": "bmv-t2-ZY.qasm",
+      "sha256": "644f07e016fe19a884094c79e5b9e191dbd85dcaf20fbd49faf82b8ef0fcd397",
+      "theta": 1.5707963267948966
+    },
+    {
+      "basis": "XX",
+      "circuit_id": "bmv-t2-XX",
+      "expected_correlator": 1.0,
+      "file": "bmv-t2-XX.qasm",
+      "sha256": "63c750a8e30e33ab1a354ebcd98766481783317498e9b87887d239214961463b",
+      "theta": 1.5707963267948966
+    }
+  ],
+  "schema": "cqhecs.qg.bmv_qpu_manifest.v1"
+}

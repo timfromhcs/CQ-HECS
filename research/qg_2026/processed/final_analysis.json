@@ -1,0 +1,46 @@
+{
+  "backend": "rigetti:cepheus-1-108q",
+  "schema": "cqhecs.qg.final_analysis.v1",
+  "sections": {
+    "bmv_drift": [
+      {
+        "basis": "YZ",
+        "correlator": 0.82,
+        "counts": {
+          "00": 473,
+          "01": 54,
+          "10": 36,
+          "11": 437
+        },
+        "delta_vs_original": -0.03400000000000003,
+        "original_correlator": 0.854,
+        "shots": 1000,
+        "sin": 1.0
+      },
+      {
+        "basis": "ZY",
+        "correlator": 0.812,
+        "counts": {
+          "00": 452,
+          "01": 58,
+          "10": 36,
+          "11": 454
+        },
+        "delta_vs_original": -0.061999999999999944,
+        "original_correlator": 0.874,
+        "shots": 1000,
+        "sin": 1.0
+      }
+    ],
+    "syk_v4": [
+      {
+        "circuit_id": "syk-forward-v3",
+        "status": "missing"
+      },
+      {
+        "circuit_id": "syk-mirror-v3",
+        "status": "missing"
+      }
+    ]
+  }
+}

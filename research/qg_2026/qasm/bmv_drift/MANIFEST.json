@@ -1,0 +1,20 @@
+{
+  "circuits": [
+    {
+      "basis": "YZ",
+      "circuit_id": "bmv-drift-t2-YZ",
+      "file": "bmv-drift-t2-YZ.qasm",
+      "sha256": "8dac5f2eaf0da92fd521751afaf6f4fa61fcc195c58c789aee20242904f767b7",
+      "theta": 1.5707963267948966
+    },
+    {
+      "basis": "ZY",
+      "circuit_id": "bmv-drift-t2-ZY",
+      "file": "bmv-drift-t2-ZY.qasm",
+      "sha256": "644f07e016fe19a884094c79e5b9e191dbd85dcaf20fbd49faf82b8ef0fcd397",
+      "theta": 1.5707963267948966
+    }
+  ],
+  "note": "held-out drift repeat of the theta=pi/2 BMV point (identical circuit bytes).",
+  "schema": "cqhecs.qg.bmv_drift_manifest.v1"
+}

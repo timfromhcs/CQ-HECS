@@ -1,0 +1,12 @@
+experiment_id,hypothesis_id,model_id,family,system_size,observable,engine,credits_split,status
+qg-bmv-scan-01,QG-BMV-01,qg.bmv.zz.v1,bmv_theta_sweep,2,concurrence_negativity_ref,CLASSICAL_REFERENCE,LOCAL,PROPOSED
+qg-bmv-scale-01,QG-BMV-01,qg.bmv.zz.v1,bmv_theta_sweep,2,concurrence_negativity_ref,CQ_HECS_CPU,LOCAL,PROPOSED
+qg-bmv-null-01,QG-BMV-02,qg.bmv.zz.v1,bmv_null_controls,2,negativity_ref,CLASSICAL_REFERENCE,LOCAL,PROPOSED
+qg-bmv-locc-01,QG-BMV-02,qg.bmv.zz.v1,bmv_locc_null,2,negativity_ref,CLASSICAL_REFERENCE,LOCAL,PROPOSED
+qg-bmv-noise-01,QG-BMV-03,qg.bmv.zz.v1,bmv_noise,2,witness_under_noise,NOISY_CLASSICAL,LOCAL,PROPOSED
+qg-syk-algebra-01,QG-SYK-01,qg.syk.q4.v1,syk_algebra,4/6/8,majorana_algebra,CLASSICAL_REFERENCE,LOCAL,PROPOSED
+qg-syk-spectrum-01,QG-SYK-01,qg.syk.q4.v1,syk_spectrum,4/6/8,eigenvalues,CLASSICAL_REFERENCE,LOCAL,PROPOSED
+qg-syk-sparse-01,QG-SYK-01,qg.syk.q4.v1,syk_sparsification,6/8,sparse_vs_full,CLASSICAL_REFERENCE,LOCAL,PROPOSED
+qg-syk-evolve-01,QG-SYK-02,qg.syk.q4.v1,syk_evolution,4,loschmidt_otoc,CLASSICAL_REFERENCE,LOCAL,PROPOSED
+qg-gauge-comm-01,QG-GAUGE-01,qg.gauge.z2.v1,gauge_constraints,tiny,m_commutator,CLASSICAL_REFERENCE,LOCAL,PROPOSED
+qg-syk-qpu-01,QG-SYK-03,qg.syk.q4.v1,syk_qpu_eval,min_fit,loschmidt_otoc,OPENQUANTUM_QPU,EVAL,BLOCKED

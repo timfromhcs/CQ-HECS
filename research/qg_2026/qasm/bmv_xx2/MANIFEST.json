@@ -1,0 +1,23 @@
+{
+  "circuits": [
+    {
+      "basis": "XX",
+      "circuit_id": "bmv-x1-XX",
+      "expected_correlator": 1.0,
+      "file": "bmv-x1-XX.qasm",
+      "sha256": "cffa53f55c6065e476a71deabd174aacae3c3cdd20471cbee1cca23f1ba7bdd9",
+      "sim_xx": 0.9999999999999993,
+      "theta": 0.39269908169872414
+    },
+    {
+      "basis": "XX",
+      "circuit_id": "bmv-x2-XX",
+      "expected_correlator": 1.0,
+      "file": "bmv-x2-XX.qasm",
+      "sha256": "2ce9f357a60fa5125ca8841976b094c7083688f3d568e1c1013959e20ad58daa",
+      "sim_xx": 0.9999999999999991,
+      "theta": 1.1780972450961724
+    }
+  ],
+  "schema": "cqhecs.qg.bmv_xx2_manifest.v1"
+}

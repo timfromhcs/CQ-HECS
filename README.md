@@ -43,6 +43,17 @@ Four classical simulation paths · one result contract · fail-closed by design
 > - **Browser:** circuit corpus against Qiskit 2.5.1, measured WASM table
 >   (0.20 / 4.08 / 111.5 ms at 12/16/20 qubits), WebGPU honestly `NOT RUN` here.
 >
+> **On `main` now (pre-release): Quantum Gravity research workbench.** `cqhecs/quantum_gravity/`
+> adds Track-A/B/C model layers (BMV effective-phase `qg.bmv.zz.v1`, Majorana + small sparse SYK
+> `qg.syk.q4.v1`, a bounded Z2 gauge toy `qg.gauge.z2.v1`, declared noise, exact references),
+> each verified against independent oracles, plus a credential-free local API/MCP/CLI and a
+> **real-QPU campaign** on a live Open Quantum QPU (organization `Tim Stark`): a BMV
+> effective-phase phase scan that tracks `sinθ` with the θ=0 null at ~0, and a small-N SYK
+> Trotter test recorded `INCONCLUSIVE`. Every result carries its execution surface
+> (`CLASSICAL_REFERENCE` / `OPENQUANTUM_QPU` / …); no result claims to measure gravity. See
+> [`docs/QUANTUM_GRAVITY_LAB.md`](docs/QUANTUM_GRAVITY_LAB.md) and `research/qg_2026/`. The
+> multi-agent plan to the next major release is [`AGENTS_V6.md`](AGENTS_V6.md).
+>
 > **Previous release: `v4.2.0` (2026-11-02).** One solving surface, a proven-correct
 > OMNIWAVE propagation, and a browser build that can be checked instead of believed:
 >

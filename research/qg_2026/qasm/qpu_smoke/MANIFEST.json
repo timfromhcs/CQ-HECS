@@ -1,0 +1,25 @@
+{
+  "circuits": [
+    {
+      "circuit_id": "qg-smoke-basis",
+      "file": "qg-smoke-basis.qasm",
+      "sha256": "42dd5720f4c184fb4c7eed4a2b25bd6dae05ec50186697e215a24f316eb46cb2"
+    },
+    {
+      "circuit_id": "qg-smoke-bell",
+      "file": "qg-smoke-bell.qasm",
+      "sha256": "3d3233edbee4eae1236032ac03b07e15e28b9c35eeced43612452c68f9264a94"
+    },
+    {
+      "circuit_id": "qg-smoke-ghz3",
+      "file": "qg-smoke-ghz3.qasm",
+      "sha256": "180e22170a49ea2469541ff3a9494f14ab9f98b8c90ad193130db09ec56aa409"
+    },
+    {
+      "circuit_id": "qg-smoke-mirror",
+      "file": "qg-smoke-mirror.qasm",
+      "sha256": "c2e39dc4b91ac70fd5b3813dc9e4b0be270c7f15c60f2c3e391d89600e3fc8b4"
+    }
+  ],
+  "schema": "cqhecs.qg.qpu_smoke.v1"
+}

@@ -1,0 +1,126 @@
+{
+  "backend": "rigetti:cepheus-1-108q",
+  "files": [
+    {
+      "bytes": 1195405,
+      "path": "qg-smoke-basis\\calibration.json",
+      "sha256": "ddf76f4c4717998514f5081db1051dda0c5739070acd82e8096246c366615e7f"
+    },
+    {
+      "bytes": 86,
+      "path": "qg-smoke-basis\\counts.csv",
+      "sha256": "d5d6ef303a661e27089cecce626945f48eb1b1929c53a22d6f7e89d7abb90dc2"
+    },
+    {
+      "bytes": 18391,
+      "path": "qg-smoke-basis\\histogram.png",
+      "sha256": "19e36764ca5d4963001ea033923958ca6c48cbd67577ef30ec872c25331c90fc"
+    },
+    {
+      "bytes": 469,
+      "path": "qg-smoke-basis\\job.json",
+      "sha256": "03250b8e8bc2a62a21ac437fd4fefb29ee425776dacae1bed6d5416b123ae6c6"
+    },
+    {
+      "bytes": 54,
+      "path": "qg-smoke-basis\\result.json",
+      "sha256": "f327f5262f2bab1b423161698fc5a9aea66aca7356a9d7e6a3c6f43c2113332d"
+    },
+    {
+      "bytes": 278,
+      "path": "qg-smoke-basis\\summary.md",
+      "sha256": "bffdf8dc052de04433d9eef322c3bc3d759fe132b24627682d7128dbdb5567e8"
+    },
+    {
+      "bytes": 1195405,
+      "path": "qg-smoke-bell\\calibration.json",
+      "sha256": "ddf76f4c4717998514f5081db1051dda0c5739070acd82e8096246c366615e7f"
+    },
+    {
+      "bytes": 89,
+      "path": "qg-smoke-bell\\counts.csv",
+      "sha256": "23cff74f67d5e69bfa18fbbcf894ef97b2a8a8dea31cd05329c003aad3e605a7"
+    },
+    {
+      "bytes": 18947,
+      "path": "qg-smoke-bell\\histogram.png",
+      "sha256": "d765cda4d64e40a49de365f43c745dc730761330b7548ced553375c1128cce93"
+    },
+    {
+      "bytes": 469,
+      "path": "qg-smoke-bell\\job.json",
+      "sha256": "e24af59625e7449c7baf9c5826d59a685babe2e999b720e02893cc131b99954e"
+    },
+    {
+      "bytes": 57,
+      "path": "qg-smoke-bell\\result.json",
+      "sha256": "89a74451dc2e5b4dd89b2e52ca96be00195a53aa6a80743483eaf30b3757239f"
+    },
+    {
+      "bytes": 281,
+      "path": "qg-smoke-bell\\summary.md",
+      "sha256": "5b40f133908c19f16497c48799b276b5b4c4a1992dd73d8a4b8cb46f4b8fddb1"
+    },
+    {
+      "bytes": 1195405,
+      "path": "qg-smoke-ghz3\\calibration.json",
+      "sha256": "ddf76f4c4717998514f5081db1051dda0c5739070acd82e8096246c366615e7f"
+    },
+    {
+      "bytes": 155,
+      "path": "qg-smoke-ghz3\\counts.csv",
+      "sha256": "2a1e7f84ab6e014cadd5445a2fabe24abeeeed5fbe3225639df3e988712150e1"
+    },
+    {
+      "bytes": 19723,
+      "path": "qg-smoke-ghz3\\histogram.png",
+      "sha256": "81b7a6d761d1cfb102b89740e7c645e5d683c431caf88d985dce4b077c8623c8"
+    },
+    {
+      "bytes": 469,
+      "path": "qg-smoke-ghz3\\job.json",
+      "sha256": "8cecb48540c0a7f545b42a78ba36fb40f02db0811bd1aa3b8715c406c24064c0"
+    },
+    {
+      "bytes": 115,
+      "path": "qg-smoke-ghz3\\result.json",
+      "sha256": "78c50e29236d58cbbf60bcf163f2d645ff1769e68f9f8a56f8e672dc3bdef0c0"
+    },
+    {
+      "bytes": 383,
+      "path": "qg-smoke-ghz3\\summary.md",
+      "sha256": "8103cf3e505bf7b83a2961926a94d309a8180e42a8ff50465d3e92be792639dd"
+    },
+    {
+      "bytes": 1195405,
+      "path": "qg-smoke-mirror\\calibration.json",
+      "sha256": "ddf76f4c4717998514f5081db1051dda0c5739070acd82e8096246c366615e7f"
+    },
+    {
+      "bytes": 86,
+      "path": "qg-smoke-mirror\\counts.csv",
+      "sha256": "0a79490d2d695268cf5657dce20ad153602dea12ad55647912e276e3c7a086b8"
+    },
+    {
+      "bytes": 18736,
+      "path": "qg-smoke-mirror\\histogram.png",
+      "sha256": "0343b0ebb471ed40eab3679946c3f41c15b3e4168bed8b2ce21ab64df4c92043"
+    },
+    {
+      "bytes": 469,
+      "path": "qg-smoke-mirror\\job.json",
+      "sha256": "a5b6c64a936598e7969b0682185af184cd46fca95367ea7c392f578e7b11a438"
+    },
+    {
+      "bytes": 54,
+      "path": "qg-smoke-mirror\\result.json",
+      "sha256": "b1790629aa1ab56e49d141ff607fb871d272b2c65a7d03ffb38e7c23603072ea"
+    },
+    {
+      "bytes": 278,
+      "path": "qg-smoke-mirror\\summary.md",
+      "sha256": "96ef95b411206f33b00ad422582208aca49305f2a0b8b0bf821661221c8d1312"
+    }
+  ],
+  "schema": "cqhecs.qg.evidence_manifest.v1"
+}
