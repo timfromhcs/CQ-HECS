@@ -718,7 +718,7 @@ def cmd_sat(args: argparse.Namespace) -> int:
         return EXIT_OK
 
     if args.sat_command in ("models", "maxsat"):
-        from cqhecs.sat import enumerate_models, max_sat
+        from cqhecs.sat import enumerate_models, max_sat_checked
 
         try:
             if args.file:
@@ -744,7 +744,7 @@ def cmd_sat(args: argparse.Namespace) -> int:
             }
         else:
             weights = [float(w) for w in args.weights.split(",")] if args.weights else None
-            payload = max_sat(formula, weights)
+            payload = max_sat_checked(formula, weights)
             payload = {
                 "schema_version": JSON_SCHEMA_VERSION,
                 "version": __version__,
@@ -761,6 +761,9 @@ def cmd_sat(args: argparse.Namespace) -> int:
                 print(f"Status     : {payload['status']} ({payload['count']}/{payload['limit']} models)")
                 for index, model in enumerate(payload["models"], 1):
                     print(f"  {index}:", " ".join(f"{k}={'1' if v else '0'}" for k, v in sorted(model.items())))
+            elif payload["assignment"] is None:
+                print(f"Status     : {payload['status']} (no optimum claimed)")
+                print(f"Reason     : {payload.get('reason', 'limit reached')}")
             else:
                 print(f"Status     : {payload['status']}")
                 print(f"Score      : {payload['satisfied_weight']} / {payload['total_weight']}")
@@ -953,6 +956,25 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         if plan is not None:
             print()
             print(plan.explain())
+    return EXIT_OK
+
+
+def cmd_plan(args: argparse.Namespace) -> int:
+    """``cq-hecs plan``: the shared-service ExecutionPlan, identical to MCP ``cqhecs_plan`` and Studio."""
+    from cqhecs import service
+
+    source = args.circuit
+    circuit = source if source.startswith("preset:") else _load_circuit(source)
+    plan = service.plan_object(
+        circuit,
+        force_path=args.force_path,
+        require_counts=args.require_counts,
+        max_memory_bytes=int(args.max_memory_mb * 1024 * 1024) if args.max_memory_mb else None,
+    )
+    if args.format == "json":
+        _emit_json({"schema_version": JSON_SCHEMA_VERSION, "version": __version__, "plan": plan.to_dict()})
+    else:
+        print(plan.explain())
     return EXIT_OK
 
 
@@ -1394,6 +1416,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Refuse in the plan if the selected path's heuristic estimate exceeds this",
     )
 
+    p_plan = sub.add_parser(
+        "plan", help="Dry-run ExecutionPlan (no simulator state is allocated)"
+    )
+    p_plan.add_argument("circuit", help=".qasm file, 'name:<builtin>', 'preset:<builtin>' or 'mod.py:NAME'")
+    p_plan.add_argument("--force-path", choices=["A", "B", "C", "D"], default=None,
+                        help="Plan as if this path were forced (never rerouted)")
+    p_plan.add_argument("--require-counts", action="store_true",
+                        help="Plan as if bitstring counts are required (Path D cannot provide them)")
+    p_plan.add_argument("--max-memory-mb", type=float, default=None,
+                        help="Refuse in the plan if the selected path's heuristic estimate exceeds this")
+
     p_run = sub.add_parser("run", help="Execute a circuit")
     p_run.add_argument("circuit", help=".qasm file, 'name:<builtin>' or 'mod.py:NAME'")
     p_run.add_argument(
@@ -1586,6 +1619,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "qg": cmd_qg,
         "selftest": cmd_selftest,
         "analyze": cmd_analyze,
+        "plan": cmd_plan,
         "run": cmd_run,
         "verify": cmd_verify,
         "expect": cmd_expect,

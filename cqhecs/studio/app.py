@@ -394,20 +394,26 @@ class StudioState:
         )
 
     def plan(self, request: Mapping[str, Any]) -> Dict[str, Any]:
-        """Dry-run ExecutionPlan; same schema as the CLI, MCP and Python API."""
+        """Dry-run ExecutionPlan; same document as the CLI, MCP and Python API (shared service layer)."""
+        from cqhecs import service
+
         circuit = self._resolve_circuit(str(request.get("source", "preset:bell")))
-        path = str(request.get("path", "auto")).upper()
-        if path != "AUTO" and path not in ("A", "B", "C", "D"):
-            raise StudioError("path must be auto, A, B, C or D", code="invalid_path")
         try:
-            plan = self._router.plan(
+            path = service.normalize_force_path(str(request.get("path", "auto")))
+        except service.ServiceError as exc:
+            raise StudioError(str(exc), code=exc.code) from exc
+        try:
+            document = service.plan_document(
                 circuit,
-                preferred_path=None if path == "AUTO" else path,
+                force_path=path,
                 require_counts=bool(request.get("require_counts", False)),
+                analyzer=self._router.analyzer,
+                max_storage_mb=self._router.max_storage_mb,
+                max_pauli_terms=self._router.max_pauli_terms,
             )
         except (TypeError, ValueError) as exc:
             raise StudioError(str(exc), status=422, code="invalid_circuit") from exc
-        return {"schema_version": "1.0", "plan": plan.to_dict()}
+        return {"schema_version": "1.0", "plan": document}
 
     def simulate(self, request: Mapping[str, Any]) -> Dict[str, Any]:
         source = str(request.get("source", "preset:bell"))
@@ -1072,6 +1078,16 @@ class StudioHTTPServer(ThreadingHTTPServer):
         super().handle_error(request, client_address)
 
 
+def canonical_api_path(path: str) -> str:
+    """``/api/v1/x`` is an alias of ``/api/x`` (W4-04); every other path is returned unchanged.
+
+    ``/api/qg/v1/...`` is a separately versioned family and is not touched.
+    """
+    if path.startswith("/api/v1/"):
+        return "/api/" + path[len("/api/v1/"):]
+    return path
+
+
 class StudioHandler(BaseHTTPRequestHandler):
     server: StudioHTTPServer
     server_version = f"CQ-HECS-Studio/{__version__}"
@@ -1169,7 +1185,7 @@ class StudioHandler(BaseHTTPRequestHandler):
 
     # -- routes ---------------------------------------------------------
     def do_GET(self) -> None:  # noqa: N802
-        path = urlparse(self.path).path
+        path = canonical_api_path(urlparse(self.path).path)
         if not self._guard(api=path.startswith("/api/")):
             return
         try:
@@ -1179,6 +1195,10 @@ class StudioHandler(BaseHTTPRequestHandler):
                 return self._static(path[len("/static/") :])
             if path == "/api/health":
                 return self._json(HTTPStatus.OK, self.server.state.health())
+            if path == "/api/openapi.json":
+                from cqhecs.studio.openapi import build_openapi
+
+                return self._json(HTTPStatus.OK, build_openapi())
             if path == "/api/suite":
                 return self._json(HTTPStatus.OK, self.server.state.suite())
             if path == "/api/noise":
@@ -1217,7 +1237,7 @@ class StudioHandler(BaseHTTPRequestHandler):
             self._refuse(405, "method_not_allowed", "OPTIONS is not supported")
 
     def do_POST(self) -> None:  # noqa: N802
-        path = urlparse(self.path).path
+        path = canonical_api_path(urlparse(self.path).path)
         if not self._guard(api=True):
             return
         if self.headers.get("Content-Type", "").split(";")[0].strip().lower() != "application/json":
