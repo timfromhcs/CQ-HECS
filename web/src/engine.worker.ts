@@ -9,6 +9,7 @@ import type { EngineInfo, RunRequest, RunResult, WorkerRequest, WorkerResponse }
 import { measurementMap, readoutPair, run } from "./simulate";
 import { countModels, parseDimacs, solve, sweep, toDimacs } from "./sat";
 import { sha256Hex } from "./digest";
+import { coreWasmUrl } from "./wasm_url";
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -43,10 +44,14 @@ async function init(): Promise<EngineInfo> {
     gpu: { ok: false, maxQubits: 0, maxBytes: 0 },
   };
   try {
-    const response = await fetch(new URL("/cqhecs_core.wasm", self.location.origin));
-    core = await Core.load(await response.arrayBuffer());
+    const response = await fetch(coreWasmUrl(self.location.origin));
+    const bytes = await response.arrayBuffer();
+    core = await Core.load(bytes);
     info.wasm.ok = true;
     info.wasm.bytes = core.bytes;
+    // Provenance: the hash of the served core, so a deploy that drifts can be seen.
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    info.wasm.sha256 = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
     info.wasmRate = benchmark(core);
   } catch (e) {
     info.wasm.error = String((e as Error).message ?? e);

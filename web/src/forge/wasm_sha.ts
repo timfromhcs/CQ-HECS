@@ -9,6 +9,8 @@
 // The module is the same `public/cqhecs_core.wasm` the state-vector emulator uses:
 // one artefact, two capabilities, one hash in the release record.
 
+import { coreWasmUrl } from "../wasm_url";
+
 export interface WasmSha {
   /** A scalar SHA-256 implementation is present and passed its self-test. */
   scalar: boolean;
@@ -36,7 +38,7 @@ const KAT_DIGEST = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f200
 const toHex = (bytes: Uint8Array): string => Array.from(bytes, (x) => x.toString(16).padStart(2, "0")).join("");
 
 /** Fetches and instantiates the core; never throws. */
-export async function loadWasmSha(url = "/cqhecs_core.wasm"): Promise<WasmSha | undefined> {
+export async function loadWasmSha(url = coreWasmUrl(location.origin)): Promise<WasmSha | undefined> {
   let exports: ShaExports;
   try {
     const response = await fetch(url, { cache: "no-store" });

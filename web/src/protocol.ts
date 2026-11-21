@@ -37,7 +37,7 @@ export interface RunRequest {
 }
 
 export interface EngineInfo {
-  wasm: { ok: boolean; simd: boolean; bytes: number; error?: string };
+  wasm: { ok: boolean; simd: boolean; bytes: number; sha256?: string; error?: string };
   /** Amplitude updates per second of the WASM kernel, measured at 18 qubits. */
   wasmRate: number;
   gpu: { ok: boolean; maxQubits: number; maxBytes: number; error?: string };
