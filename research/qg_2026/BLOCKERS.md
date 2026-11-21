@@ -20,7 +20,9 @@
   **Enabled**, and copy the **Client Secret**. If it is no longer shown, create a new key and
   provide **both** the Client ID and the Client Secret. Alternatively provide a bearer token
   (`OPENQUANTUM_TOKEN`, format `oq_tok_...`) if one exists.
-- Status: OPEN (waiting on Client Secret)
+- Status: **FIXED** (2026-11-21). User provided Client ID `s_e5ae…8b95` + a 64-hex Client
+  Secret. `oq.py setup` (stdin, 0600) → `Login OK. Organizations: Tim Stark
+  (d0e769e7-…)`. Balance: **Spark 25, Full 0**. See `QPU_SMOKE.md` and `JOB_LEDGER.jsonl`.
 
 ## B-2 — Non-local gates not yet run in session 1
 

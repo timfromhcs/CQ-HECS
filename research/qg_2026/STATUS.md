@@ -9,7 +9,14 @@
 - Done this session: **M0–M5** (local vertical slice), **M8 local** (Studio API + MCP + CLI),
   Track A noise model, Track C bounded gauge toy.
 - In progress / next: M6 runner (read-only phases work; quote/submit gated), M9/M10/M11/M12.
-- Blocker: **B-1** Open Quantum Client Secret missing (Client ID only). Paid/simulator = BLOCKED.
+- Blocker: **B-1 RESOLVED** (Client Secret supplied; login OK). Live QPU work proceeding.
+
+## Live QPU campaign (Stage 2 smoke)
+
+- Backend `rigetti:cepheus-1-108q` (live `QPU`), 1000 shots/circuit, Public/Standard.
+- 4 preregistered circuits; quoted **4 credits** total; **4 submitted**, 0 refunded so far.
+- Job ids: `9e8ae264…`, `fadc0f89…`, `e9641514…`, `24e61d7d…` (see `JOB_LEDGER.jsonl`).
+- Results pending; collected under `research/qg_2026/raw/qpu_smoke/`.
 - Remote: branch pushed; **PR #54** open (https://github.com/timfromhcs/CQ-HECS/pull/54); CI running.
 
 ## Next action (do this first on resume)

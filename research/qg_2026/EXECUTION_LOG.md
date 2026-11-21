@@ -68,3 +68,10 @@ Commit: `ab27578` — "feat(qg): Quantum Gravity research layer + campaign runne
 - Tests: `test_quantum_gravity_gauge.py` 10 passed (`[H,G_v]=0`, involutions, integer
   spectrum, physical-subspace preservation). Recorded as a bridge, not a gravity result.
 - Pushed branch `research/quantum-gravity-studio`; opened PR #54; remote CI in progress.
+
+## 2026-11-21 — session 1 (continued): B-1 resolved + live QPU smoke (M6/M7)
+
+- Client Secret supplied; `oq.py setup` → login OK (org Tim Stark, Spark 25, Full 0).
+- Preregistered Stage-2 smoke (`QPU_SMOKE.md`); validated 4 circuits; quoted 4 credits
+  (Public/Standard) on `rigetti:cepheus-1-108q`; **submitted 4 jobs** (JOB_LEDGER.jsonl).
+- B-1 → FIXED. Results pending collection.
