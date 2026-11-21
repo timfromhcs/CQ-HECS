@@ -10,6 +10,24 @@
 | M10 | DPLL counter RecursionError (F-002) | regression test red -> fixed -> green |
 | M5 | `PauliObservable`, `evaluate_pauli_observables`, `expectation.py` single native pass; 203 oracle tests | done |
 | M15/M17 | version 4.0.0 on all surfaces; README/CHANGELOG/RELEASE_NOTES/MIGRATION_V4/ARCHITECTURE; native, web, mutation, wheel gates | done locally (see TEST_MATRIX) |
+
+## Wave 3 (AGENTS_V6.md) — honesty fixes, 2026-11-21
+
+Base `25e16e5` (v5.0.0), branch `agent/v6-rc`. Full detail: `WAVE3_REPORT.md`.
+
+| Step | Task | Result |
+|---|---|---|
+| W0 | baseline on 25e16e5 | 2814 passed / 109 skipped; web 61/61; CTest 21/21 (prior agent) |
+| T6-03 | native CPU-only build `-DCQ_ENABLE_VULKAN=OFF` + CI lane | committed (prior agent) |
+| f16dbb5 | W3-12 / D5 shared web noise predicate | web 71/71, build green |
+| 722b7be | W3-09 / D3 `certified` + `proof_level`; rejected proof ≠ checked | test_unified_solver +6 |
+| a3f5ab4 | W3-06/W3-07 / D4 uncovered gates; synthetic profile digest | test_uncovered_gates 12 |
+| 659885e | W3-01 / D1 Path A shot truncation removed | test_path_a_shots 5 |
+| 70a145e | W3-05 / D2 fail-closed ledger + net spend | test_runner_ledger 14; ledger = 25.0/25 |
+| 85887b7 | W3-08 / W3-17 SAT baseline + build constraints | script reproduces |
+| 8ea4ad6 | W3-15 / D7 MCP input bounds | test_mcp_server +4 |
+| full gate | `pytest tests/ -q` | 2862 passed, 105 skipped, 1 deselected |
+| deferred | W3-10 deadline; W3-02/03/04/11/13/14/16/18/19/20/21; web e2e | see WAVE3_REPORT / BLOCKERS |
 | W0 (2026-11-21) | AGENTS_V6 baseline on 25e16e5 | PASS: 2814 passed/109 skipped; web 61/61; CTest 21/21 (see BASELINE_W0.md) |
 | W3 / T6-03 (2026-11-21) | `-DCQ_ENABLE_VULKAN=OFF` CPU-only native build | PASS: new `tests/test_native_cpu_only.py` red->green (configure, build, CTest, no binary contains the Vulkan loader name; detector positive-controlled: Vulkan-build binaries match). Vulkan build still CTest 21/21. CPU build runs 15 CPU-pure tests; Vulkan targets excluded, not stubbed. NOT YET: CPU/Vulkan differential tests (T6-04), capability reporting in C ABI, CI lane. |
 | W3 cont. (2026-11-21) | CI lane `linux-native-cpu-only` (no libvulkan installed), `cq_core_build_capabilities()` C ABI | PASS locally: CPU build reports vulkan_linked=false, Vulkan build true; Vulkan CTest 21/21; CI lane not yet run remotely |

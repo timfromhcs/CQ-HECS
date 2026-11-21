@@ -30,6 +30,36 @@ record everything else honestly as not promoted.
 | M18 | Remote CI/preview loop | IN_PROGRESS |
 | M19 | Release decision | NOT STARTED -- publishing requires explicit user authorization |
 
+## AGENTS_V6.md Wave 3 (2026-11-21) — status
+
+Base `25e16e5` (v5.0.0), branch `agent/v6-rc`. Detail in `WAVE3_REPORT.md`.
+
+| ID | Task | Status |
+|---|---|---|
+| W3-01 | Path A shot truncation (D1) | DONE |
+| W3-02 | Path B hygiene / parser parity (D10) | NOT STARTED |
+| W3-03 | Path C "exact" label audit (D12) | NOT STARTED (see BLOCKERS B-006) |
+| W3-04 | Path B vs dense measurement | NOT STARTED |
+| W3-05 | Runner ledger fail-closed + net spend (D2) | DONE |
+| W3-06 | Uncalibrated-gate policy (D4) | DONE |
+| W3-07 | Deterministic synthetic profile (D4) | DONE |
+| W3-08 | Frozen SAT baseline | DONE |
+| W3-09 | `certified` / `proof_level` (D3) | DONE |
+| W3-10 | Deadline covers proof checking | DEFERRED (BLOCKERS B-005) |
+| W3-11 | python-sat child-process isolation | NOT RUN (no python-sat) |
+| W3-12 | Shared web noise predicate (D5) | DONE |
+| W3-13 | Forge axe tags | NOT STARTED |
+| W3-14 | Rust toolchain pin | NOT STARTED |
+| W3-15 | MCP input bounds (D7) | DONE |
+| W3-16 | llms.txt refresh | NOT STARTED |
+| W3-17 | Pinned build constraints | DONE |
+| W3-18 | Version surfaces / SECURITY.md | NOT STARTED |
+| W3-19 | Ledger/baseline reconciliation (D11) | NOT STARTED |
+| W3-20 | Licence register | NOT STARTED |
+| W3-21 | QG board reconciliation (D9) | NOT STARTED |
+
+Waves 4–11: NOT STARTED.
+
 ## W3 / T6-03 status
 
 DONE locally: CPU-only configure/build/CTest, loader-free binaries. OPEN: CI lane for `-DCQ_ENABLE_VULKAN=OFF`, C-ABI capability flag, CPU-vs-Vulkan differential tests (T6-04).

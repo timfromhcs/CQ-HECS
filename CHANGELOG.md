@@ -8,6 +8,34 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Fixed — honesty defects found by the Wave-1/2 audit (AGENTS_V6.md Wave 3)
+
+- **SAT certification (D3):** `solve_unified` labelled any engine `UNSAT` as "DRAT proof
+  checked" even when the check was rejected, undecided or disabled, and `UnifiedResult` had no
+  certification field. Now `UnifiedResult.certified`/`proof_level` and `SATResult.proof_status`
+  report the real evidence, and `solve_unified(require_certified=True)` returns `UNKNOWN` rather
+  than an uncertified `UNSAT`.
+- **Path A shots (D1):** wide (n > 30) non-all-equal circuits were silently capped at 100
+  re-measurements. The sampler now draws every requested shot or raises `PathAShotBudgetError`;
+  truncated counts require an explicit `max_resample_shots`.
+- **Uncalibrated gates (D4):** gates with no calibrated channel ran noiselessly under a
+  `NOISY_CLASSICAL` profile id. `BackendProfile.uncovered_gates()`, a `FakeHardwareBackend`
+  `uncovered_gate_policy`, and `SimulationResult.uncovered_gates` now make them visible;
+  `create_linear_profile` no longer stamps a synthetic profile with a capture time.
+- **Browser run card (D5):** `modeOf()` ignored per-qubit readout error and X bit flips, so a
+  noisy run could export as `SAMPLED`. One shared `noise_predicate` now drives the simulator,
+  the planner and the run card; engine precision is explicit and WebGPU refusals carry a stable
+  code.
+- **Campaign ledger (D2):** the spend guard summed only `submitted` events (the real ledger read
+  27 > 25 and would refuse every future submit) and skipped corrupt lines silently. It is now
+  fail-closed and computes net spend (submitted + unresolved intents − confirmed refunds); a
+  corrupt ledger produces a clean JSON failure with exit code 3.
+- **MCP input bounds (D7):** `timeout`, `waves`, `workers`, `limit` and `node_budget` passed
+  unbounded to the engines; they are now bounded to the Studio's ranges.
+
+See `research/v7/WAVE3_REPORT.md`, `research/v7/migration/*.md` and
+`research/v7/BLOCKERS.md`.
+
 ### Security — local Studio request guard
 
 - Require a per-launch bearer token for Studio API calls, validate Host and
