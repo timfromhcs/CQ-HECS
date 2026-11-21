@@ -53,8 +53,8 @@ Base `25e16e5` (v5.0.0), branch `agent/v6-rc`. Detail in `WAVE3_REPORT.md`.
 | W3-15 | MCP input bounds (D7) | DONE |
 | W3-16 | llms.txt refresh | NOT STARTED |
 | W3-17 | Pinned build constraints | DONE |
-| W3-18 | Version surfaces / SECURITY.md | NOT STARTED |
-| W3-19 | Ledger/baseline reconciliation (D11) | NOT STARTED |
+| W3-18 | Version surfaces / SECURITY.md | DONE |
+| W3-19 | Ledger/baseline reconciliation (D11) | DONE (mutant count; baseline numbers in WAVE3_REPORT) |
 | W3-20 | Licence register | NOT STARTED |
 | W3-21 | QG board reconciliation (D9) | NOT STARTED |
 

@@ -23,6 +23,9 @@ done, not a plan. It supersedes `PLAN_V6_DRAFT.md` where the two differ.
 | 85887b7 | chore(sat,release): frozen SAT baseline + pinned build constraints (W3-08, W3-17) |
 | 8ea4ad6 | fix(mcp): server-side bounds for timeout/waves/workers/limit/node_budget (W3-15, D7) |
 | 6fa932a | style(hardware): drop unused `time` import |
+| 933e14e | docs(v7): Wave 3 report, migration notes, ledger and changelog |
+| fad5efb | fix(release): honest version surfaces — SECURITY.md, classifiers, version check (W3-18, D8) |
+| b14f617 | test(mutation): correct the stale mutant count and guard it (W3-19, D11) |
 
 ## Tasks completed this session (with evidence)
 
@@ -37,6 +40,8 @@ done, not a plan. It supersedes `PLAN_V6_DRAFT.md` where the two differ.
 | W3-12 | D5 | `web/src/noise_predicate.ts` is the single predicate used by the simulator, planner and run card; engine precision is explicit (`f64`/`f32`/`n/a`); WebGPU card carries `cross_check_tv`; refusal carries the stable `WEBGPU_UNSUPPORTED_CIRCUIT` code. | `web/tests/noise_predicate.test.ts` (+10); web 71/71 |
 | W3-15 | D7 | MCP bounds `timeout` (0.01–30 s), `waves` (1–16), `workers` (1–8), models `limit` (1–1000), `node_budget` (1–1e7) like the Studio, and refuses out-of-range input. | `tests/test_mcp_server.py` (+4) |
 | W3-17 | — | `requirements/build-constraints.txt` (setuptools/wheel/build pins via `PIP_CONSTRAINT`). | build metadata |
+| W3-18 | D8 | `SECURITY.md` advertises the 5.0.x line (not 4.0.x); classifiers are `Beta` without the C++ classifier; `check_version.py` asserts both. | `scripts/check_version.py` (verified: the old table fails) |
+| W3-19 | D11 | mutation meta-test said "35-mutant" while the harness has 60; corrected and guarded by a count assertion. | `tests/test_mutation_harness_meta.py` (6, 1 slow) |
 
 ## Gates run (this checkout)
 
@@ -47,6 +52,7 @@ done, not a plan. It supersedes `PLAN_V6_DRAFT.md` where the two differ.
 | Compile | `python -m compileall -q cqhecs tests scripts python_bridge` | PASS |
 | Lint | `flake8 ... --select=E9,F` | clean |
 | Python | `python -m pytest tests/ -q` | **2862 passed, 105 skipped, 1 deselected** (390.9 s; W0 baseline: 2814/109) |
+| Mutation | `python scripts/run_mutation_tests.py` | 60/60 killed |
 | Web unit + build | `cd web && npm test && npm run build` | 71/71; tsc + bundle budget green |
 
 ## Not run / deferred (honest)
@@ -57,8 +63,8 @@ done, not a plan. It supersedes `PLAN_V6_DRAFT.md` where the two differ.
   yet fixed. See `BLOCKERS.md` B-005.
 - **W3-02 / W3-03 / W3-04** (Path B hygiene, Path C exact-label audit, Path B vs dense): not started.
 - **W3-11** (python-sat child-process isolation): NOT RUN — `python-sat` is not installed here.
-- **W3-13 / W3-14 / W3-16 / W3-18 / W3-19 / W3-20 / W3-21**: not started (axe tags, Rust pin,
-  llms.txt, version surfaces, ledger reconciliation, licence register, QG board).
+- **W3-13 / W3-14 / W3-16 / W3-20 / W3-21**: not started (axe tags, Rust pin, llms.txt,
+  licence register, QG board reconciliation).
 - Web e2e (`npm run e2e`): NOT RUN (Playwright browsers not verified here).
 - Native CTest: not re-run after the prior agent's CPU-only work (W0 recorded 21/21).
 - W3-10, D12 and the whole of Waves 4–11 remain open.
@@ -68,5 +74,5 @@ done, not a plan. It supersedes `PLAN_V6_DRAFT.md` where the two differ.
 1. W3-10 deadline threading (D3 second half).
 2. W3-03 Path C "exact" label audit (D12) across CLI/Studio/web.
 3. W3-02 Path B hygiene (D10) and W3-04 Path B vs dense measurement.
-4. W3-18 SECURITY.md/classifiers/`check_version` coverage; W3-19 ledger reconciliation.
+4. W3-20 licence register and W3-21 QG board reconciliation.
 5. Enter Wave 4 (contracts/schemas) once Wave 3 exits.

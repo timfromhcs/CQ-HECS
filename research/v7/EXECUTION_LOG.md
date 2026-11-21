@@ -26,6 +26,8 @@ Base `25e16e5` (v5.0.0), branch `agent/v6-rc`. Full detail: `WAVE3_REPORT.md`.
 | 70a145e | W3-05 / D2 fail-closed ledger + net spend | test_runner_ledger 14; ledger = 25.0/25 |
 | 85887b7 | W3-08 / W3-17 SAT baseline + build constraints | script reproduces |
 | 8ea4ad6 | W3-15 / D7 MCP input bounds | test_mcp_server +4 |
+| fad5efb | W3-18 / D8 SECURITY.md + classifiers + version check | check_version PASS |
+| b14f617 | W3-19 / D11 mutant count fixed + guarded | mutation 60/60; meta meta-test 5 passed |
 | full gate | `pytest tests/ -q` | 2862 passed, 105 skipped, 1 deselected |
 | deferred | W3-10 deadline; W3-02/03/04/11/13/14/16/18/19/20/21; web e2e | see WAVE3_REPORT / BLOCKERS |
 | W0 (2026-11-21) | AGENTS_V6 baseline on 25e16e5 | PASS: 2814 passed/109 skipped; web 61/61; CTest 21/21 (see BASELINE_W0.md) |
