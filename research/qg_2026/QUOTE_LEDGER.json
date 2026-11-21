@@ -2,7 +2,7 @@
   "authorised_spark_ceiling": 25.0,
   "backend": "rigetti:cepheus-1-108q",
   "campaign_id": "qg-2026-01",
-  "note": "smoke 4 + BMV 9 + BMV scan 4 + SYK v1(invalid) 2 + SYK v3 2 = 21/25.",
+  "note": "smoke 4 + BMV 9 + scan 4 + SYK v1 2 + drift 2 + SYK v3 2 + xx 2 = 25 charged; SYK v4 2 failed+refunded. Full credits 0.",
   "plan": "Public Plan",
   "priority": "Standard Queue",
   "quoted_total_credits": 4.0,
@@ -44,8 +44,10 @@
       "shots": 1000
     }
   ],
+  "refunded_credits": 2.0,
   "schema": "cqhecs.qg.quote_ledger.v1",
   "shot_count": 1000,
   "spark_balance_at_quote": 25.0,
-  "spent_credits": 21.0
+  "spent_credits": 25.0,
+  "submitted_credits": 27.0
 }

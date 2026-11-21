@@ -30,10 +30,13 @@ Public/Standard; **13 credits** (cumulative **17 / 25**). Result (F-08): ⟨Y⊗
 0.616/0.734/0.854 and ⟨Z⊗Y⟩ = 0.012/0.386/0.666/0.820/0.874 across the scan; θ=0 null ~0;
 measured value ≈ 0.85–1.0 × sinθ. Raw evidence: `raw/bmv_qpu/`, `raw/bmv_scan2/`.
 
-**Stage 4 status:** SYK Trotter test. v1 run **INVALID** (F-09). Corrected **v3** results:
-mirror P(000)=0.947 [0.933,0.961], forward P(000)=0.118 [0.098,0.138] vs Trotter ideal 0.2326 —
-mutually inconsistent under any single noise level → **INCONCLUSIVE** (F-10). No SYK hardware
-claim. Cumulative spend **21 / 25**.
+**Stage 4 status:** SYK Trotter test. v1 **INVALID** (F-09). Corrected **v3** results: mirror
+P(000)=0.947 [0.933,0.961], forward P(000)=0.118 [0.098,0.138] vs Trotter ideal 0.2326 —
+mutually inconsistent under any single noise level → **INCONCLUSIVE** (F-10). The no-rewiring
+retry (v4) failed on the contiguous-virtual-qubit constraint (F-11). No SYK hardware claim.
+
+**Campaign spend:** **25 / 25 Spark** (2 failed/refunded); Full credits untouched. Drift repeat
+and the ⟨X⊗X⟩(θ) trend recorded (F-11). Key wiped at session end (rotate at the portal).
 - Remote: branch pushed; **PR #54** open (https://github.com/timfromhcs/CQ-HECS/pull/54); CI running.
 
 ## Next action (do this first on resume)

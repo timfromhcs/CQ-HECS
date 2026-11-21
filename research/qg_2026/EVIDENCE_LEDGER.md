@@ -25,6 +25,10 @@ Digests for generated manifests are written by the runner at generation time.
 | SYK QPU v3 raw | `research/qg_2026/raw/syk_qpu_v3/*/result.json` | `EVIDENCE_MANIFEST.json` (12 files) | **OPENQUANTUM_QPU** | corrected; mirror 0.947, forward 0.118 |
 | SYK QPU v3 analysis | `research/qg_2026/processed/syk_qpu_v3_analysis.json` | (see file) | OPENQUANTUM_QPU | INCONCLUSIVE (F-10) |
 | SYK QPU v1 (INVALID) | `research/qg_2026/raw/syk_qpu/*/result.json` | `EVIDENCE_MANIFEST.json` (12 files) | OPENQUANTUM_QPU | invalid design (F-09), retained |
+| BMV drift repeat | `research/qg_2026/raw/bmv_drift/*/result.json` | `EVIDENCE_MANIFEST.json` (12 files) | OPENQUANTUM_QPU | θ=π/2 reproducibility (F-11) |
+| BMV ⟨X⊗X⟩ follow-up | `research/qg_2026/raw/bmv_xx2/*/result.json` | `EVIDENCE_MANIFEST.json` (12 files) | OPENQUANTUM_QPU | θ=π/8, 3π/8 (F-11) |
+| BMV XX trend | `research/qg_2026/processed/bmv_xx_trend.json` | (see file) | OPENQUANTUM_QPU | 5 θ points |
+| SYK v4 (FAILED) | `research/qg_2026/JOB_LEDGER.jsonl` (`failed`/`refunded`) | n/a | n/a | contiguous-virtual-qubit constraint |
 
 No `OPENQUANTUM_QPU` or `OPENQUANTUM_SIMULATOR` evidence exists yet (blocker B-1).
 Historical `research/v3/evidence/openquantum/**` remains untouched and is **not** part of

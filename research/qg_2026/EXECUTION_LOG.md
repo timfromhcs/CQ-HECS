@@ -157,3 +157,10 @@ Commit: `ab27578` — "feat(qg): Quantum Gravity research layer + campaign runne
   characterise the observed XX(θ) trend: 0.954/0.818/0.808 at θ=0/π4/π2). 2 jobs submitted.
 - Net cumulative spend **25 / 25**. BMV θ=π/2 drift repeat: YZ 0.820 (Δ-0.034), ZY 0.812 (Δ-0.062)
   vs the original run — consistent.
+
+## 2026-11-21 — session 1 (continued): campaign complete (25/25 Spark)
+
+- ⟨X⊗X⟩ follow-up (θ=π/8, 3π/8): 0.810, 0.792 — flat ~0.8 for θ>0 vs 0.954 at θ=0 (F-11).
+- All results and evidence recorded; FINAL_REPORT updated. Total: 27 submitted, 25 charged,
+  25 Completed, 2 refunded (failed). Full credits untouched.
+- Key wiped (`oq.py forget`); local secret files removed. **Rotate the key at the portal.**

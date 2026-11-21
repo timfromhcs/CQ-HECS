@@ -14,12 +14,13 @@ Status: **IN_PROGRESS**. This draft records session 1. It is not a completion cl
    `rigetti:cepheus-1-108q` (live type `QPU`).
 6. **Credits:** authorised ≤25 Spark; **13 submitted** (smoke 4 + BMV 9); Full credits
    untouched. Ledger: `QUOTE_LEDGER.json` (`spent_credits=13`).
-7. **Job IDs:** 21 jobs total (4 smoke + 9 BMV + 4 BMV-scan + 2 SYK v1 + 2 SYK v3), all
-   `Completed`; see `JOB_LEDGER.jsonl`.
+7. **Job IDs:** 27 jobs submitted, 25 charged + 2 refunded (failed); 25 `Completed`. See
+   `JOB_LEDGER.jsonl`.
 8. **Results:** local closed-form/dense-model verification (BMV, SYK, gauge) **plus real-QPU
    results**: Stage-2 smoke in-support 0.90/0.95/0.91/0.98; Stage-3 BMV ⟨Y⊗Z⟩ 0.01→0.85 across
-   the phase scan (≈0.85–1.0×sinθ, θ=0 null ~0); Stage-4 SYK **INCONCLUSIVE** (mirror 0.947 vs
-   forward 0.118, mutually inconsistent; F-09/F-10). No physical gravity claim.
+   the phase scan (≈0.85–1.0×sinθ, θ=0 null ~0), reproduced by a drift repeat (Δ≤0.06);
+   Stage-4 SYK **INCONCLUSIVE** (mirror 0.947 vs forward 0.118; F-09/F-10/F-11). No physical
+   gravity claim.
 9. **Passed / failed / inconclusive / blocked / not run:** see `TEST_MATRIX.md`,
    `FINDINGS.md`, `BLOCKERS.md`.
 10. **Engine status:** `CLASSICAL_REFERENCE` local verified; `CQ_HECS_CPU`/Vulkan/WASM/

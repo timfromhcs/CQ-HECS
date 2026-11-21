@@ -100,6 +100,18 @@ follow-up: transpile forward and mirror through one pipeline (shared layout, e.g
 plugin sampler) and fit a device-noise model on held-out calibration. Recorded as a
 first-class inconclusive result.
 
+## F-11 — Reproducibility, the ⟨X⊗X⟩(θ) trend, and the SYK layout constraint
+- **BMV drift repeat** (θ=π/2, identical circuit bytes, new run): ⟨Y⊗Z⟩ 0.820 (original 0.854,
+  Δ −0.034), ⟨Z⊗Y⟩ 0.812 (original 0.874, Δ −0.062) — the Stage-3 result reproduces within ~0.06.
+- **⟨X⊗X⟩(θ)** (5 points): 0.954 at θ=0, then 0.810 / 0.818 / 0.792 / 0.808 at θ = π/8, π/4,
+  3π/8, π/2. Ideal is 1.0 for all θ. The θ=0 point is higher because `rz(0)` makes the two CXs
+  cancel; for θ>0 the coherence-sensitive correlator is reduced ~20% by device noise (roughly
+  flat in θ). A device-characterisation observation.
+- **SYK no-rewiring retry (v4) FAILED**: the platform requires **contiguous virtual qubits** with
+  `disable_qubit_rewiring`, so the 3-qubit circuit cannot be pinned to a connected physical triple
+  (0/1/2 are disconnected). The 2 credits were refunded. This supports the F-10 hypothesis that the
+  forward/mirror discrepancy is layout-related, and means F-10 cannot be resolved by this route.
+
 ## Negative / not-yet results
 - No Trotter/randomised evolution yet (QG-SYK-02) → `NOT_RUN`.
 - No QPU evidence (QG-SYK-03) → `BLOCKED` (B-1).

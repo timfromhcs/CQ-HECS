@@ -27,5 +27,8 @@
 | OQ QPU smoke | 4 × `oq.py submit`/`results` (Rigetti) | DONE | 4/4 Completed; in-support 0.90/0.95/0.91/0.98 |
 | OQ BMV QPU | 9 × `oq.py submit`/`results` (Rigetti) | DONE | 9/9 Completed; ⟨Y⊗Z⟩ 0.01→0.62→0.85 vs sinθ |
 | OQ SYK QPU v3 | 2 × `oq.py submit`/`results` (Rigetti) | DONE / INCONCLUSIVE | mirror 0.947, forward 0.118 vs ideal 0.233 (F-10) |
+| OQ SYK v4 (no-rewiring) | 2 × `oq.py submit` | FAILED (refunded) | contiguous-virtual-qubit constraint |
+| OQ BMV drift repeat | 2 × `oq.py submit`/`results` | DONE | θ=π/2 reproduced (Δ≤0.06) |
+| OQ BMV ⟨X⊗X⟩ follow-up | 2 × `oq.py submit`/`results` | DONE | θ=π/8, 3π/8 |
 
 Rule: an unavailable gate is `NOT_RUN`/`BLOCKED`, never green by inference.
