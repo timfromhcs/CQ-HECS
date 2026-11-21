@@ -33,10 +33,14 @@ Executable surfaces use the §0.2 categories. A method is listed only with its a
 - **Observables:** Loschmidt amplitude, OTOC, spectral density (small N), entanglement.
 - **Limits:** finite-N, no spacetime interpretation; sparsification changes the model.
 
-## C. Lattice gauge bridge (deferred slice)
+## C. Lattice gauge bridge (bounded toy, `qg.gauge.z2.v1`)
 
-- Z2 / tiny model only, with explicit matter/link encoding, Gauss generators, physical
-  subspace, `[H,G_x]=0` test. A QFT tool, not a gravity claim. Not yet implemented.
+- Z2 link variables on a small square lattice (dense <= 8 links); Gauss generators
+  `G_v = prod X` over incident links, plaquette `B_p = prod Z`, `H = -sum_p B_p`.
+- Physical (gauge-invariant) subspace is the `+1` eigenspace of every `G_v`.
+- Tests: `[H,G_v]=0`, `G_v^2=B_p^2=I`, mutually commuting generators, integer spectrum,
+  physical-subspace preservation (`tests/test_quantum_gravity_gauge.py`).
+- A QFT/constraint bridge, **not** a quantum-gravity result. No matter coupling yet.
 
 ## D. Engines & routing (CQ-HECS integration targets)
 

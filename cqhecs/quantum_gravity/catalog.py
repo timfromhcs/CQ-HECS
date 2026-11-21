@@ -113,6 +113,26 @@ _BMV_SYK_CARDS: Tuple[MethodCard, ...] = (
         references=("L-B1", "L-B2"),
         status="PROPOSED",
     ),
+    MethodCard(
+        method_id="qg.gauge.z2.v1",
+        title="Bounded Z2 lattice gauge toy model (bridge, not a gravity claim)",
+        track="C",
+        surface=ExecutionSurface.CLASSICAL_REFERENCE.value,
+        assumptions=(
+            "Z2 link variables on a small square lattice (dense <= 8 links).",
+            "Gauss generator G_v = prod X over incident links; physical subspace G_v = +1.",
+            "H = -sum_p B_p with plaquette operators B_p = prod Z over the four plaquette links.",
+        ),
+        observables=("gauge-constraint residual", "plaquette spectrum", "physical-subspace leakage"),
+        established="A finite constraint model with an explicit encoding and symmetry checks.",
+        cannot_establish=(
+            "a quantum-gravity result",
+            "loop quantum gravity",
+            "a continuum gauge theory or a matter-coupled theory",
+        ),
+        references=("L-C1",),
+        status="SUPPORTED_WITHIN_MODEL",
+    ),
 )
 
 
@@ -138,7 +158,7 @@ def catalog() -> Dict[str, Any]:
             {
                 "id": "C",
                 "title": "Lattice gauge theory as a bridge (not a gravity claim)",
-                "status": "DEFERRED",
+                "status": "SUPPORTED_WITHIN_MODEL (bounded Z2 toy)",
             },
             {
                 "id": "D",

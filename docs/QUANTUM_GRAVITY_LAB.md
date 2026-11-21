@@ -31,6 +31,7 @@ cqhecs/quantum_gravity/
   references.py    # exact evolution, Loschmidt, Trotter error, OTOC
   circuits.py      # deterministic OpenQASM 2.0 + circuit manifests
   noise.py         # declared Kraus channels + finite-shot witness estimator (NOISY_CLASSICAL)
+  gauge.py         # bounded Z2 lattice gauge toy model (Track C bridge)
   results.py       # cqhecs.qg.experiment.v1 experiment envelope
   errors.py        # typed refusals (QGUnsupported / QGResourceError / QGBlocker)
 ```

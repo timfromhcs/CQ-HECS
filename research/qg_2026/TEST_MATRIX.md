@@ -15,6 +15,7 @@
 | QG MCP tools | `pytest tests/test_mcp_server.py -q` | DONE | 9 passed (incl. `cqhecs_qg_*`) |
 | QG CLI | `pytest tests/test_cli_contract.py -q` | DONE | 37 passed (incl. `qg` commands) |
 | QG noise/witness | `pytest tests/test_quantum_gravity_noise.py -q` | DONE | 14 passed |
+| QG gauge toy | `pytest tests/test_quantum_gravity_gauge.py -q` | DONE | 10 passed |
 | Studio + security regression | `pytest tests/test_studio.py tests/test_studio_security.py -q` | DONE | 37 passed |
 | CLI smoke | `python -m cqhecs.cli selftest --cases 2` | DONE | PASS |
 | Full Python suite | `pytest tests/ -q` | DONE | 2789 passed, 105 skipped, 1 deselected (~5:49) |

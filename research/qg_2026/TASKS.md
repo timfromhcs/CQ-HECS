@@ -47,6 +47,10 @@ Actionable backlog. `[ ]` open, `[x]` done, `[~]` in progress, `[!]` blocked.
 
 ## M7..M14 — see `PLAN.md` §2 (not started)
 
+## Track C — lattice gauge bridge (bounded)
+- [x] `qg.gauge.z2.v1` Z2 toy model + `[H,G_v]=0`, involution, subspace tests (QG-GAUGE-01)
+- [ ] matter coupling and noise-induced leakage (QG-GAUGE-02)
+
 ## M8 — Studio API + MCP (local part)
 - [x] `GET /api/qg/v1/{health,catalog,models}`
 - [x] `POST /api/qg/v1/experiments/{validate,preview,run-local}` (loopback + token, spend=0)

@@ -59,10 +59,12 @@ sweep; a CI crossing the null is `INCONCLUSIVE`, never "almost supported".
 - Paired circuit/mirror experiments; predeclared comparison; statistical uncertainty.
 
 ### QG-GAUGE-01 — Lattice Hamiltonian preserves encoded gauge constraints
-- `[H, G_x]=0` (or discrete equivalent) on a declared tiny model. Status: PROPOSED.
+- `[H, G_v]=0` on a bounded Z2 square-lattice toy (`qg.gauge.z2.v1`), with
+  `G_v^2 = B_p^2 = I` and integer spectrum. Status: `SUPPORTED_WITHIN_MODEL` (toy);
+  a QFT bridge, not a gravity claim.
 
 ### QG-GAUGE-02 — Noise-induced gauge leakage predicted by declared channels
-- Exact small reference + noisy comparison. Status: PROPOSED.
+- Exact small reference + noisy comparison. Status: PROPOSED (not implemented).
 
 ---
 
@@ -77,7 +79,7 @@ sweep; a CI crossing the null is `INCONCLUSIVE`, never "almost supported".
 | QG-SYK-02 | numerical convergence | no | PROPOSED |
 | QG-SYK-03 | QPU held-out evaluation | yes | BLOCKED (B-1) |
 | QG-SYK-04 | paired paired-experiment | yes | PROPOSED |
-| QG-GAUGE-01 | exact commutator | no | PROPOSED |
+| QG-GAUGE-01 | exact commutator | no | SUPPORTED_WITHIN_MODEL |
 | QG-GAUGE-02 | noisy comparison | no* | PROPOSED |
 
 \* local simulation only unless a QPU replication is preregistered under a new version.

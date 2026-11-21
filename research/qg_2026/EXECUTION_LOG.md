@@ -60,3 +60,11 @@ Commit: `ab27578` — "feat(qg): Quantum Gravity research layer + campaign runne
 
 - `python -m pytest tests/ -q` → **2789 passed, 105 skipped, 1 deselected** (~5:49).
 - Commits on `research/quantum-gravity-studio`: `ab27578`, `a126e08`, `9138a5b`, `9ff9ad6`.
+
+## 2026-11-21 — session 1 (continued): Track C gauge toy (QG-GAUGE-01)
+
+- Added `cqhecs/quantum_gravity/gauge.py` (`qg.gauge.z2.v1`): bounded Z2 square-lattice
+  toy with Gauss generators, plaquette operators and `H=-Σ B_p`; dense <= 8 links.
+- Tests: `test_quantum_gravity_gauge.py` 10 passed (`[H,G_v]=0`, involutions, integer
+  spectrum, physical-subspace preservation). Recorded as a bridge, not a gravity result.
+- Pushed branch `research/quantum-gravity-studio`; opened PR #54; remote CI in progress.

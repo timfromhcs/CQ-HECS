@@ -28,6 +28,13 @@ trace-preserving and positive on random states; the negativity witness falls
 monotonically with the declared noise, and the θ=0 null stays separable under noise
 (`tests/test_quantum_gravity_noise.py`). A modelled device, **not** a measurement.
 
+## F-06 — Bounded Z2 lattice gauge toy model satisfies its gauge constraints exactly
+The `qg.gauge.z2.v1` Hamiltonian `H = -Σ_p B_p` commutes with every Gauss generator
+`G_v = Π X` (`[H,G_v]=0`), the generators and plaquette operators are involutions and
+mutually commuting, the spectrum is integer, and the `+1` subspace is preserved
+(`tests/test_quantum_gravity_gauge.py`). A finite constraint model; **not** a
+quantum-gravity or LQG result.
+
 ## Negative / not-yet results
 - No Trotter/randomised evolution yet (QG-SYK-02) → `NOT_RUN`.
 - No QPU evidence (QG-SYK-03) → `BLOCKED` (B-1).
