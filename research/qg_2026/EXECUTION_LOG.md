@@ -138,3 +138,12 @@ Commit: `ab27578` — "feat(qg): Quantum Gravity research layer + campaign runne
   files removed. **User action required:** delete/disable the key used in this session at
   <https://www.openquantum.com/keys> (its secret was shared in chat) and create a new one only
   when needed. Remaining authorised Spark: 4 (needs a new key to use).
+
+## 2026-11-21 — session 1 (continued): spend the remaining 4 Spark
+
+- Re-authenticated (user asked to use the remaining budget); balance confirmed 4 Spark.
+- **SYK v4**: re-ran the corrected v3 circuits with `configuration_data={"disable_qubit_rewiring": true}`
+  to force a shared physical layout and test the F-10 inconsistency. 2 jobs.
+- **BMV drift repeat**: θ=π/2 in {Y⊗Z, Z⊗Y} (identical circuit bytes) as a held-out drift check.
+  2 jobs.
+- Cumulative spend **25 / 25**. Results pending collection.
