@@ -131,6 +131,39 @@ def test_sat_solve_tool_with_the_omniwave_engine():
     assert data["result"]["engine"] == "omniwave" and data["omniwave"]["covered"] == 1.0
 
 
+def test_out_of_range_timeout_is_refused_not_run_unbounded():
+    (reply,) = _session([
+        {"jsonrpc": "2.0", "id": 20, "method": "tools/call",
+         "params": {"name": "cqhecs_sat_solve", "arguments": {"cnf": "p cnf 1 1\n1 0\n", "timeout": 1e9}}},
+    ])
+    assert "error" in reply and "timeout" in reply["error"]["message"]
+
+
+def test_out_of_range_omniwave_shapes_are_refused():
+    (reply,) = _session([
+        {"jsonrpc": "2.0", "id": 21, "method": "tools/call",
+         "params": {"name": "cqhecs_sat_solve",
+                    "arguments": {"cnf": "p cnf 1 1\n1 0\n", "engine": "omniwave", "waves": 9999}}},
+    ])
+    assert "error" in reply and "waves" in reply["error"]["message"]
+
+
+def test_out_of_range_models_limit_is_refused():
+    (reply,) = _session([
+        {"jsonrpc": "2.0", "id": 22, "method": "tools/call",
+         "params": {"name": "cqhecs_sat_models", "arguments": {"cnf": "p cnf 1 1\n1 0\n", "limit": 0}}},
+    ])
+    assert "error" in reply and "limit" in reply["error"]["message"]
+
+
+def test_an_in_range_timeout_is_still_accepted():
+    (reply,) = _session([
+        {"jsonrpc": "2.0", "id": 23, "method": "tools/call",
+         "params": {"name": "cqhecs_sat_solve", "arguments": {"cnf": "p cnf 1 1\n1 0\n", "timeout": 2.0}}},
+    ])
+    assert json.loads(reply["result"]["content"][0]["text"])["result"]["status"] == "SAT"
+
+
 def test_qg_tools_are_local_and_correct():
     catalog, preview, run = _session([
         {"jsonrpc": "2.0", "id": 14, "method": "tools/call", "params": {"name": "cqhecs_qg_catalog", "arguments": {}}},

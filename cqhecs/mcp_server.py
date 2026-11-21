@@ -173,6 +173,47 @@ def _text(value: Any) -> Dict[str, Any]:
     return {"content": [{"type": "text", "text": json.dumps(value, indent=2, default=str)}]}
 
 
+#: Server-side input bounds, matched to the Studio's (cqhecs/studio/app.py). A
+#: model may send anything; the server refuses out-of-range values instead of
+#: passing them to an engine that would run unbounded (D7).
+_TIMEOUT_RANGE = (0.01, 30.0)
+_WAVES_RANGE = (1, 16)
+_WORKERS_RANGE = (1, 8)
+_MODELS_LIMIT_RANGE = (1, 1000)
+_NODE_BUDGET_RANGE = (1, 10_000_000)
+
+
+def _bounded_int(value: Any, name: str, low: int, high: int, default: int) -> int:
+    if value is None:
+        return default
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{name} must be an integer") from exc
+    if parsed < low or parsed > high:
+        raise ValueError(f"{name} must be in [{low}, {high}]")
+    return parsed
+
+
+def _bounded_float(value: Any, name: str, low: float, high: float, default: float) -> float:
+    if value is None:
+        return default
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{name} must be a number") from exc
+    if not (low <= parsed <= high):
+        raise ValueError(f"{name} must be in [{low}, {high}]")
+    return parsed
+
+
+def _optional_node_budget(value: Any) -> Any:
+    if value is None:
+        return None
+    return _bounded_int(value, "node_budget", *_NODE_BUDGET_RANGE, default=_NODE_BUDGET_RANGE[0])
+
+
+
 def _tool_run(arguments: Dict[str, Any]) -> Dict[str, Any]:
     from cqhecs.studio import StudioState
 
@@ -224,16 +265,18 @@ def _tool_sat(arguments: Dict[str, Any]) -> Dict[str, Any]:
     from cqhecs.sat import parse_dimacs, solve
 
     formula = parse_dimacs(arguments["cnf"], source="mcp")
+    timeout = _bounded_float(arguments.get("timeout"), "timeout", *_TIMEOUT_RANGE, default=5.0)
     if arguments.get("engine", "dpll") == "cadical":
         from cqhecs.sat_external import solve_external
 
-        result = solve_external(formula, timeout_seconds=float(arguments.get("timeout", 5.0)))
+        result = solve_external(formula, timeout_seconds=timeout)
     elif arguments.get("engine") == "omniwave":
         from cqhecs.omniwave import OmniwaveConfig, OmniwaveEngine
 
         engine = OmniwaveEngine(formula, OmniwaveConfig(
-            waves=int(arguments.get("waves", 4)), workers=int(arguments.get("workers", 2)),
-            timeout_seconds=float(arguments.get("timeout", 5.0)), bcp=str(arguments.get("bcp", "scalar")),
+            waves=_bounded_int(arguments.get("waves"), "waves", *_WAVES_RANGE, default=4),
+            workers=_bounded_int(arguments.get("workers"), "workers", *_WORKERS_RANGE, default=2),
+            timeout_seconds=timeout, bcp=str(arguments.get("bcp", "scalar")),
             branch=str(arguments.get("branch", "auto")),
         ))
         result = engine.run()
@@ -250,8 +293,8 @@ def _tool_sat(arguments: Dict[str, Any]) -> Dict[str, Any]:
     else:
         result = solve(
             formula,
-            timeout_seconds=float(arguments.get("timeout", 5.0)),
-            node_budget=arguments.get("node_budget"),
+            timeout_seconds=timeout,
+            node_budget=_optional_node_budget(arguments.get("node_budget")),
             propagation="watched" if arguments.get("engine") == "watched" else "scan",
         )
     return {
@@ -271,8 +314,8 @@ def _tool_models(arguments: Dict[str, Any]) -> Dict[str, Any]:
     formula = parse_dimacs(arguments["cnf"], source="mcp")
     return enumerate_models(
         formula,
-        limit=int(arguments.get("limit", 10)),
-        timeout_seconds=float(arguments.get("timeout", 10.0)),
+        limit=_bounded_int(arguments.get("limit"), "limit", *_MODELS_LIMIT_RANGE, default=10),
+        timeout_seconds=_bounded_float(arguments.get("timeout"), "timeout", *_TIMEOUT_RANGE, default=10.0),
     )
 
 
@@ -362,7 +405,7 @@ def _call(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         formula = parse_dimacs(arguments["cnf"], source="mcp")
         return _text({"result": count_models(
             formula,
-            timeout_seconds=float(arguments.get("timeout", 5.0)),
+            timeout_seconds=_bounded_float(arguments.get("timeout"), "timeout", *_TIMEOUT_RANGE, default=5.0),
             method=str(arguments.get("method", "dpll")),
         )})
     if name == "cqhecs_devices":
