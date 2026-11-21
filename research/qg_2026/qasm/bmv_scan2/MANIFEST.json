@@ -1,0 +1,37 @@
+{
+  "circuits": [
+    {
+      "basis": "YZ",
+      "circuit_id": "bmv-s1-YZ",
+      "expected_correlator": 0.3826834323650898,
+      "file": "bmv-s1-YZ.qasm",
+      "sha256": "71c7b7faee4c817ac2ffa517f09a527ee51257598d0eae42bf1d40b7277ea6d5",
+      "theta": 0.39269908169872414
+    },
+    {
+      "basis": "ZY",
+      "circuit_id": "bmv-s1-ZY",
+      "expected_correlator": 0.3826834323650898,
+      "file": "bmv-s1-ZY.qasm",
+      "sha256": "ca20ba5315c1eb209ecc7150acea9e2801baa6b93aac76ead54c1af24051b0e6",
+      "theta": 0.39269908169872414
+    },
+    {
+      "basis": "YZ",
+      "circuit_id": "bmv-s2-YZ",
+      "expected_correlator": 0.9238795325112867,
+      "file": "bmv-s2-YZ.qasm",
+      "sha256": "e529979386dfbe4e060d23dba437f795d639e9bf237d76437038745994421252",
+      "theta": 1.1780972450961724
+    },
+    {
+      "basis": "ZY",
+      "circuit_id": "bmv-s2-ZY",
+      "expected_correlator": 0.9238795325112867,
+      "file": "bmv-s2-ZY.qasm",
+      "sha256": "10b87c8f4c1a70cde4bedf508fa6de1728709760be5794c7175f63add4529ee4",
+      "theta": 1.1780972450961724
+    }
+  ],
+  "schema": "cqhecs.qg.bmv_scan2_manifest.v1"
+}

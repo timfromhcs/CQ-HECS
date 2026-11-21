@@ -46,6 +46,12 @@ Circuit: `H,H, CX, Rz(theta) q1, CX` then measurement-basis rotations, then `mea
 - Authorised ceiling: **25 Spark**. Stage-2 spent **4**. This stage: **9**. Cumulative **13**.
 - Full credits: **0**. Stop if a quote is not Public/Standard or cumulative > 25.
 
+## Extension — phase-scan refinement (added 2026-11-21)
+
+To turn the 3-point result (F-08) into a proper phase scan, add θ ∈ {π/8, 3π/8} in both
+bases (set `qasm/bmv_scan2/`, circuits `bmv-s1-YZ/ZY`, `bmv-s2-YZ/ZY`), each locally
+verified to give `sinθ`. **4 circuits × 1 credit = 4 credits** (cumulative → 17 / 25).
+
 ## Non-claims
 A QPU running `U_ZZ(θ)` emulates a model. No graviton, spacetime or "gravity is quantum"
 claim; a positive correlator is premise-dependent (see literature L-A3, L-A4).
