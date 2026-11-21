@@ -27,6 +27,7 @@ done, not a plan. It supersedes `PLAN_V6_DRAFT.md` where the two differ.
 | fad5efb | fix(release): honest version surfaces — SECURITY.md, classifiers, version check (W3-18, D8) |
 | b14f617 | test(mutation): correct the stale mutant count and guard it (W3-19, D11) |
 | 9d9a720 | fix(path-b): report dropped branch mass; remove duplicate Path A parsers (W3-02, D10) |
+| 513ee2f | chore(v7): Path C label audit and Path B vs dense measurement (W3-03, W3-04) |
 
 ## Tasks completed this session (with evidence)
 
@@ -46,6 +47,8 @@ done, not a plan. It supersedes `PLAN_V6_DRAFT.md` where the two differ.
 | W3-02 | D10 | Path B now reports the dropped branch mass (and bounds `error_bound` by it) instead of claiming "no dropped terms"; the duplicate Path A parsers are removed. | `tests/test_path_b_hygiene.py` (3), `tests/test_parser_parity.py` (2) |
 | W3-03 | D12 | Path C "exact" label audit: not reproduced as a defect — the Python surfaces already qualify the discarded mass. | FINDINGS F-004 |
 | W3-04 | — | Path B vs dense statevector measured: dense dominates on every case (2x–181x). | `evidence/PATHB_DOMINANCE.json`, FINDINGS F-005 |
+| W3-21 | D9 | QG board reconciled (STATUS 21/25→25/25, M6/M7 no longer "BLOCKED (B-1)"; F-08 ratio corrected to 0.779–1.009x) and guarded by a consistency script. | `scripts/qg_doc_consistency.py`; QG tests 102 passed |
+| W3-20 | — | Licence/dataset register: every external marked `UNVERIFIED` until opened. | `research/v7/LICENCE_REGISTER.md` |
 
 ## Gates run (this checkout)
 
@@ -67,8 +70,7 @@ done, not a plan. It supersedes `PLAN_V6_DRAFT.md` where the two differ.
   yet fixed. See `BLOCKERS.md` B-005.
 - **W3-02 / W3-03 / W3-04** (Path B hygiene, Path C exact-label audit, Path B vs dense): DONE (W3-02 dropped-mass + parser dedup; W3-03 audit not reproduced; W3-04 dense dominates).
 - **W3-11** (python-sat child-process isolation): NOT RUN — `python-sat` is not installed here.
-- **W3-13 / W3-14 / W3-16 / W3-20 / W3-21**: not started (axe tags, Rust pin, llms.txt,
-  licence register, QG board reconciliation).
+- **W3-13 / W3-14 / W3-16**: not started (axe tags, Rust pin, llms.txt).
 - Web e2e (`npm run e2e`): NOT RUN (Playwright browsers not verified here).
 - Native CTest: not re-run after the prior agent's CPU-only work (W0 recorded 21/21).
 - W3-10, D12 and the whole of Waves 4–11 remain open.
@@ -77,6 +79,6 @@ done, not a plan. It supersedes `PLAN_V6_DRAFT.md` where the two differ.
 
 1. W3-10 deadline threading (D3 second half).
 2. W3-03 Path C "exact" label audit (D12) across CLI/Studio/web.
-3. W3-02 Path B hygiene (D10) and W3-04 Path B vs dense measurement.
-4. W3-20 licence register and W3-21 QG board reconciliation.
+3. W3-13 / W3-14 / W3-16 (web/axe, Rust pin, llms.txt).
+4. Open the `UNVERIFIED` licence-register rows before any release.
 5. Enter Wave 4 (contracts/schemas) once Wave 3 exits.
