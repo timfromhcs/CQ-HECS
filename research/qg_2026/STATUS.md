@@ -6,9 +6,11 @@
 ## Current position
 
 - Branch: `research/quantum-gravity-studio` (from `main` `fa1cc87`).
-- Done this session: **M0, M1, M2, M3, M4, M5** (local, credential-free vertical slice).
-- In progress / next: M6 runner (read-only phases work; quote/submit gated), M8/M9/M10+.
+- Done this session: **M0–M5** (local vertical slice), **M8 local** (Studio API + MCP + CLI),
+  Track A noise model, Track C bounded gauge toy.
+- In progress / next: M6 runner (read-only phases work; quote/submit gated), M9/M10/M11/M12.
 - Blocker: **B-1** Open Quantum Client Secret missing (Client ID only). Paid/simulator = BLOCKED.
+- Remote: branch pushed; **PR #54** open (https://github.com/timfromhcs/CQ-HECS/pull/54); CI running.
 
 ## Next action (do this first on resume)
 
@@ -29,16 +31,17 @@
 | M2 Hypotheses/prereg | DONE (registry + protocol + matrix + ledgers) |
 | M3 BMV effective-phase | DONE (local; noise model QG-BMV-03 verified, device comparison NOT_RUN) |
 | M4 SYK reference | DONE (exact; Trotter implemented, QG-SYK-02 partial) |
-| M5 Contract integration | DONE (`cqhecs.quantum_gravity`, `cqhecs.qg.experiment.v1`, docs) |
+| M5 Contract integration | DONE (`cqhecs.quantum_gravity`, `cqhecs.qg.experiment.v1`, CLI, docs) |
 | M6 OQ adapter/runner | IN_PROGRESS — BLOCKED for quote/submit (B-1) |
 | M7 QPU campaign | BLOCKED (B-1, credits) |
 | M8 Studio API + MCP | IN_PROGRESS (local routes + 3 MCP tools done; paid OQ proxy pending B-1) |
 | M9 Web/Studio UI | NOT_RUN |
-| M10 CPU/Vulkan split | NOT_RUN |
+| M10 CPU/Vulkan split | NOT_RUN (scoped: headers `cq_hecs/vulkan/*` + tensor_network/constraint_solver couple Vulkan) |
 | M11 WebGPU path | NOT_RUN |
 | M12 Packaging | NOT_RUN |
-| M13 Hardening/audit | NOT_RUN |
-| M14 Handoff | NOT_RUN |
+| M13 Hardening/audit | IN_PROGRESS (full suite green; static gates clean; secret scan pending) |
+| M14 Handoff | IN_PROGRESS (FINAL_REPORT draft + PR #54) |
+| Track C gauge | SUPPORTED_WITHIN_MODEL (bounded `qg.gauge.z2.v1` toy) |
 
 ## Guardrails confirmed this session
 
