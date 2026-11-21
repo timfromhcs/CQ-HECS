@@ -64,11 +64,15 @@ Status: DEFERRED (recorded, not fixed)
 ## B-006 Path C "exact" label audit (D12, W3-03)
 ```
 ID: B-006
-Severity: Low (audit)
+Severity: None (audit)
 Category: NUMERICAL
-Observed: Path C uses a relative numerical-rank floor (SINGULAR_VALUE_ROUNDOFF_RATIO = 1e-13); a nonzero physical Schmidt value below the floor can be discarded. It is reported as a diagnostic (discarded_spectral_mass_diagnostic), error_bound stays 0.0 and numerical_error_bound is None with a reason, so the code does not claim zero error. Not yet checked on every surface (CLI/Studio/web run card).
-Next safe action: audit that CLI/Studio/web show the discarded-mass diagnostic and never render "exact" as "zero error".
-Status: OPEN (audit not completed)
+Observed: audited. The Python surfaces already qualify the label: error_bound=0.0 means
+  no deliberate budget approximation; numerical_error_bound is None with a "not derived"
+  reason; the discarded mass is metadata["discarded_spectral_mass_diagnostic"] only, and
+  tests pin that it is never presented as a bound. CLI/Studio serialise metadata.
+Fix attempted: none needed. Remaining: the Studio/Web UI copy that renders a result state
+  should state the qualifier in plain language (Wave 7), not an overclaim.
+Status: FIXED (audit complete: NOT REPRODUCED as a defect; see FINDINGS F-004)
 ```
 
 ## B-007 python-sat / external proof checkers not exercised here

@@ -28,6 +28,8 @@ Base `25e16e5` (v5.0.0), branch `agent/v6-rc`. Full detail: `WAVE3_REPORT.md`.
 | 8ea4ad6 | W3-15 / D7 MCP input bounds | test_mcp_server +4 |
 | fad5efb | W3-18 / D8 SECURITY.md + classifiers + version check | check_version PASS |
 | b14f617 | W3-19 / D11 mutant count fixed + guarded | mutation 60/60; meta meta-test 5 passed |
+| 9d9a720 | W3-02 / D10 Path B dropped mass + Path A parser dedup | test_path_b_hygiene 3, test_parser_parity 2 |
+| (this commit) | W3-03 / D12 audit; W3-04 Path B vs dense | FINDINGS F-004/F-005; PATHB_DOMINANCE.json |
 | full gate | `pytest tests/ -q` | 2863 passed, 105 skipped, 1 deselected |
 | deferred | W3-10 deadline; W3-02/03/04/11/13/14/16/18/19/20/21; web e2e | see WAVE3_REPORT / BLOCKERS |
 | W0 (2026-11-21) | AGENTS_V6 baseline on 25e16e5 | PASS: 2814 passed/109 skipped; web 61/61; CTest 21/21 (see BASELINE_W0.md) |

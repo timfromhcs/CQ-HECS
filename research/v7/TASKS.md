@@ -38,8 +38,8 @@ Base `25e16e5` (v5.0.0), branch `agent/v6-rc`. Detail in `WAVE3_REPORT.md`.
 |---|---|---|
 | W3-01 | Path A shot truncation (D1) | DONE |
 | W3-02 | Path B hygiene / parser parity (D10) | NOT STARTED |
-| W3-03 | Path C "exact" label audit (D12) | NOT STARTED (see BLOCKERS B-006) |
-| W3-04 | Path B vs dense measurement | NOT STARTED |
+| W3-03 | Path C "exact" label audit (D12) | DONE (audit: not reproduced; see FINDINGS F-004) |
+| W3-04 | Path B vs dense measurement | DONE (dense dominates; FINDINGS F-005) |
 | W3-05 | Runner ledger fail-closed + net spend (D2) | DONE |
 | W3-06 | Uncalibrated-gate policy (D4) | DONE |
 | W3-07 | Deterministic synthetic profile (D4) | DONE |

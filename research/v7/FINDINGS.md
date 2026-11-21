@@ -55,3 +55,39 @@ tighter, never looser, by construction. `expectation_values(method="sparse_pauli
 now runs once instead of once per basis-rotation pattern; its reported
 `error_bound` per value is the observable's own bound (previously the group
 total). Callers that read the old looser number get a smaller, still valid one.
+
+## F-004 Path C "exact" label audit (D12, W3-03) — NOT REPRODUCED
+The reported defect (Path C claims `exact=True`/`error_bound=0.0` while discarding
+nonzero Schmidt values below the relative 1e-13 floor) is **not a defect at the Python
+surfaces**. The code already: (a) keeps `error_bound=0.0` as "no deliberate budget
+approximation"; (b) leaves `numerical_error_bound=None` with
+`metadata["numerical_error_bound_reason"]` containing "not derived" (it does not compose
+the per-SVD discarded mass into a state-norm bound it cannot derive); and (c) reports the
+discarded mass only as `metadata["discarded_spectral_mass_diagnostic"]`. Existing tests
+pin all three: `tests/test_correctness_contracts.py` (the discarded-mass test asserts
+`numerical_error_bound is None`, the reason string, and that the diagnostic is never
+presented as a bound). CLI and Studio serialise `result.to_dict()` and `metadata`, so the
+diagnostic is visible there too. Remaining (not W3-03): the Studio/Web **UI copy** that
+renders a result state should state the qualifier in plain language — deferred to the
+Wave 7 provenance UI. Recorded as an audit, not a fix.
+
+## F-005 Path B vs a plain dense statevector (P1-04/W3-04) — dense dominates
+Raw data: `evidence/PATHB_DOMINANCE.json` (`scripts/bench_path_b_vs_dense.py --quick`,
+3 repeats, 2000 shots, fixed seed, Qiskit `Statevector` as the dense baseline; git SHA,
+Python and OS are in the JSON). Median wall seconds, ratio = Path B / dense:
+
+| n | T | branches | dense (s) | Path B (s) | ratio |
+|--:|--:|--:|--:|--:|--:|
+| 8 | 0 | 1 | 0.0005 | 0.0013 | 2.7x |
+| 8 | 8 | 256 | 0.0006 | 0.0373 | 57.7x |
+| 12 | 0 | 1 | 0.0012 | 0.0024 | 2.0x |
+| 12 | 4 | 16 | 0.0013 | 0.0168 | 12.6x |
+| 12 | 8 | 256 | 0.0014 | 0.2524 | 181.2x |
+
+Reading: on every measured case Path B is slower than a plain dense statevector, by 2x at
+T=0 up to ~181x at T=8. Path B is a branch decomposition that contracts onto a dense
+statevector and carries none of the sparse-extent advantage that would justify a
+stabilizer-rank method. This is a finite measurement on this machine, not an asymptotic
+claim. It is the input to the P1-04 decision (relabel Path B honestly as a low-T dense
+branch-sum method and re-order the router under H4-ROUTE-01). No router change is made in
+Wave 3; the decision is recorded in `DECISIONS.md`.

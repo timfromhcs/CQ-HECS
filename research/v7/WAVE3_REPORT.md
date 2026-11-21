@@ -26,6 +26,7 @@ done, not a plan. It supersedes `PLAN_V6_DRAFT.md` where the two differ.
 | 933e14e | docs(v7): Wave 3 report, migration notes, ledger and changelog |
 | fad5efb | fix(release): honest version surfaces — SECURITY.md, classifiers, version check (W3-18, D8) |
 | b14f617 | test(mutation): correct the stale mutant count and guard it (W3-19, D11) |
+| 9d9a720 | fix(path-b): report dropped branch mass; remove duplicate Path A parsers (W3-02, D10) |
 
 ## Tasks completed this session (with evidence)
 
@@ -42,6 +43,9 @@ done, not a plan. It supersedes `PLAN_V6_DRAFT.md` where the two differ.
 | W3-17 | — | `requirements/build-constraints.txt` (setuptools/wheel/build pins via `PIP_CONSTRAINT`). | build metadata |
 | W3-18 | D8 | `SECURITY.md` advertises the 5.0.x line (not 4.0.x); classifiers are `Beta` without the C++ classifier; `check_version.py` asserts both. | `scripts/check_version.py` (verified: the old table fails) |
 | W3-19 | D11 | mutation meta-test said "35-mutant" while the harness has 60; corrected and guarded by a count assertion. | `tests/test_mutation_harness_meta.py` (6, 1 slow) |
+| W3-02 | D10 | Path B now reports the dropped branch mass (and bounds `error_bound` by it) instead of claiming "no dropped terms"; the duplicate Path A parsers are removed. | `tests/test_path_b_hygiene.py` (3), `tests/test_parser_parity.py` (2) |
+| W3-03 | D12 | Path C "exact" label audit: not reproduced as a defect — the Python surfaces already qualify the discarded mass. | FINDINGS F-004 |
+| W3-04 | — | Path B vs dense statevector measured: dense dominates on every case (2x–181x). | `evidence/PATHB_DOMINANCE.json`, FINDINGS F-005 |
 
 ## Gates run (this checkout)
 
@@ -61,7 +65,7 @@ done, not a plan. It supersedes `PLAN_V6_DRAFT.md` where the two differ.
   fix bounds the proof budget by the *remaining* grand deadline, which needs a deadline threaded
   from `unified` into each engine. The current `max(10, 2×timeout)` overrun is documented but not
   yet fixed. See `BLOCKERS.md` B-005.
-- **W3-02 / W3-03 / W3-04** (Path B hygiene, Path C exact-label audit, Path B vs dense): not started.
+- **W3-02 / W3-03 / W3-04** (Path B hygiene, Path C exact-label audit, Path B vs dense): DONE (W3-02 dropped-mass + parser dedup; W3-03 audit not reproduced; W3-04 dense dominates).
 - **W3-11** (python-sat child-process isolation): NOT RUN — `python-sat` is not installed here.
 - **W3-13 / W3-14 / W3-16 / W3-20 / W3-21**: not started (axe tags, Rust pin, llms.txt,
   licence register, QG board reconciliation).
