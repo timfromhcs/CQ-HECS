@@ -10,3 +10,4 @@
 | M10 | DPLL counter RecursionError (F-002) | regression test red -> fixed -> green |
 | M5 | `PauliObservable`, `evaluate_pauli_observables`, `expectation.py` single native pass; 203 oracle tests | done |
 | M15/M17 | version 4.0.0 on all surfaces; README/CHANGELOG/RELEASE_NOTES/MIGRATION_V4/ARCHITECTURE; native, web, mutation, wheel gates | done locally (see TEST_MATRIX) |
+| W0 (2026-11-21) | AGENTS_V6 baseline on 25e16e5 | PASS: 2814 passed/109 skipped; web 61/61; CTest 21/21 (see BASELINE_W0.md) |
