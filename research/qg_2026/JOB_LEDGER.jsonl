@@ -1,0 +1,1 @@
+{"schema":"cqhecs.qg.job_ledger.v1","campaign_id":"qg-2026-01","event":"init","at":"2026-11-21T00:00:00Z","note":"append-only; one JSON object per line; no jobs yet (B-1 blocks submission)"}

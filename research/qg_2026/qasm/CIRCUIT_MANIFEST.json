@@ -1,0 +1,99 @@
+{
+  "circuits": [
+    {
+      "circuit_id": "qg-bmv-zz-000",
+      "cregs": {
+        "c": 2
+      },
+      "family": "bmv_zz_sweep",
+      "model_id": "qg.bmv.zz.v1",
+      "parameters": {
+        "theta": 0.0
+      },
+      "qasm_file": "qg-bmv-zz-000.qasm",
+      "qasm_sha256": "f5107260a7bb56c88391f369bfbf7d643fdb501258546988336d0dc083787797",
+      "qubits": 2
+    },
+    {
+      "circuit_id": "qg-bmv-zz-001",
+      "cregs": {
+        "c": 2
+      },
+      "family": "bmv_zz_sweep",
+      "model_id": "qg.bmv.zz.v1",
+      "parameters": {
+        "theta": 0.39269908169872414
+      },
+      "qasm_file": "qg-bmv-zz-001.qasm",
+      "qasm_sha256": "1c87cc3b59ad8936c45eb0a7b2ebb729879d6e68d3ef5e77fe16fd253a66069c",
+      "qubits": 2
+    },
+    {
+      "circuit_id": "qg-bmv-zz-002",
+      "cregs": {
+        "c": 2
+      },
+      "family": "bmv_zz_sweep",
+      "model_id": "qg.bmv.zz.v1",
+      "parameters": {
+        "theta": 0.7853981633974483
+      },
+      "qasm_file": "qg-bmv-zz-002.qasm",
+      "qasm_sha256": "0643cd0735f79decb8c876a7868c8585eea6505c62034977ac62493310705bdf",
+      "qubits": 2
+    },
+    {
+      "circuit_id": "qg-bmv-zz-003",
+      "cregs": {
+        "c": 2
+      },
+      "family": "bmv_zz_sweep",
+      "model_id": "qg.bmv.zz.v1",
+      "parameters": {
+        "theta": 1.5707963267948966
+      },
+      "qasm_file": "qg-bmv-zz-003.qasm",
+      "qasm_sha256": "3d3d48ac3ebcb9198f3dcf42fc001fd38ac22d8f579235d0f5af9125cf331a09",
+      "qubits": 2
+    },
+    {
+      "circuit_id": "qg-bmv-zz-004",
+      "cregs": {
+        "c": 2
+      },
+      "family": "bmv_zz_sweep",
+      "model_id": "qg.bmv.zz.v1",
+      "parameters": {
+        "theta": 2.356194490192345
+      },
+      "qasm_file": "qg-bmv-zz-004.qasm",
+      "qasm_sha256": "5c1e94a705b7549278c231cbd44931f52c32091d40d03759d9fe88238aab904e",
+      "qubits": 2
+    },
+    {
+      "circuit_id": "qg-bmv-zz-null",
+      "cregs": {
+        "c": 2
+      },
+      "family": "bmv_null",
+      "model_id": "qg.bmv.zz.v1",
+      "parameters": {
+        "theta": 0.0
+      },
+      "qasm_file": "qg-bmv-zz-null.qasm",
+      "qasm_sha256": "f5107260a7bb56c88391f369bfbf7d643fdb501258546988336d0dc083787797",
+      "qubits": 2
+    }
+  ],
+  "count": 6,
+  "family": "bmv_zz",
+  "generator": "cqhecs.quantum_gravity.circuits.bmv_qasm",
+  "schema": "cqhecs.qg.circuit_manifest.v1",
+  "theta_values": [
+    0.0,
+    0.39269908169872414,
+    0.7853981633974483,
+    1.5707963267948966,
+    2.356194490192345
+  ]
+}

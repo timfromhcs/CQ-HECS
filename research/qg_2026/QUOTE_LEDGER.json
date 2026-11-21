@@ -1,0 +1,26 @@
+{
+  "schema": "cqhecs.qg.quote_ledger.v1",
+  "campaign_id": "qg-2026-01",
+  "created_at": "2026-11-21T00:00:00Z",
+  "budget": {
+    "authorised_spark_credits": 25.0,
+    "plan": "public",
+    "queue_priority": "standard",
+    "full_credits_allowed": false
+  },
+  "account": {
+    "organisation_id": null,
+    "spark_balance_seen": null,
+    "full_balance_seen": null,
+    "read_at": null,
+    "note": "Not read: authentication blocked (B-1, Client Secret missing)."
+  },
+  "quotes": [],
+  "totals": {
+    "quoted_credits": 0.0,
+    "submitted_credits": 0.0,
+    "refunded_credits": 0.0,
+    "remaining_authorised": 25.0
+  },
+  "note": "Write-ahead ledger. The runner appends quoted jobs here before any submit and enforces the cumulative cap itself."
+}

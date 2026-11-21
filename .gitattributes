@@ -8,3 +8,7 @@ research/v3/evidence/openquantum/**/*.json -text
 research/v4/evidence/**/*.qasm -text
 research/v4/evidence/**/*.json -text
 research/v4/evidence/**/*.md -text
+# Quantum Gravity campaign inputs are content-addressed: Git must not rewrite bytes.
+research/qg_2026/**/*.qasm -text
+research/qg_2026/**/*.json -text
+research/qg_2026/**/*.jsonl -text

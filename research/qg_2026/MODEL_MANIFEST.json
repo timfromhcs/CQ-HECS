@@ -1,0 +1,50 @@
+{
+  "campaign_id": "qg-2026-01",
+  "models": [
+    {
+      "analytic_oracles": {
+        "chsh_max": "2*sqrt(1 + concurrence^2)",
+        "concurrence": "|sin(theta)|",
+        "negativity": "|sin(theta)|/2"
+      },
+      "entangling_phase_invariant": "arg(c00 c11 conj(c01) conj(c10)) = -2*theta",
+      "input_state": "|+>|+>",
+      "interaction": "exp(-i (theta/2) Z(x)Z)",
+      "kind": "effective_two_probe_interaction",
+      "limitations": [
+        "theta is a model parameter, not a physical mass/separation",
+        "a positive witness is premise-dependent (see literature L-A3, L-A4)",
+        "no gravitational field or graviton is measured"
+      ],
+      "model_id": "qg.bmv.zz.v1",
+      "model_version": "1.0.0",
+      "parameters": {
+        "local_phase_a": 0.0,
+        "local_phase_b": 0.0,
+        "theta": 0.0
+      },
+      "surface": "MODEL_PREDICTION"
+    },
+    {
+      "couplings_sha256": "50f33ce893e65a8394c733412182cc4844289fedec865c67d28936667fde9f8b",
+      "encoding": "jordan_wigner",
+      "kept_terms": 70,
+      "kept_weight_fraction": 1.0,
+      "kind": "syk_q4",
+      "limitations": [
+        "finite-N model; no continuum holographic limit",
+        "sparsification changes the model; the fraction is reported, not bounded"
+      ],
+      "model_id": "qg.syk.q4.v1",
+      "model_version": "1.0.0",
+      "normalize": false,
+      "num_majorana": 8,
+      "num_qubits": 4,
+      "q": 4,
+      "scale": 0.5,
+      "seed": 20260101,
+      "total_terms": 70
+    }
+  ],
+  "schema": "cqhecs.qg.model_manifest.v1"
+}

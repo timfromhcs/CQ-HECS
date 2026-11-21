@@ -76,6 +76,11 @@ apikey*.json
 oq.py
 .local/
 
+# Quantum Gravity campaign local-only material (never commit)
+research/qg_2026/.secrets/
+*.sdkkey.json
+oq-sdk-key.json
+
 # Python & Testing Caches
 __pycache__/
 *.py[cod]
