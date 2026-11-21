@@ -84,7 +84,7 @@ Waves 4–11: NOT STARTED.
 | W4-18 | C ABI hardening | NOT STARTED |
 | W4-19 | Sanitizer lane | NOT STARTED |
 | W4-20 | Skip budget | NOT STARTED |
-| W4-21 | Mutation targets for QG/router/plan/scheduler | NOT STARTED |
+| W4-21 | Mutation targets for QG/router/plan/scheduler | DONE (QG x2, router; plan already covered; no scheduler module) |
 | W4-22 | CI wiring | NOT STARTED |
 | W4-23 | Version decision record | DONE (D-007: v6.0.0) |
 

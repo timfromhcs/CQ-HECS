@@ -655,8 +655,10 @@ def check_omniwave_proof_gate() -> bool:
     from cqhecs.sat import load_dimacs
 
     formula = load_dimacs(REPO_ROOT / "benchmarks" / "sat" / "pigeonhole_6_5.cnf")
-    # A zero proof budget leaves the check undecided; that must be UNKNOWN, never UNSAT.
-    result = OmniwaveEngine(formula, OmniwaveConfig(timeout_seconds=60, proof_timeout_seconds=0.0)).run()
+    # A budget too small to finish leaves the check undecided; that must be UNKNOWN, never
+    # UNSAT. (A zero budget is refused earlier by the W3-10 deadline guard, so use a tiny
+    # positive one here to exercise the undecided branch.)
+    result = OmniwaveEngine(formula, OmniwaveConfig(timeout_seconds=60, proof_timeout_seconds=1e-9)).run()
     return result.status == "UNSAT"
 
 
@@ -771,8 +773,43 @@ def check_plan_forced_refusal() -> bool:
     return plan.refusal is None or plan.selected_path is not None
 
 
+def check_qg_majorana_anticommutation() -> bool:
+    """True if the Majorana algebra {gamma_i, gamma_j} = 2 delta_ij I is broken."""
+    from cqhecs.quantum_gravity.errors import QGModelError
+    from cqhecs.quantum_gravity.fermions import validate_majorana_algebra
+
+    try:
+        validate_majorana_algebra(2)
+    except QGModelError:
+        return True  # the algebra residual exceeded the tolerance
+    return False
+
+
+def check_qg_bmv_concurrence() -> bool:
+    """True if a product two-qubit state gets a non-zero concurrence."""
+    from cqhecs.quantum_gravity.observables import concurrence_pure_2qubit
+
+    # |+>|+> is separable: its concurrence must be 0.
+    return concurrence_pure_2qubit([0.5, 0.5, 0.5, 0.5]) > 1e-9
+
+
+def check_router_unsupported_gates() -> bool:
+    """True if the router fails to notice a gate a path cannot run."""
+    from cqhecs.circuit_analyzer import CircuitAnalyzer
+    from cqhecs.circuit_parsing import parse_circuit
+    from cqhecs.router import EntanglementAdaptiveRouter
+
+    instructions, num_qubits = parse_circuit([("h", [0], []), ("t", [0], []), ("cx", [0, 1], [])])
+    props = CircuitAnalyzer().analyze_instructions(instructions, num_qubits)
+    # Path A is Clifford-only; a T gate must be reported as unsupported for it.
+    return "t" not in EntanglementAdaptiveRouter()._unsupported_gates(props, "A")
+
+
 CHECKS: Dict[str, Callable[[], bool]] = {
     "separator_count": check_separator_count,
+    "qg_majorana_anticommutation": check_qg_majorana_anticommutation,
+    "qg_bmv_concurrence": check_qg_bmv_concurrence,
+    "router_unsupported_gates": check_router_unsupported_gates,
     "pauli_y_phase": check_pauli_y_phase,
     "pauli_bound_accounting": check_pauli_bound_accounting,
     "plan_forced_refusal": check_plan_forced_refusal,
@@ -1381,6 +1418,30 @@ MUTANTS: List[SourceMutant] = [
         replacement="        elif False:\n",
         check="plan_forced_refusal",
         mechanism="a forced path that cannot run the circuit is planned as executable instead of refused",
+    ),
+    SourceMutant(
+        name="QG Majorana Y label becomes X",
+        target="cqhecs/quantum_gravity/fermions.py",
+        original='        labels.append(prefix + "Y" + suffix)\n',
+        replacement='        labels.append(prefix + "X" + suffix)\n',
+        check="qg_majorana_anticommutation",
+        mechanism="gamma_1 loses its Pauli-Y part, so the Majorana anticommutator is no longer 2 delta_ij",
+    ),
+    SourceMutant(
+        name="QG BMV concurrence sign flipped",
+        target="cqhecs/quantum_gravity/observables.py",
+        original="    return float(2.0 * abs(a * d - b * c))\n",
+        replacement="    return float(2.0 * abs(a * d + b * c))\n",
+        check="qg_bmv_concurrence",
+        mechanism="Wootters concurrence 2|ad - bc| becomes 2|ad + bc|, so a separable product state reports entanglement",
+    ),
+    SourceMutant(
+        name="Router ignores unsupported gates",
+        target="cqhecs/router.py",
+        original="        return sorted(n for n in props.gate_counts if n not in supported)\n",
+        replacement="        return []\n",
+        check="router_unsupported_gates",
+        mechanism="the router stops noticing gates a path cannot run, so it can select an incapable path",
     ),
 ]
 
