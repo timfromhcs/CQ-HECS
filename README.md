@@ -291,10 +291,11 @@ That rule is enforced in code, not only in documentation:
 - **Not a universal quantum simulator.** Each path has a target class and a hard
   limit; no path claims polynomial-time simulation of arbitrary circuits.
 - **Not a QPU.** `RealHardwareBackend` is a fail-closed boundary without a
-  provider integration. This package has never executed a job on physical
-  hardware. One externally submitted reference suite (`r-io-7`) produced
-  measured counts that are used as evaluation data only, never as a result of
-  this package.
+  provider integration. The package API has never executed a job on physical
+  hardware. Real-QPU data in this repository was submitted by external runner
+  scripts, not by the package API: the preregistered `r-io-7` reference suite and
+  the 2026 Quantum Gravity campaign (`research/qg_2026`). Those counts are
+  evaluation and research evidence, never a result produced by this package.
 - **Not a GPU-accelerated simulator.** The Python paths are CPU-only. Vulkan
   compute was verified for native primitives, not for end-to-end circuit
   simulation.
@@ -328,7 +329,7 @@ flowchart LR
 | Path | Method | Best for | Guarantee | Hard limit |
 | :--- | :--- | :--- | :--- | :--- |
 | **A** | Gottesman–Knill tableau | pure Clifford circuits (`T = 0`) | exact GF(2) symplectic evolution, `error_bound = 0.0` | first non-Clifford gate escalates |
-| **B** | Stabilizer-rank decomposition | low `T`-count | exact algebraic decomposition, float64 evaluation | 22 qubits (implementation ceiling) |
+| **B** | Stabilizer-rank decomposition | low `T`-count | exact algebraic decomposition, float64 evaluation; branches with \|weight\| ≤ 1e-15 are dropped and their mass is reported in `error_bound` | 22 qubits (implementation ceiling) |
 | **C** | Untruncated MPS | 1D area-law states | no deliberate truncation; `numerical_error_bound=None` | RAM budget (`ram_budget_mb`, fail-closed); dense conversion ≤ 20 qubits; sampling routing cap 500 qubits |
 | **D** | Sparse-Pauli Heisenberg | observable queries on 200+ qubits | certified bound `Δ ≤ Σ abs(c_P)` over discarded terms | no certified joint measurement distribution |
 
