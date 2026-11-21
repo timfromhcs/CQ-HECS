@@ -18,11 +18,11 @@ correctness/security/release condition wins (recorded in `DECISIONS.md` D-008).
 
 | Wave | Scope | Status | Evidence / next gate |
 |---|---|---|---|
-| W0 | Repository inventory, baseline, protection | **PARTIAL** | baseline reproduced (`WAVE3_REPORT.md`, junit 2899 passed / 105 skipped); baseline committed as `BASELINE_W0.md`; a V7 §1.1 `BASELINE.md` refresh + a source-tree map still owed |
-| W1 | Claim/interface/architecture freeze | **PARTIAL** | additive contracts (D-007, D-008); ExecutionPlan schema + `hcs.run.v2` error_scope published; a written claim audit + Web/EXE feature coverage matrix still owed |
-| W2 | Research and SOTA replication | **NOT_STARTED** | `LITERATURE_MAP.md` (V6) exists; V7 `CLAIM_AUDIT.md`, `QUANTUM_SIMULATION_RESEARCH.md`, `SAT_PROOF_REVIEW.md`, `NOISE_QEC_RESEARCH.md` owed |
-| W3 | Test harness and evidence ledger | **PARTIAL** | skip budget (`SKIP_BUDGET.json`), mutation 63/63, ExecutionPlan schema contract, QG doc-consistency gate, `evidence/` ledgers done; unified fixture/digest policy + cross-surface conformance fixtures owed |
-| W4 | Lean formal workspace | **NOT_STARTED** | no Lean in this session |
+| W0 | Repository inventory, baseline, protection | **PARTIAL** | baseline reproduced (`WAVE3_REPORT.md`, junit 2899 passed / 105 skipped); baseline as `BASELINE_W0.md`; source-tree map as `SOURCE_TREE_MAP.md`; a V7 §1.1 `BASELINE.md` refresh still owed |
+| W1 | Claim/interface/architecture freeze | **PARTIAL** | additive contracts (D-007, D-008); ExecutionPlan schema + `hcs.run.v2` error_scope published; `CLAIM_AUDIT.md` first cut + feature matrix; DE/FR/ARCHITECTURE/docs claim audit owed |
+| W2 | Research and SOTA replication | **NOT_STARTED** | `LITERATURE_MAP.md` (V6) exists; V7 `CLAIM_AUDIT.md` (first cut done), `QUANTUM_SIMULATION_RESEARCH.md`, `SAT_PROOF_REVIEW.md`, `NOISE_QEC_RESEARCH.md` owed |
+| W3 | Test harness and evidence ledger | **PARTIAL** | skip budget (`SKIP_BUDGET.json`), mutation 64/64, ExecutionPlan schema contract, QG doc-consistency gate, `evidence/` ledgers done; unified fixture/digest policy + cross-surface conformance fixtures owed |
+| W4 | Lean formal workspace | **NOT_RUN** | no Lean toolchain and no `lakefile`/`lean-toolchain` in the checkout; `lean`/`lake` not installed. Blocked on toolchain availability; no implementation claim made |
 | W5 | Formalize/harden Paths A and D | **NOT_STARTED** | A: D1 shot contract fixed; D: D3-adjacent Pauli label unchanged |
 | W6 | Paths B/C numerical assurance | **PARTIAL** | Path B dropped-mass reported + bounded (W3-02); Path C label audited (W3-03) |
 | W7 | New simulator paths E/F/G | **NOT_STARTED** | research-only; router unchanged |
@@ -121,10 +121,12 @@ precise claim, assumptions, transfer class and falsification criteria.
 
 ## 6. Open obligations (next work, in V7 order)
 
-1. **W0/W1 finish:** a V7 `BASELINE.md` refresh and a source-tree map. The claim audit
-   (`CLAIM_AUDIT.md`) and the Web/EXE feature-coverage matrix (`FEATURE_COVERAGE.*`) are created
-   (first cuts; `TODO_VERIFY` cells and the DE/FR/ARCHITECTURE/docs/PLAN claim audit to close).
+1. **W0/W1 finish:** a V7 `BASELINE.md` refresh and the remaining claim audit (DE/FR README,
+   ARCHITECTURE split, `docs/**`, `PLAN.md`). `SOURCE_TREE_MAP.md`, `CLAIM_AUDIT.md` and
+   `FEATURE_COVERAGE.*` are created (first cuts; `TODO_VERIFY` cells to close).
 2. **W2:** carry the PLAN.md hypotheses into the V7 hypothesis register (claim, assumptions,
    transfer class, falsification) and produce the literature/claim matrices.
-3. **W1/W3:** unify the fixture/digest policy and add cross-surface conformance fixtures.
-4. Then continue in V7 order; keep **W13 (Web)** and **W14 (EXE)** on the critical path.
+3. **W4 (Lean):** BLOCKED — no toolchain in this environment; requires installing Lean + Mathlib
+   (network). Recorded, not faked.
+4. **W1/W3:** unify the fixture/digest policy and add cross-surface conformance fixtures.
+5. Then continue in V7 order; keep **W13 (Web)** and **W14 (EXE)** on the critical path.
