@@ -69,8 +69,21 @@ def _load_native():
 _native = _load_native()
 
 
-#: Cap on per-shot tableau re-measurements for wide circuits (n > 30).
+#: Historical cap on per-shot tableau re-measurements for wide circuits (n > 30).
+#: Kept for reference only: the sampler no longer truncates silently. It draws every
+#: requested shot, or refuses with :class:`PathAShotBudgetError` when the estimated
+#: work exceeds :data:`MAX_RESAMPLE_WORK`. Pass an explicit ``max_resample_shots`` to
+#: opt back into truncated counts (which are then disclosed via ``sampled_shots``).
 MAX_RESAMPLE_SHOTS = 100
+
+#: Estimated sampling work ``shots * num_qubits`` above which the general per-shot
+#: re-measurement path refuses rather than truncating or running unbounded (D1).
+MAX_RESAMPLE_WORK = 2_000_000
+
+
+class PathAShotBudgetError(ValueError):
+    """Requested shots exceed the Path A re-sampling budget; no counts are truncated (D1)."""
+
 
 #: Gates the native HybridEngine binding is known to implement.
 #:
@@ -108,9 +121,6 @@ class StabilizerTableauSimulator:
     Rows n .. 2n-1: stabilizers
     Row 2n: scratch row for deterministic measurement evaluation
     """
-
-    #: Cap on per-shot tableau re-measurements for wide circuits (n > 30).
-    MAX_RESAMPLE_SHOTS = 100
 
     def __init__(self, num_qubits: int, max_resample_shots: Optional[int] = None):
         self.n = num_qubits
@@ -287,9 +297,19 @@ class StabilizerTableauSimulator:
 
         # General sampling: re-measure from a copy of the tableau per shot.
         saved_tableau = self.tableau.copy()
-        # Re-measurement is O(n^2) per shot in general; cap if specified or default to MAX_RESAMPLE_SHOTS for n > 30.
-        cap = self.max_resample_shots if self.max_resample_shots is not None else self.MAX_RESAMPLE_SHOTS
-        actual_shots = min(shots, cap) if (self.n > 30 and cap is not None) else shots
+        if self.max_resample_shots is not None:
+            # The caller explicitly accepted truncation; honour it and disclose it
+            # through ``sampled_shots``. Never applied implicitly.
+            actual_shots = min(shots, int(self.max_resample_shots))
+        else:
+            work = shots * max(1, self.n)
+            if work > MAX_RESAMPLE_WORK:
+                raise PathAShotBudgetError(
+                    f"refusing to sample {shots} shots on {self.n} qubits: estimated work "
+                    f"{work} exceeds the Path A re-sampling budget {MAX_RESAMPLE_WORK}. "
+                    "Request fewer shots, or pass max_resample_shots to accept truncated counts."
+                )
+            actual_shots = shots
         for _ in range(actual_shots):
             self.tableau[:] = saved_tableau
             bits = [str(self.measure(q, rng)) for q in targets]
