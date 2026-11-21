@@ -116,6 +116,54 @@ code lab opens. A Playwright test asserts exactly that: no editor request on `/`
 The Playwright test recomputes the digest in Node, asserts `engine.precision` is `f64` for
 a WASM run, and asserts the file contains no bridge URL, BSSID, wallet or token string.
 
+## WebGPU failure handling and fallback (W4-09)
+
+The WebGPU engine is an optional f32 accelerator. `web/src/gpu.ts` races every await on the
+device against `device.lost`, so a lost device raises a typed `GpuLossError` instead of
+hanging, and a lost engine refuses later runs at once. `web/src/fallback.ts` decides what
+happens next:
+
+- A device loss or a GPU error (validation, out of memory) repeats the run on the exact WASM
+  f64 core. The result carries `fallback = { from, to, kind, reason }`.
+- The fallback is labelled everywhere: a result chip, a line in "What ran", and an extra
+  entry in the exported run card's `limits`. The card's `engine.kind` is `wasm` and
+  `input.engine_requested` stays `webgpu`, so the swap is visible in the file.
+- A deliberate cancellation never falls back. If the fallback also fails, the error names
+  both causes and no partial result is produced.
+- After a failure the WebGPU option is switched off until the page reloads.
+
+Tests: `web/tests/fallback.test.ts` drives `gpu.ts` through a fake device (loss during a run,
+out-of-memory, healthy, adapter missing) and the policy functions. Not covered: a real GPU
+loss; no CI lane has a GPU, so the fake device models only what `gpu.ts` calls.
+
+## Resource-limit tests (T6-06)
+
+`fallback.test.ts` covers the low-memory policy (0.25 GiB reported RAM gives 22 qubits;
+memory API absent assumes 2 GiB on mobile and 4 GiB on desktop), no WASM core, no WebGPU, and
+a failed allocation (`init(30)` returns false and the core stays usable). `e2e/app.spec.ts`
+covers a 0.25 GiB device refusing a 24-qubit circuit, a missing memory API, and worker
+cancellation: Stop terminates a long 24-qubit run, shows "cancelled", and the next run works
+on a fresh worker.
+
+## Composer input (W4-12) and phone viewports (W4-15)
+
+The composer grid is one tab stop. Arrow keys, Home, End, PageUp and PageDown move a cursor
+(`composer_nav.ts`, bounded by the grid and 64 columns), Enter or Space places the selected
+gate, Delete or Backspace removes the gate under the cursor, Escape cancels a half-placed
+multi-qubit gate. Changes are announced in a polite live region. On touch, a tap places a
+gate and a long press (550 ms without movement) removes one; the release after a long press
+is swallowed so it cannot place a gate back.
+
+Playwright runs `e2e/mobile.spec.ts` in two extra projects, `mobile-360` and `mobile-390`
+(Chromium device emulation, touch on). They check horizontal overflow on every route, a
+24 x 24 CSS px minimum target size (WCAG 2.2 AA 2.5.8) in the lab, a tapped Bell run, the
+touch composer, and axe at phone width. This is emulation, not a physical phone; WebKit and
+Firefox are not run.
+
+The main-page output sinks (SAT result, code error, share link, `lang` and route in the URL)
+have a hostile-text test in `e2e/app.spec.ts`: no handler attributes, injected images,
+dialogs or `window` side effects may appear.
+
 ## What is not claimed
 
 - No speed comparison between WebGPU and WASM is published; that needs a measurement with

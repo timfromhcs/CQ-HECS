@@ -5,6 +5,7 @@
 import { matrix } from "./circuit";
 import { Core, bitsOf } from "./core";
 import { GpuEngine } from "./gpu";
+import { runWithFallback } from "./fallback";
 import type { EngineInfo, RunRequest, RunResult, WorkerRequest, WorkerResponse } from "./protocol";
 import { measurementMap, readoutPair, run } from "./simulate";
 import { countModels, parseDimacs, solve, sweep, toDimacs } from "./sat";
@@ -160,12 +161,22 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   } else if (msg.type === "run") {
     try {
       let result: RunResult;
-      if (msg.engine === "webgpu") {
-        result = await runGpu(msg);
-      } else {
+      const runWasm = async (): Promise<RunResult> => {
         if (!core) throw new Error("WASM-Kern nicht geladen");
-        result = { id: msg.id, engine: "wasm", ...run(core, msg, (fraction, label) => post({ type: "progress", id: msg.id, fraction, label })) };
+        const r: RunResult = { id: msg.id, engine: "wasm", ...run(core, msg, (fraction, label) => post({ type: "progress", id: msg.id, fraction, label })) };
         core.free();
+        return r;
+      };
+      if (msg.engine === "webgpu") {
+        // W4-09: a failed GPU run is repeated on the exact core and labelled, never swapped silently.
+        const out = await runWithFallback(() => runGpu(msg), runWasm, (fb) => {
+          if (fb.kind === "device-lost") gpu = null;
+          gpuError = `${fb.kind}: ${fb.reason}`;
+          post({ type: "gpu-failed", id: msg.id, kind: fb.kind, reason: fb.reason });
+        });
+        result = out.fallback ? { ...out.result, fallback: out.fallback } : out.result;
+      } else {
+        result = await runWasm();
       }
       post({ type: "result", result });
     } catch (e) {

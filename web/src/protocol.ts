@@ -2,6 +2,8 @@
 
 import type { Op } from "./circuit";
 
+import type { Fallback, FallbackKind } from "./fallback";
+
 export type EngineKind = "wasm" | "webgpu";
 
 /**
@@ -60,6 +62,8 @@ export interface RunResult {
   trajectories: number;
   /** For WebGPU runs (n <= 20): total-variation distance to the exact WASM f64 result; not part of elapsedMs. */
   crossCheckTv?: number;
+  /** Present when WebGPU was requested but the run was repeated on WASM f64 (W4-09). */
+  fallback?: Fallback;
 }
 
 export type WorkerRequest =
@@ -74,6 +78,7 @@ export type WorkerRequest =
 export type WorkerResponse =
   | { type: "init"; info: EngineInfo }
   | { type: "probe"; numQubits: number; ok: boolean }
+  | { type: "gpu-failed"; id: number; kind: FallbackKind; reason: string }
   | { type: "progress"; id: number; fraction: number; label: string }
   | { type: "result"; result: RunResult }
   | { type: "error"; id: number; message: string }

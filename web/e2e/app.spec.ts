@@ -157,3 +157,141 @@ test("accessibility: no critical or serious axe violations on the main views", a
     expect(blocking.map((v) => `${r}: ${v.id} (${v.nodes.length})`)).toEqual([]);
   }
 });
+
+// ---------------------------------------------------------------- W4-12 keyboard composer
+
+test("composer by keyboard: arrows move, Enter places, Delete removes, and it is announced", async ({ page }) => {
+  await page.goto("/?lang=en#/lab");
+  await ready(page);
+  await page.click("#clear");
+  await page.click('#palette button[data-tool="h"]');
+  await page.locator("#composer").focus();
+  await expect(page.locator("#composer .kcursor")).toHaveCount(1);
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#composer g.placed")).toHaveCount(1);
+  await expect(page.locator("#composer + [role=status]")).toContainText("placed on q0, column 1");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("Space");
+  await expect(page.locator("#composer g.placed")).toHaveCount(2);
+  // Occupied cell is refused, not overwritten.
+  await page.keyboard.press("Space");
+  await expect(page.locator("#composer g.placed")).toHaveCount(2);
+  await expect(page.locator("#composer + [role=status]")).toContainText("occupied");
+  await page.keyboard.press("Delete");
+  await expect(page.locator("#composer g.placed")).toHaveCount(1);
+  await expect(page.locator("#composer + [role=status]")).toContainText("removed");
+});
+
+test("composer by keyboard: a two-qubit gate takes control then target", async ({ page }) => {
+  await page.goto("/?lang=en#/lab");
+  await ready(page);
+  await page.click("#clear");
+  await page.click('#palette button[data-tool="cx"]');
+  await page.locator("#composer").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#composer + [role=status]")).toContainText("choose the next qubit");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#composer g.placed")).toHaveCount(1);
+  // The cursor stays inside the grid: far more key presses than cells.
+  for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Home");
+  await expect(page.locator("#composer .kcursor")).toHaveCount(1);
+});
+
+test("the composer keeps keyboard focus reachable: Tab leaves it", async ({ page }) => {
+  await page.goto("/?lang=en#/lab");
+  await ready(page);
+  await page.locator("#composer").focus();
+  await page.keyboard.press("Tab");
+  expect(await page.evaluate(() => document.activeElement?.id)).not.toBe("composer");
+});
+
+// ---------------------------------------------------------------- W4-14 output-sink XSS
+
+test("break: hostile text in every user-fed output sink is shown as text, never executed", async ({ page }) => {
+  const evil = `<img src=x onerror="window.__pwned=1"><script>window.__pwned=1</script>`;
+  const dialogs: string[] = [];
+  page.on("dialog", (d) => { dialogs.push(d.message()); void d.dismiss(); });
+  await page.goto(`/?lang=${encodeURIComponent(evil)}#/sat`);
+  await ready(page);
+  const scriptsBefore = await page.evaluate(() => document.scripts.length);
+
+  // SAT sink: parse error text and result panel.
+  await page.fill("#sat-input", `p cnf 2 1\n${evil}\n`);
+  await page.click("#sat-solve");
+  await expect(page.locator("#sat-result")).toContainText("<img");
+  await page.click("#sat-count");
+  await expect(page.locator("#sat-result")).toContainText("<img");
+
+  // Code-lab sink: QASM error shown in #code-error.
+  await page.goto("/?lang=en#/code");
+  await expect(page.locator("#editor .cm-editor")).toBeVisible({ timeout: 30_000 });
+  await page.locator(".cm-content").click();
+  await page.keyboard.press("Control+A");
+  await page.keyboard.type(`OPENQASM 2.0; qreg q[1]; ${evil};`);
+  await page.click("#run");
+  await expect(page.locator("#code-error")).toContainText("<img");
+
+  // Share-link sink: a hostile payload in the hash must not be interpreted either.
+  const b64 = Buffer.from(`OPENQASM 2.0; qreg q[2]; ${evil};`).toString("base64url");
+  await page.goto(`/?lang=en#/code?qasm=${b64}`);
+  await page.goto(`/?lang=en#/<img src=x onerror=window.__pwned=1>`);
+  await ready(page);
+
+  const state = await page.evaluate(() => ({
+    pwned: (window as unknown as { __pwned?: number }).__pwned,
+    handlers: document.querySelectorAll("[onerror], [onload], [onclick]").length,
+    injectedImg: document.querySelectorAll('img[src="x"]').length,
+    scripts: document.scripts.length,
+  }));
+  expect(state.pwned).toBeUndefined();
+  expect(state.handlers).toBe(0);
+  expect(state.injectedImg).toBe(0);
+  expect(dialogs).toEqual([]);
+  expect(state.scripts).toBeLessThanOrEqual(scriptsBefore + 1); // the SPA's own module script
+});
+
+// ---------------------------------------------------------------- T6-06 resource and cancel paths
+
+test("worker cancellation: Stop ends a long run, shows it, and the next run works on a fresh worker", async ({ page }) => {
+  // 24 qubits with ~200 entangling gates keeps the WASM core busy for several seconds.
+  const lines = ["OPENQASM 2.0;", 'include "qelib1.inc";', "qreg q[24];", "creg c[24];"];
+  for (let i = 0; i < 24; i++) lines.push(`h q[${i}];`);
+  for (let r = 0; r < 9; r++) for (let i = 0; i < 23; i++) lines.push(`cx q[${i}],q[${i + 1}];`);
+  const b64 = Buffer.from(lines.join("\n")).toString("base64url");
+  await page.goto(`/?lang=en#/lab?qasm=${b64}`);
+  await ready(page);
+  await page.click("#run");
+  await expect(page.locator("#stop")).toBeVisible();
+  await page.click("#stop");
+  await expect(page.locator("#stats .chip")).toContainText("cancelled");
+  await expect(page.locator("#stop")).toBeHidden();
+  await expect(page.locator("#limit-chip")).toHaveClass(/ok/, { timeout: 45_000 });
+  // Fresh worker: a Bell preset runs normally afterwards.
+  await page.selectOption("#preset", "bell");
+  await page.click("#run");
+  await expect(page.locator("#stats .chip").first()).toContainText("WASM f64", { timeout: 30_000 });
+  await expect(page.locator("#res-table tbody tr td:first-child")).toHaveCount(2);
+});
+
+test("low memory: a device that reports 0.25 GiB gets a lower qubit limit and refuses a larger circuit", async ({ page }) => {
+  await page.addInitScript(() => { Object.defineProperty(Navigator.prototype, "deviceMemory", { get: () => 0.25, configurable: true }); });
+  await page.goto("/?lang=en#/code");
+  await ready(page);
+  await expect(page.locator("#limit-chip")).toContainText("22");
+  await page.locator(".cm-content").click();
+  await page.keyboard.press("Control+A");
+  await page.keyboard.type('OPENQASM 2.0; include "qelib1.inc"; qreg q[24]; h q[0];');
+  await expect(page.locator("#estimate")).toContainText("safe limit");
+  await expect(page.locator("#run")).toBeDisabled();
+});
+
+test("memory API absent: the page still boots with a conservative limit", async ({ page }) => {
+  await page.addInitScript(() => { Object.defineProperty(Navigator.prototype, "deviceMemory", { get: () => undefined, configurable: true }); });
+  await page.goto("/?lang=en#/lab");
+  await ready(page);
+  await page.click("#run");
+  await expect(page.locator("#stats .chip").first()).toContainText("WASM f64");
+});

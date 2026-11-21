@@ -12,6 +12,7 @@ import type { EngineInfo, EngineKind, Noise, RunResult, WorkerRequest, WorkerRes
 import type { CodeEditor } from "./editor";
 import { buildRunCard } from "./provenance";
 import { hasGateNoise, webgpuRefusal } from "./noise_predicate";
+import { fallbackLimit } from "./fallback";
 import { trajectoryCount } from "./simulate";
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
@@ -219,6 +220,8 @@ function renderGuide() {
       ${s.body[getLang()]}
       ${s.action ? `<button class="btn primary small-btn" data-try="${s.id}">${esc(ui.tryIt)} →</button>` : ""}
     </section>`).join("");
+  // Code blocks can scroll sideways on a phone; a scrollable region must be keyboard-focusable.
+  document.querySelectorAll<HTMLElement>("#guide-sections pre").forEach((pre) => pre.setAttribute("tabindex", "0"));
 }
 
 function setupGuide() {
@@ -559,9 +562,11 @@ function showResult(r: RunResult) {
   ];
   if (extra.profile) chips.push(profiles.find((p) => p.id === extra.profile)?.label ?? extra.profile);
   if (extra.extrapolated) chips.push(t("res.extrap", { n: extra.extrapolated }));
+  if (r.fallback) chips.unshift(t("res.fallback", { kind: r.fallback.kind }));
   if (r.mode === "trajectories") chips.push(t("res.traj", { n: r.trajectories }));
   if (r.crossCheckTv !== undefined) chips.push(t("res.tv", { v: r.crossCheckTv.toExponential(1) }));
   $("#stats").innerHTML = chips.map((c) => `<span class="chip">${esc(c)}</span>`).join("");
+  if (r.fallback) disableWebgpuOption(r.fallback.reason);
   renderProvenance(r);
   renderHistogram($("#res-hist"), r);
   renderTable($("#res-table"), r);
@@ -582,6 +587,7 @@ function renderProvenance(r: RunResult) {
   const items = [
     t(r.engine === "wasm" ? "prov.engine.wasm" : "prov.engine.webgpu"),
     noiseLine,
+    ...(r.fallback ? [t("prov.fallback", { kind: r.fallback.kind, reason: r.fallback.reason })] : []),
     t("prov.sampling"),
     t("prov.not"),
     t("prov.build", { version: __APP_VERSION__, sha: __SOURCE_SHA__.slice(0, 12) }),
@@ -605,7 +611,7 @@ async function exportResult() {
       seed: lastRunInput.seed,
     },
     lastResult,
-    [t("prov.not")],
+    [t("prov.not"), ...(lastResult.fallback ? [fallbackLimit(lastResult.fallback)] : [])],
   );
   const blob = new Blob([JSON.stringify(card, null, 2)], { type: "application/json" });
   const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `cqhecs-run-${Date.now()}.json` });
@@ -627,6 +633,17 @@ function setupRun() {
       for (const k of ["hist", "table", "bloch", "state"]) $(`#res-${k}`).hidden = k !== b.dataset.res;
       if (lastResult && b.dataset.res === "bloch") renderBloch($("#res-bloch"), lastResult);
     }));
+}
+
+/** After a GPU failure the option stays off for this page load; the worker restarts on cancel/reload. */
+function disableWebgpuOption(reason: string) {
+  if (engineInfo) engineInfo.gpu = { ok: false, maxQubits: 0, maxBytes: 0, error: reason };
+  const sel = $<HTMLSelectElement>("#engine");
+  const opt = sel.querySelector<HTMLOptionElement>('option[value="webgpu"]')!;
+  opt.disabled = true;
+  opt.dataset.i18n = "run.gpuNo";
+  opt.textContent = t("run.gpuNo");
+  if (sel.value === "webgpu") { sel.value = "wasm"; updateEstimate(); }
 }
 
 function setupEngineOptions() {
@@ -772,11 +789,11 @@ function renderProfiles() {
     <article class="profile card">
       <header><b>${esc(p.label)}</b><span class="badge ${p.validation.h_v3_8 === "SUPPORTED" ? "b-beginner" : "b-adv"}">H-V3-8 ${esc(p.validation.h_v3_8)}</span></header>
       <p class="muted small">CX dep. ${p.cx_depolarizing.toFixed(4)} · ${p.shots_per_circuit} shots · ΔTV ${p.validation.median_delta_tv_m_fit.toFixed(4)}</p>
-      <table class="mini"><thead><tr><th>${esc(t("dev.qubit"))}</th>${p.p01.map((_, q) => `<th class="num">q${q}</th>`).join("")}</tr></thead><tbody>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="${esc(p.label)}"><table class="mini"><thead><tr><th>${esc(t("dev.qubit"))}</th>${p.p01.map((_, q) => `<th class="num">q${q}</th>`).join("")}</tr></thead><tbody>
         <tr><td>${esc(t("dev.p01"))}</td>${p.p01.map((v) => `<td class="num">${v.toFixed(4)}</td>`).join("")}</tr>
         <tr><td>${esc(t("dev.p10"))}</td>${p.p10.map((v) => `<td class="num">${v.toFixed(4)}</td>`).join("")}</tr>
         <tr><td>${esc(t("dev.xflip"))}</td>${p.x_bitflip.map((v) => `<td class="num${v > 0 ? " hot" : ""}">${v.toFixed(3)}</td>`).join("")}</tr>
-      </tbody></table>
+      </tbody></table></div>
       <p class="muted small"><a href="https://github.com/timfromhcs/CQ-HECS/tree/main/${esc(p.evidence)}" rel="noopener">evidence</a></p>
     </article>`).join("");
   $("#vendor-strip").innerHTML = profiles.map((p) => `<span class="chip">${esc(p.label)}</span>`).join("");
