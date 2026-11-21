@@ -26,13 +26,22 @@ read each public claim and mark it against code/tests on this checkout. Statuses
 | Browser engine is its own WASM f64 / WebGPU f32, not A–D | README/`web/README.md` | VERIFIED | `web/src/**` independent statevector |
 | Hardware-noise claims (M-FIT/M-FIT-2, qubit-0 anomaly, calibration) | lines 137–210 | UNVERIFIABLE_HERE | historical evidence in `research/**`; a held-out audit is W8/W10 |
 
+## Architecture and localized documentation
+
+| Claim | Location | Status | Evidence / note |
+|---|---|---|---|
+| Root `ARCHITECTURE.md` is canonical current architecture | root | VERIFIED | describes the four-path architecture; matches `cqhecs/router.py` + backends |
+| `docs/ARCHITECTURE.md` is historical v2 | `docs/ARCHITECTURE.md` header | VERIFIED | header already says "CQ-HECS Architecture (v2, historical)" and points away from the aspirational VRTS-300 spec; the split V7 §17.1 asks to resolve is therefore already labelled, only a cross-link from the root doc could be added |
+| "eliminates silent bond-dimension truncation (χ = 48)" | root `ARCHITECTURE.md` §1 | VERIFIED | `scripts/verify_no_silent_truncation.py` PASS (forbidden χ=48 patterns absent) |
+| `README.de.md`, `README.fr.md` mirror the English README | DE/FR | PARTIAL | both describe `hcs.sat.unified.v1`, run cards and proof status; they do not yet mention the Wave-3/4 additive fields (`certified`/`proof_level`, `hcs.sat.count.v1`, `error_scope`). Full number/field parity is a W2/W15 obligation. |
+
 ## Not yet audited (W1/W2 obligations)
 
-- `README.de.md`, `README.fr.md` (must stay synchronized and use the same evidence numbers).
-- `ARCHITECTURE.md` and the historical `docs/ARCHITECTURE.md` split (V7 §17.1).
-- `docs/**` (API, WEB_ENGINES, CONFORMANCE, QUANTUM_GRAVITY_LAB, DESIGN_SYSTEM), `web/README.md`.
+- `docs/**` (API_REFERENCE, WEB_ENGINES, CONFORMANCE, QUANTUM_GRAVITY_LAB, DESIGN_SYSTEM,
+  UNIFIED_SOLVER, PROVENANCE) — section-by-section claim check.
+- `web/README.md` and `web/vercel.json` deployment claims.
 - `CHANGELOG.md`, `RELEASE_NOTES.md`, `CITATION.cff`, `GEMINI*.md` staleness.
-- Every `PLAN.md` claim (map in W2).
+- Deeper numeric parity between `README.md`, `README.de.md` and `README.fr.md`.
 
 ## Findings to action
 

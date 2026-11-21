@@ -20,9 +20,9 @@ correctness/security/release condition wins (recorded in `DECISIONS.md` D-008).
 |---|---|---|---|
 | W0 | Repository inventory, baseline, protection | **PARTIAL** | baseline reproduced (`WAVE3_REPORT.md`, junit 2899 passed / 105 skipped); baseline as `BASELINE_W0.md`; source-tree map as `SOURCE_TREE_MAP.md`; a V7 §1.1 `BASELINE.md` refresh still owed |
 | W1 | Claim/interface/architecture freeze | **PARTIAL** | additive contracts (D-007, D-008); ExecutionPlan schema + `hcs.run.v2` error_scope published; `CLAIM_AUDIT.md` first cut + feature matrix; DE/FR/ARCHITECTURE/docs claim audit owed |
-| W2 | Research and SOTA replication | **NOT_STARTED** | `LITERATURE_MAP.md` (V6) exists; V7 `CLAIM_AUDIT.md` (first cut done), `QUANTUM_SIMULATION_RESEARCH.md`, `SAT_PROOF_REVIEW.md`, `NOISE_QEC_RESEARCH.md` owed |
+| W2 | Research and SOTA replication | **PARTIAL** | `HYPOTHESIS_REGISTER_V7.md` (consolidated claims + transfer classes) and `SAT_PROOF_REVIEW.md` created; `LITERATURE_MAP.md` pinning (Lean-Quantum/Lean-QIT/FloatLib, 2D TN, MPE, QEC/RL, SAT Comp 2026) and `QUANTUM_SIMULATION_RESEARCH.md`/`NOISE_QEC_RESEARCH.md` owed |
 | W3 | Test harness and evidence ledger | **PARTIAL** | skip budget (`SKIP_BUDGET.json`), mutation 64/64, ExecutionPlan schema contract, QG doc-consistency gate, `evidence/` ledgers done; unified fixture/digest policy + cross-surface conformance fixtures owed |
-| W4 | Lean formal workspace | **NOT_RUN** | no Lean toolchain and no `lakefile`/`lean-toolchain` in the checkout; `lean`/`lake` not installed. Blocked on toolchain availability; no implementation claim made |
+| W4 | Lean formal workspace | **IN_PROGRESS** | `FORMAL_ASSURANCE_PLAN.md` written; elan installed, Lean/Mathlib 4.33.1 toolchain installing; external artifacts (`anthropics/formal-math` pinned, `openai/math`) downloaded for statement comparison; no lemma proved yet |
 | W5 | Formalize/harden Paths A and D | **NOT_STARTED** | A: D1 shot contract fixed; D: D3-adjacent Pauli label unchanged |
 | W6 | Paths B/C numerical assurance | **PARTIAL** | Path B dropped-mass reported + bounded (W3-02); Path C label audited (W3-03) |
 | W7 | New simulator paths E/F/G | **NOT_STARTED** | research-only; router unchanged |
@@ -126,7 +126,7 @@ precise claim, assumptions, transfer class and falsification criteria.
    `FEATURE_COVERAGE.*` are created (first cuts; `TODO_VERIFY` cells to close).
 2. **W2:** carry the PLAN.md hypotheses into the V7 hypothesis register (claim, assumptions,
    transfer class, falsification) and produce the literature/claim matrices.
-3. **W4 (Lean):** BLOCKED — no toolchain in this environment; requires installing Lean + Mathlib
-   (network). Recorded, not faked.
+3. **W4 (Lean):** IN_PROGRESS — elan + Lean/Mathlib 4.33.1 installing; `FORMAL_ASSURANCE_PLAN.md`
+   written; external artifacts downloaded. First lemmas: L-BOUND-01, L-STAB-01.
 4. **W1/W3:** unify the fixture/digest policy and add cross-surface conformance fixtures.
 5. Then continue in V7 order; keep **W13 (Web)** and **W14 (EXE)** on the critical path.
