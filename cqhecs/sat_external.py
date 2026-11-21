@@ -78,6 +78,7 @@ def solve_external(
 
     assignment = None
     certified = False
+    proof_status = None
     if outcome is True:
         assignment = {abs(lit): lit > 0 for lit in model or []}
         for var in range(1, formula.num_vars + 1):
@@ -90,16 +91,20 @@ def solve_external(
     elif outcome is False:
         status = UNSAT
         if not check_proof:
+            proof_status = "disabled"
             note = f"{backend_version()}; proof checking disabled; uncertified"
         else:
             budget = proof_timeout_seconds if proof_timeout_seconds is not None else max(10.0, 2 * timeout_seconds)
             check = check_drat(formula.clauses, proof or [], timeout_seconds=budget)
             certified = check.valid is True
             if check.valid is True:
+                proof_status = "accepted"
                 note = f"{backend_version()}; DRAT proof checked by cqhecs.drat ({check.lemmas} lemmas)"
             elif check.valid is None:
+                proof_status = "undecided"
                 note = f"{backend_version()}; DRAT check undecided ({check.reason}); uncertified"
             else:
+                proof_status = "rejected"
                 note = f"{backend_version()}; DRAT proof rejected ({check.reason}); uncertified"
     else:
         status = UNKNOWN
@@ -122,5 +127,6 @@ def solve_external(
         certificate=None,
         certified=certified,
         proof_system="DRAT" if status == UNSAT and certified else None,
+        proof_status=proof_status if status == UNSAT else None,
         engine="cadical",
     )

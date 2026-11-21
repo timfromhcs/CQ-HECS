@@ -99,6 +99,13 @@ class UnifiedResult:
     certificate: Optional[Sequence[Sequence[Any]]] = None
     order: Tuple[str, ...] = DEFAULT_ORDER
     fractions: Tuple[float, ...] = DEFAULT_FRACTIONS
+    #: True only when the returned verdict is backed: a re-verified SAT model, or an
+    #: UNSAT whose proof the engine accepted. Combined with ``status`` this is the
+    #: difference between "UNSAT" and "UNSAT with a checked certificate".
+    certified: bool = False
+    #: Machine-readable evidence level: "MODEL_VERIFIED", "TREE_RESOLUTION_CHECKED",
+    #: "DRAT_CHECKED", "UNCERTIFIED", "REJECTED" or "NONE".
+    proof_level: str = "NONE"
     detail: Dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -119,6 +126,8 @@ class UnifiedResult:
             "attempts": [attempt.to_dict() for attempt in self.attempts],
             "assignment": {str(k): bool(v) for k, v in self.assignment.items()} if self.assignment else None,
             "certificate_steps": len(self.certificate) if self.certificate else 0,
+            "certified": self.certified,
+            "proof_level": self.proof_level,
             "formula_sha256": self.formula_sha256,
             "detail": dict(self.detail),
         }
@@ -156,6 +165,19 @@ def budget_split(total: float, count: int, fractions: Sequence[float]) -> Tuple[
     return tuple(budgets)
 
 
+def _unsat_proof_level(result: Any) -> str:
+    """How an UNSAT verdict is backed, derived from the engine's own result.
+
+    Never from ``status == UNSAT`` alone: an engine can decide UNSAT while its proof
+    was rejected, undecided or never produced, and that must not read as "checked".
+    """
+    if getattr(result, "certified", False):
+        return getattr(result, "certification", None) or "CERTIFIED"
+    if getattr(result, "proof_status", None) == "rejected":
+        return "REJECTED"
+    return "UNCERTIFIED"
+
+
 def _attempt(engine: str, formula: CNF, budget: float) -> Tuple[Attempt, Optional[Any]]:
     """Run one engine under its own budget; returns the attempt record and its result."""
     started = time.perf_counter()
@@ -174,14 +196,28 @@ def _attempt(engine: str, formula: CNF, budget: float) -> Tuple[Attempt, Optiona
             return Attempt(engine, budget, time.perf_counter() - started, result.status, result.note, proof), result
         if engine == "scan":
             result = sat.solve(formula, timeout_seconds=budget, certify=True)
-            proof = "tree-resolution certificate checked in-repo" if result.status == UNSAT and result.certificate else None
+            if result.status == UNSAT:
+                proof = (
+                    "tree-resolution certificate checked in-repo"
+                    if result.certified
+                    else "UNCERTIFIED: no accepted tree-resolution certificate"
+                )
+            else:
+                proof = None
             return Attempt(engine, budget, time.perf_counter() - started, result.status, result.note, proof), result
         if engine == "omniwave":
             from cqhecs.omniwave import OmniwaveConfig, OmniwaveEngine
 
             omni = OmniwaveEngine(formula, OmniwaveConfig(waves=1, workers=1, timeout_seconds=budget, check_proof=True))
             result = omni.run()
-            proof = "DRAT proof checked by cqhecs.drat" if result.status == UNSAT else None
+            if result.status == UNSAT:
+                proof = (
+                    "DRAT proof checked by cqhecs.drat"
+                    if getattr(result, "certified", False)
+                    else "UNCERTIFIED: DRAT proof not accepted"
+                )
+            else:
+                proof = None
             return Attempt(engine, budget, time.perf_counter() - started, result.status, result.note, proof), result
         if engine == "cadical":
             from cqhecs import sat_external
@@ -189,7 +225,14 @@ def _attempt(engine: str, formula: CNF, budget: float) -> Tuple[Attempt, Optiona
             if not sat_external.available():
                 return Attempt(engine, budget, 0.0, "unavailable", "python-sat is not installed; pip install cqhecs[sat]", None), None
             result = sat_external.solve_external(formula, timeout_seconds=budget, check_proof=True)
-            proof = "DRAT proof checked by cqhecs.drat" if result.status == UNSAT else None
+            if result.status == UNSAT:
+                if getattr(result, "certified", False):
+                    proof = "DRAT proof checked by cqhecs.drat"
+                else:
+                    word = getattr(result, "proof_status", None) or "uncertified"
+                    proof = f"UNCERTIFIED: CaDiCaL DRAT proof {word}"
+            else:
+                proof = None
             return Attempt(engine, budget, time.perf_counter() - started, result.status, result.note, proof), result
     except Exception as exc:  # noqa: BLE001 - an engine failure is a recorded attempt, not a crash
         return Attempt(engine, budget, time.perf_counter() - started, "error", f"{type(exc).__name__}: {exc}", None), None
@@ -203,11 +246,16 @@ def solve_unified(
     fractions: Sequence[float] = DEFAULT_FRACTIONS,
     timeout_seconds: float = 10.0,
     stop_on_decision: bool = True,
+    require_certified: bool = False,
 ) -> UnifiedResult:
     """Solve with the declared engine order and return one evidence record.
 
     The first engine that decides wins; ``stop_on_decision=False`` keeps going so a
     caller can compare engines on one formula (used by the measurement script).
+
+    With ``require_certified=True`` an engine that returns UNSAT without an accepted
+    proof does not decide: its attempt is recorded and the search continues. This is
+    how a caller asks for "UNSAT with a checked certificate, or UNKNOWN".
     """
     if timeout_seconds <= 0:
         raise ValueError("timeout_seconds must be > 0")
@@ -222,6 +270,8 @@ def solve_unified(
     certificate: Optional[Sequence[Sequence[Any]]] = None
     decided_by: Optional[str] = None
     status = UNKNOWN
+    certified_result = False
+    proof_level = "NONE"
 
     for engine, budget in zip(engines, budgets):
         attempt, result = _attempt(engine, formula, budget)
@@ -238,10 +288,20 @@ def solve_unified(
             assignment = dict(model)
             status = SAT
             decided_by = engine
+            certified_result = True
+            proof_level = "MODEL_VERIFIED"
         elif result.status == UNSAT:
+            is_certified = bool(getattr(result, "certified", False))
+            level = _unsat_proof_level(result)
+            if require_certified and not is_certified:
+                attempts[-1] = Attempt(engine, budget, attempt.elapsed_seconds, UNKNOWN,
+                                       f"UNSAT refused: proof not certified ({level}) and require_certified=True", None)
+                continue
             status = UNSAT
             decided_by = engine
             certificate = result.certificate
+            certified_result = is_certified
+            proof_level = level
         else:  # pragma: no cover - defensive
             continue
         if stop_on_decision:
@@ -256,5 +316,7 @@ def solve_unified(
         certificate=certificate,
         order=tuple(engines),
         fractions=tuple(fractions[: len(engines)]),
+        certified=certified_result,
+        proof_level=proof_level,
         detail={"capabilities": [entry.to_dict() for entry in info.values()]},
     )

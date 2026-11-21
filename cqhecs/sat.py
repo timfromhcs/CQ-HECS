@@ -249,6 +249,10 @@ class SATResult:
     certified: bool = False
     #: Proof system of a certified UNSAT: ``"tree-resolution"``, ``"DRAT"`` or None.
     proof_system: Optional[str] = None
+    #: Outcome of the UNSAT proof check, machine-readable: ``"accepted"``,
+    #: ``"rejected"``, ``"undecided"``, ``"disabled"`` or None when no verdict or
+    #: no proof check applies. ``certified`` is True only for ``"accepted"``.
+    proof_status: Optional[str] = None
     #: ``"dpll"`` (built-in) or ``"cadical"`` (:mod:`cqhecs.sat_external`).
     engine: str = "dpll"
 
@@ -292,6 +296,7 @@ class SATResult:
             "certificate_steps": len(self.certificate) if self.certificate else 0,
             "certification": self.certification,
             "proof_system": self.proof_system if self.certified else None,
+            "proof_status": self.proof_status,
             "engine": self.engine,
             "contract_version": RESULT_CONTRACT_VERSION,
         }
@@ -874,6 +879,7 @@ def solve(
     note: str
     certificate: Optional[Tuple[Tuple[Any, ...], ...]] = None
     certified = False
+    proof_status: Optional[str] = None
 
     # An empty clause makes the formula UNSAT without any search.
     if any(len(clause) == 0 for clause in formula.clauses):
@@ -928,8 +934,10 @@ def solve(
         if outcome == "DISAGREEMENT":
             status = UNKNOWN
             note = f"UNSAT withheld: {certificate_note}; refusing to report either verdict"
+            proof_status = "rejected"
         else:
             certified = outcome == "CERTIFIED"
+            proof_status = "accepted" if certified else "undecided"
             note = f"exhaustive DPLL search; {certificate_note}"
 
     elapsed_ms = (time.perf_counter() - started) * 1000.0
@@ -950,6 +958,7 @@ def solve(
         certificate=certificate if status == UNSAT else None,
         certified=bool(certified and status == UNSAT),
         proof_system="tree-resolution" if (certified and status == UNSAT) else None,
+        proof_status=proof_status if status == UNSAT else None,
         engine="dpll-watched" if propagation == "watched" else "dpll",
     )
 
