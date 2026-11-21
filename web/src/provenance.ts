@@ -5,6 +5,7 @@
 // browser's card in the same shape. The digest is always over the payload stored in the
 // card, so a reader can check a card without any other file.
 import { sha256Hex } from "./digest";
+import { enginePrecision, isNoisy, type NoiseLike } from "./noise_predicate";
 
 export const SCHEMA = "hcs.run.v2";
 
@@ -31,13 +32,15 @@ export interface CardResult {
   bloch?: [number, number, number][];
   norm?: number;
   trajectories?: number;
+  /** WebGPU only: total-variation distance to the exact f64 core, when it was cross-checked. */
+  crossCheckTv?: number;
 }
 
 export function modeOf(noise: unknown): "SAMPLED" | "NOISY_CLASSICAL" {
-  const channels = (noise ?? {}) as { p1?: number; p2?: number; readout?: number };
-  const noisy = Number(channels.p1 ?? 0) > 0 || Number(channels.p2 ?? 0) > 0 || Number(channels.readout ?? 0) > 0;
-  if (noisy) return "NOISY_CLASSICAL";
-  return "SAMPLED";
+  // One definition of "this noise changes the run" (D5). The simulator, the planner and the
+  // run card must not disagree, so this delegates to the shared predicate rather than reading
+  // only p1/p2/readout and silently mislabelling a per-qubit-readout or X-flip run as SAMPLED.
+  return isNoisy(noise as NoiseLike | null | undefined) ? "NOISY_CLASSICAL" : "SAMPLED";
 }
 
 export async function buildRunCard(
@@ -68,8 +71,11 @@ export async function buildRunCard(
     },
     engine: {
       kind: result.engine,
-      precision: result.engine === "wasm" ? "f64" : "f32",
+      precision: enginePrecision(result.engine),
       mode: modeOf(input.noise),
+      // The cross-check belongs to the WebGPU f32 path only. It is present as a number when
+      // the exact core was available, and explicitly null (never omitted) when it was not.
+      ...(result.engine === "webgpu" ? { cross_check_tv: result.crossCheckTv ?? null } : {}),
     },
     seed: input.seed,
     result: {

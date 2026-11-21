@@ -11,6 +11,7 @@ import { pigeonhole, random3Sat, toDimacs, type SweepPoint } from "./sat";
 import type { EngineInfo, EngineKind, Noise, RunResult, WorkerRequest, WorkerResponse } from "./protocol";
 import type { CodeEditor } from "./editor";
 import { buildRunCard } from "./provenance";
+import { hasGateNoise, webgpuRefusal } from "./noise_predicate";
 import { trajectoryCount } from "./simulate";
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
@@ -430,8 +431,13 @@ function plan() {
   const shots = Math.max(1, Math.min(1_000_000, Math.round(Number($<HTMLInputElement>("#shots").value)) || 1));
   const noise = noiseFor(c.numQubits);
   const terminal = isTerminalOnly(ops);
-  const gateNoisy = noise.p1 > 0 || noise.p2 > 0 || (noise.xflip ?? []).some((v) => v > 0);
-  if (engine === "webgpu" && (!terminal || gateNoisy)) throw new Error(t("run.gpuNoise"));
+  const gateNoisy = hasGateNoise(noise);
+  if (engine === "webgpu") {
+    // The stable code (noise_predicate.ts) lets a caller act on the refusal without parsing a
+    // localized message; the message stays local, the code does not.
+    const refusal = webgpuRefusal(terminal, noise, t("run.gpuNoise"));
+    if (refusal) throw refusal;
+  }
   const gateOps = ops.filter((o) => o.kind === "u").length;
   const trajectories = !terminal ? shots : gateNoisy ? trajectoryCount(shots, gateOps, c.numQubits) : 1;
   const est = estimate(c.numQubits, gateOps, shots, trajectories, limits, engine === "webgpu");
