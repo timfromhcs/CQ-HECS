@@ -37,7 +37,7 @@ Actionable backlog. `[ ]` open, `[x]` done, `[~]` in progress, `[!]` blocked.
 - [x] `cqhecs/quantum_gravity/` package with typed results
 - [x] `cqhecs.qg.experiment.v1` envelope (nullable, separate uncertainty classes)
 - [x] docs (`docs/QUANTUM_GRAVITY_LAB.md`)
-- [ ] CLI surface (`cq-hecs qg …` subcommands)
+- [x] CLI surface (`cq-hecs qg catalog|preview|run-local`, `--format json`)
 
 ## M6 — Open Quantum adapter + runner  (BLOCKED by B-1 for quote/submit)
 - [x] `scripts/run_qg_openquantum_campaign.py` (doctor/discover/generate/validate/quote/submit/collect/analyse/report)

@@ -78,6 +78,12 @@ contacts Open Quantum or spends credits.
 ## Running it
 
 ```
+# local CLI (no network, no credentials)
+cq-hecs qg catalog
+cq-hecs qg preview --theta 0.5
+cq-hecs qg run-local --theta 1.5707963267948966
+cq-hecs --format json qg run-local --theta 0.5
+
 # offline, deterministic, no credentials
 python scripts/run_qg_openquantum_campaign.py generate
 python scripts/run_qg_openquantum_campaign.py validate

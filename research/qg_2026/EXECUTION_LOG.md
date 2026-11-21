@@ -41,3 +41,8 @@ Commit: `ab27578` — "feat(qg): Quantum Gravity research layer + campaign runne
   `test_studio.py`+`test_studio_security.py` 37 passed. flake8 (E9,F) clean.
 - Fix note: the first placement of the QG methods landed inside a module-level helper;
   relocated into `StudioState` (verified `hasattr(StudioState, "qg_health")`).
+
+## 2026-11-21 — session 1 (continued): CLI surface
+
+- Added `cq-hecs qg {catalog,preview,run-local}` with `--format json`; local, exact,
+  spend = 0. Tests: `test_cli_contract.py` 37 passed. flake8 clean.

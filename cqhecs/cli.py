@@ -823,6 +823,68 @@ def cmd_studio(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def cmd_qg(args: argparse.Namespace) -> int:
+    """Quantum Gravity lab: local, exact, credential-free model tools."""
+    if args.qg_command == "catalog":
+        from cqhecs.quantum_gravity import catalog
+
+        payload = catalog()
+        if args.format == "json":
+            _emit_json(payload)
+            return EXIT_OK
+        print(f"Quantum Gravity catalog (campaign {payload['campaign_default']})")
+        for method in payload["methods"]:
+            print(f"  {method['method_id']:18s} {method['title']}  [{method['status']}]")
+        print("Local only. No route here contacts Open Quantum or spends credits.")
+        return EXIT_OK
+
+    if args.qg_command == "preview":
+        from cqhecs.quantum_gravity.circuits import bmv_qasm, sha256_text
+
+        qasm = bmv_qasm(args.theta)
+        digest = sha256_text(qasm)
+        if args.format == "json":
+            _emit_json({
+                "schema_version": JSON_SCHEMA_VERSION,
+                "execution_surface": "CLASSICAL_REFERENCE",
+                "spend_credits": 0.0,
+                "qasm": qasm,
+                "qasm_sha256": digest,
+            })
+            return EXIT_OK
+        sys.stdout.write(qasm)
+        print(f"# sha256 {digest}")
+        return EXIT_OK
+
+    if args.qg_command == "run-local":
+        from cqhecs.quantum_gravity.models import BMVEffectivePhaseModel
+
+        model = BMVEffectivePhaseModel(theta=args.theta)
+        state = model.state()
+        payload = {
+            "schema_version": JSON_SCHEMA_VERSION,
+            "status": "COMPLETED",
+            "execution_surface": "CLASSICAL_REFERENCE",
+            "probabilities": {format(i, "02b"): float(abs(state[i]) ** 2) for i in range(4)},
+            "observables": {
+                "concurrence": model.concurrence(),
+                "negativity": model.negativity(),
+                "entanglement_entropy": model.entropy(),
+                "chsh_max": model.chsh_max(),
+            },
+            "limitations": ["finite two-qubit model; not a gravitational measurement"],
+        }
+        if args.format == "json":
+            _emit_json(payload)
+            return EXIT_OK
+        obs = payload["observables"]
+        print(f"concurrence {obs['concurrence']:.12f}  negativity {obs['negativity']:.12f}  "
+              f"entropy {obs['entanglement_entropy']:.12f}  chsh_max {obs['chsh_max']:.12f}")
+        return EXIT_OK
+
+    return EXIT_USAGE
+
+
 def cmd_selftest(args: argparse.Namespace) -> int:
     from cqhecs.selftest import run_selftest
 
@@ -1467,6 +1529,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_studio.add_argument("--root", default=None, help="Repository root for evidence discovery")
     p_studio.add_argument("--no-browser", action="store_true", help="Do not open a browser")
 
+    p_qg = sub.add_parser("qg", help="Quantum Gravity lab (local, exact, credential-free)")
+    qg_sub = p_qg.add_subparsers(dest="qg_command", required=True)
+    qg_sub.add_parser("catalog", help="List theories, models and execution surfaces")
+    p_qg_preview = qg_sub.add_parser("preview", help="Emit BMV QASM and its SHA-256 (no spend)")
+    p_qg_preview.add_argument("--theta", type=float, default=0.0, help="Coupling phase (radians)")
+    p_qg_run = qg_sub.add_parser("run-local", help="Run the exact two-qubit BMV model locally")
+    p_qg_run.add_argument("--theta", type=float, default=0.0, help="Coupling phase (radians)")
+
     return parser
 
 
@@ -1501,6 +1571,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "devices": cmd_devices,
         "mcp": cmd_mcp,
         "studio": cmd_studio,
+        "qg": cmd_qg,
         "selftest": cmd_selftest,
         "analyze": cmd_analyze,
         "run": cmd_run,
