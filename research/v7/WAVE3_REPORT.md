@@ -61,7 +61,7 @@ done, not a plan. It supersedes `PLAN_V6_DRAFT.md` where the two differ.
 | Truncation audit | `python scripts/verify_no_silent_truncation.py` | PASS |
 | Compile | `python -m compileall -q cqhecs tests scripts python_bridge` | PASS |
 | Lint | `flake8 ... --select=E9,F` | clean |
-| Python | `python -m pytest tests/ -q` | **2863 passed, 105 skipped, 1 deselected** (372.5 s; W0 baseline: 2814/109) |
+| Python | `python -m pytest tests/ -q` | **2871 passed, 105 skipped, 1 deselected** (375 s; W0 baseline: 2814/109). One loopback test flaked once under load (`test_sha_bridge`, `ConnectionAborted`) and passes on re-run — see B-008. |
 | Mutation | `python scripts/run_mutation_tests.py` | 60/60 killed |
 | Web unit + build | `cd web && npm test && npm run build` | 71/71; tsc + bundle budget green |
 

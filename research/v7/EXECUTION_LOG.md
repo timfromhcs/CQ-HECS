@@ -32,7 +32,7 @@ Base `25e16e5` (v5.0.0), branch `agent/v6-rc`. Full detail: `WAVE3_REPORT.md`.
 | (this commit) | W3-03 / D12 audit; W3-04 Path B vs dense | FINDINGS F-004/F-005; PATHB_DOMINANCE.json |
 | (this commit) | W3-20 licence register; W3-21 QG board reconciliation | qg_doc_consistency.py PASS; qg tests 102 passed |
 | (this commit) | W3-16 llms.txt; W3-14 Rust pin | test_llms_txt 4 passed |
-| full gate | `pytest tests/ -q` | 2863 passed, 105 skipped, 1 deselected |
+| full gate | `pytest tests/ -q` | 2871 passed, 105 skipped, 1 deselected (+1 flaky loopback, B-008) |
 | deferred | W3-10 deadline; W3-02/03/04/11/13/14/16/18/19/20/21; web e2e | see WAVE3_REPORT / BLOCKERS |
 | W0 (2026-11-21) | AGENTS_V6 baseline on 25e16e5 | PASS: 2814 passed/109 skipped; web 61/61; CTest 21/21 (see BASELINE_W0.md) |
 | W3 / T6-03 (2026-11-21) | `-DCQ_ENABLE_VULKAN=OFF` CPU-only native build | PASS: new `tests/test_native_cpu_only.py` red->green (configure, build, CTest, no binary contains the Vulkan loader name; detector positive-controlled: Vulkan-build binaries match). Vulkan build still CTest 21/21. CPU build runs 15 CPU-pure tests; Vulkan targets excluded, not stubbed. NOT YET: CPU/Vulkan differential tests (T6-04), capability reporting in C ABI, CI lane. |

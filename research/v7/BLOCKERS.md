@@ -75,6 +75,22 @@ Fix attempted: none needed. Remaining: the Studio/Web UI copy that renders a res
 Status: FIXED (audit complete: NOT REPRODUCED as a defect; see FINDINGS F-004)
 ```
 
+## B-008 Flaky loopback test: test_sha_bridge.py::test_strict_json_validation
+```
+ID: B-008
+Severity: Low (test reliability)
+Category: RESOURCE
+Affected: tests/test_sha_bridge.py::test_strict_json_validation (SHA hardware bridge)
+Minimal reproduction: full-suite run under load once raised ConnectionAbortedError [WinError 10053]; the same test and its whole file pass deterministically in isolation and on re-run.
+Expected: a loopback HTTP test must not depend on host scheduling under load.
+Observed: a transient socket abort fails the test.
+Root cause (or unknown): loopback socket read racing a client-side close under CPU load; not caused by this session's changes (the bridge code is untouched).
+Fix attempted: none this session.
+Remaining risk: a full-suite run can report one spurious failure; the release gate must re-run a failed test before treating it as a defect.
+Next safe action: make the bridge test retry/robust to ConnectionAborted (Wave 7/10 hardening).
+Status: OPEN
+```
+
 ## B-007 python-sat / external proof checkers not exercised here
 ```
 ID: B-007
