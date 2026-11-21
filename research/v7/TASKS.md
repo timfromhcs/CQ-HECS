@@ -69,7 +69,7 @@ Waves 4–11: NOT STARTED.
 | W4-03 | Shared service layer + `cq-hecs plan` + parity corpus | NOT STARTED |
 | W4-04 | Publish JSON Schemas + OpenAPI 3.1 + `/api/v1` aliases | NOT STARTED |
 | W4-05 | MCP protocol negotiation, annotations, outputSchema | NOT STARTED |
-| W4-06 | `doctor` solver line + Studio token via env/file | NOT STARTED |
+| W4-06 | `doctor` solver line + Studio token via env/file | DONE |
 | W4-07 | `hcs.sat.count.v1` typed count contract | DONE |
 | W4-08 | Separator width calibration | NOT STARTED |
 | W4-09 | WebGPU device-loss handling | NOT STARTED |

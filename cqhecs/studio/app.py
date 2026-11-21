@@ -1050,7 +1050,9 @@ class StudioHTTPServer(ThreadingHTTPServer):
         self.state = state
         # Per-launch bearer token for every /api/ route. A web page open in the user's browser can reach a
         # loopback server (cross-site simple POST, DNS rebinding); without this token it cannot start jobs.
+        # A caller may supply one (env / file, W4-06) for a programmatic client; otherwise it is ephemeral.
         self.token = token or secrets.token_urlsafe(32)
+        self.token_ephemeral = token is None or token == ""
         super().__init__(address, StudioHandler)
         bind_host = str(address[0])
         names = {"127.0.0.1", "localhost", "[::1]"}
@@ -1269,9 +1271,41 @@ class StudioHandler(BaseHTTPRequestHandler):
 
 
 def launch_url(server: StudioHTTPServer) -> str:
-    """URL to open in a browser. The token travels in the fragment, which is never sent to a server."""
+    """URL to open in a browser. The token travels in the fragment, which is never sent to a server.
+
+    A per-launch ephemeral token is embedded so the printed URL is click-to-run. A
+    token supplied by the caller (env / file, W4-06) is **not** embedded, so it does not
+    leak into logs; the caller passes it in the Authorization header.
+    """
     host = str(server.server_address[0]) or "127.0.0.1"
-    return f"http://{host}:{server.server_address[1]}/#token={server.token}"
+    base = f"http://{host}:{server.server_address[1]}/"
+    if getattr(server, "token_ephemeral", True):
+        return f"{base}#token={server.token}"
+    return base
+
+
+def resolve_studio_token() -> Optional[str]:
+    """A Studio bearer token from the environment or a file, or None for a per-launch one.
+
+    ``CQ_HECS_STUDIO_TOKEN`` is used if set; otherwise ``CQ_HECS_STUDIO_TOKEN_FILE``
+    names a file whose stripped contents are the token. An env var is preferred over a
+    CLI argument so the token never appears in a process listing (W4-06).
+    """
+    token = os.environ.get("CQ_HECS_STUDIO_TOKEN")
+    if token:
+        return token
+    path = os.environ.get("CQ_HECS_STUDIO_TOKEN_FILE")
+    if path:
+        try:
+            value = Path(path).read_text(encoding="utf-8").strip()
+        except OSError as exc:
+            raise StudioError(
+                f"cannot read CQ_HECS_STUDIO_TOKEN_FILE {path!r}: {exc}", code="studio_token"
+            ) from exc
+        if not value:
+            raise StudioError("CQ_HECS_STUDIO_TOKEN_FILE is empty", code="studio_token")
+        return value
+    return None
 
 
 def create_server(
@@ -1280,7 +1314,7 @@ def create_server(
     root: Optional[Path | str] = None,
 ) -> StudioHTTPServer:
     state = StudioState(root)
-    return StudioHTTPServer((host, port), state)
+    return StudioHTTPServer((host, port), state, token=resolve_studio_token())
 
 
 def serve(
@@ -1292,7 +1326,10 @@ def serve(
     server = create_server(host, port, root)
     url = f"http://{host}:{server.server_address[1]}/"
     print(f"CQ-HECS Studio {__version__} on {url}")
-    print(f"Open (the token is in the fragment, keep this URL private): {launch_url(server)}")
+    if getattr(server, "token_ephemeral", True):
+        print(f"Open (the token is in the fragment, keep this URL private): {launch_url(server)}")
+    else:
+        print("Using the token from CQ_HECS_STUDIO_TOKEN(_FILE); send it as a Bearer token.")
     print("Local only. Press Ctrl+C to stop.")
     print(server.state.dataset.note)
     if open_browser:

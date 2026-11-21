@@ -161,9 +161,21 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         except ImportError:
             record(label, "not_installed", f"optional dependency '{module}' missing")
 
+    # Optional SAT solver adapter
+    try:
+        from cqhecs import sat_external
+
+        if sat_external.available():
+            record("sat_solver", "available", sat_external.backend_version())
+        else:
+            record("sat_solver", "not_available", "python-sat is not installed; pip install cqhecs[sat]")
+    except Exception as exc:  # noqa: BLE001 - report, never crash doctor
+        record("sat_solver", "failed", f"{type(exc).__name__}: {exc}")
+
     # Native binding
     try:
         import cqhecs.backends.path_a_stabilizer as path_a
+
         if path_a._native is not None:
             record(
                 "native_binding", "available",
