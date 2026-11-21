@@ -88,20 +88,43 @@ keyboard/touch **NOT_STARTED** · W4-13 theme + contrast **DONE** · W4-14 XSS +
 
 ---
 
-## 5. PLAN.md topics
+## 5. PLAN.md topics (mapped)
 
-`PLAN.md` (research, SAT, quantum, UI, web, Vercel, packaging, release) has not been read in
-full in this session. V7 §1.1 requires it to be read and each item mapped here. Until that is
-done, PLAN.md items are **NOT_YET_MAPPED** and are assigned to V7 **W2** (research/claim audit)
-and **W1** (interface freeze). This is recorded as an open obligation, not a completion.
+`PLAN.md` (1193 lines, German) is read at section level. Its §13 milestones M0–M12 and its
+hypothesis classes map onto V7 waves as follows. Item-level detail within each milestone is
+tracked as it is executed; nothing here is a new obligation beyond V7.
+
+| PLAN.md item | Maps to V7 | Status |
+|---|---|---|
+| M0 Safe start + baseline freeze | W0 | PARTIAL (baseline reproduced) |
+| M1 Claim/architecture/docs review | W1 | PARTIAL (`CLAIM_AUDIT.md` first cut; ARCHITECTURE split owed) |
+| M2 Literature deep read + formal transfer audit | W2 | NOT_STARTED |
+| M3 Test harness + evidence ledger | W3 | PARTIAL (skip budget, mutation, schemas, doc-consistency) |
+| M4 SAT result contract + proof boundary | W9 | DONE-in-part (D3 `certified`/`proof_level`, W3-09/W3-10) |
+| M5 SAT performance + research | W9 | PARTIAL (baseline captured; benchmarks owed) |
+| M6 Math/quantum prototype | W5, W6, W7 | PARTIAL (B/C assurance started) |
+| M7 Quantum core/native/noise hardening | W5, W6, W10, W11 | PARTIAL (CPU-only verified; Vulkan/noise owed) |
+| M8 Backend/API/CLI/MCP + packaging | W11, W12, W16 | PARTIAL (MCP bounds/errors; packaging owed) |
+| M9 Studio/Web UX/visual quality | W13 | PARTIAL (theme/contrast/i18n/run-card) |
+| M10 Vercel preview/cloud/security | W13, W14, W15 | NOT_STARTED |
+| M11 Release-candidate audit | W16, W17 | NOT_STARTED |
+| M12 Stable release + post-release | W18 | NOT_STARTED |
+| H-SAT-01…06 (watched, CDCL, adapter, parity, #SAT, proof) | W9 | DONE-in-part (watched + proof contracts; CDCL not started) |
+| H-QUANT-01/02 (2D TN, Pauli selection) | W5, W6, W7 | NOT_STARTED (E/F/G research-only) |
+| H-NOISE-01 (profile transfer) | W10 | NOT_RUN (needs held-out data) |
+| H-UX-01 (explainability/provenance) | W13 | PARTIAL |
+
+Obligation: the PLAN.md hypotheses must be carried into the V7 hypothesis register at W2 with a
+precise claim, assumptions, transfer class and falsification criteria.
 
 ---
 
 ## 6. Open obligations (next work, in V7 order)
 
-1. **W0/W1 finish:** a V7 `BASELINE.md` refresh, a source-tree map, and the claim audit
-   (`CLAIM_AUDIT.md`). The Web/EXE **feature-coverage matrix** (V7 §16.1) is created as
-   `FEATURE_COVERAGE.md` + `FEATURE_COVERAGE.json` (first cut; `TODO_VERIFY` cells to close).
-2. **W2:** read `PLAN.md` fully; produce the V7 literature/claim matrix and map every PLAN item.
+1. **W0/W1 finish:** a V7 `BASELINE.md` refresh and a source-tree map. The claim audit
+   (`CLAIM_AUDIT.md`) and the Web/EXE feature-coverage matrix (`FEATURE_COVERAGE.*`) are created
+   (first cuts; `TODO_VERIFY` cells and the DE/FR/ARCHITECTURE/docs/PLAN claim audit to close).
+2. **W2:** carry the PLAN.md hypotheses into the V7 hypothesis register (claim, assumptions,
+   transfer class, falsification) and produce the literature/claim matrices.
 3. **W1/W3:** unify the fixture/digest policy and add cross-surface conformance fixtures.
 4. Then continue in V7 order; keep **W13 (Web)** and **W14 (EXE)** on the critical path.
