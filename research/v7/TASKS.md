@@ -60,6 +60,14 @@ Base `25e16e5` (v5.0.0), branch `agent/v6-rc`. Detail in `WAVE3_REPORT.md`.
 
 Waves 4–11: NOT STARTED.
 
+## V7 (AGENTS_V7.md)
+
+`AGENTS_V7.md` is the governing contract (see `DECISIONS.md` D-008). This branch's V6 Wave-3/4
+work maps into V7 waves; the full mapping (V7 waves W0–W18, V6 backlog T6-01..T6-13, V6 Wave-3/4
+tasks, PLAN.md) is in `research/v7/PLAN_COVERAGE.md`, and the cross-surface capability matrix is
+`research/v7/FEATURE_COVERAGE.md` + `.json`. Work now follows V7's wave order; Web (W13) and
+Windows EXE (W14) are hard gates.
+
 ## AGENTS_V6.md Wave 4 (2026-11-21) — status
 
 | ID | Task | Status |

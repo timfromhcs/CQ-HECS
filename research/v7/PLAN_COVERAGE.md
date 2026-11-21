@@ -99,8 +99,9 @@ and **W1** (interface freeze). This is recorded as an open obligation, not a com
 
 ## 6. Open obligations (next work, in V7 order)
 
-1. **W0/W1 finish:** a V7 `BASELINE.md` refresh, a source-tree map, the claim audit
-   (`CLAIM_AUDIT.md`) and the Web/EXE **feature-coverage matrix** (V7 §16.1).
+1. **W0/W1 finish:** a V7 `BASELINE.md` refresh, a source-tree map, and the claim audit
+   (`CLAIM_AUDIT.md`). The Web/EXE **feature-coverage matrix** (V7 §16.1) is created as
+   `FEATURE_COVERAGE.md` + `FEATURE_COVERAGE.json` (first cut; `TODO_VERIFY` cells to close).
 2. **W2:** read `PLAN.md` fully; produce the V7 literature/claim matrix and map every PLAN item.
 3. **W1/W3:** unify the fixture/digest policy and add cross-surface conformance fixtures.
 4. Then continue in V7 order; keep **W13 (Web)** and **W14 (EXE)** on the critical path.
