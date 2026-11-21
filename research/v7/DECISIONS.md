@@ -73,3 +73,29 @@ Additive changes (no break; listed for the migration doc):
 `scripts/check_version.py` must keep passing on whatever `scripts/version.py` reports; the
 bump itself happens at Wave 10 (W10-01), not here.
 
+## D-008 AGENTS_V7.md is the governing execution contract (2026-11-21)
+The maintainer added `AGENTS_V7.md` (untracked at the repo root) as the new work order for
+the next major release. It is adopted here as the **governing execution contract**. `AGENTS_V7.md`
+supersedes the *execution order* of `AGENTS_V6.md` and `PLAN.md`, but does not erase their
+technical obligations. Where V7 conflicts with an older plan, the stricter condition wins;
+the conflict is recorded here. `AGENTS_V7.md` is committed onto this branch so the contract
+travels with the work (matching how `AGENTS_V6.md` was added).
+
+Consequences for this branch's completed work — all of it is retained and mapped, none is
+renamed or dropped (V7 §19.0):
+
+- The Wave-3 honesty fixes (D1–D12) map to V7 **W1** (interface/claim freeze) and are
+  additive except the Path A shot contract (D1), which is the recorded breaking change D-007
+  relies on.
+- The Wave-4 contracts and gates map to V7 **W0** (baseline), **W3** (test harness/evidence:
+  skip budget, mutation suite, ExecutionPlan schema, QG doc consistency) and **W1**
+  (`hcs.sat.count.v1` is additive).
+- The CPU-only native build + loader-free verification (T6-03 / W4-16) maps to V7 **W11**.
+- Web theme/contrast/i18n/WASM-URL/run-card work maps to V7 **W13** (a hard product gate:
+  Web and the Windows EXE must not be deferred past the release).
+- `research/v7/PLAN_COVERAGE.md` is the required mapping of every V6/V7/PLAN item to a V7
+  wave/task/status/owner/gate; it is created alongside this decision.
+
+§19.0 carry-forward: the V6 backlog T6-01..T6-13 is preserved and re-mapped in
+`PLAN_COVERAGE.md`; no V6 task ID is silently dropped or renamed.
+
