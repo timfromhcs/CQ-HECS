@@ -77,13 +77,13 @@ Waves 4–11: NOT STARTED.
 | W4-11 | WASM base URL fix + hash check | NOT STARTED |
 | W4-12 | Keyboard/touch composer | NOT STARTED |
 | W4-13 | prefers-color-scheme + token contrast | NOT STARTED |
-| W4-14 | Output-sink XSS + i18n key parity | NOT STARTED |
+| W4-14 | Output-sink XSS + i18n key parity | PARTIAL: i18n parity test added; forge has a hostile-text XSS e2e; main-page XSS assertion deferred |
 | W4-15 | Mobile viewport projects | NOT STARTED |
 | W4-16 | Verify CPU-only core loader-free | NOT STARTED |
 | W4-17 | VkResult checks + fault injection | NOT STARTED |
 | W4-18 | C ABI hardening | NOT STARTED |
 | W4-19 | Sanitizer lane | NOT STARTED |
-| W4-20 | Skip budget | NOT STARTED |
+| W4-20 | Skip budget | DONE (105 skips / 11 reasons; `skip_budget.py --check`) |
 | W4-21 | Mutation targets for QG/router/plan/scheduler | DONE (QG x2, router; plan already covered; no scheduler module) |
 | W4-22 | CI wiring | NOT STARTED |
 | W4-23 | Version decision record | DONE (D-007: v6.0.0) |
