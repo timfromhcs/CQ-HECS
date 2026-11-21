@@ -30,8 +30,11 @@ public:
     void* map();
     void unmap();
 
-    void copy_to_buffer(const void* data, VkDeviceSize size);
-    void copy_from_buffer(void* data, VkDeviceSize size);
+    /// Host copy through the persistent mapping. Return false (and copy nothing)
+    /// when the buffer is invalid, `size` exceeds the buffer, or mapping fails;
+    /// callers must treat false as a failed transfer, never as success.
+    [[nodiscard]] bool copy_to_buffer(const void* data, VkDeviceSize size);
+    [[nodiscard]] bool copy_from_buffer(void* data, VkDeviceSize size);
 
     VkBuffer get_buffer() const { return m_buffer; }
     VkDeviceMemory get_memory() const { return m_memory; }

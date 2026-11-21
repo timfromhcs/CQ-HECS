@@ -143,7 +143,12 @@ jobs:
           CQ_REQUIRE_VULKAN: "1"
         run: |
           vulkaninfo --summary
-          ctest --test-dir build -R '^test_vulkan_compute_contract$' -V
+          # W4-17 / T6-04: dispatch contract, VkResult fault injection (OOM,
+          # device loss, leak-free recovery) and the CPU-vs-Vulkan BCP
+          # differential. CQ_REQUIRE_VULKAN turns a missing device into a FAILURE,
+          # never a silent skip. Software-ICD results prove conformance, not speed.
+          ctest --test-dir build \
+            -R '^(test_vulkan_compute_contract|test_vulkan_fault_device|test_vulkan_bcp_differential)$' -V
 
       - name: Full Python suite with branch coverage
         env:
@@ -399,13 +404,17 @@ jobs:
           print(f"sanitizer flags verified for {len(required)} objects")
           PY
 
-      - name: Run parser, solver and hardening tests under sanitizers
+      - name: Run parser, solver, C-ABI and Vulkan fault tests under sanitizers
+        # W4-19. Covers the C-ABI hardening contract (test_c_abi_core), the VkResult
+        # fault-injection suite and the CPU-vs-Vulkan BCP differential (lavapipe
+        # software ICD; CQ_REQUIRE_VULKAN makes a missing device a failure).
         env:
           ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+          CQ_REQUIRE_VULKAN: "1"
         run: |
           ctest --test-dir build-asan --output-on-failure \
-            -R "^(test_qasm_contract|cq_hecs_cpp_hardening|test_constraint_solver|test_exact_algebra)$"
+            -R "^(test_qasm_contract|cq_hecs_cpp_hardening|test_constraint_solver|test_exact_algebra|test_c_abi_core|test_vulkan_fault_init|test_vulkan_fault_device|test_vulkan_bcp_validation|test_vulkan_bcp_differential)$"
 
       - name: Upload sanitizer build log on failure
         if: failure()

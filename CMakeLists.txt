@@ -92,14 +92,23 @@ option(CQ_ENABLE_VULKAN "Build the Vulkan compute integration (requires the Vulk
 option(CQ_ENABLE_SANITIZERS "Enable Address and UB sanitizers (GNU/Clang)" OFF)
 
 if(CQ_ENABLE_SANITIZERS)
-    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        message(STATUS "CQ_ENABLE_SANITIZERS=ON: address,undefined for all native targets")
+        add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+        add_link_options(-fsanitize=address,undefined)
+    elseif(MSVC)
+        # MSVC ships AddressSanitizer only (no UBSan). Use a Release/RelWithDebInfo
+        # configuration: /fsanitize=address is incompatible with /RTC1 (Debug) and
+        # with incremental linking. The runtime DLL
+        # (clang_rt.asan_dynamic-x86_64.dll) must be on PATH when running tests.
+        message(STATUS "CQ_ENABLE_SANITIZERS=ON: MSVC AddressSanitizer only (no UBSan)")
+        add_compile_options(/fsanitize=address)
+        add_link_options(/INCREMENTAL:NO)
+    else()
         message(FATAL_ERROR
-            "CQ_ENABLE_SANITIZERS requires GCC or Clang; "
+            "CQ_ENABLE_SANITIZERS requires GCC, Clang or MSVC; "
             "${CMAKE_CXX_COMPILER_ID} does not support these flags.")
     endif()
-    message(STATUS "CQ_ENABLE_SANITIZERS=ON: address,undefined for all native targets")
-    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
-    add_link_options(-fsanitize=address,undefined)
 endif()
 
 set(CQ_HAVE_VULKAN OFF)
@@ -356,7 +365,23 @@ if(CQ_HAVE_VULKAN)
 add_executable(test_vulkan_compute_contract tests/cpp/test_vulkan_compute_contract.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
 target_include_directories(test_vulkan_compute_contract PRIVATE include src)
 target_link_libraries(test_vulkan_compute_contract PRIVATE ${Vulkan_LIBRARIES})
+
+# W4-17/T6-04: fault-injection and CPU-vs-Vulkan differential tests. Both compile
+# the C-ABI facade (src/cq_hecs_api.cpp) INTO the test executable, not the DLL:
+# the fault-injection table is a C++-only seam, and a separate module would own
+# a separate table. CQ_HECS_STATIC removes the dllimport decoration.
+foreach(_vk_test IN ITEMS test_vulkan_fault_injection test_vulkan_bcp_differential)
+    add_executable(${_vk_test} tests/cpp/${_vk_test}.cpp src/cq_hecs_api.cpp $<TARGET_OBJECTS:cq_hecs_core_objects>)
+    target_include_directories(${_vk_test} PRIVATE include src)
+    target_compile_definitions(${_vk_test} PRIVATE CQ_HECS_STATIC=1)
+    target_link_libraries(${_vk_test} PRIVATE ${Vulkan_LIBRARIES})
+endforeach()
 endif()
+
+# W4-18: C-ABI hardening contract for the CPU core library (also built CPU-only).
+add_executable(test_c_abi_core tests/cpp/test_c_abi_core.cpp)
+target_include_directories(test_c_abi_core PRIVATE include src)
+target_link_libraries(test_c_abi_core PRIVATE cq_hecs_core)
 
 # 7. CTest Verification Suite
 enable_testing()
@@ -396,7 +421,16 @@ add_test(NAME test_qpu_facade_contract COMMAND test_qpu_facade_contract)
 if(CQ_HAVE_VULKAN)
 add_test(NAME test_vulkan_compute_contract COMMAND test_vulkan_compute_contract)
 set_tests_properties(test_vulkan_compute_contract PROPERTIES SKIP_RETURN_CODE 77)
+# "init"/"validate" modes need no GPU (injected failures / pre-device validation);
+# the "device" modes exit 77 (SKIPPED, never PASSED) when no Vulkan device exists.
+add_test(NAME test_vulkan_fault_init COMMAND test_vulkan_fault_injection init)
+add_test(NAME test_vulkan_fault_device COMMAND test_vulkan_fault_injection device)
+set_tests_properties(test_vulkan_fault_device PROPERTIES SKIP_RETURN_CODE 77)
+add_test(NAME test_vulkan_bcp_validation COMMAND test_vulkan_bcp_differential validate)
+add_test(NAME test_vulkan_bcp_differential COMMAND test_vulkan_bcp_differential device)
+set_tests_properties(test_vulkan_bcp_differential PROPERTIES SKIP_RETURN_CODE 77)
 endif()
+add_test(NAME test_c_abi_core COMMAND test_c_abi_core)
 
 # 8. Nanobind Python C++20 Modules
 find_package(Python 3.11 COMPONENTS Interpreter Development.Module QUIET)
