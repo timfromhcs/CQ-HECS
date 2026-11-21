@@ -97,3 +97,8 @@ Commit: `ab27578` — "feat(qg): Quantum Gravity research layer + campaign runne
   θ=0/π4/π2; ⟨X⊗X⟩ 0.954/0.818/0.808. θ=0 null consistent with 0.
 - Records: FINDINGS F-08, `processed/bmv_qpu_analysis.json`, `raw/bmv_qpu/EVIDENCE_MANIFEST.json`.
 - Spark spent **13 / 25** (0 refunded).
+
+## 2026-11-21 — session 1 (continued): BMV phase-scan extension
+
+- Preregistered + submitted θ ∈ {π/8, 3π/8} × {Y⊗Z, Z⊗Y} (4 circuits, 4 credits), locally
+  verified to give sinθ. Cumulative **17 / 25**. Results pending collection.
