@@ -1,0 +1,41 @@
+{
+  "circuits": [
+    {
+      "circuit_id": "syk-forward-v2",
+      "depth": 83,
+      "file": "syk-forward-v2.qasm",
+      "ops": {
+        "cx": 46,
+        "h": 14,
+        "measure": 3,
+        "rx": 16,
+        "rz": 15
+      },
+      "sim_p000": 0.2325842903005003
+    },
+    {
+      "circuit_id": "syk-mirror-v2",
+      "depth": 165,
+      "file": "syk-mirror-v2.qasm",
+      "ops": {
+        "cx": 92,
+        "h": 28,
+        "measure": 3,
+        "rx": 32,
+        "rz": 30
+      },
+      "sim_p000": 0.01032473822648185
+    }
+  ],
+  "ideal_p000": {
+    "syk-forward-v2": 0.2325842903004991,
+    "syk-mirror-v2": 0.010324738226481682
+  },
+  "model_id": "qg.syk.q4.v1",
+  "n_qubits": 3,
+  "reps": 1,
+  "scale": 0.4,
+  "schema": "cqhecs.qg.syk_qpu_manifest.v1",
+  "seed": 20260101,
+  "t": 1.0
+}

@@ -38,6 +38,17 @@ control. This is a **finite-N model** experiment; it is not a spacetime or wormh
 - Authorised ceiling: **25 Spark**. Spent so far **17**. This stage: **2**. Cumulative **19**.
 - Full credits: **0**. Stop if a quote is not Public/Standard or cumulative > 25.
 
+## Correction (v3) — recorded before resubmission
+The first submission used circuits whose *preregistered ideals* were the **exact** matrix
+exponential (0.428 / 1.0), while the hardware ran the **Trotter** circuit (ideal 0.232584), and
+the "mirror" was not a true inverse (so it was not a return-to-zero test). The first run is
+therefore **INVALID** as a test of the stated model (see FINDINGS F-09).
+
+The v3 circuits fix this (`qasm/syk_qpu_v3/`): forward Trotter ideal **0.232584**; mirror is
+`forward + forward.inverse()` (true return-to-zero, ideal **1.0**, gates retained with
+`optimization_level=0`). Each exported QASM is re-loaded and simulated to confirm it matches
+its ideal before submission. **2 circuits × 1 credit = 2 credits** (cumulative → **21 / 25**).
+
 ## Non-claims
 A finite-N digital SYK circuit is a model experiment. No black-hole, wormhole, graviton or
 "spacetime" claim; sparsification/finite-size and Trotter limits apply.
