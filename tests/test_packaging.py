@@ -268,6 +268,16 @@ def test_native_packaging_names_are_exact():
     assert 'Build-Lane "cpu" "OFF"' in ps and 'Build-Lane "vulkan" "ON"' in ps
 
 
+def test_native_package_script_discovers_the_visual_studio_generator():
+    """Regression: windows-latest moved to Visual Studio 2026 and a fixed "17 2022" could not configure."""
+    ps = (ROOT / "scripts" / "package_native.ps1").read_text(encoding="utf-8")
+    assert '[string]$Generator = ""' in ps  # no hard-coded default
+    assert "function Resolve-CMakeGenerator" in ps and "$Generator = Resolve-CMakeGenerator $Generator" in ps
+    assert "CQ_CMAKE_GENERATOR" in ps  # explicit override
+    assert "vswhere.exe" in ps and "Visual Studio 18 2026" in ps and "Visual Studio 17 2022" in ps
+    assert "-G $Generator" in ps
+
+
 def test_smoke_driver_scrubs_import_path_and_credentials(monkeypatch):
     smoke = _load("package_smoke")
     monkeypatch.setenv("PYTHONPATH", "/some/repo")
@@ -277,6 +287,24 @@ def test_smoke_driver_scrubs_import_path_and_credentials(monkeypatch):
     assert "PYTHONPATH" not in env and "CQ_HECS_STUDIO_TOKEN" not in env and "OPENQUANTUM_API_KEY" not in env
     assert smoke.studio_env(env)["CQ_HECS_STUDIO_TOKEN"] == smoke.STUDIO_TOKEN
     assert smoke.REPO_ROOT == ROOT
+
+
+def test_port_is_free_after_a_stopped_server_leaves_time_wait_but_not_while_listening():
+    """Regression: studio_health_and_stop failed on Linux with Errno 98 after the tree kill."""
+    import socket
+
+    smoke = _load("package_smoke")
+    srv = socket.socket()
+    srv.bind(("127.0.0.1", 0))
+    srv.listen(1)
+    port = srv.getsockname()[1]
+    assert smoke.port_is_free(port) is False  # a live listener must still be detected
+    cli = socket.create_connection(("127.0.0.1", port))
+    conn, _ = srv.accept()
+    conn.close()  # server side closes first: its connection sits in TIME_WAIT on `port`
+    cli.close()
+    srv.close()
+    assert smoke.port_is_free(port) is True
 
 
 def test_inspect_flags_this_machines_path_even_in_a_binary(tmp_path):
@@ -316,3 +344,126 @@ def test_notices_copy_licence_files_only_for_bundled_distributions(tmp_path):
     # a distribution that ships no licence file is reported as such, never given an invented one
     assert "bare 2.0" in text and "NO LICENCE FILE" in text
     assert (app / "LICENSE").read_text() == "Apache"
+
+
+# --------------------------------------------------------------------------- E4: build identity, SBOM closure
+
+SHA = "a" * 40
+
+
+def test_build_info_is_deterministic_and_uses_source_date_epoch():
+    a = archive.build_info_bytes("7.0.0", SHA, "github-actions:r:w", "1767225600")
+    assert a == archive.build_info_bytes("7.0.0", SHA, "github-actions:r:w", "1767225600")
+    doc = json.loads(a)
+    assert doc["build_date"] == "2026-01-01T00:00:00Z" and doc["source_sha"] == SHA
+    assert doc["version"] == "7.0.0" and doc["builder"] == "github-actions:r:w"
+    with pytest.raises(ValueError):
+        archive.build_info_bytes("7.0.0", "abc", "x")
+
+
+def test_zip_with_build_info_is_reproducible_and_sorted(tmp_path):
+    src = _tree(tmp_path)
+    info = {"BUILD-INFO.json": archive.build_info_bytes("7.0.0", SHA, "local", "1767225600")}
+    z1, z2 = tmp_path / "1.zip", tmp_path / "2.zip"
+    archive.make_zip(src, z1, "app", info)
+    archive.make_zip(src, z2, "app", info)
+    assert z1.read_bytes() == z2.read_bytes()
+    names = zipfile.ZipFile(z1).namelist()
+    assert names == sorted(names) and "app/BUILD-INFO.json" in names
+    assert json.loads(zipfile.ZipFile(z1).read("app/BUILD-INFO.json"))["source_sha"] == SHA
+    # default call is unchanged: no BUILD-INFO unless asked
+    archive.make_zip(src, tmp_path / "3.zip", "app")
+    assert "app/BUILD-INFO.json" not in zipfile.ZipFile(tmp_path / "3.zip").namelist()
+
+
+def test_build_info_refuses_to_overwrite_a_source_file(tmp_path):
+    src = _tree(tmp_path)
+    (src / "BUILD-INFO.json").write_text("{}")
+    with pytest.raises(ValueError):
+        archive.make_zip(src, tmp_path / "x.zip", "app", {"BUILD-INFO.json": b"{}"})
+
+
+def test_cli_embeds_build_info_from_env_but_never_touches_targz(tmp_path, monkeypatch):
+    src = _tree(tmp_path)
+    monkeypatch.setenv("CQHECS_SOURCE_SHA", SHA)
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", "1767225600")
+    out = tmp_path / "o.zip"
+    assert archive.main(["--src", str(src), "--out", str(out), "--root-name", "app", "--build-version", "7.0.0"]) == 0
+    assert "app/BUILD-INFO.json" in zipfile.ZipFile(out).namelist()
+    out2 = tmp_path / "o2.zip"
+    assert archive.main(["--src", str(src), "--out", str(out2), "--root-name", "app", "--no-build-info"]) == 0
+    assert "app/BUILD-INFO.json" not in zipfile.ZipFile(out2).namelist()
+    # sdist normalisation is independent of build identity (wheel/sdist stay reproducible)
+    a, b = tmp_path / "a.tar.gz", tmp_path / "b.tar.gz"
+    _sdist(a, 1.0)
+    _sdist(b, 2.0)
+    archive.normalize_targz(a)
+    archive.normalize_targz(b)
+    assert a.read_bytes() == b.read_bytes()
+
+
+def _fixture_venv(sp: Path) -> None:
+    """A fake build venv: the wheel's real closure plus venv tooling that must not be listed."""
+    _dist(sp, "cqhecs", "7.0.0", "License-Expression: Apache-2.0\nRequires-Dist: numpy>=1.24\nRequires-Dist: qiskit>=0.45\n"
+                                 "Requires-Dist: python-sat>=1.8; extra == 'sat'\n")
+    _dist(sp, "numpy", "2.0", "License-Expression: BSD-3-Clause\n")
+    _dist(sp, "qiskit", "2.0", "License-Expression: Apache-2.0\nRequires-Dist: rustworkx>=0.15\n"
+                               "Requires-Dist: numpy>=1.17\nRequires-Dist: symengine>=0.11; platform_system != 'Windows'\n")
+    _dist(sp, "rustworkx", "0.16", "License-Expression: Apache-2.0\nRequires-Dist: numpy<3,>=1.16\n")
+    _dist(sp, "setuptools", "70", "License-Expression: MIT\nRequires-Dist: jaraco.text>=3.7; extra == 'core'\n")
+    _dist(sp, "jaraco.text", "3.12", "License-Expression: MIT\nRequires-Dist: autocommand\n")
+    _dist(sp, "autocommand", "2.2", "License: LGPL-3.0-only\n")
+    _dist(sp, "wheel", "0.43", "License-Expression: MIT\n")
+    _dist(sp, "zipp", "3.19", "License-Expression: MIT\n")
+    _dist(sp, "python-sat", "1.8", "License-Expression: MIT\n")  # extra only: not a runtime dependency
+
+
+def test_sbom_closure_lists_only_the_wheels_runtime_dependencies(tmp_path):
+    sp = tmp_path / "sp"
+    _fixture_venv(sp)
+    everything = sbom.collect([sp], [])
+    clo = sbom.dependency_closure(everything, ["cqhecs"])
+    names = [c["name"] for c in clo["components"]]
+    assert names == ["numpy", "qiskit", "rustworkx"]
+    assert "cqhecs" not in names  # root itself is never a component
+    assert clo["not_installed"] == ["symengine"]  # conditional dep absent from the venv is recorded, not invented
+    for tooling in ("setuptools", "wheel", "jaraco.text", "autocommand", "zipp", "python-sat"):
+        assert tooling not in names
+
+
+def test_sbom_closure_cli_and_missing_root_fails_closed(tmp_path, monkeypatch):
+    sp = tmp_path / "sp"
+    _fixture_venv(sp)
+    out = tmp_path / "w.cdx.json"
+    monkeypatch.setenv("CQHECS_SOURCE_SHA", SHA)
+    monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
+    assert sbom.main(["--name", "cqhecs", "--version", "7.0.0", "--metadata-root", str(sp),
+                      "--closure-of", "cqhecs", "--out", str(out)]) == 0
+    bom = json.loads(out.read_text(encoding="utf-8"))
+    assert [c["name"] for c in bom["components"]] == ["numpy", "qiskit", "rustworkx"]
+    root = bom["metadata"]["component"]
+    props = {p["name"]: p["value"] for p in root["properties"]}
+    assert props["cqhecs:source-revision"] == SHA
+    assert props["cqhecs:closure-not-installed"] == "symengine"
+    assert root["externalReferences"] == [{"type": "vcs", "url": f"https://github.com/owner/repo/commit/{SHA}"}]
+    with pytest.raises(SystemExit):
+        sbom.main(["--name", "x", "--version", "1", "--metadata-root", str(sp), "--closure-of", "nope",
+                   "--out", str(tmp_path / "n.json")])
+
+
+def test_sbom_without_revision_is_unchanged(tmp_path):
+    sp = tmp_path / "sp"
+    _dist(sp, "alpha", "1.0", "License-Expression: MIT\n")
+    bom = sbom.build("t", "1", sbom.collect([sp], []), [], "Apache-2.0", None)
+    assert "externalReferences" not in bom["metadata"]["component"]
+    assert all(p["name"] != "cqhecs:source-revision" for p in bom["metadata"]["component"]["properties"])
+    with_rev = sbom.build("t", "1", sbom.collect([sp], []), [], "Apache-2.0", None, SHA)
+    assert with_rev["serialNumber"] != bom["serialNumber"]
+
+
+def test_sbom_rejects_malformed_revision(tmp_path):
+    sp = tmp_path / "sp"
+    _dist(sp, "alpha", "1.0", "License-Expression: MIT\n")
+    with pytest.raises(SystemExit):
+        sbom.main(["--name", "t", "--version", "1", "--metadata-root", str(sp), "--source-revision", "main",
+                   "--out", str(tmp_path / "o.json")])

@@ -37,6 +37,17 @@ parse, SHA pins, trigger set, asset list); the workflows themselves have NOT bee
 `scripts/package_release.ps1` is legacy (P-08): it deletes `dist\` and produces a differently named
 archive that is never published; it now refuses to run without `-Legacy`.
 
+Release hardening (E4; see `docs/RELEASE_PROCESS.md`): a release commit must be an ancestor of
+`origin/main`; the release is created as a draft, its uploaded assets are downloaded back and verified
+against the uploaded `SHA256SUMS`, and only then promoted; a published release is never modified.
+Build identity: `scripts/package_archive.py` adds `BUILD-INFO.json` (version, source SHA, build date from
+`SOURCE_DATE_EPOCH`, builder) to the EXE and native zips when `GITHUB_SHA`/`CQHECS_SOURCE_SHA` is set;
+wheel and sdist are untouched. `scripts/sbom_cyclonedx.py` records the source revision on the SBOM root and
+supports `--closure-of cqhecs`, which lists only the wheel's runtime dependency closure (not venv
+tooling such as setuptools' vendored `jaraco`/`autocommand`). `package.yml` must pass `--closure-of
+cqhecs` in its wheel SBOM step (HANDOFF: not part of this change; `release.yml` rejects a wheel SBOM that
+lists venv tooling until it does). None of this has run in hosted CI.
+
 Why not one-file: a 518 MB one-file build failed to extract `bcrypt` at run time on the reference
 Windows machine. Onedir avoids the self-extraction step.
 

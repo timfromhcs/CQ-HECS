@@ -30,12 +30,23 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history: the ancestry guard below needs the commits between the tag and main.
+          fetch-depth: 0
 
       - name: Decide tag and whether to publish
         id: tag
         run: |
           set -euo pipefail
           VERSION="$(python3 scripts/version.py)"
+          # Release guard: only a commit that is already on main may be released. A v* tag on a
+          # side branch (or a force-moved tag) must not publish untested/unreviewed code.
+          git fetch --no-tags origin '+refs/heads/main:refs/remotes/origin/main'
+          RELEASE_SHA="$(git rev-parse "${GITHUB_SHA}^{commit}")"
+          if ! git merge-base --is-ancestor "${RELEASE_SHA}" origin/main; then
+            echo "::error::Refusing to release ${GITHUB_REF_NAME}: commit ${RELEASE_SHA} is not an ancestor of origin/main. Merge or fast-forward it into main first (see docs/RELEASE_PROCESS.md), then tag a commit that is on main."
+            exit 1
+          fi
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
             echo "publish=true" >> "$GITHUB_OUTPUT"
@@ -147,9 +158,23 @@ jobs:
       contents: write
     env:
       CI_RUN_URL: ${{ needs.verify-required-ci.outputs.ci_url }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Refuse to touch an already published release
+        run: |
+          set -uo pipefail
+          TAG="${{ needs.resolve-tag.outputs.tag }}"
+          # The releases/tags endpoint returns published releases only; a draft left by a
+          # partially failed earlier run is 404 here and is reused (re-run is safe).
+          if gh api "repos/${REPO}/releases/tags/${TAG}" >/dev/null 2>&1; then
+            echo "::error::Release ${TAG} is already published; published releases are immutable. Follow the yank procedure in docs/RELEASE_PROCESS.md and release a new version."
+            exit 1
+          fi
+          echo "No published release for ${TAG}; continuing (draft reuse allowed)"
 
       - name: Setup Python 3.11
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -212,6 +237,37 @@ jobs:
           python scripts/make_manifest.py release-assets --verify release-assets/SHA256SUMS
           ls -l release-assets/
 
+      - name: Verify embedded build identity (BUILD-INFO.json and SBOM revision)
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import zipfile
+
+          v = os.popen("python scripts/version.py").read().strip()
+          sha = os.environ["GITHUB_SHA"]
+          for z in (f"cqhecs-{v}-windows-x64.zip", f"cq-hecs-cpu-{v}-windows-x64.zip",
+                    f"cq-hecs-vulkan-{v}-windows-x64.zip"):
+              with zipfile.ZipFile(f"release-assets/{z}") as zf:
+                  names = [n for n in zf.namelist() if n.count("/") == 1 and n.endswith("/BUILD-INFO.json")]
+                  assert len(names) == 1, f"{z}: expected exactly one root BUILD-INFO.json, got {names}"
+                  info = json.loads(zf.read(names[0]))
+              assert info["source_sha"] == sha, f"{z}: BUILD-INFO source_sha {info['source_sha']} != {sha}"
+              assert info["version"] == v, f"{z}: BUILD-INFO version {info['version']} != {v}"
+          for s in (f"cqhecs-{v}-wheel.cdx.json", f"cqhecs-{v}-windows-x64.cdx.json"):
+              bom = json.load(open(f"release-assets/{s}", encoding="utf-8"))
+              props = {p["name"]: p["value"] for p in bom["metadata"]["component"]["properties"]}
+              assert props.get("cqhecs:source-revision") == sha, f"{s}: SBOM source revision != {sha}"
+          # The wheel SBOM must be the wheel's dependency closure, not the build venv.
+          wheel_bom = json.load(open(f"release-assets/cqhecs-{v}-wheel.cdx.json", encoding="utf-8"))
+          venv_tooling = {"setuptools", "wheel", "autocommand", "jaraco-text", "jaraco-functools",
+                          "jaraco-context", "inflect", "zipp", "tomli", "typeguard", "more-itertools"}
+          leaked = sorted(c["name"] for c in wheel_bom["components"] if c["name"].lower().replace("_", "-") in venv_tooling)
+          assert not leaked, f"wheel SBOM lists venv tooling that is not a runtime dependency: {leaked}"
+          print("build identity OK for", sha)
+          PY
+
       - name: Assemble the release body
         run: |
           set -euo pipefail
@@ -233,7 +289,10 @@ jobs:
           } > "$BODY"
           cat "$BODY"
 
-      - name: Create GitHub Release
+      # Step 1 of 3: create/refresh the release as a DRAFT. A failed upload therefore never leaves a
+      # public half-release; a re-run reuses and overwrites the draft's assets.
+      - name: Create or refresh the DRAFT GitHub Release and upload all assets
+        id: draft
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           files: |
@@ -246,10 +305,67 @@ jobs:
             release-assets/cqhecs-${{ steps.meta.outputs.version }}-windows-x64.cdx.json
             release-assets/SHA256SUMS
           # On a main push the tag does not exist yet; the release API creates
-          # it on exactly the commit whose CI was verified above.
+          # it (when publishing the draft) on exactly the commit whose CI was verified above.
           tag_name: ${{ needs.resolve-tag.outputs.tag }}
           target_commitish: ${{ github.sha }}
           generate_release_notes: false
-          draft: false
+          draft: true
           prerelease: false
           body_path: release-body.md
+
+      # Step 2 of 3: download what was ACTUALLY uploaded and check it against SHA256SUMS.
+      - name: Verify the uploaded draft assets against the uploaded SHA256SUMS
+        env:
+          RELEASE_ID: ${{ steps.draft.outputs.id }}
+        run: |
+          set -euo pipefail
+          test -n "$RELEASE_ID" || { echo "::error::draft release id missing"; exit 1; }
+          rm -rf uploaded && mkdir uploaded
+          gh api "repos/${REPO}/releases/${RELEASE_ID}" > uploaded.json
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          v = os.popen("python scripts/version.py").read().strip()
+          rel = json.load(open("uploaded.json", encoding="utf-8"))
+          if not rel.get("draft"):
+              sys.exit("::error::release is not a draft; refusing to continue")
+          want = {
+              f"cqhecs-{v}-py3-none-any.whl", f"cqhecs-{v}.tar.gz", f"cqhecs-{v}-windows-x64.zip",
+              f"cq-hecs-cpu-{v}-windows-x64.zip", f"cq-hecs-vulkan-{v}-windows-x64.zip",
+              f"cqhecs-{v}-wheel.cdx.json", f"cqhecs-{v}-windows-x64.cdx.json", "SHA256SUMS",
+          }
+          have = {a["name"]: a for a in rel["assets"]}
+          if set(have) != want:
+              sys.exit(f"::error::uploaded asset set differs: missing={sorted(want - set(have))} extra={sorted(set(have) - want)}")
+          bad = [n for n, a in have.items()
+                 if a["state"] != "uploaded" or a["size"] != os.path.getsize(f"release-assets/{n}")]
+          if bad:
+              sys.exit(f"::error::assets not fully uploaded (state/size mismatch): {bad}")
+          with open("assets.list", "w", encoding="utf-8") as fh:
+              for n, a in sorted(have.items()):
+                  fh.write(f"{a['id']} {n}\n")
+          PY
+          while read -r id name; do
+            gh api -H "Accept: application/octet-stream" "repos/${REPO}/releases/assets/${id}" > "uploaded/${name}"
+          done < assets.list
+          cmp uploaded/SHA256SUMS release-assets/SHA256SUMS
+          python scripts/make_manifest.py uploaded --verify uploaded/SHA256SUMS
+          echo "Uploaded draft assets match SHA256SUMS"
+
+      # Step 3 of 3: promote the verified draft. This is the only step that makes anything public.
+      - name: Publish the verified draft
+        env:
+          RELEASE_ID: ${{ steps.draft.outputs.id }}
+        run: |
+          set -euo pipefail
+          gh api -X PATCH "repos/${REPO}/releases/${RELEASE_ID}" -F draft=false >/dev/null
+          TAG="${{ needs.resolve-tag.outputs.tag }}"
+          # Tripwire: the published tag must resolve to the tested commit.
+          got="$(gh api "repos/${REPO}/commits/${TAG}" --jq .sha)"
+          if [ "$got" != "${GITHUB_SHA}" ]; then
+            echo "::error::Published ${TAG} resolves to ${got}, not the tested ${GITHUB_SHA}; yank per docs/RELEASE_PROCESS.md"
+            exit 1
+          fi
+          echo "Published ${TAG} at ${got}"

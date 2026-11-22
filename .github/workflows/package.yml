@@ -81,7 +81,7 @@ jobs:
           V="$(python scripts/version.py)"
           SP="$("$RUNNER_TEMP/venv/bin/python" -c 'import sysconfig;print(sysconfig.get_paths()["purelib"])')"
           python scripts/sbom_cyclonedx.py --name cqhecs --version "$V" \
-            --metadata-root "$SP" --exclude cqhecs --exclude pip \
+            --metadata-root "$SP" --closure-of cqhecs --exclude cqhecs --exclude pip \
             --artifact "pkg/cqhecs-$V-py3-none-any.whl" --artifact "pkg/cqhecs-$V.tar.gz" \
             --out "pkg/cqhecs-$V-wheel.cdx.json" --licences-out "pkg/cqhecs-$V-wheel.licences.json"
 

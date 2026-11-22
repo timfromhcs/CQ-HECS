@@ -132,3 +132,70 @@ def test_readme_names_every_published_asset_kind():
 
 def test_release_never_runs_the_spdx_generator_any_more():
     assert "generate_sbom_and_checksums.py" not in _text("release.yml")
+
+
+# --------------------------------------------------------------------------- E4 hardening
+
+def _job_text(text: str, job: str) -> str:
+    start = text.index(f"\n  {job}:\n")
+    nxt = re.search(r"\n  [\w-]+:\n", text[start + 1:])
+    return text[start: start + 1 + nxt.start()] if nxt else text[start:]
+
+
+def test_tag_push_must_be_an_ancestor_of_origin_main():
+    job = _job_text(_text("release.yml"), "resolve-tag")
+    assert "fetch-depth: 0" in job
+    assert "git merge-base --is-ancestor" in job and "origin/main" in job
+    assert "is not an ancestor of origin/main" in job
+    # The guard must run before the tag/publish decision is written.
+    assert job.index("git merge-base --is-ancestor") < job.index('echo "tag=')
+    # Tag-if-not-exists on main pushes is unchanged.
+    assert "git ls-remote --exit-code --tags origin" in job
+
+
+def test_release_is_created_as_draft_verified_then_promoted():
+    text = _text("release.yml")
+    rel = _job_text(text, "release")
+    assert "draft: false" not in text
+    assert re.search(r"draft:\s*true", rel)
+    i_draft = rel.index("id: draft")
+    i_verify = rel.index("Verify the uploaded draft assets")
+    i_publish = rel.index("Publish the verified draft")
+    assert i_draft < i_verify < i_publish
+    verify = rel[i_verify:i_publish]
+    assert "releases/assets/" in verify and "make_manifest.py uploaded --verify" in verify
+    assert "cmp uploaded/SHA256SUMS release-assets/SHA256SUMS" in verify
+    publish = rel[i_publish:]
+    assert "draft=false" in publish and "GITHUB_SHA" in publish
+    assert rel.count("draft=false") == 1, "only the last step may make the release public"
+
+
+def test_published_release_is_never_modified():
+    rel = _job_text(_text("release.yml"), "release")
+    assert "releases/tags/" in rel and "already published" in rel
+    assert rel.index("already published") < rel.index("id: draft")
+
+
+def test_release_verifies_embedded_build_identity():
+    rel = _job_text(_text("release.yml"), "release")
+    assert "BUILD-INFO.json" in rel and "cqhecs:source-revision" in rel
+    assert "venv tooling" in rel
+    assert rel.index("BUILD-INFO.json") < rel.index("id: draft")
+
+
+def test_release_job_is_still_the_only_writer_after_hardening():
+    text = _text("release.yml")
+    assert len(re.findall(r"contents: write", text)) == 1
+    for forbidden in ("pull_request_target", "id-token", "packages: write", "git push", "git tag "):
+        assert forbidden not in text, forbidden
+
+
+def test_release_process_doc_exists_and_covers_required_procedures():
+    doc = (ROOT / "docs" / "RELEASE_PROCESS.md").read_text(encoding="utf-8")
+    for needle in ("git push origin", ":main", "merge-base --is-ancestor", "draft", "yank",
+                   "vercel rollback", "Post-release verification", "SHA256SUMS", "BUILD-INFO.json"):
+        assert needle in doc, f"RELEASE_PROCESS.md lacks: {needle}"
+
+
+def test_package_workflow_wheel_sbom_uses_dependency_closure():
+    assert "--closure-of cqhecs" in _text("package.yml")
