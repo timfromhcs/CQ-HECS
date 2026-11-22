@@ -64,7 +64,7 @@ Finite, machine-specific numbers. None is an asymptotic or universal claim.
 | Measurement | Value | Evidence |
 | :--- | :--- | :--- |
 | Full Python suite, Windows, re-run at `f880d0a` + wave F working tree | 4314 passed, 133 skipped, 0 failed | `waveE_E2.md` (integrator record) |
-| Skip budget | skips are environmental (native build directory not set, optional extras absent), not failures | `SKIP_BUDGET.json` |
+| Skip budget | `skip_budget.py --check` FAILED at the freeze (134 vs budget 105; B-V7-11). The budget is now per-environment and the fresh run's 133 skips are within the `default` one; skips are environment-dependent, not failures, and not evidence | `SKIP_BUDGET.json`, `waveF_tests.md` |
 | Mutation suite, in place at the freeze | 95/95 killed (an earlier pre-Wave-A baseline was 64/64) | `waveE_E2.md`, `BASELINE_V7.md` |
 | Native CTest, Vulkan ON, one AMD Radeon iGPU, MSVC | 26/26 | `waveE_E2.md`, `waveA_A2.md` |
 | Native CTest, CPU-only build | 15/15 | `waveE_E2.md`, `waveA_A2.md` |
@@ -115,11 +115,13 @@ later one.
 
 Listed so that absence is not read as success.
 
-* GCC and Clang sanitizers, UBSan, Linux builds and software-ICD (lavapipe) conformance for
-  the new native tests; only MSVC AddressSanitizer and one AMD device ran.
+* Clang sanitizers. Run: MSVC AddressSanitizer and one AMD device locally; hosted GCC-12
+  ASan+UBSan 9/9, Linux CPU-only, and Linux lavapipe (software ICD) CTest 26/26 at `38e799b`
+  (conformance only). Hosted CI was red at `38e799b` (B-V7-15); the integrator reports all lanes
+  green at `f880d0a` except the still-pending Windows full-suite lane, not re-verified here.
 * The `cq_solve_sat` timeout fix was found by reading the code; it was not reproduced
   dynamically.
-* `drat-trim`, `cake_lpr`, `lrat-check`; `python-sat` under Python 3.14.
+* `drat-trim`, `cake_lpr`, `lrat-check` (the v6 results for them are historical); `python-sat` under Python 3.14.
 * `openapi_spec_validator` (not installed); protocol revisions of MCP newer than 2025-06-18.
 * WebGPU on hardware; a committed Playwright spec for Studio.
 * The full mutation suite, native build and web suite after the last Wave B commits; the

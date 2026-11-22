@@ -86,7 +86,7 @@ Python-Engine; behauptet wird nur Übereinstimmung auf einem erklärten Korpus.
 - **Bundle-Budget:** `npm run build` schlägt über 270 KB gzip JavaScript, 18 KB WASM und
   8 KB CSS fehl; gemessen am 2026-11-02: 233,5 / 15,0 / 6,6 KB.
 - **Delivery-Check:** `npm run verify:deploy -- <url>` prüft Shell, Security-Header,
-  WASM-MIME-Typ und Cache-Policy. Das öffentliche Production-Deployment (`https://cq-hecs-web.vercel.app`) bestand
+  WASM-MIME-Typ und Cache-Policy. Das öffentliche Production-Deployment (`https://cq-hecs-web.vercel.app`, älterer Commit `e7e5c1e`, für den 7.0.0-Kandidaten nicht erneut geprüft) bestand
   10/10 anonym, ohne `--via-cli` (Deployment Protection ist seit 2026-11-02 deaktiviert,
   siehe `docs/WEB_ENGINES.md`); sollte eine Schutzseite zurückkehren, erkennt das Skript sie und
   endet mit Code 3.
@@ -146,13 +146,15 @@ Zwei getrennte Tabellen, damit keine Zahl dem falschen Commit zugeschrieben wird
 | Prüfung | Ergebnis | Beleg |
 |---|---|---|
 | Python-Suite, Windows, erneut gelaufen auf `f880d0a` + Wave-F-Arbeitsbaum | 4314 bestanden, 133 übersprungen, 0 fehlgeschlagen | `research/v7/evidence/waveE_E2.md` (Integrator-Protokoll) |
-| Übersprungene Tests | umgebungsbedingt (natives Build-Verzeichnis nicht gesetzt, optionale Extras fehlen), keine Fehlschläge | `research/v7/SKIP_BUDGET.json` |
+| Übersprungene Tests | umgebungsabhängig, keine Fehlschläge, aber auch kein Nachweis. Das Skip-Budget-Gate (`skip_budget.py --check`) schlug beim Freeze fehl (134 gegen Budget 105; B-V7-11); das Budget ist jetzt pro Umgebung geführt, die 133 Skips des frischen Laufs liegen im Budget `default` | `research/v7/SKIP_BUDGET.json` |
 | Mutationstests, beim Freeze vor Ort | 95/95 getötet | `research/v7/evidence/waveE_E2.md` |
 | CTest nativ (Vulkan an / nur CPU) | 26/26 / 15/15 | `research/v7/evidence/waveE_E2.md`, `waveA_A2.md` |
 | Web-Unit-Tests | 167/167 | `research/v7/evidence/waveE_E2.md` |
 | Playwright | 128 bestanden / 1 übersprungen (WebGPU, NOT_RUN: kein Adapter); Studio-Plan-UI: 6 | `research/v7/evidence/waveE_E2.md` |
+| Gehostetes CI | bei `38e799b` rot (B-V7-15); bei `f880d0a` laut Integrator alle Lanes grün außer der noch ausstehenden Windows-Volllauf-Lane, hier nicht erneut gegen GitHub geprüft | `research/v7/RELEASE_CANDIDATE_AUDIT.md` |
 | Release-Artefakte | aus `38e799b` gebaut, nicht veröffentlicht | `research/v7/evidence/waveE_E2.md` |
-| Nicht ausgeführt | GCC/Clang-Sanitizer, Linux, WebGPU auf Hardware, `drat-trim`, `cake_lpr`, Veröffentlichung (es gibt noch kein Tag) | `RELEASE_NOTES_DRAFT.md` |
+| Zusätzlich gelaufen (gehostet, `38e799b`) | Linux GCC-12 ASan+UBSan 9/9, Linux nur CPU, Linux lavapipe (Software-ICD) CTest 26/26 (nur Konformität, kein Nachweis für physische GPU) | `research/v7/evidence/waveE_E3.md` |
+| Nicht ausgeführt | Clang-Sanitizer, WebGPU auf Hardware (nur Teillauf), `drat-trim`, `lrat-check`, `cake_lpr`, saubere Installation auf Fremdrechner, Veröffentlichung (es gibt noch kein Tag) | `RELEASE_NOTES_DRAFT.md` |
 
 ### Historische Messung (exakter Stand `c854560`)
 

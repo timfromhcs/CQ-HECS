@@ -159,6 +159,12 @@ _OUTPUT_REQUIRED = {
     "cqhecs_qg_openquantum_results": ["status", "code"],
 }
 
+#: F-08: bound one stdin line and every QASM/DIMACS text argument. The text cap equals the circuit
+#: parser's own source cap; the line cap leaves room for JSON escaping and the envelope.
+MAX_TEXT_CHARS = 16 * 1024 * 1024
+MAX_LINE_BYTES = 32 * 1024 * 1024
+_TEXT_ARGS = ("circuit", "cnf")
+
 THETA: Dict[str, Any] = {"type": "number", "minimum": -6.2832, "maximum": 6.2832}
 
 TOOLS: List[Dict[str, Any]] = [
@@ -168,7 +174,7 @@ TOOLS: List[Dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "circuit": {"type": "string", "description": "OpenQASM 2.0 text or 'preset:bell'"},
+                "circuit": {"type": "string", "maxLength": MAX_TEXT_CHARS, "description": "OpenQASM 2.0 text or 'preset:bell'"},
                 "shots": {"type": "integer", "minimum": 1, "maximum": 20000, "default": 1024},
                 "seed": {"type": "integer", "default": 42},
                 "path": {"type": "string", "enum": ["auto", "A", "B", "C", "D"], "default": "auto"},
@@ -194,7 +200,7 @@ TOOLS: List[Dict[str, Any]] = [
         "description": "Statically analyze a circuit and return its recommended path.",
         "inputSchema": {
             "type": "object",
-            "properties": {"circuit": {"type": "string"}},
+            "properties": {"circuit": {"type": "string", "maxLength": MAX_TEXT_CHARS}},
             "required": ["circuit"],
         },
     },
@@ -208,7 +214,7 @@ TOOLS: List[Dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "circuit": {"type": "string"},
+                "circuit": {"type": "string", "maxLength": MAX_TEXT_CHARS},
                 "force_path": {"type": "string", "enum": ["A", "B", "C", "D"]},
                 "require_counts": {"type": "boolean"},
             },
@@ -221,7 +227,7 @@ TOOLS: List[Dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "cnf": {"type": "string"},
+                "cnf": {"type": "string", "maxLength": MAX_TEXT_CHARS},
                 "timeout": {"type": "number", "default": 5.0},
                 "node_budget": {"type": "integer"},
                 "engine": {
@@ -248,7 +254,7 @@ TOOLS: List[Dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "cnf": {"type": "string"},
+                "cnf": {"type": "string", "maxLength": MAX_TEXT_CHARS},
                 "timeout": {"type": "number", "default": 5.0},
                 "method": {"type": "string", "enum": ["dpll", "separator", "auto"], "default": "dpll"},
             },
@@ -261,7 +267,7 @@ TOOLS: List[Dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "cnf": {"type": "string"},
+                "cnf": {"type": "string", "maxLength": MAX_TEXT_CHARS},
                 "limit": {"type": "integer", "default": 10},
                 "timeout": {"type": "number", "default": 10.0},
             },
@@ -697,6 +703,10 @@ def _call(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
     """Run one tool and return its raw payload (the transport envelope is added by ``_wrap_result``)."""
     if not isinstance(arguments, dict):
         raise ToolArgumentsError("arguments must be an object")
+    for key in _TEXT_ARGS:
+        value = arguments.get(key)
+        if isinstance(value, str) and len(value) > MAX_TEXT_CHARS:
+            raise ToolArgumentsError(f"{key} exceeds the {MAX_TEXT_CHARS}-character limit (input_too_large)")
     if name == "cqhecs_run":
         return _tool_run(arguments)
     if name == "cqhecs_analyze":
@@ -909,9 +919,32 @@ class StdioServer:
             pending[0].join(timeout=0.1)
 
 
-def main() -> int:
-    server = StdioServer(sys.stdout)
-    for line in sys.stdin:
+def _read_bounded_line(stream: Any, limit: int = MAX_LINE_BYTES) -> Optional[tuple]:
+    """Read one line with a hard cap. Returns None at EOF, else (line, too_long); an over-long
+    line is drained in bounded chunks and never accumulated (F-08)."""
+    chunk = stream.readline(limit + 1)
+    if chunk == "" or chunk == b"":
+        return None
+    if len(chunk) <= limit or chunk.endswith("\n"):
+        return chunk, False
+    while True:  # drop the remainder of the oversize line without keeping it
+        rest = stream.readline(1 << 20)
+        if rest == "" or rest.endswith("\n"):
+            break
+    return "", True
+
+
+def main(stdin: Any = None, stdout: Any = None) -> int:
+    server = StdioServer(stdout or sys.stdout)
+    stream = stdin if stdin is not None else sys.stdin
+    while True:
+        got = _read_bounded_line(stream)
+        if got is None:
+            break
+        line, too_long = got
+        if too_long:
+            server.write(_error(None, -32600, f"request line exceeds {MAX_LINE_BYTES} bytes (input_too_large)"))
+            continue
         line = line.strip()
         if not line:
             continue

@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 import threading
 import time
 import webbrowser
@@ -1319,7 +1320,12 @@ class StudioHandler(BaseHTTPRequestHandler):
         return True
 
     def _read_json(self) -> Dict[str, Any]:
-        length = int(self.headers.get("Content-Length", "0") or 0)
+        declared = (self.headers.get("Content-Length", "0") or "0").strip()
+        if not (declared.isascii() and declared.isdigit()):
+            # F-10: a non-numeric, negative or signed length is a client error, not a 500.
+            self.close_connection = True
+            raise StudioError("Content-Length must be a non-negative integer", code="invalid_content_length")
+        length = int(declared)
         if length <= 0:
             return {}
         if length > MAX_BODY:
@@ -1524,6 +1530,18 @@ def create_server(
     return StudioHTTPServer((host, port), state, token=resolve_studio_token())
 
 
+def is_loopback_host(host: str) -> bool:
+    """True for 127.0.0.0/8, ::1 and 'localhost'; False for 0.0.0.0, '::' and anything else."""
+    import ipaddress
+
+    if host.strip().lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host.strip("[]")).is_loopback
+    except ValueError:
+        return False
+
+
 def serve(
     host: str = "127.0.0.1",
     port: int = 8765,
@@ -1540,7 +1558,15 @@ def serve(
         print(f"Open (the token is in the fragment, keep this URL private): {launch_url(server)}")
     else:
         print("Using the token from CQ_HECS_STUDIO_TOKEN(_FILE); send it as a Bearer token.")
-    print("Local only. Press Ctrl+C to stop.")
+    if not is_loopback_host(host):
+        print(
+            f"WARNING: Studio is bound to non-loopback address {host!r}. The Host allow-list only accepts "
+            "localhost names, so remote clients receive bad_host; do not expose this server to a network "
+            "(token + Host/Origin checks are not a substitute for network isolation).",
+            file=sys.stderr,
+        )
+    else:
+        print("Local only. Press Ctrl+C to stop.")
     print(server.state.dataset.note)
     if open_browser:
         threading.Timer(0.6, lambda: webbrowser.open(launch_url(server))).start()

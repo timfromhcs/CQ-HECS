@@ -176,3 +176,27 @@ Items not run are reported `NOT_RUN`, not assumed.
   reference.
 * The wheel SBOM is generated with `--closure-of cqhecs` so only the wheel's runtime dependency closure
   is listed (package.yml must pass that flag; see PACKAGING.md).
+
+## 8. The candidate-to-released flip commit
+
+Release status is stated in prose on several surfaces. `scripts/check_version.py` checks version numbers
+only; `scripts/release_flip_check.py` checks these wordings. `--list` prints them: the README banner,
+the README standalone-EXE text, the README release-artifacts and not-run rows, the RELEASE_NOTES date line
+and artifacts row, the RELEASE_NOTES_DRAFT mirror row, and the CHANGELOG heading and candidate note.
+
+Nothing is flipped by a candidate branch. Until the release is real, `python scripts/release_flip_check.py
+--mode candidate` must pass. The flip is exactly one reviewed commit, made after the checks in section 3
+are green on the release SHA and the tag and assets exist and verify (section 6):
+
+1. Branch from the released commit; do not push to `main` directly.
+2. Edit only the wording surfaces listed by `--list`: remove "unreleased", "planned; no tag exists",
+   "will be attached ... once published" and "not published" and state the true release date and the
+   real asset names. Do not change any measured number, test count or NOT_RUN entry in the same commit;
+   an item that was not run stays `NOT_RUN`.
+3. Run `python scripts/release_flip_check.py --mode released`, `python scripts/check_version.py` and the
+   doc-consistency tests (`pytest tests/test_release_flip_check.py tests/test_doc_consistency_v7.py`).
+   Wording that the gate does not know about is a gate gap: add it to `SURFACES` in the same commit.
+4. A second person reviews the diff against `--list` before merge. After the flip the
+   `--mode candidate` test case in `tests/test_release_flip_check.py` is expected to change to
+   `released`; update that test in this commit, never weaken the patterns.
+5. Re-run section 6 against the published release; report anything not run as `NOT_RUN`.

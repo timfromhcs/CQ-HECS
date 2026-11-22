@@ -76,11 +76,11 @@ Four classical simulation paths · one result contract · fail-closed by design
 > - **Browser.** A six-case conformance corpus against a dense NumPy reference
 >   (`1e-12`), a bundle budget enforced by `npm run build`, a delivery check for the
 >   deployed build, and reproducible run cards with the QASM digest and the seed.
->   The Vercel production deployment is public and passes the delivery check 10/10.
+>   The delivery check passed 10/10 against the production deployment of an older commit (`e7e5c1e`, 2026-11-02); it was not re-run for the `7.0.0` candidate (NOT_RUN).
 > - **README** in English (canonical), German and French with a language selector and
 >   identical evidence numbers, asserted by a test.
 >
-> **Previous release: `v4.0.0` (2026-11-01).** Explainable planning and exact bounded-width
+> **Earlier release: `v4.0.0` (2026-11-01)** (`v4.1.0` and `v4.2.0` followed on 2026-11-02; the `v4.2.0` summary is above). Explainable planning and exact bounded-width
 > counting; nothing removed (see [`MIGRATION_V4.md`](MIGRATION_V4.md)):
 >
 > - **`ExecutionPlan` dry run.** `cq-hecs analyze CIRCUIT --explain` (also Python,
@@ -114,7 +114,7 @@ Four classical simulation paths · one result contract · fail-closed by design
 >   canonical `formula_sha256`; the parser normalizes repeated DIMACS literals.
 >   Partial assignments no longer satisfy negative literals by accident, and the
 >   certificate budget cannot extend the solve deadline.
-> - **Proof evidence.** A CaDiCaL DRAT proof and its LRAT conversion are checked
+> - **Proof evidence (historical v6 record, not re-run for v7).** A CaDiCaL DRAT proof and its LRAT conversion are checked
 >   by `cqhecs.drat`, `drat-trim`, `lrat-check` and the CakeML-verified `cake_lpr`
 >   (`research/v6/evidence/DRAT_EXTERNAL.md`). This covers that proof/formula,
 >   not the whole pipeline.
@@ -123,7 +123,9 @@ Four classical simulation paths · one result contract · fail-closed by design
 >   routes, EN/DE/FR, the WebGPU fallback, safe limits and six viewports.
 > - **Still open.** The OpenAI/Anthropic ETH proofs are *claimed* and Lean-
 >   formalized at pinned revisions, not peer-reviewed by this project. The Lean
->   build status is recorded in `research/v6/`; P vs NP stays open.
+>   build status is the historical v6 record in `research/v6/` (not re-run for v7;
+>   the v7 Lean evidence covers only this project's own specification lemmas);
+>   P vs NP stays open.
 > - **OMNIWAVE.** A multi-front exact SAT search
 >   (`--engine omniwave`, CLI/MCP, Studio **OMNIWAVE lab** with live data and
 >   pause/resume/cancel). The default `--branch auto` uses Jeroslow-Wang on
@@ -913,15 +915,17 @@ not projections. A green run on an older commit is not evidence for a later comm
 | Gate | Result | Evidence |
 | :--- | :--- | :--- |
 | Python suite, Windows, re-run at `f880d0a` + wave F working tree | **4314 passed**, **133 skipped**, 0 failed | `research/v7/evidence/waveF_pytest_tail.txt`, `waveF_tests.md` |
-| Skip budget | skips are environmental (native build directory not set, optional extras absent), not failures | `research/v7/SKIP_BUDGET.json` |
+| Skip budget | The skips are environment-dependent (native build directory not set, optional extras and proof checkers absent), but the budget gate (`scripts/skip_budget.py --check`) was recorded FAILING at the freeze (134 skips against a budget of 105, 7 unbudgeted reasons; B-V7-11). The budget has since been made per-environment (`default`: 134 reasons budgeted, `with_native`: 13); the fresh run's 133 skips are within the `default` budget, not a pass of the original gate. Skips are not failures, but they are not evidence either. | `research/v7/SKIP_BUDGET.json`, `waveF_tests.md` |
 | Mutation suite, in place at the freeze | 95/95 killed | `research/v7/evidence/waveE_E2.md` |
 | Native CTest, Vulkan ON, one AMD iGPU, MSVC | 26/26 | `research/v7/evidence/waveE_E2.md`, `waveA_A2.md` |
 | Native CTest, CPU-only build | 15/15 | `research/v7/evidence/waveE_E2.md`, `waveA_A2.md` |
 | Web unit tests | 167/167 | `research/v7/evidence/waveE_E2.md` |
 | Playwright | 128 passed / 1 skipped (WebGPU, NOT_RUN: no adapter); Studio plan UI: 6 | `research/v7/evidence/waveE_E2.md` |
+| Hosted CI (GitHub Actions) | At `38e799b` hosted CI was red (B-V7-15). At `f880d0a` the integrator reports all lanes green except the Windows full-suite lane, which was still pending; this README has not re-checked that against GitHub, and a green run on `f880d0a` is not evidence for the current tree. | `research/v7/RELEASE_CANDIDATE_AUDIT.md`, `waveE_E3.md` |
 | Release artifacts | built from `38e799b`; not published | `research/v7/evidence/waveE_E2.md` |
 | Lean specification lemmas | `lake build` green, standard axioms only | `waveA_A5.md` |
-| Not run | GCC/Clang sanitizers, Linux and software-ICD native runs, WebGPU on hardware, `drat-trim`, `cake_lpr`, a release publication (no tag exists yet) | `RELEASE_NOTES_DRAFT.md` |
+| Also run (hosted, `38e799b`) | Linux GCC-12 ASan+UBSan 9/9, Linux CPU-only build, Linux lavapipe (software ICD) CTest 26/26 (conformance only, not a physical-GPU claim), and a local MSVC AddressSanitizer run | `research/v7/evidence/waveE_E3.md`, `waveA_A2.md` |
+| Not run | Clang sanitizers, WebGPU on hardware (only a partial single-adapter run), `drat-trim`, `lrat-check`, `cake_lpr`, Firefox/WebKit, a clean-machine install, a release publication (no tag exists yet) | `RELEASE_NOTES_DRAFT.md`, `RELEASE_CANDIDATE_AUDIT.md` |
 
 ### Historical lane (exact head SHA `c854560` of `dev/sha-forge-hardware-lab`)
 

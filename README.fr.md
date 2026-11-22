@@ -85,7 +85,7 @@ déclaré.
   18 Ko de WASM et 8 Ko de CSS ; mesuré le 2026-11-02 : 233,5 / 15,0 / 6,6 Ko.
 - **Contrôle de livraison :** `npm run verify:deploy -- <url>` vérifie la coquille, les
   en-têtes de sécurité, le type MIME et la politique de cache du WASM. Le déploiement de
-  production public (`https://cq-hecs-web.vercel.app`) a passé 10/10 en anonyme, sans
+  production public (`https://cq-hecs-web.vercel.app`, ancien commit `e7e5c1e`, non relancé pour le candidat 7.0.0) a passé 10/10 en anonyme, sans
   `--via-cli` (la Deployment Protection est désactivée depuis le 2026-11-02, voir
   `docs/WEB_ENGINES.md`) ; si une page de protection revenait, le script la détecte et
   quitte avec le code 3.
@@ -145,13 +145,15 @@ Deux tableaux séparés, pour qu'aucun chiffre ne soit attribué au mauvais comm
 | Contrôle | Résultat | Preuve |
 |---|---|---|
 | Suite Python, Windows, relancée sur `f880d0a` + arbre de travail wave F | 4314 réussis, 133 ignorés, 0 échec | `research/v7/evidence/waveE_E2.md` (relevé de l'intégrateur) |
-| Tests ignorés | dus à l'environnement (répertoire de build natif non défini, extras optionnels absents), pas des échecs | `research/v7/SKIP_BUDGET.json` |
+| Tests ignorés | dépendent de l'environnement, pas des échecs, mais pas une preuve non plus. Le contrôle du budget (`skip_budget.py --check`) a échoué au gel (134 contre un budget de 105 ; B-V7-11) ; le budget est désormais par environnement, les 133 ignorés de l'exécution récente sont dans le budget `default` | `research/v7/SKIP_BUDGET.json` |
 | Tests de mutation, sur place au gel | 95/95 tués | `research/v7/evidence/waveE_E2.md` |
 | CTest natif (Vulkan actif / CPU seul) | 26/26 / 15/15 | `research/v7/evidence/waveE_E2.md`, `waveA_A2.md` |
 | Tests unitaires web | 167/167 | `research/v7/evidence/waveE_E2.md` |
 | Playwright | 128 réussis / 1 ignoré (WebGPU, NOT_RUN : aucun adaptateur) ; interface de plan Studio : 6 | `research/v7/evidence/waveE_E2.md` |
+| CI hébergée | rouge à `38e799b` (B-V7-15) ; à `f880d0a`, selon l'intégrateur, toutes les lanes sont vertes sauf la lane Windows complète encore en attente, non revérifié ici auprès de GitHub | `research/v7/RELEASE_CANDIDATE_AUDIT.md` |
 | Artefacts de release | construits depuis `38e799b`, non publiés | `research/v7/evidence/waveE_E2.md` |
-| Non exécuté | sanitizers GCC/Clang, Linux, WebGPU sur matériel, `drat-trim`, `cake_lpr`, publication (aucun tag n'existe encore) | `RELEASE_NOTES_DRAFT.md` |
+| Exécuté en plus (hébergé, `38e799b`) | Linux GCC-12 ASan+UBSan 9/9, Linux CPU seul, Linux lavapipe (ICD logiciel) CTest 26/26 (conformité seulement, pas une preuve de GPU physique) | `research/v7/evidence/waveE_E3.md` |
+| Non exécuté | sanitizers Clang, WebGPU sur matériel (exécution partielle seulement), `drat-trim`, `lrat-check`, `cake_lpr`, installation sur machine propre, publication (aucun tag n'existe encore) | `RELEASE_NOTES_DRAFT.md` |
 
 ### Mesure historique (commit exact `c854560`)
 

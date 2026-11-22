@@ -91,7 +91,7 @@ security/fuzz tests, 199 conformance/coverage tests, `flake8 --select=E9,F` 0, v
 **Hosted CI for `38e799b` is red** (TEST_MATRIX V7.E): Linux 3.11 lane 5 failed, compatibility lanes 4 failed each,
 wheel smoke and MSVC native package jobs failed, Windows full-suite job unfinished after two hours; ASan+UBSan (gcc-12,
 9/9), CPU-only, lavapipe CTest 26/26, web emulator and Windows onedir jobs passed. `FILL AT FREEZE`: the counts on the
-final SHA, all lanes.
+final SHA, all lanes. Wave F update (2026-11-22, not re-verified against GitHub): the integrator reports that hosted CI at `f880d0a` is green on all lanes except the Windows full-suite lane, still pending; that is not evidence for the final freeze SHA. The skip budget is now per-environment (the fresh run's 133 skips are within the `default` budget); the original gate failure at the freeze (134 vs 105) stays recorded. The v6 Lean/`cake_lpr` results are historical, and the Vercel 10/10 delivery check belongs to the older commit `e7e5c1e`.
 
 ## 7. Environments
 

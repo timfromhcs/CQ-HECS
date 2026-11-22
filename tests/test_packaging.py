@@ -472,3 +472,19 @@ def test_sbom_rejects_malformed_revision(tmp_path):
     with pytest.raises(SystemExit):
         sbom.main(["--name", "t", "--version", "1", "--metadata-root", str(sp), "--source-revision", "main",
                    "--out", str(tmp_path / "o.json")])
+
+
+def test_sbom_closure_versions_match_metadata_and_unstated_licence_stays_unverified(tmp_path):
+    sp = tmp_path / "sp"
+    _dist(sp, "cqhecs", "7.0.0", "License-Expression: Apache-2.0\nRequires-Dist: numpy>=1.24\nRequires-Dist: qiskit>=0.45\n")
+    _dist(sp, "numpy", "2.0", "License-Expression: BSD-3-Clause\n")
+    _dist(sp, "qiskit", "2.0", "License-Expression: Apache-2.0\nRequires-Dist: rustworkx>=0.15\n")
+    _dist(sp, "rustworkx", "0.16", "Requires-Dist: numpy<3,>=1.16\n")  # metadata states no licence
+    out = tmp_path / "w.cdx.json"
+    assert sbom.main(["--name", "cqhecs", "--version", "7.0.0", "--metadata-root", str(sp),
+                      "--closure-of", "cqhecs", "--out", str(out)]) == 0
+    bom = json.loads(out.read_text(encoding="utf-8"))
+    got = {c["name"]: (c["version"], c["licenses"]) for c in bom["components"]}
+    assert {k: v[0] for k, v in got.items()} == {"numpy": "2.0", "qiskit": "2.0", "rustworkx": "0.16"}
+    assert got["rustworkx"][1] == [{"license": {"name": "UNVERIFIED"}}]  # never guessed, never an SPDX id
+    assert got["numpy"][1] == [{"expression": "BSD-3-Clause"}]

@@ -78,7 +78,7 @@ It checks the app shell, a hash route, the three security headers from `vercel.j
 wasm MIME type and cache policy, that the wasm body really is wasm, and the transport
 sizes.
 
-### Result on 2026-11-02
+### Result on 2026-11-02 (historical; commit `e7e5c1e`, not re-run for the 7.0.0 candidate)
 
 `10/10 checks passed` against the production deployment of commit `e7e5c1e`
 (`https://cq-hecs-web.vercel.app`), **anonymously, without `--via-cli`**.
