@@ -99,3 +99,10 @@ renamed or dropped (V7 §19.0):
 §19.0 carry-forward: the V6 backlog T6-01..T6-13 is preserved and re-mapped in
 `PLAN_COVERAGE.md`; no V6 task ID is silently dropped or renamed.
 
+## D-009 Version decision: 7.0.0 (2026-11-22, freeze), supersedes D-007
+The maintainer asked for "v7 stable". The release version is therefore `7.0.0`, superseding
+D-007's `6.0.0`. Going from 5.0.0 to 7.0.0 skips 6, which was only an internal planning label
+and was never tagged or published; there is no 6.x release. `MIGRATION_V7.md` states this and
+migrates "from 5.0.0 to 7.0.0". The D-007 breaking-change rationale (Path A shot contract)
+still holds and justifies a major bump. Nothing is published by this decision; the README
+"last published release" stays `v5.0.0` until publication.

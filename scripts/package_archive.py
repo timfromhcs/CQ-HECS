@@ -1,7 +1,7 @@
 """Deterministic zip of a directory: sorted entries, fixed timestamp, forward slashes.
 
     python scripts/package_archive.py --src DIR --out FILE.zip --root-name NAME
-    python scripts/package_archive.py --normalize-targz dist/cqhecs-5.0.0.tar.gz
+    python scripts/package_archive.py --normalize-targz dist/cqhecs-7.0.0.tar.gz
 
 ``--normalize-targz`` rewrites a setuptools sdist in place with sorted members, a fixed mtime,
 uid/gid 0 and a zero gzip header time (setuptools stamps the build time into both).

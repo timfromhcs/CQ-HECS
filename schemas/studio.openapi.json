@@ -42,7 +42,7 @@
   "info": {
     "description": "Loopback-only API of the local Studio. Every /api route needs the per-launch bearer token (or CQ_HECS_STUDIO_TOKEN / CQ_HECS_STUDIO_TOKEN_FILE), an allowed Host, no foreign Origin, and application/json POST bodies. /api/v1/... is an alias of /api/... ; the Quantum Gravity routes under /api/qg/v1 are versioned separately and not listed here.",
     "title": "CQ-HECS Studio local API",
-    "version": "5.0.0"
+    "version": "7.0.0"
   },
   "openapi": "3.1.0",
   "paths": {

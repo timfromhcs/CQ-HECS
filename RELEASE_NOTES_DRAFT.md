@@ -1,7 +1,6 @@
-# CQ-HECS Release Notes (DRAFT for <NEXT_MAJOR>)
+# CQ-HECS Release Notes (DRAFT for 7.0.0)
 
-**Status:** draft, not a release. `<NEXT_MAJOR>` is a placeholder; the integrator
-substitutes the version and the date at the freeze. Nothing in this file is published,
+**Status:** draft, not a release. The version is `7.0.0` (release candidate, 2026-11-22). Nothing in this file is published,
 tagged or deployed. `RELEASE_NOTES.md` stays the notes of the last published release until
 this draft replaces it.
 

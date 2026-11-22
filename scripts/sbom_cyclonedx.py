@@ -1,9 +1,9 @@
 """CycloneDX 1.5 SBOM and licence inventory from installed distribution metadata.
 
-    python scripts/sbom_cyclonedx.py --name cq-hecs-wheel --version 5.0.0 \
+    python scripts/sbom_cyclonedx.py --name cq-hecs-wheel --version 7.0.0 \
         --metadata-root <venv>/Lib/site-packages --exclude cqhecs \
-        --artifact dist/cqhecs-5.0.0-py3-none-any.whl \
-        --out dist/cqhecs-5.0.0-wheel.cdx.json --licences-out dist/cqhecs-5.0.0-wheel.licences.json
+        --artifact dist/cqhecs-7.0.0-py3-none-any.whl \
+        --out dist/cqhecs-7.0.0-wheel.cdx.json --licences-out dist/cqhecs-7.0.0-wheel.licences.json
 
 Component data comes from the ``*.dist-info/METADATA`` files found under each
 ``--metadata-root`` (a venv site-packages directory, or a PyInstaller ``_internal`` folder),

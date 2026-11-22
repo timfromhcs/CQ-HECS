@@ -4,7 +4,7 @@
 
 CQ-HECS (Classical Quantum High-Efficiency Compute Simulator) is an open-source compute engine written in C++20 and Vulkan 1.3. The Python package, the `cq-hecs` CLI and the four classical backends run entirely on the CPU and need no Vulkan SDK; the native core uses Vulkan 1.3 SPIR-V compute shaders.
 
-Software version: 5.0.0 (the single source is `scripts/version.py`; do not hard-code it elsewhere).
+Software version: 7.0.0 (the single source is `scripts/version.py`; do not hard-code it elsewhere).
 
 ## Core Capabilities & Architectural Invariants
 
@@ -22,7 +22,7 @@ Software version: 5.0.0 (the single source is `scripts/version.py`; do not hard-
 - **Zero Silent Cutoffs**: Enforces an explicit opt-in policy. Forbidden chi=48 truncations are audited to zero.
 - **Single Permissive License**: Licensed under the Apache License 2.0 repository-wide.
 
-## Surfaces and contracts (development tree, <NEXT_MAJOR> draft)
+## Surfaces and contracts (development tree, 7.0.0 draft)
 
 - **One plan, four surfaces:** `cqhecs.execution_plan/1` is produced by Python (`cqhecs.service.plan_document`), `cq-hecs plan`, MCP `cqhecs_plan` and Studio `POST /api/plan`, and a test asserts the documents are identical. A refusal is a successful plan with `selected_path: null`.
 - **MCP:** stdio JSON-RPC; negotiates protocolVersion (2025-06-18, 2025-03-26, 2024-11-05); tool calls run on worker threads; cancellation returns a typed `CANCELLED` (compute is abandoned, not stopped); at most 8 concurrent calls.

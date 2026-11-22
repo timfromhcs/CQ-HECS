@@ -129,7 +129,7 @@ CQ_API double cq_get_active_vram_mb(cq_context_t* ctx);
 
 ---
 
-## 5. Python, CLI, MCP and Studio contracts (development tree, <NEXT_MAJOR> draft)
+## 5. Python, CLI, MCP and Studio contracts (development tree, 7.0.0 draft)
 
 ```bash
 cq-hecs --format json plan preset:bell                # cqhecs.execution_plan/1, no simulator state allocated

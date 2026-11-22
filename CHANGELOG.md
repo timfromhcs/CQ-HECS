@@ -8,6 +8,14 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+_(nothing yet)_
+
+---
+
+## [7.0.0] - 2026-11-22
+
+Version 7.0.0 follows 5.0.0 directly; there is no 6.x release (6 was an internal planning label). See `MIGRATION_V7.md`.
+
 ### Wave A / A1 - MCP, service layer, OpenAPI
 
 - **Studio guard reconcile:** `origin/codex/hcspnp-studio-guard` was already contained in this tree
@@ -74,9 +82,8 @@ QPU, a provider or a credential.
   documents the bearer token, `/api/v1`, `/api/plan` and the Quantum Gravity routes.
   New: `MIGRATION_V7.md` (every python example is executed by a test) and
   `RELEASE_NOTES_DRAFT.md` (implemented / experimental / measured / formally checked / not
-  supported / not run). `llms.txt` and `llms-full.txt` refreshed. The version is written as the
-  placeholder `<NEXT_MAJOR>` until the freeze; `tests/test_doc_consistency_v7.py` detects stale
-  claims and a leaked placeholder.
+  supported / not run). `llms.txt` and `llms-full.txt` refreshed. `tests/test_doc_consistency_v7.py` detects stale
+  claims and a leaked version placeholder.
 
 ### Fixed — honesty defects found by the Wave-1/2 audit (AGENTS_V6.md Wave 3)
 

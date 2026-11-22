@@ -87,9 +87,20 @@ def test_every_python_example_in_the_migration_guide_runs(index, monkeypatch):
 # 2. Version placeholder discipline
 # ---------------------------------------------------------------------------
 
-def test_placeholder_is_present_where_the_integrator_substitutes_it():
-    for relative in ("MIGRATION_V7.md", "RELEASE_NOTES_DRAFT.md", "ARCHITECTURE.md"):
-        assert PLACEHOLDER in read(relative), f"{relative} lost the {PLACEHOLDER} placeholder"
+def test_placeholder_is_gone_from_shipped_docs():
+    for relative in PLACEHOLDER_DOCS:
+        assert PLACEHOLDER not in read(relative), f"{relative} still carries {PLACEHOLDER}"
+    assert read("MIGRATION_V7.md").startswith("# Migrating from 5.0.0 to 7.0.0")
+    assert "no 6.x release" in read("MIGRATION_V7.md")
+
+
+def test_no_stale_current_release_claim():
+    from version import VERSION
+
+    assert VERSION == "7.0.0"
+    for name in LANGUAGE_READMES:
+        text = read(name)
+        assert "Last published release: `v5.0.0`" not in text or "release candidate" in text
 
 
 def test_placeholder_never_leaks_into_code_or_packaging():
@@ -121,10 +132,10 @@ def test_placeholder_is_confined_to_the_documents_that_may_carry_it():
 
 @pytest.mark.parametrize("relative", ["MIGRATION_V7.md", "RELEASE_NOTES_DRAFT.md"])
 def test_new_documents_write_no_version_number_of_their_own(relative):
-    # 5.0.0 names the last released major (the "from" side of the migration). Any other
+    # 5.0.0 is the last released major (the "from" side), 7.0.0 the target. Any other
     # dotted triple would be a hard-coded version that the freeze would have to hunt down.
     found = set(re.findall(r"(?<![\w.])\d+\.\d+\.\d+(?![\w.])", read(relative)))
-    assert found <= {"5.0.0"}, f"{relative} hard-codes version numbers: {sorted(found - {'5.0.0'})}"
+    assert found <= {"5.0.0", "7.0.0"}, f"{relative} hard-codes version numbers: {sorted(found - {'5.0.0', '7.0.0'})}"
 
 
 # ---------------------------------------------------------------------------
@@ -211,7 +222,7 @@ def test_native_and_mutation_numbers_match_the_evidence():
     assert "64/64" in read("research/v7/BASELINE_V7.md")
     for name in LANGUAGE_READMES:
         text = read(name)
-        assert "26/26" in text and "15/15" in text and "64/64" in text, name
+        assert "26/26" in text and "15/15" in text and "95/95" in text, name
 
 
 def test_release_notes_draft_uses_the_five_status_headings():

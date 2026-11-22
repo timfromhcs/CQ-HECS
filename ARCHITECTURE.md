@@ -237,7 +237,7 @@ is unresolved and stops being propagated; others are unaffected. The bound cover
 deliberate truncation only (not float64 roundoff) and says nothing about counts.
 
 
-## 7. Surfaces, hardening and research added since v5 (<NEXT_MAJOR>)
+## 7. Surfaces, hardening and research added since v5 (7.0.0)
 
 Evidence for every item is in `research/v7/evidence/waveA_*.md` and `waveB_*.md`. A
 "NOT RUN" in those files means the item is not claimed here.

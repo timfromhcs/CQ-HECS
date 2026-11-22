@@ -113,7 +113,7 @@ Branch-Heuristik. Unterstützt mit klarem Umfang:
   auf der zurückgehaltenen Pigeonhole-Instanz braucht sie 157 973 Fronts statt 10 079.
 - Referenz: [`docs/OMNIWAVE.md`](docs/OMNIWAVE.md).
 
-## Neu seit der letzten Veröffentlichung (Entwurf `<NEXT_MAJOR>`)
+## Neu seit der letzten Veröffentlichung (Entwurf `7.0.0`)
 
 Dieser Zweig ist der letzten Veröffentlichung voraus. Aufgeteilt in implementiert /
 experimentell / gemessen / formal geprüft / nicht unterstützt steht es in

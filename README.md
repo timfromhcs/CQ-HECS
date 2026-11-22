@@ -29,7 +29,7 @@ Four classical simulation paths · one result contract · fail-closed by design
 
 ---
 
-> **Development tree (`<NEXT_MAJOR>`, draft, unreleased).** This branch is ahead of the last
+> **Development tree (`7.0.0` release candidate on branch `release/v7-stable`, unreleased).** This branch is ahead of the last
 > release. What changed, split into implemented / experimental / measured / formally checked /
 > not supported, is in [`RELEASE_NOTES_DRAFT.md`](RELEASE_NOTES_DRAFT.md); every caller-visible
 > change with an executed example is in [`MIGRATION_V7.md`](MIGRATION_V7.md); the evidence files
@@ -449,7 +449,7 @@ equivariance, zero-noise identity, and channel composition order.
 - **Plan parity:** the same `cqhecs.execution_plan/1` document comes from Python
   (`cqhecs.service.plan_document`), `cq-hecs plan`, MCP `cqhecs_plan` and Studio
   `POST /api/plan`; one test asserts they are identical.
-- **Standalone:** `cqhecs-5.0.0-windows-x64.zip` on the release page; unzip
+- **Standalone:** `cqhecs-7.0.0-windows-x64.zip` on the release page; unzip
   and run `cq-hecs\cq-hecs.exe`. `scripts/build_exe.ps1` rebuilds it.
 
 ### CQ-HECS Studio
@@ -707,8 +707,8 @@ choco install vulkan-sdk cmake ninja -y --no-progress
 
 ```bash
 python -m build
-# dist/cqhecs-5.0.0-py3-none-any.whl
-# dist/cqhecs-5.0.0.tar.gz
+# dist/cqhecs-7.0.0-py3-none-any.whl
+# dist/cqhecs-7.0.0.tar.gz
 ```
 
 A release attaches exactly these assets (all built by `.github/workflows/package.yml`

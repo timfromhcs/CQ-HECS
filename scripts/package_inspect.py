@@ -1,6 +1,6 @@
 """Inspect a built wheel / sdist / directory for packaging defects.
 
-    python scripts/package_inspect.py dist/cqhecs-5.0.0-py3-none-any.whl [more archives] [--json out.json]
+    python scripts/package_inspect.py dist/cqhecs-7.0.0-py3-none-any.whl [more archives] [--json out.json]
 
 Checks (each reported; exit 1 if any FAIL):
   * required members are present (Studio static incl. qg.js, Studio data, entry point, licence);

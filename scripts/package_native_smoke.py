@@ -1,7 +1,7 @@
 """Smoke a packaged native zip from a temporary directory (Windows or POSIX shared library).
 
-    python scripts/package_native_smoke.py cq-hecs-cpu-5.0.0-windows-x64.zip --kind cpu
-    python scripts/package_native_smoke.py cq-hecs-vulkan-5.0.0-windows-x64.zip --kind vulkan
+    python scripts/package_native_smoke.py cq-hecs-cpu-7.0.0-windows-x64.zip --kind cpu
+    python scripts/package_native_smoke.py cq-hecs-vulkan-7.0.0-windows-x64.zip --kind vulkan
 
 Extracts the zip into a fresh temp directory outside the repository, loads
 ``cq_hecs_core`` with ctypes and reads ``cq_core_build_capabilities()``:

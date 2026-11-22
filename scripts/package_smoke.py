@@ -1,7 +1,7 @@
 """Smoke-test an installed CQ-HECS command (wheel venv console script or onedir exe).
 
     python scripts/package_smoke.py --cmd <path to cq-hecs[.exe]> --label wheel-venv \
-        [--python <venv python>] [--expect-version 5.0.0] [--out report.json]
+        [--python <venv python>] [--expect-version 7.0.0] [--out report.json]
 
 The command runs from a fresh temporary working directory that is checked to be outside
 the repository, with PYTHONPATH/PYTHONHOME/VIRTUAL_ENV removed from the environment, so

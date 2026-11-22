@@ -1,7 +1,7 @@
-# Migrating from 5.0.0 to <NEXT_MAJOR>
+# Migrating from 5.0.0 to 7.0.0
 
-`<NEXT_MAJOR>` is a placeholder: the integrator substitutes the real version at the
-freeze. This guide lists every caller-visible change since the last released major
+There is no 6.x release: 6 was only an internal planning label, so the upgrade goes from
+5.0.0 straight to 7.0.0. This guide lists every caller-visible change since the last released major
 (`MIGRATION_V5.md` covers the release before it), grouped by area. Each change is marked:
 
 * **BREAKING**: code that worked before can now fail or return something different.

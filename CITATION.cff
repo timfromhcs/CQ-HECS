@@ -5,8 +5,8 @@ authors:
     given-names: "Tim Johann"
     alias: "timfromhcs"
 title: "CQ-HECS: Classical Quantum High-Efficiency Compute Simulator & Four-Path Engine"
-version: 5.0.0
-date-released: 2026-10-31
+version: 7.0.0
+date-released: 2026-11-22
 license: "Apache-2.0"
 abstract: >-
   CQ-HECS is a router-based classical simulator for quantum circuits with explicit

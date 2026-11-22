@@ -111,7 +111,7 @@ branchement apprise, optionnelle. Pris en charge avec un périmètre explicite :
   l'instance pigeons retenue, elle demande 157 973 fronts au lieu de 10 079.
 - Référence : [`docs/OMNIWAVE.md`](docs/OMNIWAVE.md).
 
-## Nouveautés depuis la dernière publication (brouillon `<NEXT_MAJOR>`)
+## Nouveautés depuis la dernière publication (brouillon `7.0.0`)
 
 Cette branche est en avance sur la dernière publication. Le détail, réparti en implémenté /
 expérimental / mesuré / vérifié formellement / non pris en charge, est dans
