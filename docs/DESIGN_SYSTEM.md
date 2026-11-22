@@ -73,3 +73,28 @@ Code editor (CodeMirror oneDark) overrides: comments and gutter `#a3acbf`, keywo
 
 Fake live metrics, KPI cards without a source, glow for its own sake, decorative
 pills, monospace for prose, and colour-only status.
+
+## Quantum Gravity Lab (`#/qg` in the web app, "Quantum Gravity" in Studio)
+
+Eight workspaces: Overview, Theory catalog, Model builder, Circuit preview, Experiment
+designer, Backend lab, Analysis, Evidence ledger. Rules specific to this lab:
+
+- **Assumptions before action.** The Model builder lists the model assumptions and units
+  above the parameters, and Run stays disabled until the user confirms them.
+- **Surface is text.** Every result carries explicit type chips (QPU, Simulator, CPU, WASM,
+  WebGPU, f32, f64, "not QPU"). Status words (AVAILABLE, UNAVAILABLE, NOT QUERIED,
+  COMPLETED, INCONCLUSIVE) are text; colour only reinforces them.
+- **No paid submission, no credentials.** The Experiment designer ends in a typed
+  `UNAVAILABLE` refusal (`WEB_NO_PROVIDER_SUBMISSION` / `STUDIO_NO_PROVIDER_SUBMISSION`,
+  spend 0, network none). Neither surface reads, stores or shows provider credentials.
+- **Evidence is read-only and real.** The Evidence ledger and Analysis show only committed
+  `research/qg_2026` files and their hashes; `raw/` and `JOB_LEDGER.jsonl` are never
+  exposed. A missing file is stated as missing; there is no substitute value, queue depth,
+  noise figure or "score".
+- **Charts.** Title, description, axis labels with units, a legend that differs by shape and
+  text (not colour alone), the uncertainty scope (shot noise only), provenance (backend,
+  shots, source file hash) and a full table alternative.
+- **Toy models.** Copy never says a toy model measures gravity.
+- **Web app only:** EN/DE/FR parity is a unit-test gate (`qgMissingKeys`). Studio is English.
+- **Gates.** `web/e2e/qg.spec.ts` (keyboard tabs, axe dark and light, 360 px, reduced
+  motion, no external requests) and `tests/test_quantum_gravity_studio_ui.py`.

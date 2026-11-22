@@ -58,6 +58,7 @@ _STATIC_FILES = {
     "app.js": "application/javascript; charset=utf-8",
     "style.css": "text/css; charset=utf-8",
     "logo.svg": "image/svg+xml",
+    "qg.js": "application/javascript; charset=utf-8",
 }
 
 _ONE_QUBIT = ("h", "x", "s", "sdg", "t", "tdg", "sx", "rx", "ry", "rz")
@@ -871,6 +872,58 @@ class StudioState:
 
         return catalog()
 
+    # Files shown by the Evidence Ledger: a fixed list, never user-supplied. ``raw/`` and
+    # ``JOB_LEDGER.jsonl`` are immutable evidence and are deliberately not exposed here.
+    _QG_EVIDENCE_FILES = (
+        "MODEL_MANIFEST.json",
+        "QUOTE_LEDGER.json",
+        "qasm/CIRCUIT_MANIFEST.json",
+        "processed/bmv_phase_scan.json",
+        "processed/bmv_qpu_analysis.json",
+        "processed/bmv_xx_trend.json",
+        "processed/final_analysis.json",
+        "processed/qpu_smoke_analysis.json",
+        "processed/syk_qpu_analysis.json",
+        "processed/syk_qpu_v3_analysis.json",
+    )
+
+    def qg_evidence(self) -> Dict[str, Any]:
+        """Read-only view of the committed ``research/qg_2026`` evidence (hashes + the BMV scan).
+
+        A missing or unreadable file is reported as such, with no substitute values.
+        """
+        import hashlib
+
+        base = self.root / "research" / "qg_2026"
+        files: List[Dict[str, Any]] = []
+        for relative in self._QG_EVIDENCE_FILES:
+            path = base / relative
+            entry: Dict[str, Any] = {"path": f"research/qg_2026/{relative}"}
+            try:
+                data = path.read_bytes().replace(b"\r\n", b"\n")
+            except OSError:
+                entry.update(status="missing", bytes=None, sha256=None)
+            else:
+                entry.update(status="present", bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
+            files.append(entry)
+        scan = self._load_json(base / "processed" / "bmv_phase_scan.json")
+        points: List[Dict[str, Any]] = []
+        if isinstance(scan, dict) and isinstance(scan.get("points"), list):
+            for point in scan["points"]:
+                if isinstance(point, dict):
+                    points.append({k: point.get(k) for k in ("basis", "circuit_id", "theta", "correlator", "std_err", "shots")})
+        return {
+            "schema": "cqhecs.qg.evidence.v1",
+            "read_only": True,
+            "sha_policy": "sha256 of the file bytes with CRLF normalised to LF",
+            "backend": scan.get("backend") if isinstance(scan, dict) else None,
+            "surface": "OPENQUANTUM_QPU (recorded measurements)",
+            "files": files,
+            "bmv_scan": points,
+            "excluded": ["research/qg_2026/raw", "research/qg_2026/JOB_LEDGER.jsonl"],
+            "network": "local-only",
+        }
+
     def qg_models(self) -> Dict[str, Any]:
         from cqhecs.quantum_gravity.hamiltonians import build_syk
         from cqhecs.quantum_gravity.models import BMVEffectivePhaseModel
@@ -1225,6 +1278,8 @@ class StudioHandler(BaseHTTPRequestHandler):
                 return self._json(HTTPStatus.OK, self.server.state.qg_catalog())
             if path == "/api/qg/v1/models":
                 return self._json(HTTPStatus.OK, self.server.state.qg_models())
+            if path == "/api/qg/v1/evidence":
+                return self._json(HTTPStatus.OK, self.server.state.qg_evidence())
             return self._error(HTTPStatus.NOT_FOUND, "not_found", f"no route for {path}")
         except StudioError as exc:
             return self._error(exc.status, exc.code, str(exc))

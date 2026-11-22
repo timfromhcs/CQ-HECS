@@ -18,7 +18,7 @@ import { trajectoryCount } from "./simulate";
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
-type Route = "home" | "guide" | "lab" | "code" | "sat" | "compare" | "device";
+type Route = "home" | "guide" | "lab" | "code" | "sat" | "compare" | "device" | "qg";
 
 let device: DeviceReport | null = null;
 let engineInfo: EngineInfo | null = null;
@@ -134,7 +134,7 @@ function renderHeroDevice() {
 
 // ------------------------------------------------------------------ routing
 
-const ROUTES: Route[] = ["home", "guide", "lab", "code", "sat", "compare", "device"];
+const ROUTES: Route[] = ["home", "guide", "lab", "code", "sat", "compare", "device", "qg"];
 
 function currentRoute(): Route {
   const r = location.hash.replace(/^#\/?/, "").split(/[?&]/)[0] as Route;
@@ -151,9 +151,31 @@ function show(r: Route) {
   bench.querySelector<HTMLElement>(".view-lab")!.hidden = r !== "lab";
   bench.querySelector<HTMLElement>(".view-code")!.hidden = r !== "code";
   if (r === "code") ensureEditor();
+  if (r === "qg") void ensureQg();
   if (r === "compare") $("#cmp-circuit").textContent = describeCircuit();
   window.scrollTo({ top: 0 });
   updateEstimate();
+}
+
+// Quantum Gravity Lab: its own lazy chunk, mounted into a section that is created here so the
+// page markup in index.html stays untouched. Credential-free, local and read-only by design.
+function setupQg() {
+  const section = document.createElement("section");
+  section.className = "page";
+  section.dataset.page = "qg";
+  section.id = "qg-root";
+  section.hidden = true;
+  $("#main").append(section);
+  const link = document.createElement("a");
+  link.href = "#/qg";
+  link.dataset.route = "qg";
+  link.textContent = "QG Lab";
+  document.querySelector(".tabs")!.append(link);
+}
+let qgLoaded: Promise<void> | null = null;
+function ensureQg(): Promise<void> {
+  qgLoaded ??= import("./qg").then((m) => m.mountQg($("#qg-root")));
+  return qgLoaded;
 }
 
 function go(r: Route) {
@@ -862,6 +884,7 @@ function loadFromHash(): boolean {
 
 function start() {
   setupChrome();
+  setupQg();
   setupGuide();
   setupLab();
   setupNoise();

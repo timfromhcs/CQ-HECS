@@ -1,0 +1,422 @@
+{
+ "backend": "rigetti:cepheus-1-108q",
+ "bmv_scan": [
+  {
+   "basis": "XX",
+   "circuit_id": "bmv-t0-XX",
+   "correlator": 0.954,
+   "expected_sin": 0.0,
+   "shots": 1000,
+   "std_err": 0.009480717272443056,
+   "theta": 0.0
+  },
+  {
+   "basis": "XX",
+   "circuit_id": "bmv-t1-XX",
+   "correlator": 0.818,
+   "expected_sin": 0.7071067811865476,
+   "shots": 1000,
+   "std_err": 0.01818999725123674,
+   "theta": 0.7853981633974483
+  },
+  {
+   "basis": "XX",
+   "circuit_id": "bmv-t2-XX",
+   "correlator": 0.808,
+   "expected_sin": 1.0,
+   "shots": 1000,
+   "std_err": 0.018631586083852333,
+   "theta": 1.5707963267948966
+  },
+  {
+   "basis": "YZ",
+   "circuit_id": "bmv-t0-YZ",
+   "correlator": 0.014,
+   "expected_sin": 0.0,
+   "shots": 1000,
+   "std_err": 0.03161967741770937,
+   "theta": 0.0
+  },
+  {
+   "basis": "YZ",
+   "circuit_id": "bmv-s1-YZ",
+   "correlator": 0.298,
+   "expected_sin": 0.3826834323650898,
+   "shots": 1000,
+   "std_err": 0.030186023255804995,
+   "theta": 0.39269908169872414
+  },
+  {
+   "basis": "YZ",
+   "circuit_id": "bmv-t1-YZ",
+   "correlator": 0.616,
+   "expected_sin": 0.7071067811865476,
+   "shots": 1000,
+   "std_err": 0.024910720583716562,
+   "theta": 0.7853981633974483
+  },
+  {
+   "basis": "YZ",
+   "circuit_id": "bmv-s2-YZ",
+   "correlator": 0.734,
+   "expected_sin": 0.9238795325112867,
+   "shots": 1000,
+   "std_err": 0.021476591908401108,
+   "theta": 1.1780972450961724
+  },
+  {
+   "basis": "YZ",
+   "circuit_id": "bmv-t2-YZ",
+   "correlator": 0.854,
+   "expected_sin": 1.0,
+   "shots": 1000,
+   "std_err": 0.01645247701715459,
+   "theta": 1.5707963267948966
+  },
+  {
+   "basis": "ZY",
+   "circuit_id": "bmv-t0-ZY",
+   "correlator": 0.012,
+   "expected_sin": 0.0,
+   "shots": 1000,
+   "std_err": 0.031620499679796334,
+   "theta": 0.0
+  },
+  {
+   "basis": "ZY",
+   "circuit_id": "bmv-s1-ZY",
+   "correlator": 0.386,
+   "expected_sin": 0.3826834323650898,
+   "shots": 1000,
+   "std_err": 0.029171972850666097,
+   "theta": 0.39269908169872414
+  },
+  {
+   "basis": "ZY",
+   "circuit_id": "bmv-t1-ZY",
+   "correlator": 0.666,
+   "expected_sin": 0.7071067811865476,
+   "shots": 1000,
+   "std_err": 0.023589065263379977,
+   "theta": 0.7853981633974483
+  },
+  {
+   "basis": "ZY",
+   "circuit_id": "bmv-s2-ZY",
+   "correlator": 0.82,
+   "expected_sin": 0.9238795325112867,
+   "shots": 1000,
+   "std_err": 0.01809972375479803,
+   "theta": 1.1780972450961724
+  },
+  {
+   "basis": "ZY",
+   "circuit_id": "bmv-t2-ZY",
+   "correlator": 0.874,
+   "expected_sin": 1.0,
+   "shots": 1000,
+   "std_err": 0.01536632682198319,
+   "theta": 1.5707963267948966
+  }
+ ],
+ "bmv_xx": [
+  {
+   "ci95": [
+    0.9354177941460116,
+    0.9725822058539884
+   ],
+   "shots": 1000,
+   "source": "original",
+   "theta": 0.0,
+   "xx": 0.954
+  },
+  {
+   "ci95": [
+    0.7736526996875972,
+    0.8463473003124029
+   ],
+   "shots": 1000,
+   "source": "follow-up",
+   "theta": 0.39269908169872414,
+   "xx": 0.81
+  },
+  {
+   "ci95": [
+    0.782347605387576,
+    0.8536523946124239
+   ],
+   "shots": 1000,
+   "source": "original",
+   "theta": 0.7853981633974483,
+   "xx": 0.818
+  },
+  {
+   "ci95": [
+    0.754159510869969,
+    0.8298404891300311
+   ],
+   "shots": 1000,
+   "source": "follow-up",
+   "theta": 1.1780972450961724,
+   "xx": 0.792
+  },
+  {
+   "ci95": [
+    0.7714820912756495,
+    0.8445179087243506
+   ],
+   "shots": 1000,
+   "source": "original",
+   "theta": 1.5707963267948966,
+   "xx": 0.808
+  }
+ ],
+ "campaign": "qg-2026-01",
+ "execution_surfaces": [
+  "CLASSICAL_REFERENCE",
+  "CQ_HECS_CPU",
+  "CQ_HECS_VULKAN",
+  "WEB_WASM_F64",
+  "WEBGPU_F32",
+  "OPENQUANTUM_SIMULATOR",
+  "OPENQUANTUM_QPU",
+  "MODEL_PREDICTION",
+  "SYNTHETIC_OR_FIXTURE"
+ ],
+ "files": [
+  {
+   "bytes": 1554,
+   "path": "research/qg_2026/MODEL_MANIFEST.json",
+   "sha256": "ebc172ca7f35075aff4dc7116dc87c47e20d92157b203b05f14cfb9b418688dc"
+  },
+  {
+   "bytes": 1608,
+   "path": "research/qg_2026/QUOTE_LEDGER.json",
+   "sha256": "a90474d7c832464c271696c56bdcc3d580004c4c4290c1c18f0a134da1402960"
+  },
+  {
+   "bytes": 2492,
+   "path": "research/qg_2026/qasm/CIRCUIT_MANIFEST.json",
+   "sha256": "6cf74d2830d0fab0bbe3cb16805e770e92f16faa3d9aacb73d2aa454faf46662"
+  },
+  {
+   "bytes": 3327,
+   "path": "research/qg_2026/processed/bmv_phase_scan.json",
+   "sha256": "34c05fdf8e1c4897cfc04703b7eb3611578cea0068eab313284e4c2c79be6907"
+  },
+  {
+   "bytes": 4046,
+   "path": "research/qg_2026/processed/bmv_qpu_analysis.json",
+   "sha256": "9924cac39944aeab8247c33abd2377804a21e2088a1708f7e1ba35b6d3acdb94"
+  },
+  {
+   "bytes": 1576,
+   "path": "research/qg_2026/processed/bmv_xx_trend.json",
+   "sha256": "9399a361db2a62f77567753cfdbcbbe0624a5cef3a3a77ff2ae9974b7523b0e1"
+  },
+  {
+   "bytes": 945,
+   "path": "research/qg_2026/processed/final_analysis.json",
+   "sha256": "59d51579327559aac2f2fb80b829358e5ff45c8d2b2c3fb98c604ceedcd8d774"
+  },
+  {
+   "bytes": 1698,
+   "path": "research/qg_2026/processed/qpu_smoke_analysis.json",
+   "sha256": "3aa2da13bf5c4b5b5e2f044143c14663939de3cdd3277ddfbe4f30dbacddc8ac"
+  },
+  {
+   "bytes": 1016,
+   "path": "research/qg_2026/processed/syk_qpu_analysis.json",
+   "sha256": "5a219a2a42c29e2b6799f36f75170645405dbec7d73ba6558572d18e45469a0f"
+  },
+  {
+   "bytes": 1096,
+   "path": "research/qg_2026/processed/syk_qpu_v3_analysis.json",
+   "sha256": "9dccc4b482ae5973bc971960e363ca212c01fa2e3302e0c12ca6b8adccedff56"
+  }
+ ],
+ "methods": [
+  {
+   "assumptions": [
+    "Two probe degrees of freedom reduced to one qubit each.",
+    "Local phase operations are factored out; only the entangling invariant matters.",
+    "Interaction is U_ZZ(theta)=exp(-i theta/2 Z(x)Z) on |+>|+>.",
+    "theta is a model parameter, not a physical mass-distance value."
+   ],
+   "cannot_establish": [
+    "that any gravitational field is quantum",
+    "that two physical masses are entangled",
+    "a physical mass/separation for theta without a validated dimensional model",
+    "that a positive witness is theory-independent (see L-A3, L-A4)"
+   ],
+   "established": "A reproducible classical value of a declared finite two-qubit model.",
+   "method_id": "qg.bmv.zz.v1",
+   "observables": [
+    "concurrence",
+    "negativity",
+    "entanglement entropy",
+    "CHSH"
+   ],
+   "references": [
+    "L-A1",
+    "L-A2",
+    "L-A3",
+    "L-A4",
+    "L-A5"
+   ],
+   "status": "SUPPORTED_WITHIN_MODEL",
+   "surface": "CLASSICAL_REFERENCE",
+   "title": "Two-probe gravity-mediated effective interaction (BMV-type)",
+   "track": "A"
+  },
+  {
+   "assumptions": [
+    "N Majorana modes (N = 2 * qubits) with a Jordan-Wigner qubit encoding.",
+    "Random all-to-all q=4 couplings from a seeded Gaussian distribution.",
+    "Optionally sparsified with a preregistered seeded term subset.",
+    "Finite-N model; no continuum / holographic limit is taken."
+   ],
+   "cannot_establish": [
+    "a physical wormhole or spacetime geometry",
+    "a semiclassical black hole",
+    "the continuum SYK/JT correspondence"
+   ],
+   "established": "A finite-N model calculation with an explicit encoding and seed.",
+   "method_id": "qg.syk.q4.v1",
+   "observables": [
+    "spectrum",
+    "parity",
+    "Loschmidt amplitude",
+    "OTOC",
+    "entanglement"
+   ],
+   "references": [
+    "L-B1",
+    "L-B2"
+   ],
+   "status": "PROPOSED",
+   "surface": "CLASSICAL_REFERENCE",
+   "title": "Small-N sparse q=4 Sachdev-Ye-Kitaev model",
+   "track": "B"
+  },
+  {
+   "assumptions": [
+    "Z2 link variables on a small square lattice (dense <= 8 links).",
+    "Gauss generator G_v = prod X over incident links; physical subspace G_v = +1.",
+    "H = -sum_p B_p with plaquette operators B_p = prod Z over the four plaquette links."
+   ],
+   "cannot_establish": [
+    "a quantum-gravity result",
+    "loop quantum gravity",
+    "a continuum gauge theory or a matter-coupled theory"
+   ],
+   "established": "A finite constraint model with an explicit encoding and symmetry checks.",
+   "method_id": "qg.gauge.z2.v1",
+   "observables": [
+    "gauge-constraint residual",
+    "plaquette spectrum",
+    "physical-subspace leakage"
+   ],
+   "references": [
+    "L-C1"
+   ],
+   "status": "SUPPORTED_WITHIN_MODEL",
+   "surface": "CLASSICAL_REFERENCE",
+   "title": "Bounded Z2 lattice gauge toy model (bridge, not a gravity claim)",
+   "track": "C"
+  }
+ ],
+ "schema": "cqhecs.web.qg_snapshot.v1",
+ "sha_policy": "sha256 of the file bytes with CRLF normalised to LF",
+ "smoke": [
+  {
+   "circuit_id": "qg-smoke-basis",
+   "ideal_support": [
+    "01"
+   ],
+   "in_support_fraction": 0.899,
+   "shots": 1000
+  },
+  {
+   "circuit_id": "qg-smoke-bell",
+   "ideal_support": [
+    "00",
+    "11"
+   ],
+   "in_support_fraction": 0.954,
+   "shots": 1000
+  },
+  {
+   "circuit_id": "qg-smoke-ghz3",
+   "ideal_support": [
+    "000",
+    "111"
+   ],
+   "in_support_fraction": 0.906,
+   "shots": 1000
+  },
+  {
+   "circuit_id": "qg-smoke-mirror",
+   "ideal_support": [
+    "00"
+   ],
+   "in_support_fraction": 0.979,
+   "shots": 1000
+  }
+ ],
+ "syk_missing": [
+  "syk-forward-v3",
+  "syk-mirror-v3"
+ ],
+ "syk_v3": [
+  {
+   "ci95": [
+    0.09800454147562501,
+    0.13799545852437498
+   ],
+   "circuit_id": "syk-forward-v3",
+   "ideal_p000": 0.2325842903004991,
+   "p000": 0.118,
+   "shots": 1000,
+   "uniform": 0.125
+  },
+  {
+   "ci95": [
+    0.9331142610711565,
+    0.9608857389288434
+   ],
+   "circuit_id": "syk-mirror-v3",
+   "ideal_p000": 0.999999999999992,
+   "p000": 0.947,
+   "shots": 1000,
+   "uniform": 0.125
+  }
+ ],
+ "tracks": [
+  {
+   "id": "A",
+   "status": "SUPPORTED_WITHIN_MODEL",
+   "title": "Gravity-mediated entanglement / BMV-type interferometry"
+  },
+  {
+   "id": "B",
+   "status": "PROPOSED",
+   "title": "SYK / JT / holography / traversable-wormhole-inspired circuits"
+  },
+  {
+   "id": "C",
+   "status": "SUPPORTED_WITHIN_MODEL (bounded Z2 toy)",
+   "title": "Lattice gauge theory as a bridge (not a gravity claim)"
+  },
+  {
+   "id": "D",
+   "status": "DEFERRED",
+   "title": "Loop quantum gravity / spin networks (longer term)"
+  },
+  {
+   "id": "E",
+   "status": "DEFERRED",
+   "title": "Entanglement geometry and emergent-space visualisations"
+  }
+ ]
+}

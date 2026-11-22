@@ -31,6 +31,7 @@ const TITLES = {
   research: ["Research", "P versus NP, ETH, and what a finite experiment can actually say."],
   hardware: ["Hardware", "External QPU runs, independent oracles, and finite P-vs-NP probes."],
   omniwave: ["OMNIWAVE lab", "Multi-front exact search: live data, DRAT-checked UNSAT, verified GPU propagation."],
+  qg: ["Quantum Gravity Lab", "Toy-model circuits, recorded QPU evidence and honest limits. No paid submission here."],
 };
 
 function el(tag, className, text) {
@@ -96,6 +97,7 @@ function setView(name) {
   $("#view-title").textContent = title;
   $("#view-sub").textContent = sub;
   history.replaceState(null, "", `#${name}`);
+  if (name === "qg" && typeof window.qgStudioMount === "function") window.qgStudioMount();
   if (name === "noise" && state.noise && !$("#job-select").childElementCount) {
     fillJobs();
   }
