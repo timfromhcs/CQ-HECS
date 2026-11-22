@@ -57,6 +57,14 @@ class StabilizerRankSimulator:
         #: Sum of |weight| over branches skipped by the numerical-zero policy
         #: (|weight| <= 1e-15). 0.0 means nothing was dropped (D10).
         self.discarded_branch_weight_mass = 0.0
+        #: Number of branches skipped by the numerical-zero policy.
+        self.discarded_branch_count = 0
+        #: Sum of |amplitude|^2 before renormalisation (1.0 for an exact unit
+        #: state; the deviation is round-off in float64 and is reported).
+        self.born_norm_sum = 1.0
+        #: Factor applied to the probability vector (1/born_norm_sum).
+        self.renormalization_factor = 1.0
+        self.last_statevector: Any = None
 
     def execute_circuit(
         self,
@@ -130,6 +138,7 @@ class StabilizerRankSimulator:
             dim = 1 << self.n
             total_statevector = np.zeros(dim, dtype=np.complex128)
             self.discarded_branch_weight_mass = 0.0
+            self.discarded_branch_count = 0
 
             for branch in range(num_branches):
                 branch_weight = complex(1.0, 0.0)
@@ -156,7 +165,10 @@ class StabilizerRankSimulator:
                     # Numerical-zero policy: record the discarded amplitude mass so
                     # the result can report it instead of claiming "no dropped terms".
                     self.discarded_branch_weight_mass += abs(branch_weight)
+                    self.discarded_branch_count += 1
 
+            # Retained for numerical-assurance tests only (<= 2**22 amplitudes).
+            self.last_statevector = total_statevector
             # Compute Born-rule measurement probabilities
             probs = np.abs(total_statevector) ** 2
             norm_sum = float(np.sum(probs))
@@ -172,6 +184,8 @@ class StabilizerRankSimulator:
                 )
 
             probs = np.maximum(probs, 0.0)
+            self.born_norm_sum = norm_sum
+            self.renormalization_factor = 1.0 / float(np.sum(probs))
             probs /= float(np.sum(probs))
 
             # Sample counts
@@ -435,6 +449,9 @@ class PathBStabilizerRankBackend:
             # (each Clifford branch state has unit norm), so the discarded mass is
             # a bounded deliberate-approximation error, reported rather than hidden.
             error_bound=discarded,
+            # No end-to-end float64 round-off bound is derived for Path B, so
+            # none is claimed (None = not derived, not zero).
+            numerical_error_bound=None,
             unresolved=False,
             counts=counts,
             # Support size is the number of distinct measurement outcomes,
@@ -451,6 +468,16 @@ class PathBStabilizerRankBackend:
                 "method": "Bravyi-Smith-Smolin Stabilizer Rank Decomposition",
                 "truncation_applied": dropped,
                 "discarded_branch_weight_mass": discarded,
+                "discarded_branch_count": int(sim.discarded_branch_count),
+                "born_norm_sum": float(sim.born_norm_sum),
+                "norm_deviation": abs(float(sim.born_norm_sum) - 1.0),
+                "renormalization_factor": float(sim.renormalization_factor),
+                "renormalization_applied": True,
+                "numerical_error_bound_reason": (
+                    "not derived: float64 round-off across branch sums is "
+                    "validated against a dense reference by tests, not bounded "
+                    "analytically; norm_deviation is a diagnostic only"
+                ),
                 "numerical_mode": "float64-exact-decomposition",
                 "numerical_note": (
                     "Decomposition is expanded over every Clifford branch; branches "
