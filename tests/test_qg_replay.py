@@ -145,3 +145,25 @@ def test_missing_raw_circuit_raises_instead_of_passing(tmp_path):
 def test_report_limitations_forbid_gravity_inference(report):
     text = " ".join(report["limitations"]).lower()
     assert "does not re-run" in text and "no statement about gravity" in text
+
+
+def _copy_tree(tmp_path: Path) -> Path:
+    shutil.copytree(BASE, tmp_path / "research" / "qg_2026")
+    return tmp_path
+
+
+def test_manifest_digests_are_line_ending_independent_for_csv_and_md(tmp_path):
+    """A Linux checkout materialises the CSV/MD evidence with LF; the manifests hash the CRLF form."""
+    root = _copy_tree(tmp_path)
+    for path in (root / "research" / "qg_2026").rglob("*"):
+        if path.suffix in {".csv", ".md"} and path.is_file():
+            path.write_bytes(path.read_bytes().replace(b"\r\n", b"\n"))
+    assert replay_all(root)["num_failed"] == 0
+
+
+def test_manifest_still_detects_a_changed_csv_regardless_of_line_endings(tmp_path):
+    root = _copy_tree(tmp_path)
+    target = next((root / "research" / "qg_2026" / "raw").rglob("counts.csv"))
+    target.write_bytes(target.read_bytes().replace(b"\r\n", b"\n") + b"tampered\n")
+    failed = replay_all(root)["failed"]
+    assert any(c["id"].startswith("manifest:") and c["id"].endswith("counts.csv") for c in failed)

@@ -214,7 +214,9 @@ def build_case(spec: Dict[str, Any]) -> Dict[str, Any]:
         "classical_distribution": distribution,
         "deterministic_counts": deterministic,
         "phase_policy": "amplitudes equal up to one global phase; probabilities exact",
-        "webgpu": {"in_declared_range": n <= GPU_MAX_QUBITS},
+        # WebGPU refuses mid-circuit measurement (typed refusal), so only
+        # terminal-measurement circuits are in its declared range.
+        "webgpu": {"in_declared_range": n <= GPU_MAX_QUBITS and bool(info["terminal"])},
         "python": python_status(spec["qasm"]),
     }
     if n <= 4:

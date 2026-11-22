@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -52,9 +53,19 @@ class FixtureIntegrity(unittest.TestCase):
         self.assertGreaterEqual(len(CORPUS["cases"]), 20)
 
     def test_committed_fixture_is_what_the_generator_produces(self):
+        # The oracle string records which Qiskit produced the corpus. That is provenance, not
+        # semantics: CI installs a pinned Qiskit in one lane and the newest in another, and a patch
+        # release must not turn the whole corpus "stale". Every other byte must still match.
+        def without_oracle_version(text: str) -> str:
+            return re.sub(r'"oracle": "Qiskit \d+(?:\.\d+)*', '"oracle": "Qiskit <version>', text)
+
         fresh = json.dumps(GEN.build(), indent=2) + "\n"
         committed = FIXTURE.read_text(encoding="utf-8").replace("\r\n", "\n")
-        self.assertEqual(committed, fresh, "stale corpus: run python web/scripts/export_shared_conformance.py")
+        self.assertEqual(
+            without_oracle_version(committed),
+            without_oracle_version(fresh),
+            "stale corpus: run python web/scripts/export_shared_conformance.py",
+        )
 
     def test_every_family_the_task_names_is_present(self):
         families = {case["family"] for case in CORPUS["cases"]}

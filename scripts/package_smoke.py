@@ -70,6 +70,24 @@ def free_port() -> int:
         return s.getsockname()[1]
 
 
+def port_is_free(port: int) -> bool:
+    """True when nothing is listening on ``port`` (a fresh bind on loopback succeeds).
+
+    On POSIX a just-stopped server leaves its accepted connections in TIME_WAIT, and a plain bind
+    then fails with EADDRINUSE (Errno 98) although nothing listens any more. SO_REUSEADDR is the
+    standard remedy there and still refuses while a live listener holds the port. It is not set on
+    Windows, where it would instead allow binding next to a live listener.
+    """
+    with socket.socket() as sock:
+        if os.name != "nt":
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            sock.bind(("127.0.0.1", port))
+        except OSError:
+            return False
+    return True
+
+
 def process_tree(pid: int) -> List[int]:
     """PIDs of ``pid`` and all of its descendants (best effort, stdlib + PowerShell)."""
     try:
@@ -265,8 +283,7 @@ def run_checks(s: Smoke, expect_version: Optional[str]) -> None:
         time.sleep(2)
         alive = [p for p in tree if pid_alive(p)]
         assert not alive, f"processes survived tree kill: {alive}"
-        with socket.socket() as sock:
-            sock.bind(("127.0.0.1", port))  # port is free again
+        assert port_is_free(port), f"port {port} still held after the tree kill"
         return {**out, "after_stop_alive": 0}
 
     def studio_graceful():

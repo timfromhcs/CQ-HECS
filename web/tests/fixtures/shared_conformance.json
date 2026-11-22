@@ -3494,7 +3494,7 @@
       "deterministic_counts": true,
       "phase_policy": "amplitudes equal up to one global phase; probabilities exact",
       "webgpu": {
-        "in_declared_range": true
+        "in_declared_range": false
       },
       "python": {
         "status": "REFUSED",

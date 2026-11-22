@@ -17,6 +17,13 @@ UNSAT_CNF = "p cnf 1 2\n1 0\n-1 0\n"
 SAT_CNF = "p cnf 2 2\n1 2 0\n-1 0\n"
 
 
+# Windows keeps the full 32-bit status (0x40000409 after masking the sign bit); POSIX truncates a
+# process exit status to 8 bits, so the same os._exit() argument is observed as 0x9 there. The
+# adapter reports whatever the OS returned, so the expectation is derived from the platform.
+_ABORT_EXIT = 0x7FFFFFFF & 0xC0000409
+_ABORT_HEX = f"{_ABORT_EXIT if sys.platform == 'win32' else _ABORT_EXIT & 0xFF:#x}"
+
+
 def _worker(code: str):
     return [sys.executable, "-c", code]
 
@@ -46,7 +53,7 @@ def test_abort_after_a_complete_result_is_recorded_and_result_is_reverified():
     code = _emit(raw) + ";sys.stdout.flush();import os;os._exit(0x7FFFFFFF & 0xC0000409)"
     r = sat_external.solve_external_isolated(f, 5.0, worker_command=_worker(code))
     assert r.status == SAT and r.model_verified
-    assert "exited abnormally" in r.note and "0x40000409" in r.note
+    assert "exited abnormally" in r.note and _ABORT_HEX in r.note
 
 
 def test_abort_after_a_lying_result_still_cannot_certify():
@@ -63,7 +70,7 @@ def test_native_abort_like_exit_code_is_reported_not_suppressed():
         f, 5.0, worker_command=_worker("import os; os._exit(0x7FFFFFFF & 0xC0000409)")
     )
     assert r.status == UNKNOWN
-    assert "0x40000409" in r.note and "no result" in r.note
+    assert _ABORT_HEX in r.note and "no result" in r.note
 
 
 def test_hung_child_is_killed_at_the_hard_deadline(monkeypatch):

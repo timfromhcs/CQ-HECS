@@ -14,12 +14,36 @@
 param(
   [string]$OutDir = "",
   [string]$WorkDir = "",
-  [string]$Generator = "Visual Studio 17 2022",
+  [string]$Generator = "",
   [string]$Python = "python",
   [switch]$SkipTests
 )
 
 $ErrorActionPreference = "Stop"
+
+# CMake generator for the installed Visual Studio. Order of precedence:
+#   1. -Generator            (explicit argument)
+#   2. $env:CQ_CMAKE_GENERATOR
+#   3. the Visual Studio found by vswhere (17 -> "Visual Studio 17 2022", 18 -> "Visual Studio 18 2026"),
+#      only if this CMake lists that generator
+#   4. "Visual Studio 17 2022" (the previous fixed behaviour, unchanged on machines that have VS 2022)
+# A hosted "windows-latest" image moves to a newer Visual Studio over time; a hard-coded generator
+# then fails with "could not find any instance of Visual Studio".
+function Resolve-CMakeGenerator([string]$Requested) {
+  if ($Requested) { return $Requested }
+  if ($env:CQ_CMAKE_GENERATOR) { return $env:CQ_CMAKE_GENERATOR }
+  $default = "Visual Studio 17 2022"
+  $known = @{ "17" = "Visual Studio 17 2022"; "18" = "Visual Studio 18 2026" }
+  $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+  if (-not (Test-Path $vswhere)) { return $default }
+  $ver = (& $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationVersion 2>$null | Select-Object -First 1)
+  if (-not $ver) { return $default }
+  $major = ([string]$ver).Split(".")[0]
+  if (-not $known.ContainsKey($major)) { return $default }
+  $help = (cmake --help 2>&1 | Out-String)
+  if ($help.Contains($known[$major])) { return $known[$major] }
+  return $default
+}
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 if (-not $OutDir) { $OutDir = Join-Path $Root "dist" }
@@ -28,6 +52,8 @@ New-Item -ItemType Directory -Force -Path $OutDir, $WorkDir | Out-Null
 $OutDir = (Resolve-Path $OutDir).Path
 $WorkDir = (Resolve-Path $WorkDir).Path
 $Version = (& $Python "$Root\scripts\version.py").Trim()
+$Generator = Resolve-CMakeGenerator $Generator
+Write-Host "CMake generator: $Generator"
 
 function Build-Lane([string]$Name, [string]$VulkanFlag) {
   $bd = Join-Path $WorkDir $Name

@@ -41,6 +41,28 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+_TEXT_SUFFIXES = {".csv", ".md"}
+CRLF = bytes([13, 10])
+LF = bytes([10])
+
+
+def _manifest_digest(path: Path, expected: str) -> str:
+    """Digest to compare against a manifest entry.
+
+    The evidence manifests were produced from CRLF working-tree copies of the text files, while Git
+    stores (and a Linux checkout materialises) them with LF. For ``.csv``/``.md`` only, a digest of the
+    CRLF-canonical form is accepted as an equivalent of the raw bytes; every content change still
+    changes both digests. Binary and JSON files keep the strict raw-byte digest.
+    """
+    raw = _sha256(path)
+    if raw == expected or path.suffix.lower() not in _TEXT_SUFFIXES:
+        return raw
+    lf = path.read_bytes().replace(CRLF, LF)
+    canonical = lf.replace(LF, CRLF)
+    alt = hashlib.sha256(canonical).hexdigest()
+    return alt if alt == expected else raw
+
+
 def parity_correlator(counts: Dict[str, int]) -> float:
     """``(n_even - n_odd) / N`` where parity is that of the two measured bits (bit-order independent)."""
     shots = sum(counts.values())
@@ -136,7 +158,7 @@ class Replay:
                 if not target.is_file():
                     self.report.checks.append({"id": key, "kind": "manifest", "ok": False, "reason": "missing"})
                     continue
-                self.report.exact(key, entry["sha256"], _sha256(target))
+                self.report.exact(key, entry["sha256"], _manifest_digest(target, entry["sha256"]))
 
     def replay_bmv_qpu(self) -> None:
         data = _load(self.processed / "bmv_qpu_analysis.json")

@@ -7,6 +7,7 @@ excluded, not stubbed: a CPU build must never pretend to have a GPU path.
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import sys
@@ -76,8 +77,10 @@ def test_core_reports_cpu_only_capability(cpu_build):
     import ctypes
     import json
 
-    libs = [p for p in (cpu_build / "bin").rglob("*cq_hecs_core*")
-            if p.suffix.lower() in {".dll", ".so", ".dylib"}]
+    # Exactly the C-ABI library. A bare "*cq_hecs_core*" glob also matches the nanobind Python
+    # extension "_cq_hecs_core.cpython-3xx-*.so" (which has no C-ABI exports) when it is built.
+    abi_name = re.compile(r"^(lib)?cq_hecs_core\.(dll|so|dylib)$", re.IGNORECASE)
+    libs = [p for p in (cpu_build / "bin").rglob("*") if abi_name.match(p.name)]
     assert libs, "cq_hecs_core library not built"
     lib = ctypes.CDLL(str(libs[0]))
     lib.cq_core_build_capabilities.restype = ctypes.c_char_p
