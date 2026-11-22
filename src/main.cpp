@@ -63,13 +63,63 @@ static void print_usage(const char* prog) {
               << "  test               [--json]                        Execute embedded self-test suite\n\n"
               << "Global Options:\n"
               << "  --json             Output strict machine-readable JSON to stdout\n"
+              << "  --cpu-reference    vrts/ghz/echo/maxcut: allow the labelled CPU path when Vulkan is unavailable\n"
               << "  --version, -v      Display engine version\n"
               << "  --help, -h         Display this help message\n\n"
               << "Exit Codes:\n"
               << "  0  - Success / SAT / Target Verified\n"
               << "  10 - Unsatisfiable (UNSAT) / Refuted\n"
               << "  1  - Generic Error / Runtime Error\n"
+              << "  3  - Refused: no usable Vulkan device (vrts/ghz/echo/maxcut). Pass --cpu-reference to run\n"
+              << "       the explicitly labelled CPU reference path instead; it is never selected silently.\n"
               << "  2  - Invalid input (QASM parse error, unsupported gate, budget exceeded)\n";
+}
+
+
+// ---------------------------------------------------------------------
+// Vulkan acquisition policy (P-03): the VRTS commands never run silently on the CPU.
+// Without a usable Vulkan device they REFUSE with exit code 3 and a typed error
+// ("vulkan_unavailable"). The CPU reference path exists but must be requested
+// explicitly with --cpu-reference, and is then labelled as such in the output.
+// ---------------------------------------------------------------------
+static constexpr int kExitVulkanUnavailable = 3;
+
+struct VulkanAcquisition {
+    std::shared_ptr<VulkanContext> context;
+    bool cpu_reference = false;  // true only when explicitly requested AND no device
+    bool refused = false;
+};
+
+static VulkanAcquisition acquire_vulkan(const std::string& command,
+                                        const std::vector<std::string>& args, bool json_mode) {
+    VulkanAcquisition acq;
+    bool allow_cpu = false;
+    for (const auto& a : args) {
+        if (a == "--cpu-reference") allow_cpu = true;
+    }
+    acq.context = std::make_shared<VulkanContext>();
+    if (acq.context->initialize()) return acq;
+
+    const std::string detail = acq.context->get_selection_reason().empty()
+        ? std::string("no usable Vulkan instance/device (loader, ICD or driver missing)")
+        : acq.context->get_selection_reason();
+    if (allow_cpu) {
+        acq.cpu_reference = true;
+        std::cerr << "[CQ-HECS] WARNING: no usable Vulkan device (" << detail << "). Running '"
+                  << command << "' on the CPU reference path because --cpu-reference was given. "
+                  << "No GPU was used; results are NOT GPU-verified.\n";
+        return acq;
+    }
+    acq.refused = true;
+    std::cerr << "[CQ-HECS] REFUSED (vulkan_unavailable): '" << command
+              << "' needs a usable Vulkan device but none was found: " << detail
+              << ". Install/enable a Vulkan driver, or pass --cpu-reference to run the labelled CPU "
+              << "reference path explicitly. Exit code " << kExitVulkanUnavailable << ".\n";
+    if (json_mode) {
+        std::cout << "{\"status\":\"refused\",\"code\":\"vulkan_unavailable\",\"command\":\"" << command
+                  << "\",\"cpu_reference_available\":true,\"exit_code\":" << kExitVulkanUnavailable << "}\n";
+    }
+    return acq;
 }
 
 // ---------------------------------------------------------------------
@@ -486,21 +536,26 @@ static int cmd_vrts(const std::vector<std::string>& args) {
         if (a == "--json") json_mode = true;
     }
 
-    auto vulkan = std::make_shared<VulkanContext>();
-    vulkan->initialize();
+    VulkanAcquisition acq = acquire_vulkan("vrts", args, json_mode);
+    if (acq.refused) return kExitVulkanUnavailable;
+    auto vulkan = acq.context;
     VRTS300Engine engine(vulkan);
 
     if (!json_mode) {
         std::cout << "[VRTS-300 Engine] Initialized 3D Lattice 6 x 5 x 10 (300 Qubits)\n";
-        const auto& id = vulkan->get_device_identity();
-        std::cout << "  Device:       " << vulkan->get_device_name() << " [" << kind_name(id.kind)
-                  << ", vendor 0x" << std::hex << id.vendor_id << ", device 0x" << id.device_id
-                  << std::dec << ", driver " << id.driver_version << ", api " << id.api_version << "]\n";
-        std::cout << "  Selection:    " << vulkan->get_selection_reason() << "\n";
+        if (acq.cpu_reference) {
+            std::cout << "  Device:       NONE (CPU reference path, explicitly requested via --cpu-reference; no Vulkan device used)\n";
+        } else {
+            const auto& id = vulkan->get_device_identity();
+            std::cout << "  Device:       " << vulkan->get_device_name() << " [" << kind_name(id.kind)
+                      << ", vendor 0x" << std::hex << id.vendor_id << ", device 0x" << id.device_id
+                      << std::dec << ", driver " << id.driver_version << ", api " << id.api_version << "]\n";
+            std::cout << "  Selection:    " << vulkan->get_selection_reason() << "\n";
+        }
         std::cout << "  Allocation Ceiling: " << (VulkanMemoryManager::VRAM_HARD_CEILING_BYTES / (1024 * 1024)) << " MB (configured limit, not a device measurement)\n";
         std::cout << "  Ground State: " << (engine.is_bit_exact_ground_state() ? "VERIFIED (|0>^300)" : "DIRTY") << "\n";
     } else {
-        std::cout << "{\"status\":\"ok\",\"qubits\":300,\"lattice\":\"6x5x10\",\"backend\":\"Vulkan 1.3 (1.2 fallback)\",\"allocation_ceiling_mb\":3072}\n";
+        std::cout << "{\"status\":\"ok\",\"qubits\":300,\"lattice\":\"6x5x10\",\"backend\":\"" << (acq.cpu_reference ? "cpu_reference" : "Vulkan 1.3 (1.2 fallback)") << "\",\"allocation_ceiling_mb\":3072}\n";
     }
     return 0;
 }
@@ -513,8 +568,9 @@ static int cmd_ghz(const std::vector<std::string>& args) {
         else if (args[i] == "--shots" && i + 1 < args.size()) shots = std::stoul(args[++i]);
     }
 
-    auto vulkan = std::make_shared<VulkanContext>();
-    vulkan->initialize();
+    VulkanAcquisition acq = acquire_vulkan("ghz", args, json_mode);
+    if (acq.refused) return kExitVulkanUnavailable;
+    auto vulkan = acq.context;
     VRTS300Engine engine(vulkan);
     engine.construct_ghz300();
     auto [non_parity, zero_shots] = engine.measure_parity_shots(shots);
@@ -522,6 +578,7 @@ static int cmd_ghz(const std::vector<std::string>& args) {
 
     if (!json_mode) {
         std::cout << "[VRTS-300 GHZ Execution]\n";
+        std::cout << "  Backend:           " << (acq.cpu_reference ? "CPU reference (explicit --cpu-reference, no Vulkan device)" : "Vulkan") << "\n";
         std::cout << "  Total Shots:       " << shots << "\n";
         std::cout << "  |0>^{\\otimes 300}:  " << zero_shots << "\n";
         std::cout << "  |1>^{\\otimes 300}:  " << one_shots << "\n";
@@ -542,8 +599,9 @@ static int cmd_reversibility(const std::vector<std::string>& args) {
         else if (args[i] == "--gates" && i + 1 < args.size()) num_gates = std::stoul(args[++i]);
     }
 
-    auto vulkan = std::make_shared<VulkanContext>();
-    vulkan->initialize();
+    VulkanAcquisition acq = acquire_vulkan("reversibility", args, json_mode);
+    if (acq.refused) return kExitVulkanUnavailable;
+    auto vulkan = acq.context;
     VRTS300Engine engine(vulkan);
     VRTS300Engine ground_truth(vulkan);
 
@@ -571,6 +629,7 @@ static int cmd_reversibility(const std::vector<std::string>& args) {
 
     if (!json_mode) {
         std::cout << "[Loschmidt Echo Audit]\n";
+        std::cout << "  Backend:     " << (acq.cpu_reference ? "CPU reference (explicit --cpu-reference, no Vulkan device)" : "Vulkan") << "\n";
         std::cout << "  Gates:       " << num_gates << " forward + " << num_gates << " inverse\n";
         std::cout << "  Bit-Exact:   " << (exact ? "YES" : "NO") << "\n";
         std::cout << "  Fidelity:    " << fidelity << "\n";
@@ -587,13 +646,15 @@ static int cmd_maxcut(const std::vector<std::string>& args) {
         if (a == "--json") json_mode = true;
     }
 
-    auto vulkan = std::make_shared<VulkanContext>();
-    vulkan->initialize();
+    VulkanAcquisition acq = acquire_vulkan("maxcut", args, json_mode);
+    if (acq.refused) return kExitVulkanUnavailable;
+    auto vulkan = acq.context;
     ConstraintSolver solver(vulkan);
     ConstraintResult res = solver.solve();
 
     if (!json_mode) {
         std::cout << "[300-Node MaxCut / Constraint Solver]\n";
+        std::cout << "  Backend:     " << (acq.cpu_reference ? "CPU reference (explicit --cpu-reference, no Vulkan device)" : "Vulkan") << "\n";
         std::cout << "  Nodes:       " << solver.get_node_count() << "\n";
         std::cout << "  Edges:       " << solver.get_edge_count() << "\n";
         std::cout << "  Max Cut:     " << res.max_cut_edges << " / " << solver.get_edge_count() << "\n";

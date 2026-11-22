@@ -16,10 +16,26 @@ verified. The evidence for a given build is in `research/v7/PACKAGING_AUDIT.md` 
 | `*.cdx.json`, `*.licences.json` | `scripts/sbom_cyclonedx.py` | CycloneDX 1.5 SBOM and licence inventory of each artifact's dependency set. | Not a vulnerability audit. Licences the metadata does not state are `UNVERIFIED`. |
 | `SHA256SUMS` | `scripts/make_manifest.py` | `sha256sum`-format manifest of every file above (sorted, LF, no timestamp). | Not a signature. Anyone who can replace a file can replace the manifest. |
 
-The existing `scripts/generate_sbom_and_checksums.py` (SPDX SBOM, `sha256sums.txt`) and
-`.github/workflows/release.yml` are unchanged and still own publishing. The CycloneDX SBOMs, the
-onedir zip and the native zips are produced by `.github/workflows/package.yml` as workflow artifacts
-only; wiring them into a release is a separate, human decision.
+## Release asset policy (P-07)
+
+`.github/workflows/release.yml` publishes EXACTLY the artifacts `package.yml` builds, by calling it
+as a reusable workflow (`workflow_call`) on the same commit; nothing is rebuilt at publish time.
+The published set is:
+
+`cqhecs-<v>-py3-none-any.whl`, `cqhecs-<v>.tar.gz`, `cqhecs-<v>-windows-x64.zip`,
+`cq-hecs-cpu-<v>-windows-x64.zip`, `cq-hecs-vulkan-<v>-windows-x64.zip`,
+`cqhecs-<v>-wheel.cdx.json`, `cqhecs-<v>-windows-x64.cdx.json` and `SHA256SUMS`.
+
+The release job checks each file against `package.yml`'s own manifest (byte identity), then writes a
+new `SHA256SUMS` over exactly the published files (not the licence/smoke/inspect JSONs, which stay
+workflow artifacts) and verifies it. Triggers (`v*` tags; `main` pushes that create the tag only when
+`v<scripts/version.py>` does not exist yet), the required-CI gate, pinned actions and least
+privilege (`contents: write` only on the publishing job) are unchanged. The SPDX SBOM and
+`sha256sums.txt` of `scripts/generate_sbom_and_checksums.py` are no longer published (the script
+remains, unused by the workflow). `tests/test_native_release_workflow.py` lints this offline (YAML
+parse, SHA pins, trigger set, asset list); the workflows themselves have NOT been run.
+`scripts/package_release.ps1` is legacy (P-08): it deletes `dist\` and produces a differently named
+archive that is never published; it now refuses to run without `-Legacy`.
 
 Why not one-file: a 518 MB one-file build failed to extract `bcrypt` at run time on the reference
 Windows machine. Onedir avoids the self-extraction step.
@@ -46,6 +62,14 @@ python scripts/make_manifest.py pkg --out pkg/SHA256SUMS
 python scripts/make_manifest.py pkg --verify pkg/SHA256SUMS
 ```
 
+Windows native binaries are reproducible (P-06): `CMakeLists.txt` passes MSVC `/Brepro` (compile and
+link) and `/PDBALTPATH:%_PDB%` in Release-type configurations. Two independent configure+build runs of
+the Vulkan lane from different build directories gave byte-identical `cq_hecs.exe`
+(`3d6ed355...ba216`) and `cq_hecs_core.dll` (`5796c212...537a6`) with VS 2022 MSVC on the build
+machine. Not shown: reproducibility across machines or toolchain versions, a control build without
+`/Brepro`, or the other DLLs/LIBs of the full target set (only `cq_hecs` and `cq_hecs_core` were built).
+`build_exe.ps1` (PyInstaller) is not covered: `/Brepro` does not apply to it.
+
 All of these take explicit output and work directories so that parallel builds do not collide.
 Archives are deterministic (sorted entries, fixed timestamp, no owner data): rebuilding the zip from an
 unchanged folder gives the same SHA-256.
@@ -71,8 +95,15 @@ marker and no command-line program.
 * Python surfaces: `cq-hecs doctor` reports `vulkan_loader` as `available`, `not_available` or `failed`
   and states that the Python backends run on CPU.
 * `cq-hecs-cpu`: Vulkan is absent by construction; the capability call says `vulkan_linked: false`.
-* `cq-hecs-vulkan` / `cq_hecs.exe`: see `PACKAGING_AUDIT.md`, finding P-03 — with no usable ICD the
-  command line printed an empty device line and still completed; that is not a typed refusal.
+* `cq-hecs-vulkan` / `cq_hecs.exe` (P-03, fixed): `vrts`, `ghz`, `echo` and `maxcut` need a usable
+  Vulkan device. Without one (for example `VK_DRIVER_FILES`/`VK_ICD_FILENAMES` pointing at a missing
+  file) they print `REFUSED (vulkan_unavailable)` to stderr (plus `{"status":"refused","code":
+  "vulkan_unavailable",...}` on stdout with `--json`) and exit with code 3. The CPU reference path
+  runs only with the explicit `--cpu-reference` flag, prints a warning, and labels the output
+  (`Device: NONE ... no Vulkan device used`, JSON `"backend":"cpu_reference"`). Test:
+  `tests/test_native_vulkan_refusal.py` (skips without a built `cq_hecs.exe`; fails when
+  `CQ_HECS_REQUIRE_NATIVE=1`). Other commands (`qasm`, `stress`, `test`) still use the legacy
+  engine whose initialisation succeeds without a device; they are not covered by this fix.
 
 ## What this does not establish
 

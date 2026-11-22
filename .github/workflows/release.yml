@@ -125,9 +125,22 @@ jobs:
           echo "::error::Timed out waiting for required CI on $SHA"
           exit 1
 
-  release:
-    name: Build and Publish Release
+  # The release publishes EXACTLY the artifacts that package.yml builds from this
+  # commit (reusable workflow, same SHA): wheel, sdist, Windows onedir zip, native
+  # cpu/vulkan zips and the CycloneDX SBOMs, plus a SHA256SUMS over precisely that set.
+  # Nothing is rebuilt here, so the published bytes are the bytes package.yml
+  # inspected and smoke-tested.
+  package:
+    name: Build packaging artifacts (package.yml)
     needs: [resolve-tag, verify-required-ci]
+    if: needs.resolve-tag.outputs.publish == 'true'
+    uses: ./.github/workflows/package.yml
+    permissions:
+      contents: read
+
+  release:
+    name: Assemble and Publish Release
+    needs: [resolve-tag, verify-required-ci, package]
     if: needs.resolve-tag.outputs.publish == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -137,8 +150,6 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: recursive
 
       - name: Setup Python 3.11
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -161,89 +172,63 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install wheel setuptools build
+      - name: Download the packaging artifacts built by package.yml
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: package-*
+          merge-multiple: true
+          path: bundle
 
-      - name: Build wheel and sdist
-        run: |
-          set -euo pipefail
-          python -m build
-          ls -l dist/
-
-      - name: Smoke test the built wheel in a clean environment
-        run: |
-          set -euo pipefail
-          python -m venv /tmp/relvenv
-          /tmp/relvenv/bin/pip install --upgrade pip
-          WHEEL="$(ls dist/*.whl | head -1)"
-          /tmp/relvenv/bin/pip install "$WHEEL"
-          /tmp/relvenv/bin/cq-hecs --help
-          /tmp/relvenv/bin/cq-hecs version
-          /tmp/relvenv/bin/cq-hecs doctor
-          # A tiny run must succeed and emit one valid JSON document.
-          /tmp/relvenv/bin/cq-hecs --format json run name:bell --shots 128 \
-            > /tmp/run.json
-          /tmp/relvenv/bin/python - <<'PY'
-          import json
-          with open("/tmp/run.json", encoding="utf-8") as handle:
-              payload = json.load(handle)
-          assert payload["schema_version"], "missing schema_version"
-          assert payload["result"]["counts"], "no counts returned"
-          print("wheel smoke test OK:", payload["result"]["path"])
-          PY
-
-      # The notes must exist before the checksum generator runs, otherwise the
-      # published checksum file cannot cover every release asset.
-      - name: Assemble release notes for the tagged version
+      - name: Select exactly the release assets and write SHA256SUMS over them
         run: |
           set -euo pipefail
           VERSION="$(python scripts/version.py)"
-          NOTES="dist/RELEASE_NOTES_v${VERSION}.md"
+          mkdir -p release-assets
+          ASSETS=(
+            "cqhecs-${VERSION}-py3-none-any.whl"
+            "cqhecs-${VERSION}.tar.gz"
+            "cqhecs-${VERSION}-windows-x64.zip"
+            "cq-hecs-cpu-${VERSION}-windows-x64.zip"
+            "cq-hecs-vulkan-${VERSION}-windows-x64.zip"
+            "cqhecs-${VERSION}-wheel.cdx.json"
+            "cqhecs-${VERSION}-windows-x64.cdx.json"
+          )
+          for asset in "${ASSETS[@]}"; do
+            if [ ! -f "bundle/$asset" ]; then
+              echo "::error::package.yml did not produce release asset: $asset"
+              ls -l bundle/ || true
+              exit 1
+            fi
+            # Byte-identity with what package.yml's own manifest recorded.
+            want="$(grep -F "  ${asset}" bundle/SHA256SUMS | cut -d' ' -f1)"
+            have="$(sha256sum "bundle/$asset" | cut -d' ' -f1)"
+            if [ -z "$want" ] || [ "$want" != "$have" ]; then
+              echo "::error::$asset does not match package.yml SHA256SUMS"
+              exit 1
+            fi
+            cp "bundle/$asset" "release-assets/$asset"
+          done
+          python scripts/make_manifest.py release-assets --out release-assets/SHA256SUMS
+          python scripts/make_manifest.py release-assets --verify release-assets/SHA256SUMS
+          ls -l release-assets/
+
+      - name: Assemble the release body
+        run: |
+          set -euo pipefail
+          BODY="release-body.md"
           {
             echo "**Source commit:** \`${GITHUB_SHA}\`"
             echo ""
             echo "**Required CI:** ${CI_RUN_URL}"
             echo ""
             cat RELEASE_NOTES.md
-          } > "$NOTES"
-
-      - name: Generate checksums and SPDX SBOM
-        run: python scripts/generate_sbom_and_checksums.py
-
-      - name: Verify every release asset exists
-        run: |
-          set -euo pipefail
-          VERSION="$(python scripts/version.py)"
-          for asset in \
-            "dist/cqhecs-${VERSION}-py3-none-any.whl" \
-            "dist/cqhecs-${VERSION}.tar.gz" \
-            "dist/sha256sums.txt" \
-            "dist/cqhecs-sbom.spdx.json" \
-            "dist/RELEASE_NOTES_v${VERSION}.md" ; do
-            if [ ! -f "$asset" ]; then
-              echo "::error::missing release asset: $asset"
-              ls -l dist/ || true
-              exit 1
-            fi
-          done
-          echo "all release assets present"
-
-      - name: Append final SHA256 values to the release body
-        run: |
-          set -euo pipefail
-          VERSION="$(python scripts/version.py)"
-          BODY="dist/release-body.md"
-          {
-            cat "dist/RELEASE_NOTES_v${VERSION}.md"
             echo ""
             echo "---"
             echo ""
-            echo "## SHA256 checksums (final assets)"
+            echo "## SHA256 checksums (published assets)"
             echo ""
             echo '```'
-            cat dist/sha256sums.txt
+            cat release-assets/SHA256SUMS
             echo '```'
           } > "$BODY"
           cat "$BODY"
@@ -252,11 +237,14 @@ jobs:
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           files: |
-            dist/cqhecs-${{ steps.meta.outputs.version }}-py3-none-any.whl
-            dist/cqhecs-${{ steps.meta.outputs.version }}.tar.gz
-            dist/sha256sums.txt
-            dist/cqhecs-sbom.spdx.json
-            dist/RELEASE_NOTES_v${{ steps.meta.outputs.version }}.md
+            release-assets/cqhecs-${{ steps.meta.outputs.version }}-py3-none-any.whl
+            release-assets/cqhecs-${{ steps.meta.outputs.version }}.tar.gz
+            release-assets/cqhecs-${{ steps.meta.outputs.version }}-windows-x64.zip
+            release-assets/cq-hecs-cpu-${{ steps.meta.outputs.version }}-windows-x64.zip
+            release-assets/cq-hecs-vulkan-${{ steps.meta.outputs.version }}-windows-x64.zip
+            release-assets/cqhecs-${{ steps.meta.outputs.version }}-wheel.cdx.json
+            release-assets/cqhecs-${{ steps.meta.outputs.version }}-windows-x64.cdx.json
+            release-assets/SHA256SUMS
           # On a main push the tag does not exist yet; the release API creates
           # it on exactly the commit whose CI was verified above.
           tag_name: ${{ needs.resolve-tag.outputs.tag }}
@@ -264,4 +252,4 @@ jobs:
           generate_release_notes: false
           draft: false
           prerelease: false
-          body_path: dist/release-body.md
+          body_path: release-body.md

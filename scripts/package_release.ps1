@@ -1,3 +1,20 @@
+# LEGACY (P-08) -- not part of the release pipeline and not the README-named assets.
+#
+# This script predates package.yml. It wipes the whole dist\ folder, builds a differently named
+# archive (CQ-HECS-v<version>-Windows-x64.zip) from a mixed bin\Release tree and writes
+# checksums.txt. None of that is published. The release assets are produced by
+# .github/workflows/package.yml: cqhecs-<v>-py3-none-any.whl, cqhecs-<v>.tar.gz,
+# cqhecs-<v>-windows-x64.zip (scripts/build_exe.ps1), cq-hecs-cpu-<v>-windows-x64.zip and
+# cq-hecs-vulkan-<v>-windows-x64.zip (scripts/package_native.ps1), the CycloneDX SBOMs
+# and SHA256SUMS (scripts/make_manifest.py). See docs/PACKAGING.md.
+#
+# It refuses to run unless -Legacy is passed, because running it deletes dist\.
+param([switch]$Legacy)
+if (-not $Legacy) {
+    Write-Error "scripts/package_release.ps1 is LEGACY and deletes dist\. Use scripts/package_native.ps1 and scripts/build_exe.ps1 (see docs/PACKAGING.md), or pass -Legacy to run it anyway."
+    exit 2
+}
+
 # Packaging Script for CQ-HECS (version derived from scripts/version.py)
 $ErrorActionPreference = "Stop"
 

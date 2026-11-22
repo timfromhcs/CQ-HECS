@@ -18,6 +18,14 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${CQ_OUTPUT_ROOT}/Release")
 
 if(MSVC)
     add_compile_options(/W4 /permissive- /Zc:preprocessor)
+    # P-06 reproducible Windows binaries: /Brepro replaces the PE/COFF link
+    # timestamp (and the debug-directory/object timestamps) with a content hash;
+    # /PDBALTPATH strips the build-directory path from the embedded PDB path.
+    # Verified by building twice and comparing SHA-256 (docs/PACKAGING.md).
+    # Release only: Debug/incremental builds are not a reproducibility target.
+    add_compile_options("$<$<CONFIG:Release,RelWithDebInfo,MinSizeRel>:/Brepro>")
+    add_link_options("$<$<CONFIG:Release,RelWithDebInfo,MinSizeRel>:/Brepro>"
+                     "$<$<CONFIG:Release,RelWithDebInfo,MinSizeRel>:/PDBALTPATH:%_PDB%>")
 else()
     add_compile_options(-Wall -Wextra)
 endif()

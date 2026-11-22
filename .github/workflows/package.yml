@@ -3,7 +3,8 @@ name: CQ-HECS Packaging Verification
 # Builds every distributable from the checked-out commit, inspects it, smoke-tests it from a
 # temporary directory with the repository source off the import path, and writes a SHA-256
 # manifest and CycloneDX SBOMs. It uploads workflow ARTIFACTS only. It never creates a tag,
-# a GitHub release or a deployment, and needs no secret. Publishing stays in release.yml.
+# a GitHub release or a deployment, and needs no secret. Publishing stays in release.yml, which
+# calls this workflow (workflow_call) and uploads the artifacts it produced.
 #
 # What this does NOT prove: a clean-machine install (hosted runners are not clean user machines
 # and have SDKs installed), a non-admin interactive session on a user desktop, or any hardware.
@@ -23,6 +24,9 @@ on:
       - "include/**"
       - ".github/workflows/package.yml"
   workflow_dispatch:
+  # release.yml reuses this workflow so the release publishes exactly the artifacts built
+  # here, from the same commit. This adds no publishing capability to this file.
+  workflow_call:
 
 permissions:
   contents: read
