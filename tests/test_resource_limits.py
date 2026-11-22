@@ -179,26 +179,32 @@ def test_non_positive_shots_are_refused(shots):
         EntanglementAdaptiveRouter().route_and_execute(_dense(2, 1), shots=shots, seed=1)
 
 
-# --------------------------------------------------------------------------- known defects (strict xfail)
-@pytest.mark.xfail(
-    strict=True,
-    reason="SEC-M1: a DIMACS header may declare any num_vars; the solver then allocates O(num_vars) (MemoryError / GBs) from a ~25 byte request",
-)
+# --------------------------------------------------------------------------- fixed defects (formerly strict xfail)
 def test_formula_declaring_an_absurd_variable_count_is_a_typed_refusal():
-    formula = sat.parse_dimacs("p cnf 10000000000000 0\n")
-    try:
-        result = solve(formula, timeout_seconds=1)
-    except (sat.CNFFormatError, ValueError):
-        return  # a typed refusal is the contract
-    assert result.status == "UNKNOWN"
+    """SEC-M1: refused on the header, before the solver allocates anything."""
+    for header in ("p cnf 10000000000000 0\n", f"p cnf {sat.MAX_DIMACS_VARS + 1} 0\n"):
+        with pytest.raises(sat.CNFFormatError):
+            sat.parse_dimacs(header)
+    # the cap itself is accepted (header only: no allocation is done here)
+    assert sat.parse_dimacs(f"p cnf {sat.MAX_DIMACS_VARS} 0\n").num_vars == sat.MAX_DIMACS_VARS
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SEC-L5: an exact count with more than ~4300 decimal digits raises ValueError (int->str limit) instead of a typed UNKNOWN/refusal",
-)
 def test_count_too_large_to_serialise_is_typed():
+    """SEC-L5: a count over 4300 digits is an exact decimal string, not a ValueError."""
     formula = sat.parse_dimacs("p cnf 20000 1\n1 0\n")
     out = count_models(formula, timeout_seconds=5)
-    assert out["status"] in ("UNKNOWN", "COUNTED")
-    assert isinstance(out.get("count"), (str, type(None)))
+    assert out["status"] == "COUNTED"
+    assert isinstance(out["count"], str) and out["count"].isdigit()
+    import decimal
+
+    assert len(out["count"]) > 4300  # really beyond the int<->str limit
+    assert decimal.Decimal(out["count"]) == decimal.Decimal(1 << 19999)  # exact: Decimal(int) is not rounded
+
+
+def test_int_to_decimal_string_is_exact_beyond_the_conversion_limit():
+    import decimal
+
+    for exponent in (0, 10, 11_999, 12_000, 20_000, 100_000):
+        value = (1 << exponent) + 7
+        text = sat.int_to_decimal_string(value)
+        assert text.isdigit() and decimal.Decimal(text) == decimal.Decimal(value)

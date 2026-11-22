@@ -128,14 +128,12 @@ def test_requests_cannot_name_a_file_to_read_or_write(state, tmp_path, key):
 
 
 # --------------------------------------------------------------------------- known defects (strict xfail)
-@pytest.mark.xfail(strict=True, reason="SEC-L1: `random` that is not an object raises AttributeError -> HTTP 500, not a typed 4xx")
 @pytest.mark.parametrize("bad", ["x", [1], 5])
 def test_random_spec_must_be_an_object(state, bad):
     with pytest.raises(TYPED):
         state.sat_solve({"random": bad, "timeout": 0.05})
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-L1: `sizes` that is not a list is refused only by accident of int(); contract is a StudioError")
 def test_sweep_sizes_must_be_a_list(state):
     with pytest.raises(StudioError):
         state.sat_sweep({"sizes": 5})
@@ -183,7 +181,6 @@ def test_oversized_body_is_413_and_server_survives(server):
     assert _http(server, "GET", "/api/health")[0] == 200
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-L2: deeply nested JSON raises RecursionError inside json.loads -> HTTP 500, not 400")
 def test_deeply_nested_json_is_a_typed_400(server):
     status, raw = _http(server, "POST", "/api/sat/solve", b"[" * 200_000 + b"]" * 200_000)
     assert status == 400, raw
@@ -262,7 +259,6 @@ def test_mcp_object_params_never_raise(method, params, rid):
     assert resp is None or isinstance(resp, dict)
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-L3: tools/call with non-object params raises AttributeError out of handle(); stdio maps it to -32603, not -32602")
 @pytest.mark.parametrize("params", [[1], "x", 5])
 def test_mcp_non_object_params_are_invalid_params(params):
     resp = mcp_server.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": params}, mcp_server._Session())
@@ -304,3 +300,43 @@ def test_mcp_stdout_is_only_json_rpc_lines():
     assert lines
     for ln in lines:
         assert json.loads(ln)["jsonrpc"] == "2.0"
+
+
+# --------------------------------------------------------------------------- SEC-M1 across surfaces, P-01
+def test_studio_cnf_header_over_the_cap_is_a_typed_4xx(server):
+    status, raw = _http(server, "POST", "/api/sat/solve", json.dumps({"cnf": "p cnf 999999999999 0\n"}).encode())
+    assert 400 <= status < 500, (status, raw)
+    assert json.loads(raw)["error"]["code"]
+    status, _ = _http(server, "POST", "/api/sat/count", json.dumps({"cnf": "p cnf 999999999999 0\n"}).encode())
+    assert 400 <= status < 500
+
+
+def test_mcp_cnf_header_over_the_cap_is_a_tool_error():
+    resp = _call("cqhecs_sat_solve", {"cnf": "p cnf 999999999999 0\n"})
+    assert "error" in resp or resp["result"].get("isError") is True, resp
+
+
+def test_cli_sat_cnf_header_over_the_cap_is_usage_error():
+    from cqhecs import cli
+
+    assert cli.main(["sat", "solve", "--cnf", "p cnf 999999999999 0\n"]) == cli.EXIT_USAGE
+
+
+def test_studio_on_an_occupied_port_exits_typed_without_traceback(capsys):
+    """P-01: WinError 10013/10048 or EADDRINUSE becomes EXIT_ENVIRONMENT, never a raw traceback."""
+    import socket
+
+    from cqhecs import cli
+
+    blocker = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+        blocker.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+    try:
+        blocker.bind(("127.0.0.1", 0))
+        blocker.listen(1)
+        port = blocker.getsockname()[1]
+        code = cli.main(["studio", "--port", str(port), "--no-browser"])
+    finally:
+        blocker.close()
+    assert code == cli.EXIT_ENVIRONMENT
+    assert "Traceback" not in capsys.readouterr().err

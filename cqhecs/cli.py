@@ -733,12 +733,21 @@ def cmd_studio(args: argparse.Namespace) -> int:
     """Start the local experiment UI."""
     from cqhecs.studio import serve
 
-    serve(
-        host=args.host,
-        port=args.port,
-        root=args.root or os.getcwd(),
-        open_browser=not args.no_browser,
-    )
+    from cqhecs.studio.app import StudioPortError
+
+    try:
+        serve(
+            host=args.host,
+            port=args.port,
+            root=args.root or os.getcwd(),
+            open_browser=not args.no_browser,
+        )
+    except StudioPortError as exc:
+        # Typed environment failure (WinError 10048/10013, EADDRINUSE, EACCES): no traceback.
+        LOG.error("%s", exc)
+        if args.format == "json":
+            _emit_json({"schema_version": JSON_SCHEMA_VERSION, "error": str(exc), "code": "studio_port_unavailable"})
+        return EXIT_ENVIRONMENT
     return EXIT_OK
 
 

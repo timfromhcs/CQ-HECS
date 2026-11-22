@@ -232,3 +232,10 @@ Scope: this is a mutation score over listed patches, not a correctness proof.
   HTTP on loopback; exposing it on a LAN would send the bearer token in clear, and the Host allow-list
   already refuses LAN host names).
 - No review of the native C++ code or of the web front end beyond what the existing Playwright/axe suites cover.
+
+## Wave D status update (2026-11-22)
+
+SEC-M1 (DIMACS var cap, MAX_DIMACS_VARS=1,000,000), SEC-M2 (python_bridge eval removed), SEC-L1..L5 and P-01 are FIXED
+(evidence: research/v7/evidence/waveD_D1.md, waveD_D2.md); the strict xfail tests are now plain passing tests.
+Positive-control vectors in tests are allow-listed explicitly in scripts/security_audit.py SECRET_ALLOW (each with a reason).
+Not examined: web/src/main.ts `new Function` (user-authored JS builder, by design) and cqhecs/service.py dynamic `__import__`.

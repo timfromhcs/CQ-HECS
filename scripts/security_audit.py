@@ -49,7 +49,12 @@ SECRET_PATTERNS: Dict[str, "re.Pattern[str]"] = {
 }
 
 #: (path glob suffix, pattern name) -> reason. Keep this list short and every entry justified.
-SECRET_ALLOW: Dict[Tuple[str, str], str] = {}
+SECRET_ALLOW: Dict[Tuple[str, str], str] = {
+    # Deliberate positive-control vectors: strings that must be detected/refused by the scanners under test.
+    ("tests/test_packaging.py", "private_key_block"): "positive control for package_inspect credential detection",
+    ("tests/test_property_security_audit.py", "private_key_block"): "positive control for this scanner",
+    ("tests/test_property_security_audit.py", "credential_in_url"): "positive control for this scanner",
+}
 
 #: Placeholders that are documentation, not secrets.
 _PLACEHOLDER = re.compile(r"(?i)(?:example|placeholder|your[_-]|xxxx|<[^>]+>|\$\{|changeme|dummy|fake|test[_-]?token)")

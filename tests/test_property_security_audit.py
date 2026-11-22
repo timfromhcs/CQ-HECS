@@ -20,7 +20,7 @@ sys.modules["security_audit"] = audit
 spec.loader.exec_module(audit)  # type: ignore[union-attr]
 
 #: Findings already reported in research/v7/SECURITY_AUDIT.md. A *new* entry fails this test.
-KNOWN_CODE_FINDINGS = {("python_bridge/qasm_engine.py", "eval()")}  # SEC-M2
+KNOWN_CODE_FINDINGS: set = set()  # SEC-M2 fixed in wave D1 (eval removed)
 
 
 @pytest.mark.parametrize(

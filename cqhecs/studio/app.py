@@ -73,6 +73,19 @@ class StudioError(Exception):
         self.code = code
 
 
+class StudioPortError(OSError):
+    """The Studio could not bind its address (port occupied or not permitted)."""
+
+    def __init__(self, host: str, port: int, cause: OSError):
+        # Windows reports an occupied port as WinError 10048, or as 10013 (WSAEACCES) when the
+        # port is held exclusively or reserved; POSIX reports EADDRINUSE / EACCES.
+        self.host, self.port, self.cause = host, port, cause
+        super().__init__(
+            f"cannot listen on {host}:{port}: {cause.strerror or cause} "
+            f"(port in use or not permitted); choose another with --port"
+        )
+
+
 def _int(value: Any, name: str, low: int, high: int, default: int) -> int:
     if value is None:
         return default
@@ -777,9 +790,13 @@ class StudioState:
             text = str(request["cnf"])
             if len(text) > 200_000:
                 raise StudioError("CNF text is larger than 200 kB", code="cnf_too_large")
-            formula = parse_dimacs(text)
+            formula = parse_dimacs(text)  # CNFFormatError (incl. the MAX_DIMACS_VARS cap) is mapped by do_POST
         elif "random" in request:
-            spec = request["random"] or {}
+            spec = request["random"]
+            if spec is None:
+                spec = {}
+            if not isinstance(spec, Mapping):
+                raise StudioError("random must be an object", code="invalid_argument")
             n = _int(spec.get("num_vars"), "random.num_vars", 3, 120, 20)
             ratio = _float(spec.get("ratio"), "random.ratio", 0.0, 20.0, 4.26)
             seed = _int(spec.get("seed"), "random.seed", 0, 2**31 - 1, 20261030)
@@ -800,8 +817,15 @@ class StudioState:
         return formula
 
     def sat_sweep(self, request: Mapping[str, Any]) -> Dict[str, Any]:
-        sizes = [int(v) for v in request.get("sizes", [10, 15, 20])]
-        ratios = [float(v) for v in request.get("ratios", [3.0, 3.5, 4.0, 4.26, 4.5, 5.0])]
+        raw_sizes = request.get("sizes", [10, 15, 20])
+        raw_ratios = request.get("ratios", [3.0, 3.5, 4.0, 4.26, 4.5, 5.0])
+        if not isinstance(raw_sizes, (list, tuple)) or not isinstance(raw_ratios, (list, tuple)):
+            raise StudioError("sizes and ratios must be lists", code="invalid_argument")
+        try:
+            sizes = [int(v) for v in raw_sizes]
+            ratios = [float(v) for v in raw_ratios]
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise StudioError("sizes must be integers and ratios numbers", code="invalid_argument") from exc
         trials = _int(request.get("trials"), "trials", 1, 20, 3)
         timeout = _float(request.get("timeout"), "timeout", 0.01, 5.0, 1.0)
         if len(sizes) > 8 or len(ratios) > 10:
@@ -1175,7 +1199,10 @@ def _research_payload() -> Dict[str, Any]:
 
 class StudioHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
-    allow_reuse_address = True
+    # On Windows SO_REUSEADDR lets a second process bind a port that is already in use (the
+    # connection then goes to either server), so an occupied port would not be reported at all.
+    # POSIX SO_REUSEADDR only skips TIME_WAIT and still fails with EADDRINUSE (P-01).
+    allow_reuse_address = os.name != "nt"
 
     def __init__(self, address: Tuple[str, int], state: StudioState, token: Optional[str] = None):
         self.state = state
@@ -1302,7 +1329,8 @@ class StudioHandler(BaseHTTPRequestHandler):
         raw = self.rfile.read(length)
         try:
             payload = json.loads(raw.decode("utf-8"))
-        except (UnicodeDecodeError, ValueError) as exc:
+        except (UnicodeDecodeError, ValueError, RecursionError) as exc:
+            # RecursionError: a ~1 MB body of '[' nests deeper than the interpreter allows (SEC-L2).
             raise StudioError("request body is not valid JSON", code="invalid_json") from exc
         if not isinstance(payload, dict):
             raise StudioError("request body must be a JSON object", code="invalid_json")
@@ -1502,8 +1530,11 @@ def serve(
     root: Optional[Path | str] = None,
     open_browser: bool = True,
 ) -> None:
-    server = create_server(host, port, root)
-    url = f"http://{host}:{server.server_address[1]}/"
+    try:
+        server = create_server(host, port, root)
+    except OSError as exc:
+        raise StudioPortError(host, port, exc) from exc
+    url =f"http://{host}:{server.server_address[1]}/"
     print(f"CQ-HECS Studio {__version__} on {url}")
     if getattr(server, "token_ephemeral", True):
         print(f"Open (the token is in the fragment, keep this URL private): {launch_url(server)}")

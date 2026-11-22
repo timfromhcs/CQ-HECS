@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -62,6 +63,40 @@ COUNT_SCHEMA = "hcs.sat.count.v1"
 CERTIFICATIONS = ("MODEL_VERIFIED", "TREE_RESOLUTION_CHECKED", "DRAT_CHECKED", "UNCERTIFIED", "NONE")
 
 _CLAUSE_SEPARATORS = {"0"}
+
+#: Largest ``num_vars`` a DIMACS header may declare (SEC-M1). Every surface (Python API, CLI,
+#: Studio, MCP, service) parses through :func:`parse_dimacs`, so this one constant is shared.
+#: Reason for the value: solve and count allocate O(num_vars) lists/sets before any search
+#: (measured: 10,000,000 declared variables took 0.7 s and hundreds of MB; 10**13 raised
+#: ``MemoryError`` from a ~25 byte request). One million variables is far beyond anything the
+#: exact pure-Python engines decide, and bounds that allocation to roughly 100 MB. The refusal
+#: happens on the header, before any list is built.
+MAX_DIMACS_VARS = 1_000_000
+
+#: DIMACS integers are ASCII digits with an optional ``-``; ``int()`` alone also accepts
+#: ``1_0``, ``+1`` and non-ASCII digits (SEC-L4).
+_DIMACS_INT = re.compile(r"-?[0-9]+")
+
+
+def _dimacs_int(token: str) -> int:
+    if not _DIMACS_INT.fullmatch(token):
+        raise ValueError(f"{token!r} is not a DIMACS integer")
+    return int(token)
+
+
+def int_to_decimal_string(value: int) -> str:
+    """
+    Exact decimal string of ``value`` for any size (SEC-L5).
+
+    ``str(int)`` raises ``ValueError`` above Python's 4300-digit conversion limit; changing the
+    process-wide limit is not thread-safe, so large values go through :mod:`decimal`, whose
+    ``Decimal(int)`` constructor is exact and not subject to that limit.
+    """
+    if value.bit_length() < 12_000:  # < ~3,600 digits: always inside the default limit
+        return str(value)
+    import decimal
+
+    return format(decimal.Decimal(value), "f")
 
 
 class CNFFormatError(ValueError):
@@ -172,18 +207,23 @@ def parse_dimacs(text: str, source: Optional[str] = None) -> CNF:
             if len(parts) != 4 or parts[1].lower() != "cnf":
                 raise CNFFormatError(f"line {line_number}: expected 'p cnf <vars> <clauses>'")
             try:
-                num_vars = int(parts[2])
-                declared_clauses = int(parts[3])
+                num_vars = _dimacs_int(parts[2])
+                declared_clauses = _dimacs_int(parts[3])
             except ValueError as exc:
                 raise CNFFormatError(f"line {line_number}: header counts are not integers") from exc
             if num_vars < 0 or declared_clauses < 0:
                 raise CNFFormatError(f"line {line_number}: header counts must be non-negative")
+            if num_vars > MAX_DIMACS_VARS:
+                raise CNFFormatError(
+                    f"line {line_number}: header declares {num_vars} variables; the limit is "
+                    f"{MAX_DIMACS_VARS} (refused before any allocation)"
+                )
             continue
         if num_vars is None:
             raise CNFFormatError(f"line {line_number}: clause before the 'p cnf' header")
         for token in line.split():
             try:
-                literal = int(token)
+                literal = _dimacs_int(token)
             except ValueError as exc:
                 raise CNFFormatError(f"line {line_number}: {token!r} is not an integer") from exc
             if literal == 0:
@@ -1098,7 +1138,7 @@ def count_models(
         return {
             "schema": COUNT_SCHEMA,
             "status": COUNTED,
-            "count": str(value),
+            "count": int_to_decimal_string(value),
             "satisfiable": value > 0,
             "num_vars": formula.num_vars,
             "num_clauses": formula.num_clauses,
@@ -1270,7 +1310,7 @@ def _count_models_dpll(
     return {
         "schema": COUNT_SCHEMA,
         "status": status,
-        "count": str(value) if value is not None else None,
+        "count": int_to_decimal_string(value) if value is not None else None,
         "satisfiable": None if value is None else value > 0,
         "num_vars": formula.num_vars,
         "num_clauses": formula.num_clauses,

@@ -787,7 +787,11 @@ def handle(message: Dict[str, Any], session: Optional["_Session"] = None) -> Opt
     if method == "tools/list":
         return _ok(request_id, {"tools": _tool_descriptors(session)})
     if method == "tools/call":
-        params = message.get("params") or {}
+        params = message.get("params")
+        if params is None:
+            params = {}
+        if not isinstance(params, dict):
+            return _error(request_id, -32602, "invalid params: expected an object")
         name = params.get("name")
         arguments = params.get("arguments") or {}
         try:

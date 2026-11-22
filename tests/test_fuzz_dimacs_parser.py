@@ -174,10 +174,6 @@ def test_original_and_canonical_digests_are_separate():
     assert a.original_sha256 != b.original_sha256  # original text differs
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SEC-L4: parse_dimacs uses int(), so '1_0', '+1' and non-ASCII digits are accepted; DIMACS is ASCII digits with an optional minus sign",
-)
 @pytest.mark.parametrize("token", ["1_0", "+1", "\u0661"])
 def test_non_ascii_or_decorated_integers_are_refused(token):
     with pytest.raises(CNFFormatError):
