@@ -84,11 +84,31 @@ SAMPLE_ARGS = {
     "cqhecs_qg_catalog": {},
     "cqhecs_qg_circuit_preview": {"theta": 0.5},
     "cqhecs_qg_run_local": {"theta": 0.5},
+    "cqhecs_doctor": {},
+    "cqhecs_qg_plan": {"experiment": "bmv", "theta": 0.5},
+    "cqhecs_qg_model_validate": {"experiment": "bmv", "theta": 0.5},
+    "cqhecs_qg_compare": {"theta": 0.5, "shots": 256},
+    "cqhecs_qg_export": {"experiment": "bmv", "theta": 0.5},
 }
+#: Paid Open Quantum tools are typed refusals (isError) in this build, so they have no success sample.
+PAID_TOOLS = {f"cqhecs_qg_openquantum_{a}" for a in ("discover", "quote", "submit", "status", "results")}
 
 
 def test_every_tool_has_a_sample_so_the_next_test_cannot_miss_one():
-    assert set(SAMPLE_ARGS) == {t["name"] for t in mcp_server.TOOLS}
+    assert set(SAMPLE_ARGS) | PAID_TOOLS == {t["name"] for t in mcp_server.TOOLS}
+    assert not set(SAMPLE_ARGS) & PAID_TOOLS
+
+
+@pytest.mark.parametrize("name", sorted(PAID_TOOLS))
+def test_paid_tools_are_typed_refusals_that_spend_nothing(name):
+    session, _ = _init("2025-06-18")
+    reply = handle({"jsonrpc": "2.0", "id": 8, "method": "tools/call",
+                    "params": {"name": name, "arguments": {}}}, session)
+    result = reply["result"]
+    assert result["isError"] is True
+    payload = result["structuredContent"]
+    assert payload["status"] == "UNAVAILABLE" and payload["code"] == "QG_PAID_PATH_UNAVAILABLE"
+    assert payload["spend_credits"] == 0.0 and payload["network"] == "none"
 
 
 @pytest.mark.parametrize("name", sorted(SAMPLE_ARGS))

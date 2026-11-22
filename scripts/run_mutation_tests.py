@@ -818,6 +818,367 @@ def check_scheduler_planner_only_not_complete() -> bool:
     return bool(submission.completed)
 
 
+# --------------------------------------------------------------------------- Wave C5 (W15) checks
+# Shared service layer, MCP cancel/negotiation, Studio guard, calibration v3, MaxSAT contract,
+# separator preflight, DIMACS/QASM resource limits. Each check returns True only when it observes the
+# injected defect on shipped code.
+
+_QASM_HEADER = 'OPENQASM 2.0;\ninclude "qelib1.inc";\n'
+
+
+def check_service_force_path_validation() -> bool:
+    """An unknown forced path must be a typed ServiceError, never accepted."""
+    from cqhecs import service
+
+    try:
+        service.normalize_force_path("Z")
+    except service.ServiceError:
+        pass
+    else:
+        return True
+    return service.normalize_force_path("auto") is not None or service.normalize_force_path("b") != "B"
+
+
+def check_service_strict_source() -> bool:
+    """Studio-style strict resolution refuses text that is neither a preset nor OpenQASM."""
+    from cqhecs import service
+
+    try:
+        service.resolve_circuit_source("this is not a circuit", strict=True)
+    except service.ServiceError:
+        return False
+    return True
+
+
+def check_service_policy_validation() -> bool:
+    """run_with_calibration refuses an unknown uncovered-gate policy with code invalid_policy."""
+    from cqhecs import service
+    from cqhecs.calibration_v3 import CalibrationV3
+    from cqhecs.hardware_bridge import create_fake_manila_profile
+
+    data = CalibrationV3.from_profile(create_fake_manila_profile()).to_dict()
+    src = _QASM_HEADER + "qreg q[1];\ncreg c[1];\nrz(0.1) q[0];\nmeasure q -> c;\n"
+    try:
+        service.run_with_calibration(src, data, policy="bogus", shots=8)
+    except service.ServiceError as exc:
+        return exc.code != "invalid_policy"
+    except Exception:  # noqa: BLE001 - a different failure type is the observed defect
+        return True
+    return True
+
+
+def _calibration(synthetic=True, label=None, ts="2026-01-01T00:00:00+00:00", max_age=24):
+    from cqhecs.calibration_v3 import CalibrationV3
+    from cqhecs.hardware_bridge import BackendProfile
+
+    profile = BackendProfile(
+        name="c5", num_qubits=2, is_synthetic=synthetic, capture_timestamp=ts,
+        source_sha256="0" * 64, provenance_uri=None if synthetic else "urn:c5", schema_version="2.0",
+    )
+    return CalibrationV3.from_profile(profile, provenance_label=label, max_age_hours=max_age)
+
+
+def check_calibration_label_consistency() -> bool:
+    """A synthetic profile cannot be labelled measured, nor a real one synthetic."""
+    from cqhecs.hardware_bridge import InvalidProfileError
+
+    for synthetic, label in ((True, "measured"), (False, "synthetic")):
+        try:
+            _calibration(synthetic=synthetic, label=label).validate()
+        except InvalidProfileError:
+            continue
+        return True
+    return False
+
+
+def check_calibration_gate_policy() -> bool:
+    """refuse raises, warn reports noiseless gates, an unknown policy is a ValueError."""
+    from cqhecs.calibration_v3 import UncalibratedGateError
+    from cqhecs.hardware_bridge import create_fake_manila_profile
+    from cqhecs.calibration_v3 import CalibrationV3
+
+    cal = CalibrationV3.from_profile(create_fake_manila_profile())
+    instrs = [("h", [0], [])]  # fake_manila has no calibrated h channel
+    try:
+        cal.check_gates(instrs, policy="refuse")
+    except UncalibratedGateError:
+        pass
+    else:
+        return True
+    warned = cal.check_gates(instrs, policy="warn")
+    if not (warned["warnings"] and warned["noiseless_gates_accepted"] and warned["uncovered_gates"]):
+        return True
+    try:
+        cal.check_gates(instrs, policy="nonsense")
+    except ValueError:
+        return False
+    return True
+
+
+def check_calibration_freshness() -> bool:
+    """No timestamp or window -> unknown; a future capture time is never fresh; old is stale."""
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    try:
+        if _calibration(ts=None).freshness(now)["status"] != "unknown":
+            return True
+        if _calibration(max_age=None).freshness(now)["status"] != "unknown":
+            return True
+        fresh = (now - timedelta(hours=1)).isoformat()
+        future = (now + timedelta(days=10)).isoformat()
+        old = (now - timedelta(days=10)).isoformat()
+        return (
+            _calibration(ts=fresh).freshness(now)["status"] != "fresh"
+            or _calibration(ts=future).freshness(now)["status"] != "stale"
+            or _calibration(ts=old).freshness(now)["status"] != "stale"
+        )
+    except Exception:  # noqa: BLE001 - crashing where the contract says "unknown" is the defect
+        return True
+
+
+def check_noise_channel_trace_preservation() -> bool:
+    """A Kraus set that does not sum to the identity must be reported not ok."""
+    import numpy as np
+
+    from cqhecs.calibration_v3 import check_channel
+    from cqhecs.hardware_bridge import NoiseChannel
+
+    class Half(NoiseChannel):
+        name = "half"
+
+        @property
+        def kraus_operators(self):
+            return [0.5 * np.eye(2, dtype=complex)]
+
+        def to_dict(self):
+            return {}
+
+    class Identity(Half):
+        name = "identity"
+
+        @property
+        def kraus_operators(self):
+            return [np.eye(2, dtype=complex)]
+
+    return bool(check_channel(Half())["ok"]) or not check_channel(Identity())["ok"]
+
+
+def check_max_sat_contract() -> bool:
+    """Above the limit: UNKNOWN with no optimum; at the limit: OPTIMAL; bad weights raise; a corrupted
+    inner optimum is refused by the re-verification."""
+    import cqhecs.sat as sat
+
+    big = sat.random_3sat(8, 16, seed=1)
+    try:
+        over = sat.max_sat_checked(big, max_vars=4)
+    except Exception:  # noqa: BLE001
+        return True
+    if over["status"] != "UNKNOWN" or over["assignment"] is not None or over["satisfied_weight"] is not None:
+        return True
+    edge = sat.random_3sat(6, 12, seed=2)
+    if sat.max_sat_checked(edge, max_vars=6)["status"] != "OPTIMAL":
+        return True
+    for bad in (-1.0, float("nan")):  # NaN passes the inner `w < 0` test, so only the outer guard stops it
+        try:
+            sat.max_sat_checked(edge, [bad] * edge.num_clauses)
+        except ValueError:
+            continue
+        except Exception:  # noqa: BLE001 - an untyped failure instead of the typed ValueError is the defect
+            return True
+        return True
+    real = sat.max_sat
+
+    def corrupted(*args, **kwargs):
+        out = real(*args, **kwargs)
+        return {**out, "satisfied_weight": out["satisfied_weight"] + 1.0}
+
+    sat.max_sat = corrupted
+    try:
+        refused = sat.max_sat_checked(edge, max_vars=6)
+    finally:
+        sat.max_sat = real
+    return refused["status"] != "UNKNOWN" or refused["assignment"] is not None
+
+
+def check_separator_preflight_and_bound() -> bool:
+    """preflight refuses before allocating a table; the bound is 2^(width+1); counts are exact."""
+    from cqhecs import sat, sat_separator as sep
+
+    formula = sat.random_3sat(60, 255, seed=7)
+    out = sep.count_by_elimination(formula.num_vars, formula.clauses, max_table_entries=1024, preflight=True)
+    # The reason must say it was the preflight: a mid-run budget refusal also reports max_table 0.
+    if not (out["status"] == sep.UNKNOWN and out["count"] is None and out["max_table"] == 0
+            and "preflight" in str(out.get("reason", ""))):
+        return True
+    if sep.predicted_table_bound(3) != 16:
+        return True
+    if sep.count_by_elimination(3, [(1, 2), (-1, 3)])["count"] != 4:
+        return True
+    return sep.count_by_elimination(5, [(1, 2)])["count"] != 24  # 3 models x 2^3 free variables
+
+
+def check_dimacs_contract() -> bool:
+    """Wrong clause count, an unterminated clause and an out-of-range literal are format errors."""
+    from cqhecs.sat import CNFFormatError, parse_dimacs
+
+    # Third text: the clause count matches, so only the unterminated-clause check can refuse it.
+    for text in ("p cnf 2 2\n1 0\n", "p cnf 2 1\n1 2\n", "p cnf 2 1\n1 0\n2\n",
+                 "p cnf 2 1\n3 0\n"):
+        try:
+            parse_dimacs(text)
+        except CNFFormatError:
+            continue
+        return True
+    return False
+
+
+def check_qasm_register_limit() -> bool:
+    """A register above the documented size cap is refused, not allocated."""
+    from cqhecs.circuit_parsing import QASMParseError, parse_circuit
+
+    try:
+        parse_circuit(_QASM_HEADER + f"qreg q[{1 << 21}];\nh q[0];\n")
+    except QASMParseError as exc:
+        return exc.category != "invalid_register_size"
+    return True
+
+
+def check_mcp_protocol_negotiation() -> bool:
+    """Supported versions are echoed; unknown ones get the newest supported; none gets the legacy shape."""
+    from cqhecs import mcp_server as m
+
+    if m.negotiate_protocol("2025-03-26") != "2025-03-26":
+        return True
+    if m.negotiate_protocol("2099-01-01") != m.SUPPORTED_PROTOCOL_VERSIONS[0]:
+        return True
+    return m.negotiate_protocol(None) != m.LEGACY_PROTOCOL_VERSION or m.negotiate_protocol(5) != m.LEGACY_PROTOCOL_VERSION
+
+
+def _mcp_blocking(max_inflight=8):
+    import io
+    import json
+    import threading
+
+    from cqhecs import mcp_server as m
+
+    gate, started = threading.Event(), threading.Event()
+
+    def fake(name, arguments):
+        started.set()
+        gate.wait(20)
+        return {"verdict": "LATE-RESULT"}
+
+    m._call = fake
+    out = io.StringIO()
+    srv = m.StdioServer(out, max_inflight=max_inflight)
+    msg = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "cqhecs_devices", "arguments": {}}}
+    srv.dispatch(msg)
+    started.wait(10)
+    cancel = {"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {"requestId": 1}}
+    return m, srv, out, gate, cancel, json
+
+
+def check_mcp_cancel_semantics() -> bool:
+    """A cancelled call is answered once as CANCELLED without a verdict; its late result is dropped."""
+    import time
+
+    m, srv, out, gate, cancel, json = _mcp_blocking()
+    srv.dispatch(cancel)
+    srv.dispatch(cancel)
+    gate.set()
+    time.sleep(0.5)
+    lines = [json.loads(ln) for ln in out.getvalue().split("\n") if ln]
+    if len(lines) != 1 or "LATE-RESULT" in out.getvalue():
+        return True
+    payload = json.loads(lines[0]["result"]["content"][0]["text"])
+    return payload.get("status") != "CANCELLED" or payload.get("verdict") is not None
+
+
+def check_mcp_capacity_limit() -> bool:
+    """With max_inflight=1 a second concurrent call is a typed SERVER_BUSY, not a second worker."""
+    import time
+
+    m, srv, out, gate, cancel, json = _mcp_blocking(max_inflight=1)
+    srv.dispatch({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "cqhecs_devices", "arguments": {}}})
+    time.sleep(0.2)
+    answered = [json.loads(ln) for ln in out.getvalue().split("\n") if ln]
+    gate.set()
+    time.sleep(0.3)
+    busy = [a for a in answered if a.get("id") == 2]
+    if len(busy) != 1:
+        return True
+    return json.loads(busy[0]["result"]["content"][0]["text"]).get("reason") != "SERVER_BUSY"
+
+
+def _studio_status(method, path, *, token="good", host=None, origin=None, body=None, content_type="application/json"):
+    import http.client
+    import threading
+
+    from cqhecs.studio import create_server
+
+    httpd = create_server(port=0, root=REPO_ROOT)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        port = httpd.server_address[1]
+        headers = {"Host": host or f"127.0.0.1:{port}"}
+        if token == "good":
+            headers["Authorization"] = f"Bearer {httpd.token}"
+        elif token == "basic":
+            headers["Authorization"] = f"Basic {httpd.token}"
+        elif token == "wrong":
+            headers["Authorization"] = "Bearer " + "x" * len(httpd.token)
+        if origin:
+            headers["Origin"] = origin
+        if body is not None:
+            headers["Content-Type"] = content_type
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=30)
+        try:
+            conn.request(method, path, body=body, headers=headers)
+            resp = conn.getresponse()
+            resp.read()
+            return resp.status
+        finally:
+            conn.close()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+
+
+def check_studio_token_required() -> bool:
+    """Missing, wrong and wrong-scheme tokens are 401; the right one is 200."""
+    return not (
+        _studio_status("GET", "/api/health", token="none") == 401
+        and _studio_status("GET", "/api/health", token="wrong") == 401
+        and _studio_status("GET", "/api/health", token="basic") == 401
+        and _studio_status("GET", "/api/health", token="good") == 200
+    )
+
+
+def check_studio_host_and_origin() -> bool:
+    """A foreign Host header is 400 and a foreign Origin (even with the token) is 403."""
+    return not (
+        _studio_status("GET", "/api/health", host="evil.example:80") == 400
+        and _studio_status("GET", "/api/health", origin="http://evil.example") == 403
+    )
+
+
+def check_studio_body_bound() -> bool:
+    """A body above MAX_BODY is a 413, not parsed."""
+    from cqhecs.studio.app import MAX_BODY
+
+    big = b'{"cnf": "' + b"a" * (MAX_BODY + 4096) + b'"}'
+    return _studio_status("POST", "/api/sat/solve", body=big) != 413
+
+
+def check_studio_json_only() -> bool:
+    """POST bodies that are not application/json are a 415."""
+    return _studio_status("POST", "/api/sat/solve", body=b'{"cnf": "p cnf 1 0\\n"}', content_type="text/plain") != 415
+
+
+
 CHECKS: Dict[str, Callable[[], bool]] = {
     "separator_count": check_separator_count,
     "qg_majorana_anticommutation": check_qg_majorana_anticommutation,
@@ -873,6 +1234,24 @@ CHECKS: Dict[str, Callable[[], bool]] = {
     "omniwave_sound": check_omniwave_sound,
     "omniwave_proof_gate": check_omniwave_proof_gate,
     "omniwave_batch_bcp": check_omniwave_batch_bcp,
+    "service_force_path_validation": check_service_force_path_validation,
+    "service_strict_source": check_service_strict_source,
+    "service_policy_validation": check_service_policy_validation,
+    "calibration_label_consistency": check_calibration_label_consistency,
+    "calibration_gate_policy": check_calibration_gate_policy,
+    "calibration_freshness": check_calibration_freshness,
+    "noise_channel_trace_preservation": check_noise_channel_trace_preservation,
+    "max_sat_contract": check_max_sat_contract,
+    "separator_preflight_and_bound": check_separator_preflight_and_bound,
+    "dimacs_contract": check_dimacs_contract,
+    "qasm_register_limit": check_qasm_register_limit,
+    "mcp_protocol_negotiation": check_mcp_protocol_negotiation,
+    "mcp_cancel_semantics": check_mcp_cancel_semantics,
+    "mcp_capacity_limit": check_mcp_capacity_limit,
+    "studio_token_required": check_studio_token_required,
+    "studio_host_and_origin": check_studio_host_and_origin,
+    "studio_body_bound": check_studio_body_bound,
+    "studio_json_only": check_studio_json_only,
 }
 
 
@@ -1464,6 +1843,259 @@ MUTANTS: List[SourceMutant] = [
         replacement="        if not backend:\n",
         check="scheduler_planner_only_not_complete",
         mechanism="a planner-only submission can be recorded complete, so planned GPU work looks dispatched",
+    ),
+    # ------------------------------------------------------------------ Wave C5 (W15)
+    SourceMutant(
+        name="Service accepts any forced path",
+        target="cqhecs/service.py",
+        original="    if value not in VALID_PATHS:\n",
+        replacement="    if False:\n",
+        check="service_force_path_validation",
+        mechanism="an unknown forced path is no longer a typed refusal",
+    ),
+    SourceMutant(
+        name="Service strict source check disabled",
+        target="cqhecs/service.py",
+        original='    if strict and "OPENQASM" not in source and "qreg" not in source:\n',
+        replacement='    if False and "OPENQASM" not in source and "qreg" not in source:\n',
+        check="service_strict_source",
+        mechanism="Studio-style strict resolution passes arbitrary text on to the parser",
+    ),
+    # Equivalent mutant, deliberately not listed (W15): deleting the policy guard in
+    # service.run_with_calibration changes nothing observable, because service.calibration_provenance
+    # repeats the same guard and raises the same ServiceError(code="invalid_policy") before any
+    # simulation. check_service_policy_validation stays as a behavioural regression check.
+    SourceMutant(
+        name="Synthetic profile may be labelled measured",
+        target="cqhecs/calibration_v3.py",
+        original='        if p.is_synthetic and self.provenance_label in ("measured",):\n',
+        replacement='        if False and self.provenance_label in ("measured",):\n',
+        check="calibration_label_consistency",
+        mechanism="a synthetic profile with a timestamp and digest passes as measured data",
+    ),
+    SourceMutant(
+        name="Real profile may be labelled synthetic",
+        target="cqhecs/calibration_v3.py",
+        original="        if not p.is_synthetic and self.provenance_label == \"synthetic\":\n",
+        replacement="        if False and self.provenance_label == \"synthetic\":\n",
+        check="calibration_label_consistency",
+        mechanism="a measured profile can be relabelled synthetic, hiding its provenance",
+    ),
+    SourceMutant(
+        name="Refuse policy no longer refuses",
+        target="cqhecs/calibration_v3.py",
+        original='        if uncovered and policy == "refuse":\n',
+        replacement='        if False and policy == "refuse":\n',
+        check="calibration_gate_policy",
+        mechanism="uncalibrated gates silently run noiselessly under the refuse policy",
+    ),
+    SourceMutant(
+        name="Warn policy hides uncovered gates",
+        target="cqhecs/calibration_v3.py",
+        original='        if uncovered and policy == "warn":\n',
+        replacement='        if False and policy == "warn":\n',
+        check="calibration_gate_policy",
+        mechanism="the warn policy stops warning about noiseless gates",
+    ),
+    SourceMutant(
+        name="Future capture time counts as fresh",
+        target="cqhecs/calibration_v3.py",
+        original='        status = "fresh" if 0.0 <= age <= self.max_age_hours else "stale"\n',
+        replacement='        status = "fresh" if age <= self.max_age_hours else "stale"\n',
+        check="calibration_freshness",
+        mechanism="a calibration timestamped in the future is reported fresh",
+    ),
+    SourceMutant(
+        name="Missing timestamp assumed fresh",
+        target="cqhecs/calibration_v3.py",
+        original="        if ts is None or self.max_age_hours is None:\n",
+        replacement="        if ts is None and self.max_age_hours is None:\n",
+        check="calibration_freshness",
+        mechanism="freshness is computed (or crashes) instead of being unknown when data is missing",
+    ),
+    SourceMutant(
+        name="Channel check ignores trace preservation",
+        target="cqhecs/calibration_v3.py",
+        original='        "ok": comp <= tol and herm <= tol and min_eig >= -tol,\n',
+        replacement='        "ok": herm <= tol and min_eig >= -tol,\n',
+        check="noise_channel_trace_preservation",
+        mechanism="a Kraus set that does not sum to the identity is reported as a valid channel",
+    ),
+    SourceMutant(
+        name="MaxSAT limit becomes a hard failure boundary",
+        target="cqhecs/sat.py",
+        original="    if formula.num_vars > max_vars:\n        return {\n            **base,\n            \"status\": UNKNOWN,\n",
+        replacement="    if formula.num_vars >= max_vars:\n        return {\n            **base,\n            \"status\": UNKNOWN,\n",
+        check="max_sat_contract",
+        mechanism="the documented inclusive size limit is off by one, refusing a solvable formula",
+    ),
+    SourceMutant(
+        name="MaxSAT accepts negative weights",
+        target="cqhecs/sat.py",
+        original="        if any(w < 0 or w != w for w in weights):\n",
+        replacement="        if False:\n",
+        check="max_sat_contract",
+        mechanism="negative or NaN clause weights are accepted into the optimum",
+    ),
+    SourceMutant(
+        name="MaxSAT re-verification tolerance widened",
+        target="cqhecs/sat.py",
+        original='abs(recomputed - result["satisfied_weight"]) > 1e-9:',
+        replacement='abs(recomputed - result["satisfied_weight"]) > 1e9:',
+        check="max_sat_contract",
+        mechanism="a corrupted optimum survives the recomputation that should refuse it",
+    ),
+    SourceMutant(
+        name="MaxSAT re-verification removed",
+        target="cqhecs/sat.py",
+        original='    if satisfied != result["satisfied_clauses"] or abs(',
+        replacement='    if False and abs(',
+        check="max_sat_contract",
+        mechanism="the optimum is no longer re-verified against the returned assignment",
+    ),
+    SourceMutant(
+        name="Separator preflight disabled",
+        target="cqhecs/sat_separator.py",
+        original="        if preflight and bound > max_table_entries:\n",
+        replacement="        if False and bound > max_table_entries:\n",
+        check="separator_preflight_and_bound",
+        mechanism="the width preflight no longer refuses before a table is allocated",
+    ),
+    SourceMutant(
+        name="Separator table bound off by a factor of two",
+        target="cqhecs/sat_separator.py",
+        original="    return 1 << (induced_width + 1)\n",
+        replacement="    return 1 << induced_width\n",
+        check="separator_preflight_and_bound",
+        mechanism="the predicted table bound underestimates, so preflight admits too-wide formulas",
+    ),
+    SourceMutant(
+        name="Separator drops the free-variable factor",
+        target="cqhecs/sat_separator.py",
+        original="        total = 1 << plan.num_free_variables\n",
+        replacement="        total = 1\n",
+        check="separator_preflight_and_bound",
+        mechanism="unconstrained variables stop doubling the model count",
+    ),
+    SourceMutant(
+        name="DIMACS clause-count check removed",
+        target="cqhecs/sat.py",
+        original="    if declared_clauses is not None and declared_clauses != len(clauses):\n",
+        replacement="    if False:\n",
+        check="dimacs_contract",
+        mechanism="a truncated or padded DIMACS file is accepted despite a wrong header",
+    ),
+    SourceMutant(
+        name="DIMACS unterminated clause accepted",
+        target="cqhecs/sat.py",
+        original="    if pending:\n        raise CNFFormatError(\"last clause is not terminated by 0\")\n",
+        replacement="    if False:\n        raise CNFFormatError(\"last clause is not terminated by 0\")\n",
+        check="dimacs_contract",
+        mechanism="a DIMACS file cut mid-clause silently loses its last clause",
+    ),
+    SourceMutant(
+        name="CNF literal range check removed",
+        target="cqhecs/sat.py",
+        original="                if abs(literal) > self.num_vars:\n",
+        replacement="                if False:\n",
+        check="dimacs_contract",
+        mechanism="a literal beyond the declared variable count is accepted",
+    ),
+    SourceMutant(
+        name="QASM register size cap removed",
+        target="cqhecs/circuit_parsing.py",
+        original="        if size <= 0 or size > _MAX_REGISTER_SIZE:\n",
+        replacement="        if size <= 0:\n",
+        check="qasm_register_limit",
+        mechanism="an oversized qreg is accepted instead of refused",
+    ),
+    SourceMutant(
+        name="MCP echoes an unsupported protocol version",
+        target="cqhecs/mcp_server.py",
+        original="    return SUPPORTED_PROTOCOL_VERSIONS[0]\n",
+        replacement="    return requested\n",
+        check="mcp_protocol_negotiation",
+        mechanism="the server claims a protocol revision it has not been checked against",
+    ),
+    SourceMutant(
+        name="MCP double cancel answers twice",
+        target="cqhecs/mcp_server.py",
+        original='            if entry is None or entry["answered"]:\n',
+        replacement="            if entry is None:\n",
+        check="mcp_cancel_semantics",
+        mechanism="a repeated cancel notification produces a second response for one request id",
+    ),
+    SourceMutant(
+        name="MCP reports a cancelled call's late result",
+        target="cqhecs/mcp_server.py",
+        original='            if entry is not None and not entry["answered"] and response is not None:\n',
+        replacement="            if entry is not None and response is not None:\n",
+        check="mcp_cancel_semantics",
+        mechanism="the worker's late result is written after the CANCELLED answer",
+    ),
+    SourceMutant(
+        name="MCP cancelled result carries a verdict",
+        target="cqhecs/mcp_server.py",
+        original='        "status": "CANCELLED",\n        "verdict": None,\n',
+        replacement='        "status": "CANCELLED",\n        "verdict": "SAT",\n',
+        check="mcp_cancel_semantics",
+        mechanism="a cancelled call reports a verdict",
+    ),
+    SourceMutant(
+        name="MCP capacity off by one",
+        target="cqhecs/mcp_server.py",
+        original="                if live >= self._max_inflight:\n",
+        replacement="                if live > self._max_inflight:\n",
+        check="mcp_capacity_limit",
+        mechanism="one more concurrent tool call than the configured cap is admitted",
+    ),
+    SourceMutant(
+        name="Studio bearer token not checked",
+        target="cqhecs/studio/app.py",
+        original='            if scheme.lower() != "bearer" or not hmac.compare_digest(',
+        replacement='            if False and not hmac.compare_digest(',
+        check="studio_token_required",
+        mechanism="/api/ routes accept any caller, including a cross-site page",
+    ),
+    SourceMutant(
+        name="Studio accepts a non-bearer scheme",
+        target="cqhecs/studio/app.py",
+        original='            if scheme.lower() != "bearer" or not hmac.compare_digest(',
+        replacement='            if not hmac.compare_digest(',
+        check="studio_token_required",
+        mechanism="an Authorization header with another scheme and the right token is accepted",
+    ),
+    SourceMutant(
+        name="Studio Host allow-list disabled",
+        target="cqhecs/studio/app.py",
+        original='        if self.headers.get("Host", "") not in self.server.allowed_hosts:\n',
+        replacement="        if False:\n",
+        check="studio_host_and_origin",
+        mechanism="DNS-rebinding requests with a foreign Host header are served",
+    ),
+    SourceMutant(
+        name="Studio Origin allow-list disabled",
+        target="cqhecs/studio/app.py",
+        original="        if origin is not None and origin not in self.server.allowed_origins:\n",
+        replacement="        if False:\n",
+        check="studio_host_and_origin",
+        mechanism="cross-origin browser requests are served",
+    ),
+    SourceMutant(
+        name="Studio body bound raised 100x",
+        target="cqhecs/studio/app.py",
+        original="        if length > MAX_BODY:\n            self._discard(length)\n",
+        replacement="        if length > 100 * MAX_BODY:\n            self._discard(length)\n",
+        check="studio_body_bound",
+        mechanism="a request body far above the documented 1 MB bound is parsed",
+    ),
+    SourceMutant(
+        name="Studio POST content type unchecked",
+        target="cqhecs/studio/app.py",
+        original='        if self.headers.get("Content-Type", "").split(";")[0].strip().lower() != "application/json":\n',
+        replacement="        if False:\n",
+        check="studio_json_only",
+        mechanism="simple cross-site form posts (text/plain) reach the JSON handlers",
     ),
 ]
 
