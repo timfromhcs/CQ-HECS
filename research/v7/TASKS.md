@@ -105,7 +105,7 @@ DONE locally: CPU-only configure/build/CTest, loader-free binaries. OPEN: CI lan
 | ID | Task | Status |
 |---|---|---|
 | W4-01 | Threaded MCP execution + cancel | DONE (compute abandoned, not stopped; documented) |
-| W4-03 | Shared service layer, `cq-hecs plan`, parity corpus | DONE (`analyze --explain` not migrated) |
+| W4-03 | Shared service layer, `cq-hecs plan`, parity corpus | DONE (`analyze --explain` migrated onto the service in Wave C / C3) |
 | W4-04 | OpenAPI 3.1 + `/api/v1` | DONE (openapi_spec_validator NOT RUN) |
 | W4-05 | MCP negotiation/annotations/outputSchema | DONE (2025-06-18 only) |
 | W4-08 | Separator width calibration | DONE (preflight -> UNKNOWN) |
@@ -123,3 +123,40 @@ DONE locally: CPU-only configure/build/CTest, loader-free binaries. OPEN: CI lan
 | — | MaxSAT typed contract + CLI wiring | DONE |
 | — | LRAT / drat-trim / cake_lpr lanes | NOT RUN (no checkers installed) |
 | — | Baseline delta 2896/109 vs 2899/105 | EXPLAINED: 4 skips from missing qiskit-ibm-runtime on PATH Python 3.13 |
+
+## Wave B (V7 plan, 2026-11-21, committed) - status
+
+Evidence: `research/v7/evidence/waveB_B1..B5.md`.
+
+| ID | Task | Status |
+|---|---|---|
+| W6 | Paths B/C error-story metadata, SVD instrumentation, tiny-reference tests | DONE (B1; n > 7 dense Path C comparison NOT RUN) |
+| W8 | QG model audit: competing BMV models, SYK Trotter oracle, Z2 leakage, offline replay | DONE (B2; model quantities only) |
+| T6-01 | QG ExecutionPlan parity | DONE: envelope (B2) + CLI/MCP/Studio wiring and four-surface parity test (C3) |
+| T6-02 | QG Lab UI in Web and Studio | DONE (B3); Studio `qg.js` plan panel NOT added (see FEATURE_COVERAGE) |
+| W10 | Calibration schema v3, FIT/EVAL enforcement, channel checks | DONE (B4); CLI/Studio/MCP wiring DONE in C3 |
+| W7 | Research Paths E/F/G prototypes, preregistration, negative results | DONE as RESEARCH_ONLY (B5); router unchanged; nothing promoted |
+
+## Wave C (V7 plan, 2026-11-22) - status
+
+Evidence: `research/v7/evidence/waveC_<id>.md` (each owner writes its own). Only C3 and C4 are recorded
+here; the others are tracked by the integrator.
+
+| ID | Task | Status |
+|---|---|---|
+| C3 / W12 / T6-01 | QG plan envelope via CLI `qg plan`, MCP `cqhecs_qg_plan`, Studio `/api/qg/v1/experiments/plan`, one service, parity test (dict + digest) | DONE (`tests/test_qg_surface_parity.py`, 49 tests) |
+| C3 / W12 | `analyze --explain` migrated onto `service.analysis_document` | DONE (`tests/test_service_w12.py`) |
+| C3 / W12 | calibration v3 policy `refuse|warn|ideal` in the noisy-run path; label + freshness shown in CLI, Studio, MCP; v1/v2 files unchanged | DONE (`tests/test_calibration_surfaces.py`, 16 tests; synthetic profile only, no measured v3 record exists) |
+| C3 / QGRAVITY 9.1-9.2 | local API routes and MCP tools completed (experiments, backends, evidence/{id}, exports/{id}, compare, model_validate, export); paid Open Quantum routes/tools exist as separate typed refusals | DONE for local; paid paths UNAVAILABLE by design (authorisation, quote id, 25-Spark ledger live only in the runner script) |
+| C3 / W12 | FEATURE_COVERAGE non-Web `TODO_VERIFY` cells resolved; test fails on any empty cell | DONE (`tests/test_feature_coverage.py`); 11 Windows EXE cells are PARTIAL with NOT_RUN, closed by W14 |
+| C3 | Studio diagnostics route + MCP `cqhecs_doctor` on `service.doctor_report` | DONE |
+| C4 / W15 | Documentation matches code and evidence | see `waveC_C4.md` |
+
+### Open items recorded by C3
+
+- Studio UI has no plan panel (no caller of `/api/plan`); needs a change in `cqhecs/studio/static` (UI owner).
+- `scripts/build_exe.ps1` smoke has no analyze/plan/qg/doctor/calibration step; the opt-in `tests/test_exe_smoke.py`
+  now has them but no EXE was built or run (W14).
+- Calibration `ideal` and `warn` behave identically inside `FakeHardwareBackend` (both run uncovered gates
+  noiselessly and report them); they differ only in the warning text. `hardware_bridge.py` was not changed.
+- MaxSAT has no MCP tool or Studio route.

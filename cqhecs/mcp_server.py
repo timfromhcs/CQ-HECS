@@ -55,6 +55,16 @@ _TOOL_TITLES = {
     "cqhecs_qg_catalog": "Quantum Gravity catalog",
     "cqhecs_qg_circuit_preview": "Quantum Gravity circuit preview",
     "cqhecs_qg_run_local": "Quantum Gravity local run",
+    "cqhecs_doctor": "Execution environment diagnostics",
+    "cqhecs_qg_plan": "Quantum Gravity plan (dry run)",
+    "cqhecs_qg_model_validate": "Quantum Gravity model validation",
+    "cqhecs_qg_compare": "Quantum Gravity reference vs CQ-HECS compare",
+    "cqhecs_qg_export": "Quantum Gravity evidence export",
+    "cqhecs_qg_openquantum_discover": "Open Quantum discover (UNAVAILABLE)",
+    "cqhecs_qg_openquantum_quote": "Open Quantum quote (UNAVAILABLE)",
+    "cqhecs_qg_openquantum_submit": "Open Quantum submit (UNAVAILABLE)",
+    "cqhecs_qg_openquantum_status": "Open Quantum status (UNAVAILABLE)",
+    "cqhecs_qg_openquantum_results": "Open Quantum results (UNAVAILABLE)",
 }
 #: Every tool is local, deterministic for fixed arguments, and changes nothing outside the process.
 _TOOL_ANNOTATIONS = {
@@ -77,6 +87,16 @@ _OUTPUT_REQUIRED = {
     "cqhecs_qg_catalog": ["schema"],
     "cqhecs_qg_circuit_preview": ["status", "qasm", "qasm_sha256"],
     "cqhecs_qg_run_local": ["status", "probabilities", "observables"],
+    "cqhecs_doctor": ["components", "failed"],
+    "cqhecs_qg_plan": ["qg_plan", "digest"],
+    "cqhecs_qg_model_validate": ["status", "model"],
+    "cqhecs_qg_compare": ["status", "sources"],
+    "cqhecs_qg_export": ["bundle_sha256", "qg_plan_digest"],
+    "cqhecs_qg_openquantum_discover": ["status", "code"],
+    "cqhecs_qg_openquantum_quote": ["status", "code"],
+    "cqhecs_qg_openquantum_submit": ["status", "code"],
+    "cqhecs_qg_openquantum_status": ["status", "code"],
+    "cqhecs_qg_openquantum_results": ["status", "code"],
 }
 #: Kept for callers that imported it: the version used before/without negotiation.
 PROTOCOL_VERSION = LEGACY_PROTOCOL_VERSION
@@ -97,6 +117,15 @@ _TOOL_TITLES = {
     "cqhecs_qg_catalog": "Quantum Gravity catalog",
     "cqhecs_qg_circuit_preview": "Quantum Gravity circuit preview",
     "cqhecs_qg_run_local": "Quantum Gravity local run",
+    "cqhecs_qg_plan": "Quantum Gravity plan (dry run)",
+    "cqhecs_qg_model_validate": "Quantum Gravity model validation",
+    "cqhecs_qg_compare": "Quantum Gravity reference vs CQ-HECS compare",
+    "cqhecs_qg_export": "Quantum Gravity evidence export",
+    "cqhecs_qg_openquantum_discover": "Open Quantum discover (UNAVAILABLE)",
+    "cqhecs_qg_openquantum_quote": "Open Quantum quote (UNAVAILABLE)",
+    "cqhecs_qg_openquantum_submit": "Open Quantum submit (UNAVAILABLE)",
+    "cqhecs_qg_openquantum_status": "Open Quantum status (UNAVAILABLE)",
+    "cqhecs_qg_openquantum_results": "Open Quantum results (UNAVAILABLE)",
 }
 #: Every tool is local, deterministic for fixed arguments, and changes nothing outside the process.
 _TOOL_ANNOTATIONS = {
@@ -119,7 +148,18 @@ _OUTPUT_REQUIRED = {
     "cqhecs_qg_catalog": ["schema"],
     "cqhecs_qg_circuit_preview": ["status", "qasm", "qasm_sha256"],
     "cqhecs_qg_run_local": ["status", "probabilities", "observables"],
+    "cqhecs_qg_plan": ["qg_plan", "digest"],
+    "cqhecs_qg_model_validate": ["status", "model"],
+    "cqhecs_qg_compare": ["status", "sources"],
+    "cqhecs_qg_export": ["bundle_sha256", "qg_plan_digest"],
+    "cqhecs_qg_openquantum_discover": ["status", "code"],
+    "cqhecs_qg_openquantum_quote": ["status", "code"],
+    "cqhecs_qg_openquantum_submit": ["status", "code"],
+    "cqhecs_qg_openquantum_status": ["status", "code"],
+    "cqhecs_qg_openquantum_results": ["status", "code"],
 }
+
+THETA: Dict[str, Any] = {"type": "number", "minimum": -6.2832, "maximum": 6.2832}
 
 TOOLS: List[Dict[str, Any]] = [
     {
@@ -135,7 +175,15 @@ TOOLS: List[Dict[str, Any]] = [
                 "noise": {
                     "type": "string",
                     "default": "ideal",
-                    "description": "ideal, mfit, mfit2, or device:<id> from cqhecs_devices",
+                    "description": "ideal, mfit, mfit2, calibration_v3 (with 'calibration'), or device:<id> from cqhecs_devices",
+                },
+                "calibration": {
+                    "type": "object",
+                    "description": "with noise=calibration_v3: a cqhecs.calibration/3.0 record (or an unchanged v1/v2 profile)",
+                },
+                "uncovered_gates": {
+                    "type": "string", "enum": ["refuse", "warn", "ideal"], "default": "warn",
+                    "description": "policy for gates the calibration has no channel for",
                 },
             },
             "required": ["circuit"],
@@ -259,6 +307,101 @@ TOOLS: List[Dict[str, Any]] = [
             "required": ["theta"],
         },
     },
+    {
+        "name": "cqhecs_doctor",
+        "description": (
+            "Execution environment report (same probes as `cq-hecs doctor`): optional dependencies, native "
+            "binding, Vulkan loader, path capabilities. Reports what could be loaded; nothing is run on a GPU."
+        ),
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "cqhecs_qg_plan",
+        "description": (
+            "Dry-run QG ExecutionPlan envelope (cqhecs.qg.execution_plan/1) with its digest: the generic "
+            "ExecutionPlan of the compiled circuit plus engine and precision. Classical route only; "
+            "never plans, quotes or spends a QPU job. Allocates no simulator state."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "experiment": {"type": "string", "enum": ["bmv", "syk", "gauge"], "default": "bmv"},
+                "theta": THETA,
+                "n": {"type": "integer", "minimum": 2, "maximum": 8},
+                "seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
+                "scale": {"type": "number", "minimum": 1e-6, "maximum": 10},
+                "t": {"type": "number", "minimum": 0, "maximum": 50},
+                "steps": {"type": "integer", "minimum": 1, "maximum": 64},
+                "rows": {"type": "integer", "minimum": 1, "maximum": 4},
+                "cols": {"type": "integer", "minimum": 1, "maximum": 4},
+                "force_path": {"type": "string", "enum": ["A", "B", "C", "D"]},
+                "require_counts": {"type": "boolean", "default": True},
+            },
+        },
+    },
+    {
+        "name": "cqhecs_qg_model_validate",
+        "description": "Validate a QG model instance (bmv, syk, gauge) and return its manifest. No execution, no network.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "experiment": {"type": "string", "enum": ["bmv", "syk", "gauge"], "default": "bmv"},
+                "theta": THETA,
+                "local_phase_a": THETA,
+                "local_phase_b": THETA,
+                "n": {"type": "integer", "minimum": 2, "maximum": 8},
+                "seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
+                "scale": {"type": "number", "minimum": 1e-6, "maximum": 10},
+                "rows": {"type": "integer", "minimum": 1, "maximum": 4},
+                "cols": {"type": "integer", "minimum": 1, "maximum": 4},
+            },
+        },
+    },
+    {
+        "name": "cqhecs_qg_compare",
+        "description": (
+            "Compare the exact BMV reference with the CQ-HECS router on the same QASM, with separate "
+            "provenance per source. Open Quantum sources are reported NOT_COMPARED. No network."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "theta": THETA,
+                "shots": {"type": "integer", "minimum": 1, "maximum": 20000, "default": 4096},
+                "seed": {"type": "integer", "minimum": 0, "maximum": 2147483647, "default": 42},
+            },
+            "required": ["theta"],
+        },
+    },
+    {
+        "name": "cqhecs_qg_export",
+        "description": "Secret-free evidence bundle for a local QG experiment: parameters, validation, plan, digests.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "experiment": {"type": "string", "enum": ["bmv", "syk", "gauge"], "default": "bmv"},
+                "theta": THETA,
+                "n": {"type": "integer", "minimum": 2, "maximum": 8},
+                "seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
+                "scale": {"type": "number", "minimum": 1e-6, "maximum": 10},
+                "t": {"type": "number", "minimum": 0, "maximum": 50},
+                "steps": {"type": "integer", "minimum": 1, "maximum": 64},
+                "rows": {"type": "integer", "minimum": 1, "maximum": 4},
+                "cols": {"type": "integer", "minimum": 1, "maximum": 4},
+            },
+        },
+    },
+] + [
+    {
+        "name": "cqhecs_qg_openquantum_" + _action,
+        "description": (
+            "Open Quantum " + _action + ": UNAVAILABLE in this build. Always returns a typed refusal, "
+            "contacts nothing and spends nothing. Quote and submit are separate steps in "
+            "scripts/run_qg_openquantum_campaign.py under the single 25-Spark ledger."
+        ),
+        "inputSchema": {"type": "object", "properties": {}},
+    }
+    for _action in ("discover", "quote", "submit", "status", "results")
 ]
 
 
@@ -391,6 +534,8 @@ def _tool_run(arguments: Dict[str, Any]) -> Dict[str, Any]:
             "seed": arguments.get("seed", 42),
             "path": arguments.get("path", "auto"),
             "noise": arguments.get("noise", "ideal"),
+            "calibration": arguments.get("calibration"),
+            "uncovered_gates": arguments.get("uncovered_gates", "warn"),
         }
     )
 
@@ -510,44 +655,42 @@ def _tool_hardware(_arguments: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
-def _tool_qg_preview(arguments: Dict[str, Any]) -> Dict[str, Any]:
-    from cqhecs.quantum_gravity.circuits import bmv_qasm, sha256_text
+def _service(fn: Any, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+    """Call a shared-service function; a typed caller error becomes -32602 (invalid params)."""
+    from cqhecs import service
 
-    theta = float(_require(arguments, "theta"))
-    qasm = bmv_qasm(theta)
-    return {
-        "status": "OK",
-        "execution_surface": "CLASSICAL_REFERENCE",
-        "spend_credits": 0.0,
-        "network": "none",
-        "qasm": qasm,
-        "qasm_sha256": sha256_text(qasm),
-    }
+    try:
+        return fn(*args, **kwargs)
+    except service.ServiceError as exc:
+        raise ToolArgumentsError(f"{exc} ({exc.code})") from exc
+
+
+def _tool_qg_preview(arguments: Dict[str, Any]) -> Dict[str, Any]:
+    from cqhecs import service
+
+    p = _service(service.qg_experiment_params, "bmv", {"theta": _require(arguments, "theta")})
+    return service.qg_preview_document(p["theta"])
 
 
 def _tool_qg_run_local(arguments: Dict[str, Any]) -> Dict[str, Any]:
-    from cqhecs.quantum_gravity.models import BMVEffectivePhaseModel
+    from cqhecs import service
 
-    model = BMVEffectivePhaseModel(
-        theta=float(_require(arguments, "theta")),
-        local_phase_a=float(arguments.get("local_phase_a", 0.0)),
-        local_phase_b=float(arguments.get("local_phase_b", 0.0)),
+    _require(arguments, "theta")
+    p = _service(service.qg_experiment_params, "bmv", dict(arguments))
+    return service.qg_run_local_document(p["theta"], p["local_phase_a"], p["local_phase_b"])
+
+
+def _tool_qg_plan(arguments: Dict[str, Any]) -> Dict[str, Any]:
+    from cqhecs import service
+
+    params = {k: v for k, v in arguments.items() if k not in ("experiment", "force_path", "require_counts")}
+    return _service(
+        service.qg_plan_document,
+        arguments.get("experiment", "bmv"),
+        params,
+        force_path=arguments.get("force_path"),
+        require_counts=bool(arguments.get("require_counts", True)),
     )
-    state = model.state()
-    probabilities = {format(index, "02b"): float(abs(state[index]) ** 2) for index in range(4)}
-    return {
-        "status": "COMPLETED",
-        "execution_surface": "CLASSICAL_REFERENCE",
-        "precision": "f64",
-        "probabilities": probabilities,
-        "observables": {
-            "concurrence": model.concurrence(),
-            "negativity": model.negativity(),
-            "entanglement_entropy": model.entropy(),
-            "chsh_max": model.chsh_max(),
-        },
-        "limitations": ["finite two-qubit model; not a gravitational measurement"],
-    }
 
 
 def _call(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -587,6 +730,32 @@ def _call(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         return _tool_qg_preview(arguments)
     if name == "cqhecs_qg_run_local":
         return _tool_qg_run_local(arguments)
+    if name == "cqhecs_doctor":
+        from cqhecs import service
+
+        return service.doctor_report("1.0")
+    if name == "cqhecs_qg_plan":
+        return _tool_qg_plan(arguments)
+    if name in ("cqhecs_qg_model_validate", "cqhecs_qg_export"):
+        from cqhecs import service
+
+        fn = service.qg_validate_document if name.endswith("validate") else service.qg_export_document
+        rest = {k: v for k, v in arguments.items() if k != "experiment"}
+        return _service(fn, arguments.get("experiment", "bmv"), rest)
+    if name == "cqhecs_qg_compare":
+        from cqhecs import service
+
+        _require(arguments, "theta")
+        theta = _service(service.qg_experiment_params, "bmv", {"theta": arguments["theta"]})["theta"]
+        return _service(
+            service.qg_compare_document, theta,
+            shots=_bounded_int(arguments.get("shots"), "shots", 1, 20000, 4096),
+            seed=_bounded_int(arguments.get("seed"), "seed", 0, 2**31 - 1, 42),
+        )
+    if name.startswith("cqhecs_qg_openquantum_"):
+        from cqhecs import service
+
+        return _service(service.qg_paid_refusal, name[len("cqhecs_qg_openquantum_"):])
     raise ToolArgumentsError(f"unknown tool {name!r}")
 
 
@@ -622,7 +791,11 @@ def handle(message: Dict[str, Any], session: Optional["_Session"] = None) -> Opt
         name = params.get("name")
         arguments = params.get("arguments") or {}
         try:
-            return _ok(request_id, _wrap_result(_call(name, arguments), session))
+            payload = _call(name, arguments)
+            result = _wrap_result(payload, session)
+            if isinstance(payload, dict) and payload.get("code") == "QG_PAID_PATH_UNAVAILABLE":
+                result["isError"] = True  # a typed refusal is a tool failure, never a success
+            return _ok(request_id, result)
         except ToolArgumentsError as exc:
             # Invalid or missing arguments are a protocol error (invalid params).
             return _error(request_id, -32602, str(exc))

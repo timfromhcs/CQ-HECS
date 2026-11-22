@@ -125,106 +125,10 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     Distinguishes "not installed", "not available", "not tested" and "failed"
     rather than collapsing them into one silent default.
     """
-    report: Dict[str, Any] = {
-        "schema_version": JSON_SCHEMA_VERSION,
-        "version": __version__,
-        "os": {
-            "platform": platform.platform(),
-            "system": platform.system(),
-            "release": platform.release(),
-            "machine": platform.machine(),
-        },
-        "python": {
-            "version": platform.python_version(),
-            "executable": sys.executable,
-        },
-        "components": {},
-    }
-    exit_code = EXIT_OK
+    from cqhecs import service
 
-    def record(name: str, status: str, detail: str = "", **extra: Any) -> None:
-        report["components"][name] = {"status": status, "detail": detail, **extra}
-        nonlocal exit_code
-        if status == "failed":
-            exit_code = EXIT_ENVIRONMENT
-
-    # Optional Python dependencies
-    for module, label in (
-        ("numpy", "numpy"),
-        ("qiskit", "qiskit"),
-        ("qiskit_aer", "qiskit-aer"),
-        ("stim", "stim"),
-    ):
-        try:
-            mod = __import__(module)
-            record(label, "available", getattr(mod, "__version__", "unknown"))
-        except ImportError:
-            record(label, "not_installed", f"optional dependency '{module}' missing")
-
-    # Optional SAT solver adapter
-    try:
-        from cqhecs import sat_external
-
-        if sat_external.available():
-            record("sat_solver", "available", sat_external.backend_version())
-        else:
-            record("sat_solver", "not_available", "python-sat is not installed; pip install cqhecs[sat]")
-    except Exception as exc:  # noqa: BLE001 - report, never crash doctor
-        record("sat_solver", "failed", f"{type(exc).__name__}: {exc}")
-
-    # Native binding
-    try:
-        import cqhecs.backends.path_a_stabilizer as path_a
-
-        if path_a._native is not None:
-            record(
-                "native_binding", "available",
-                getattr(path_a._native, "__file__", "built-in"),
-                version=getattr(path_a._native, "__version__", None),
-            )
-        else:
-            record(
-                "native_binding", "not_available",
-                "_cqhecs_core could not be imported; Python fallbacks will be used",
-            )
-    except Exception as exc:  # pragma: no cover - defensive
-        record("native_binding", "failed", str(exc))
-
-    # Vulkan: loader, then physical devices
-    try:
-        import ctypes
-
-        vulkan_ok = False
-        for dll in ("vulkan-1.dll", "libvulkan.so.1", "libvulkan.dylib"):
-            try:
-                ctypes.CDLL(dll)
-                vulkan_ok = True
-                record("vulkan_loader", "available", f"loaded {dll}")
-                break
-            except OSError:
-                continue
-        if not vulkan_ok:
-            record("vulkan_loader", "not_available", "no Vulkan loader found on PATH")
-    except Exception as exc:  # pragma: no cover - defensive
-        record("vulkan_loader", "failed", str(exc))
-
-    # Backend capability matrix
-    try:
-        from cqhecs.router import EntanglementAdaptiveRouter
-        report["backends"] = {
-            path: sorted(gates)
-            for path, gates in EntanglementAdaptiveRouter.PATH_CAPABILITIES.items()
-        }
-    except Exception as exc:  # pragma: no cover - defensive
-        record("backends", "failed", str(exc))
-
-    # Vulkan compute is exercised only through the native engine; this Python
-    # path does not dispatch work to a GPU, so it is reported as not exercised.
-    report["notes"] = [
-        "The Python backends run on CPU. Vulkan acceleration, when present, is "
-        "exercised only by the native _cqhecs_core engine.",
-        "No statement is made here about physical GPU verification.",
-    ]
+    report = service.doctor_report(JSON_SCHEMA_VERSION)
+    exit_code = EXIT_ENVIRONMENT if report.pop("failed") else EXIT_OK
 
     if args.format == "json":
         _emit_json(report)
@@ -853,49 +757,80 @@ def cmd_qg(args: argparse.Namespace) -> int:
         print("Local only. No route here contacts Open Quantum or spends credits.")
         return EXIT_OK
 
-    if args.qg_command == "preview":
-        from cqhecs.quantum_gravity.circuits import bmv_qasm, sha256_text
+    from cqhecs import service
 
-        qasm = bmv_qasm(args.theta)
-        digest = sha256_text(qasm)
-        if args.format == "json":
-            _emit_json({
-                "schema_version": JSON_SCHEMA_VERSION,
-                "execution_surface": "CLASSICAL_REFERENCE",
-                "spend_credits": 0.0,
-                "qasm": qasm,
-                "qasm_sha256": digest,
-            })
-            return EXIT_OK
-        sys.stdout.write(qasm)
-        print(f"# sha256 {digest}")
+    def _qg_emit(document: Dict[str, Any]) -> int:
+        _emit_json({"schema_version": JSON_SCHEMA_VERSION, **document})
         return EXIT_OK
 
-    if args.qg_command == "run-local":
-        from cqhecs.quantum_gravity.models import BMVEffectivePhaseModel
+    try:
+        if args.qg_command == "preview":
+            document = service.qg_preview_document(
+                service.qg_experiment_params("bmv", {"theta": args.theta})["theta"]
+            )
+            if args.format == "json":
+                return _qg_emit(document)
+            sys.stdout.write(document["qasm"])
+            print(f"# sha256 {document['qasm_sha256']}")
+            return EXIT_OK
 
-        model = BMVEffectivePhaseModel(theta=args.theta)
-        state = model.state()
-        payload = {
-            "schema_version": JSON_SCHEMA_VERSION,
-            "status": "COMPLETED",
-            "execution_surface": "CLASSICAL_REFERENCE",
-            "probabilities": {format(i, "02b"): float(abs(state[i]) ** 2) for i in range(4)},
-            "observables": {
-                "concurrence": model.concurrence(),
-                "negativity": model.negativity(),
-                "entanglement_entropy": model.entropy(),
-                "chsh_max": model.chsh_max(),
-            },
-            "limitations": ["finite two-qubit model; not a gravitational measurement"],
+        if args.qg_command == "run-local":
+            theta = service.qg_experiment_params("bmv", {"theta": args.theta})["theta"]
+            payload = service.qg_run_local_document(theta)
+            if args.format == "json":
+                return _qg_emit(payload)
+            obs = payload["observables"]
+            print(f"concurrence {obs['concurrence']:.12f}  negativity {obs['negativity']:.12f}  "
+                  f"entropy {obs['entanglement_entropy']:.12f}  chsh_max {obs['chsh_max']:.12f}")
+            return EXIT_OK
+
+        params = {
+            key: getattr(args, key)
+            for key in ("theta", "n", "seed", "scale", "t", "steps", "rows", "cols")
+            if getattr(args, key, None) is not None
         }
-        if args.format == "json":
-            _emit_json(payload)
+        if args.qg_command == "plan":
+            document = service.qg_plan_document(
+                args.experiment,
+                params,
+                force_path=args.force_path,
+                require_counts=not args.allow_no_counts,
+                max_memory_bytes=int(args.max_memory_mb * 1024 * 1024) if args.max_memory_mb else None,
+            )
+            if args.format == "json":
+                return _qg_emit(document)
+            plan = document["qg_plan"]
+            print(f"QG plan     : {plan['experiment_id']} ({plan['model_id']} {plan['model_version']})")
+            print(f"Surface     : {plan['execution_surface']}  (physical execution: {plan['physical_execution']})")
+            engine = plan["engine"]
+            print("Engine      : " + (f"{engine['engine']} / {engine['precision']}" if engine else "none (plan refused)"))
+            print(f"Plan digest : {plan['plan']['plan_digest']}")
+            print(f"QG digest   : {document['digest']}")
             return EXIT_OK
-        obs = payload["observables"]
-        print(f"concurrence {obs['concurrence']:.12f}  negativity {obs['negativity']:.12f}  "
-              f"entropy {obs['entanglement_entropy']:.12f}  chsh_max {obs['chsh_max']:.12f}")
-        return EXIT_OK
+
+        if args.qg_command == "compare":
+            document = service.qg_compare_document(
+                service.qg_experiment_params("bmv", {"theta": args.theta})["theta"]
+            )
+            if args.format == "json":
+                return _qg_emit(document)
+            print(f"TV(reference, CQ-HECS) = {document['total_variation_reference_vs_cq_hecs']}")
+            for note in document["limitations"]:
+                print(f"  note: {note}")
+            return EXIT_OK
+
+        if args.qg_command == "export":
+            return _qg_emit(service.qg_export_document(args.experiment, params))
+
+        if args.qg_command == "backends":
+            return _qg_emit(service.qg_backends_document(
+                credentials_present=bool(
+                    os.environ.get("OPENQUANTUM_CLIENT_ID") and os.environ.get("OPENQUANTUM_CLIENT_SECRET")
+                )
+            ))
+    except service.ServiceError as exc:
+        LOG.error("%s (%s)", exc, exc.code)
+        return EXIT_USAGE
 
     return EXIT_USAGE
 
@@ -921,41 +856,32 @@ def cmd_selftest(args: argparse.Namespace) -> int:
 
 
 def cmd_analyze(args: argparse.Namespace) -> int:
+    """``cq-hecs analyze``: static analysis; ``--explain`` adds the shared-service dry-run plan."""
+    from cqhecs import service
     from cqhecs.circuit_analyzer import CircuitAnalyzer
 
     circuit = _load_circuit(args.circuit)
-    props = CircuitAnalyzer().analyze(circuit)
-    payload = {
-        "schema_version": JSON_SCHEMA_VERSION,
-        "version": __version__,
-        "analysis": props.to_dict(),
-    }
-    plan = None
-    if args.explain or args.force_path or args.require_counts or args.max_memory_mb:
-        from cqhecs.execution_plan import build_execution_plan
-
-        plan = build_execution_plan(
-            circuit,
-            forced_path=args.force_path,
-            require_counts=args.require_counts,
-            max_memory_bytes=(
-                int(args.max_memory_mb * 1024 * 1024) if args.max_memory_mb else None
-            ),
-        )
-        payload["plan"] = plan.to_dict()
+    wants_plan = bool(args.explain or args.force_path or args.require_counts or args.max_memory_mb)
+    plan_kwargs = dict(
+        force_path=args.force_path,
+        require_counts=args.require_counts,
+        max_memory_bytes=int(args.max_memory_mb * 1024 * 1024) if args.max_memory_mb else None,
+    )
     if args.format == "json":
-        _emit_json(payload)
-    else:
-        print(f"Qubits      : {props.num_qubits}")
-        print(f"Gates       : {props.total_gates} {props.gate_counts}")
-        print(f"T-Count     : {props.t_count}")
-        print(f"Clifford    : {props.is_clifford}")
-        print(f"Entanglement: {props.entanglement_estimate} (max cut {props.max_cut_width})")
-        print(f"Recommended : Path {props.recommended_path}")
-        print(f"Reason      : {props.reason}")
-        if plan is not None:
-            print()
-            print(plan.explain())
+        document = service.analysis_document(circuit, explain=wants_plan, **plan_kwargs)
+        _emit_json({"schema_version": JSON_SCHEMA_VERSION, "version": __version__, **document})
+        return EXIT_OK
+    props = CircuitAnalyzer().analyze(circuit)
+    print(f"Qubits      : {props.num_qubits}")
+    print(f"Gates       : {props.total_gates} {props.gate_counts}")
+    print(f"T-Count     : {props.t_count}")
+    print(f"Clifford    : {props.is_clifford}")
+    print(f"Entanglement: {props.entanglement_estimate} (max cut {props.max_cut_width})")
+    print(f"Recommended : Path {props.recommended_path}")
+    print(f"Reason      : {props.reason}")
+    if wants_plan:
+        print()
+        print(service.plan_object(circuit, **plan_kwargs).explain())
     return EXIT_OK
 
 
@@ -987,7 +913,22 @@ def cmd_run(args: argparse.Namespace) -> int:
     circuit = _load_circuit(args.circuit)
     backend = args.backend.upper()
 
-    if getattr(args, "device", None):
+    calibration_info = None
+    if getattr(args, "calibration", None):
+        from cqhecs import service
+
+        try:
+            record = json.loads(Path(args.calibration).read_text("utf-8"))
+        except (OSError, ValueError) as exc:
+            raise ValueError(f"cannot read calibration file {args.calibration!r}: {exc}") from exc
+        try:
+            result, calibration_info = service.run_with_calibration(
+                circuit, record, policy=args.uncovered_gates, shots=args.shots, seed=args.seed
+            )
+        except service.ServiceError as exc:
+            LOG.error("%s (%s)", exc, exc.code)
+            return EXIT_USAGE
+    elif getattr(args, "device", None):
         from cqhecs.backends.noisy_density_matrix import NoisyDensityMatrixBackend
         from cqhecs.circuit_parsing import parse_circuit
         from cqhecs.device_profiles import UnknownDeviceProfileError, noise_model
@@ -1058,6 +999,15 @@ def cmd_run(args: argparse.Namespace) -> int:
             print(f"Mode        : {result.execution_mode.value if hasattr(result.execution_mode, 'value') else result.execution_mode}")
         if result.backend_profile_id:
             print(f"Profile     : {result.backend_profile_id}")
+        if calibration_info is not None:
+            freshness = calibration_info["freshness"]
+            print(f"Calibration : {calibration_info['backend_identity']}  "
+                  f"label={calibration_info['provenance_label']}  freshness={freshness['status']}")
+            coverage = calibration_info.get("gate_coverage") or {}
+            print(f"Gate policy : {calibration_info['gate_policy']}  "
+                  f"uncovered={coverage.get('uncovered_gates', [])}")
+            for warning in coverage.get("warnings", []):
+                print(f"  warning: {warning}")
         print(f"State       : {result.state.value if result.state else 'UNKNOWN'}")
         print(f"Exact       : {result.exact}")
         print(f"Error bound : {result.error_bound:.3e}")
@@ -1452,6 +1402,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Measured QPU noise profile (see `cq-hecs devices`), e.g. ibm_kingston",
     )
     p_run.add_argument(
+        "--calibration", default=None, metavar="FILE",
+        help="Calibration JSON (schema cqhecs.calibration/3.0, or an unchanged v1/v2 profile) for a "
+             "noisy classical run; prints provenance label and freshness",
+    )
+    p_run.add_argument(
+        "--uncovered-gates", choices=["refuse", "warn", "ideal"], default="warn",
+        help="With --calibration: what to do with gates the calibration has no channel for "
+             "(refuse = typed error, warn = run noiseless and report, ideal = run noiseless, reported)",
+    )
+    p_run.add_argument(
         "--noisy", action=argparse.BooleanOptionalAction, default=True,
         help="Enable/disable noise model when running with --profile",
     )
@@ -1581,6 +1541,27 @@ def build_parser() -> argparse.ArgumentParser:
     p_qg_preview.add_argument("--theta", type=float, default=0.0, help="Coupling phase (radians)")
     p_qg_run = qg_sub.add_parser("run-local", help="Run the exact two-qubit BMV model locally")
     p_qg_run.add_argument("--theta", type=float, default=0.0, help="Coupling phase (radians)")
+    p_qg_plan = qg_sub.add_parser(
+        "plan", help="Dry-run QG ExecutionPlan envelope (same document as MCP and Studio; no spend)"
+    )
+    p_qg_exp = qg_sub.add_parser("export", help="Secret-free evidence bundle for a local experiment")
+    for _p in (p_qg_plan, p_qg_exp):
+        _p.add_argument("--experiment", choices=["bmv", "syk", "gauge"], default="bmv")
+        _p.add_argument("--theta", type=float, default=None, help="bmv coupling phase (radians)")
+        _p.add_argument("--n", type=int, default=None, help="syk qubits")
+        _p.add_argument("--seed", type=int, default=None, help="syk seed")
+        _p.add_argument("--scale", type=float, default=None, help="syk coupling scale")
+        _p.add_argument("--t", type=float, default=None, help="syk/gauge evolution time")
+        _p.add_argument("--steps", type=int, default=None, help="syk/gauge Trotter steps")
+        _p.add_argument("--rows", type=int, default=None, help="gauge lattice rows")
+        _p.add_argument("--cols", type=int, default=None, help="gauge lattice columns")
+    p_qg_plan.add_argument("--force-path", choices=["A", "B", "C", "D"], default=None)
+    p_qg_plan.add_argument("--allow-no-counts", action="store_true",
+                           help="Do not require bitstring counts (Path D may then be selected)")
+    p_qg_plan.add_argument("--max-memory-mb", type=float, default=None)
+    p_qg_cmp = qg_sub.add_parser("compare", help="Compare the exact BMV reference with the CQ-HECS router")
+    p_qg_cmp.add_argument("--theta", type=float, default=0.7, help="Coupling phase (radians)")
+    qg_sub.add_parser("backends", help="Execution surfaces and local availability (paid paths UNAVAILABLE)")
 
     return parser
 

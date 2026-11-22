@@ -25,6 +25,7 @@ ROUTES: List[Tuple[str, str, str, Any, Tuple[str, ...]]] = [
     ("get", "/research", "Research notes and claim boundaries", None, ()),
     ("get", "/devices", "Measured device noise profiles", None, ()),
     ("get", "/hardware", "Committed real-QPU evidence summary", None, ()),
+    ("get", "/diagnostics", "Execution environment report (same probes as cq-hecs doctor; nothing is run on a GPU)", None, ()),
     ("get", "/reference", "Registered reference datasets", None, ()),
     ("get", "/preset", "A builtin circuit as OpenQASM (query: name)", None, ()),
     ("get", "/omniwave/status", "OMNIWAVE lab status", None, ()),

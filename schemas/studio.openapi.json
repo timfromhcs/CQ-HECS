@@ -76,6 +76,36 @@
         "summary": "Measured device noise profiles (original path; same handler as /api/v1)"
       }
     },
+    "/api/diagnostics": {
+      "get": {
+        "deprecated": false,
+        "operationId": "get_diagnostics_legacy",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Execution environment report (same probes as cq-hecs doctor; nothing is run on a GPU) (original path; same handler as /api/v1)"
+      }
+    },
     "/api/hardware": {
       "get": {
         "deprecated": false,
@@ -872,6 +902,35 @@
           }
         ],
         "summary": "Measured device noise profiles"
+      }
+    },
+    "/api/v1/diagnostics": {
+      "get": {
+        "operationId": "get_diagnostics",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Execution environment report (same probes as cq-hecs doctor; nothing is run on a GPU)"
       }
     },
     "/api/v1/hardware": {
