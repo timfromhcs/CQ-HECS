@@ -23,6 +23,7 @@ from . import miner_protocol as proto
 
 LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 MAX_BODY = 4096
+DRAIN_CAP = 1 << 20      # consume at most this much of a rejected body so the peer reads the reply
 RATE_LIMIT = 30          # POSTs per window
 RATE_WINDOW_S = 60.0
 READ_RATE_LIMIT = 120    # GETs per window
@@ -238,20 +239,52 @@ class _Handler(BaseHTTPRequestHandler):
         auth = self.headers.get("Authorization", "")
         return auth[7:] if auth.startswith("Bearer ") else None
 
-    def _reject(self, status: int, body: dict):
-        """Reply early to a POST without parsing it.
+    def _drain_declared(self):
+        """Consume the declared request body (bounded) before replying.
 
-        The request body has not been read yet. Closing a socket that still holds unread data makes Linux
-        send a TCP RST, and the client can then lose the response (observed: the 429 of the rate limiter
-        arrived as RemoteDisconnected on every other request). So read the declared body first, within the
-        same MAX_BODY bound as _body(), then reply.
+        Closing a socket that still holds unread data makes the peer see a TCP RST and lose the
+        response (observed: the rate limiter's 429 arrived as RemoteDisconnected; an oversized body
+        reached the client as ConnectionAborted [WinError 10053]). Draining the declared body lets an
+        ordinary client finish sending so it reads the reply.
+
+        Mirrors ``cqhecs.studio.app._discard``: a monotonic deadline plus ``read1`` stop a trickling
+        client from extending the drain, and only a plausible length is read — an implausible
+        ``Content-Length`` (non-digit or larger than ``DRAIN_CAP``) is rejected immediately rather
+        than waiting for bytes a hostile client may never send.
         """
         cl = self.headers.get("Content-Length")
-        if cl and cl.isascii() and cl.isdigit() and 0 < int(cl) <= MAX_BODY:
-            try:
-                self.rfile.read(int(cl))
-            except OSError:  # a stalled client is dropped, as in _body()
-                self.close_connection = True
+        if not (cl and cl.isascii() and cl.isdigit()):
+            return
+        n = int(cl)
+        if not 0 < n <= DRAIN_CAP:
+            return  # implausible length: reject at once instead of waiting for bytes never sent
+        remaining = n
+        deadline = time.monotonic() + self.timeout
+        old_timeout = self.connection.gettimeout()
+        try:
+            while remaining > 0:
+                budget = deadline - time.monotonic()
+                if budget <= 0:
+                    break
+                self.connection.settimeout(budget)
+                chunk = self.rfile.read1(min(65536, remaining))
+                if not chunk:
+                    break
+                remaining -= len(chunk)
+        except OSError:  # a stalled client is dropped, as in _body()
+            self.close_connection = True
+        finally:
+            self.connection.settimeout(old_timeout)
+
+    def _reject(self, status: int, body: dict):
+        """Reply early to a rejected POST without parsing it.
+
+        The request body has not been read yet. Closing a socket that still holds unread data makes
+        Linux send a TCP RST, and the client can then lose the response (observed: the 429 of the
+        rate limiter arrived as RemoteDisconnected on every other request). So consume the declared
+        body first (``_drain_declared``), then reply.
+        """
+        self._drain_declared()
         self._send(status, body)
 
     def _body(self):
@@ -261,6 +294,7 @@ class _Handler(BaseHTTPRequestHandler):
             return None
         n = int(cl) if cl else 0
         if n > MAX_BODY:
+            self._drain_declared()
             self._send(413, {"error": "PAYLOAD_TOO_LARGE"})
             return None
         try:

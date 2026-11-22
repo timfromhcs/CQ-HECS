@@ -144,7 +144,7 @@ Every result separates three error sources:
 | Field | Meaning |
 | :--- | :--- |
 | `error_bound` | Deliberate approximation. `0.0` = nothing was deliberately approximated. |
-| `numerical_error_bound` | Measured float roundoff, **or `null`** if not derivable. |
+| `numerical_error_bound` | A derived bound on float roundoff, **or `null`** ("not derived") when none is derived; Paths B and C report `null`. |
 | `sampling_error_bound` | Finite-shot confidence bound, support-size dependent. |
 | `total_error_bound` | Sum of the above, **only when they share a metric**; `null` otherwise. |
 

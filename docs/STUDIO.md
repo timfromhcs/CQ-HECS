@@ -7,7 +7,7 @@ telemetry.
 ```bash
 pip install -e ".[dev]"
 cq-hecs studio
-# CQ-HECS Studio 3.1.0 on http://127.0.0.1:8765/
+# CQ-HECS Studio on http://127.0.0.1:8765/#token=<per-launch token>
 ```
 
 Options:
@@ -18,6 +18,10 @@ Options:
 --root PATH          repository root for evidence discovery
 --no-browser         do not open a browser
 ```
+
+The command prints a private URL whose fragment carries a per-launch API token; open
+that URL (the page reads the token and removes it from the address bar). See
+[Security](#security).
 
 The server uses only the Python standard library plus the existing engine
 (`numpy`, `qiskit`). There is no npm build, no CDN, and no external font.
@@ -38,6 +42,19 @@ count, a seed and a noise mode:
 Noise runs use the exact density matrix and are limited to 10 qubits. Above
 that the server returns a typed `noise_width_limit` refusal; it does not
 approximate.
+
+**Execution plan panel.** Below the result, `Plan circuit` sends the editor source and the selected
+path to `POST /api/plan` (same bearer-token flow as every other call) and shows the dry-run
+`cqhecs.execution_plan/1` document: selected path and the reason, a table of every candidate path
+with capability blockers and policy notes (why each rejected path was not chosen), peak-memory and
+work figures labelled `ESTIMATE` (heuristic, not guarantees), known hard limits, unsupported
+operations, and the input, normalized-circuit and plan SHA-256 digests. Nothing is simulated.
+Typed states: `idle` (empty message), `empty` (no source), `refused` (a forced path that cannot run
+the circuit shows its refusal code, for example `FORCED_PATH_UNSUPPORTED`; it is never rerouted),
+`error` (server-side invalid circuit), `plan ready`. Values are set with `textContent` only; the
+button and result region are keyboard reachable. Test: `tests/test_studio_plan_ui.py` (static checks
+plus a real headless Chromium run with axe at 1280 and 360 px; skipped as NOT_RUN when Node and
+`web/node_modules` are absent).
 
 ### Noise lab
 
@@ -85,6 +102,17 @@ is active at a time. The verdict follows the same rules as everywhere: SAT with 
 verified model, UNSAT only with an accepted DRAT proof, otherwise UNKNOWN.
 Worker threads share one Python interpreter, so more workers is not a speedup.
 
+### Quantum Gravity lab
+
+Tab `08` hosts the Quantum Gravity Lab (BMV effective phase, small-N SYK, a bounded Z2
+gauge toy) through the separately versioned `/api/qg/v1/*` routes. Every run is a finite
+model on an exact classical reference; the tab never contacts a provider, never spends
+credits and does not measure gravity. `Run` stays disabled until the assumptions are
+confirmed; typed refusals are shown, not hidden. The Studio tab is English only (the Studio
+has no i18n); the web app version is EN/DE/FR. The tab list follows the WAI-ARIA tabs pattern (roving tabindex; Left/Right/Home/End
+move focus and selection); `tests/studio_ui_e2e.mjs` asserts it in a real browser. Details:
+[`QUANTUM_GRAVITY_LAB.md`](QUANTUM_GRAVITY_LAB.md). Evidence: `research/v7/evidence/waveB_B3.md`.
+
 ### Evidence
 
 The 25 `r-io-7` jobs with their SHA-256 circuit digests, provider job IDs, and
@@ -110,6 +138,10 @@ credentials.
 | `GET` | `/api/research` | — | sourced research payload |
 | `GET` | `/api/hardware` | — | every committed QPU evaluation (shots, verdict, ΔTV) |
 | `GET` | `/api/devices` | — | measured M-FIT-2 device profiles |
+| `GET` | `/api/reference` | — | registered reference datasets |
+| `GET` | `/api/diagnostics` | — | execution-environment report (the probes behind `cq-hecs doctor`; nothing runs on a GPU) |
+| `GET` | `/api/openapi.json` | — | this API as OpenAPI 3.1 (`schemas/studio.openapi.json`) |
+| `POST` | `/api/plan` | `{source, path?, require_counts?}` (`path`: `auto` or `A`-`D`) | dry-run `cqhecs.execution_plan/1` (no simulator state allocated); same document as `cq-hecs plan` and MCP `cqhecs_plan` |
 | `POST` | `/api/simulate` | `{source, shots, seed, path, noise}` (`noise`: `ideal`, `mfit`, `mfit2`, `custom`, `device:<id>`) | circuit result |
 | `POST` | `/api/noise/compare` | `{job_id, overrides?}` | measured vs models |
 | `POST` | `/api/sat/solve` | `{cnf}` or `{random:{...}}`, optional `engine` (`dpll`, `watched`, `cadical`, `omniwave`) | sound SAT result with `certification` |
@@ -120,11 +152,28 @@ credentials.
 | `POST` | `/api/omniwave/pause` · `resume` · `cancel` | `{}` | control the active run |
 | `POST` | `/api/reload` | — | reload evidence from disk |
 
-Example:
+Every `/api/<x>` route also answers at `/api/v1/<x>` with the same guard and body; the
+original paths are unchanged. The Quantum Gravity family is separate:
+
+| method | path | purpose |
+| :--- | :--- | :--- |
+| `GET` | `/api/qg/v1/health` · `catalog` · `models` · `evidence` | status, method cards, model list, recorded evidence |
+| `GET` | `/api/qg/v1/experiments` · `backends` | experiment families; execution surfaces and local availability |
+| `GET` | `/api/qg/v1/evidence/<experiment>` | recorded evidence for one family (read-only) |
+| `GET` | `/api/qg/v1/exports/<experiment>` | secret-free evidence bundle |
+| `POST` | `/api/qg/v1/experiments/validate` | validate an experiment request |
+| `POST` | `/api/qg/v1/experiments/preview` | deterministic QASM + SHA-256, spend = 0 |
+| `POST` | `/api/qg/v1/experiments/run-local` | exact `CLASSICAL_REFERENCE` run |
+| `POST` | `/api/qg/v1/experiments/plan` | QG plan envelope, identical to `cq-hecs qg plan` and MCP `cqhecs_qg_plan` |
+| `POST` | `/api/qg/v1/experiments/compare` | exact BMV reference versus the CQ-HECS router |
+| `POST` | `/api/qg/v1/openquantum/quote`, `/api/qg/v1/openquantum/submit` | **always a typed `403`** (`qg_paid_path_unavailable`); nothing is quoted, submitted or spent |
+| `GET` | `/api/qg/v1/openquantum/jobs/<id>[/results]` | **always a typed `403`**, same document |
+
+Example (every `/api` call needs the bearer token printed at launch):
 
 ```bash
-curl -s http://127.0.0.1:8765/api/simulate \
-  -H 'Content-Type: application/json' \
+curl -s http://127.0.0.1:8765/api/v1/simulate \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"source":"preset:bell","shots":256,"noise":"ideal"}'
 ```
 
@@ -148,8 +197,13 @@ re-verification note.
 
 ## Security
 
-- Loopback only by default. There is no authentication because there is no
-  remote mode; use a reverse proxy with auth if you expose it.
+- Loopback only by default. Every `/api` route requires a per-launch bearer token
+  (`Authorization: Bearer ...`; or set `CQ_HECS_STUDIO_TOKEN` / `CQ_HECS_STUDIO_TOKEN_FILE`
+  to choose it, which then is **not** embedded in the printed URL). A Host allow-list and an
+  Origin check apply, POST bodies must be `application/json`, bodies over 1 MB are refused,
+  and rejected bodies are drained under a bounded deadline. This defends a loopback server
+  against cross-site POSTs and DNS rebinding; it is not a remote-service security model,
+  so do not expose it to a network (`tests/test_studio_security.py`).
 - Only bundled static files are served. There is no path traversal surface.
 - The server never reads `quantumrings.conf`, `sdk-key-*.json`, `oq.py`, or the
   Open Quantum account store.

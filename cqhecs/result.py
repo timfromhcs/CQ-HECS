@@ -9,7 +9,7 @@ Path D: Certified Classical Approximation (Sparse-Pauli-Dynamics) with proven er
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 class SimulationState(str, Enum):
@@ -238,6 +238,10 @@ class SimulationResult:
     is_real_hardware: bool = False
     calibration_timestamp: Optional[str] = None
     provider_job_id: Optional[str] = None
+    #: Gate names in the run circuit that the backend profile had no calibrated channel
+    #: for (D4). Non-empty only for a noisy hardware-profile run; those gates were
+    #: simulated with no channel and that fact is recorded instead of being hidden.
+    uncovered_gates: List[str] = field(default_factory=list)
 
     def __post_init__(self):
         if self.state is None:
@@ -349,6 +353,7 @@ class SimulationResult:
             "is_real_hardware": self.is_real_hardware,
             "calibration_timestamp": self.calibration_timestamp,
             "provider_job_id": self.provider_job_id,
+            "uncovered_gates": list(self.uncovered_gates),
         }
 
     def __getitem__(self, key: str) -> Any:

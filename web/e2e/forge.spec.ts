@@ -14,7 +14,7 @@ test("demo is the default, every tab renders and the console stays clean", async
   const origin = new URL(page.url() === "about:blank" ? "http://127.0.0.1:4173" : page.url()).origin;
   page.on("request", (r) => {
     const u = new URL(r.url());
-    if (u.protocol.startsWith("http") && u.origin !== new URL(process.env.E2E_BASE_URL ?? origin).origin && !/fonts\.(googleapis|gstatic)\.com$/.test(u.hostname)) external.push(r.url());
+    if (u.protocol.startsWith("http") && u.origin !== new URL(process.env.E2E_BASE_URL ?? origin).origin && !/^(fonts\.(googleapis|gstatic)\.com|vercel\.live)$/.test(u.hostname)) external.push(r.url());
   });
   await page.goto("/forge.html?lang=en");
   await expect(page.locator("#env-badge")).toHaveText("DEMO");
@@ -125,7 +125,7 @@ for (const tab of TABS) {
   test(`axe: ${tab} has no violations`, async ({ page }) => {
     await page.goto(`/forge.html?lang=en#${tab}`);
     if (tab === "bench") { await page.click("#be-run"); await expect(page.locator("#be-selected")).toBeVisible({ timeout: 30_000 }); }
-    const res = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+    const res = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
     expect(res.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
   });
 }

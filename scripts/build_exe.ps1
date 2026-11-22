@@ -1,76 +1,106 @@
-# Build the standalone Windows executable (onedir).
+# Build the Windows application folder (PyInstaller ONEDIR, not a single-file app).
 #
 #   powershell -ExecutionPolicy Bypass -File scripts/build_exe.ps1
+#   powershell -ExecutionPolicy Bypass -File scripts/build_exe.ps1 -OutDir C:\tmp\cqhecs-out -WorkDir C:\tmp\cqhecs-work
 #
-# Output: dist/cq-hecs/cq-hecs.exe plus _internal/. Zip the folder for a
-# release asset. One-file mode is intentionally not used: a 518 MB one-file
-# build failed to extract bcrypt at runtime on the reference Windows machine.
+# Output: <OutDir>\cq-hecs\cq-hecs.exe plus _internal\, and the deterministic archive
+# <OutDir>\cqhecs-<version>-windows-x64.zip. The zip is a folder of files: it must be
+# extracted before use. One-file mode is intentionally not used: a 518 MB one-file build
+# failed to extract bcrypt at runtime on the reference Windows machine.
+#
+# The smoke test runs scripts/package_smoke.py against a COPY of the folder in a temporary
+# directory outside the repository, with PYTHONPATH removed. It is not a clean-machine test.
 
 param(
-  # Interpreter that has the runtime dependencies and PyInstaller installed.
-  [string]$Python = "python"
+  # Interpreter that has the runtime dependencies and PyInstaller installed. Use a CLEAN
+  # virtual environment (numpy, qiskit, optional qiskit-aer, pyinstaller): a general
+  # environment drags unrelated packages into the bundle.
+  [string]$Python = "python",
+  # Where the app folder and archive go. Default keeps the historical dist\ location.
+  [string]$OutDir = "",
+  # PyInstaller work and spec directories (own names so parallel builds cannot collide).
+  [string]$WorkDir = "",
+  [switch]$SkipSmoke
 )
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
+if (-not $OutDir) { $OutDir = Join-Path $Root "dist" }
+if (-not $WorkDir) { $WorkDir = Join-Path $Root "build\pyinstaller" }
+New-Item -ItemType Directory -Force -Path $OutDir, $WorkDir | Out-Null
+$OutDir = (Resolve-Path $OutDir).Path
+$WorkDir = (Resolve-Path $WorkDir).Path
+
+# qiskit-aer is optional (only `cq-hecs verify` uses it): bundle it only if present.
+$AerArgs = @()
+# Windows PowerShell 5.1 turns native stderr into a terminating error under
+# $ErrorActionPreference = "Stop" even with 2>$null, so relax it for this probe only.
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+& $Python -c "import qiskit_aer" 2>&1 | Out-Null
+$aerProbe = $LASTEXITCODE
+$ErrorActionPreference = $prevEap
+if ($aerProbe -eq 0) {
+  $AerArgs = @("--collect-submodules", "qiskit_aer", "--collect-data", "qiskit_aer")
+} else {
+  Write-Host "qiskit_aer not installed: building without it (cq-hecs verify will report it missing)"
+}
+
 & $Python -m PyInstaller `
   --noconfirm `
+  --paths $Root `
   --clean `
   --onedir `
   --name cq-hecs `
-  --add-data "cqhecs\studio\static;cqhecs\studio\static" `
-  --add-data "cqhecs\studio\data;cqhecs\studio\data" `
+  --distpath $OutDir `
+  --workpath $WorkDir `
+  --specpath $WorkDir `
+  --add-data "$Root\cqhecs\studio\static;cqhecs\studio\static" `
+  --add-data "$Root\cqhecs\studio\data;cqhecs\studio\data" `
   --collect-submodules qiskit `
   --collect-data qiskit `
-  --collect-submodules qiskit_aer `
-  --collect-data qiskit_aer `
-  "cqhecs\cli.py"
+  @AerArgs `
+  "$Root\cqhecs\cli.py"
 
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed with exit code $LASTEXITCODE" }
 
-$Exe = ".\dist\cq-hecs\cq-hecs.exe"
-& $Exe version
-if ($LASTEXITCODE -ne 0) { throw "standalone binary failed its version smoke test" }
-& $Exe sat solve "benchmarks\sat\pigeonhole_6_5.cnf" | Out-Host
-if ($LASTEXITCODE -ne 0) { throw "standalone binary failed its SAT smoke test" }
-& $Exe sat solve "benchmarks\sat\pigeonhole_6_5.cnf" --engine omniwave | Out-Host
-if ($LASTEXITCODE -ne 0) { throw "standalone binary failed its OMNIWAVE smoke test" }
-& $Exe --format json run name:bell --shots 64 | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "standalone binary failed its circuit smoke test" }
-& $Exe --format json run name:bell --device iqm_garnet --shots 64 | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "standalone binary failed its device-profile smoke test" }
+$AppDir = Join-Path $OutDir "cq-hecs"
+$Exe = Join-Path $AppDir "cq-hecs.exe"
+if (-not (Test-Path $Exe)) { throw "expected $Exe was not produced" }
 
-# The Studio must start from outside the repository on the packaged snapshot.
-$Port = 8765
-$Studio = Start-Process -FilePath (Resolve-Path $Exe) -ArgumentList "studio", "--no-browser", "--port", $Port `
-  -WorkingDirectory $env:TEMP -PassThru -WindowStyle Hidden
-try {
-  $ok = $false
-  for ($i = 0; $i -lt 60 -and -not $ok; $i++) {
-    Start-Sleep -Seconds 1
-    try {
-      $health = Invoke-RestMethod "http://127.0.0.1:$Port/api/health" -TimeoutSec 5
-      $ok = [bool]$health.ok
-    } catch { }
+# Licence notices for everything that was bundled (PyInstaller does not copy them).
+$SitePackages = (& $Python -c "import sysconfig;print(sysconfig.get_paths()['purelib'])").Trim()
+$PyiCopying = Get-ChildItem -Path $SitePackages -Filter "COPYING.txt" -Recurse -ErrorAction SilentlyContinue |
+  Where-Object { $_.FullName -like "*pyinstaller-*dist-info*" } | Select-Object -First 1
+$NoticeArgs = @("--app-dir", $AppDir, "--metadata-root", $SitePackages,
+  "--pyz-toc", (Join-Path $WorkDir "cq-hecs\PYZ-00.toc"), "--licence-file", "$Root\LICENSE")
+if ($PyiCopying) { $NoticeArgs += @("--extra-file", ("PyInstaller bootloader=" + $PyiCopying.FullName)) }
+& $Python "$Root\scripts\package_notices.py" @NoticeArgs
+if ($LASTEXITCODE -ne 0) { throw "writing licence notices failed" }
+
+if (-not $SkipSmoke) {
+  # Copy the folder out of the build tree and smoke the copy from a temp directory.
+  $Stage = Join-Path ([System.IO.Path]::GetTempPath()) ("cqhecs-onedir-" + [guid]::NewGuid().ToString("N"))
+  New-Item -ItemType Directory -Path $Stage | Out-Null
+  try {
+    Copy-Item -Recurse $AppDir (Join-Path $Stage "cq-hecs")
+    $Version = (& $Python "$Root\scripts\version.py").Trim()
+    & $Python "$Root\scripts\package_smoke.py" --cmd (Join-Path $Stage "cq-hecs\cq-hecs.exe") `
+      --label onedir --expect-version $Version --out (Join-Path $OutDir "smoke-onedir.json")
+    if ($LASTEXITCODE -ne 0) { throw "standalone folder failed its smoke test (see smoke-onedir.json)" }
+  } finally {
+    Remove-Item -Recurse -Force $Stage -ErrorAction SilentlyContinue
   }
-  if (-not $ok) { throw "standalone binary failed its Studio smoke test" }
-} finally {
-  # The PyInstaller bootloader runs the app in a child process; end the whole
-  # tree, or the child keeps cq-hecs.exe locked and the zip step fails.
-  cmd.exe /c "taskkill /PID $($Studio.Id) /T /F >nul 2>&1"
-  $Studio.WaitForExit(30000) | Out-Null
-  Start-Sleep -Seconds 2
 }
 
-$Version = (& $Python scripts\version.py).Trim()
-$Zip = ".\dist\cqhecs-$Version-windows-x64.zip"
+$Version = (& $Python "$Root\scripts\version.py").Trim()
+$Zip = Join-Path $OutDir "cqhecs-$Version-windows-x64.zip"
 if (Test-Path $Zip) { Remove-Item $Zip }
-# Python's zipfile writes portable forward-slash entry names; Windows
-# PowerShell 5.1 Compress-Archive writes backslashes.
-& $Python -c "import shutil; shutil.make_archive(r'$($Zip -replace '\.zip$','')', 'zip', 'dist', 'cq-hecs')"
-if ($LASTEXITCODE -ne 0) { throw "zipping dist\cq-hecs failed" }
-Write-Host "Built $Exe"
-Write-Host "Release asset: $Zip"
+# Deterministic archive: sorted entries, fixed timestamp, forward-slash names.
+& $Python "$Root\scripts\package_archive.py" --src $AppDir --out $Zip --root-name cq-hecs
+if ($LASTEXITCODE -ne 0) { throw "archiving $AppDir failed" }
+Write-Host "Built $Exe (onedir application folder; extract the zip before use)"
+Write-Host "Archive: $Zip"
 Write-Host ("SHA-256: " + (Get-FileHash $Zip -Algorithm SHA256).Hash.ToLower())

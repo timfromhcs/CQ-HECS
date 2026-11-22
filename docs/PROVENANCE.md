@@ -95,3 +95,13 @@ Each of these has a test in `tests/test_provenance.py` and
 - It does not turn `UNKNOWN` into evidence. A card can carry `status: "UNKNOWN"`.
 - It does not cover the miner/SHA Forge research path yet; that path has its own records
   under `research/sha_forge/`.
+
+
+## Noise calibration provenance (v3 proposal)
+
+Noise profiles carry a separate record, `cqhecs.calibration/3.0` (`cqhecs/calibration_v3.py`),
+with a provenance label (`synthetic`, `measured`, `derived`, `post_hoc`, `unknown`), calibration
+timestamp, layout, gate basis, units and a freshness window. `unknown` freshness is never shown
+as fresh. Gates without a calibrated channel follow an explicit policy (`refuse`, `warn`,
+`ideal`) and are listed. The label describes where numbers came from; it does not show the model
+predicts a device. Not yet displayed in Studio or the CLI.

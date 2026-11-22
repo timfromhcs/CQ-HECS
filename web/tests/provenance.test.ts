@@ -178,3 +178,14 @@ test("noise channels select the NOISY_CLASSICAL mode", () => {
   assert.equal(modeOf({ p1: 0, p2: 0, readout: 0 }), "SAMPLED");
   assert.equal(modeOf({ p1: 0.001, p2: 0, readout: 0 }), "NOISY_CLASSICAL");
 });
+
+test("the run card states why each error kind is null (W4-10)", async () => {
+  const card = (await sampleCard()) as {
+    result: { error: Record<string, unknown>; error_scope: Record<string, string> };
+  };
+  assert.deepEqual(card.result.error, { approximation: null, numerical: null, sampling: null });
+  const scope = card.result.error_scope;
+  assert.match(scope.sampling, /1000 shots/);
+  assert.match(scope.numerical, /float64/);
+  assert.equal(typeof scope.approximation, "string");
+});

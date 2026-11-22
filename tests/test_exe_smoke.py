@@ -43,3 +43,16 @@ def test_exe_device_profiles(tmp_path):
     assert {"iqm_garnet", "ibm_kingston", "rigetti_cepheus"} <= {d["id"] for d in payload["devices"]}
     run = json.loads(_run("--format", "json", "run", "name:bell", "--device", "iqm_garnet", "--shots", "500", cwd=tmp_path).stdout)
     assert sum(run["result"]["counts"].values()) == 500
+
+
+def test_exe_plan_and_qg_plan_share_the_service_documents(tmp_path):
+    plan = json.loads(_run("--format", "json", "plan", "name:bell", cwd=tmp_path).stdout)["plan"]
+    analyzed = json.loads(_run("--format", "json", "analyze", "name:bell", "--explain", cwd=tmp_path).stdout)["plan"]
+    assert plan == analyzed
+    qg = json.loads(_run("--format", "json", "qg", "plan", "--experiment", "bmv", "--theta", "0.7", cwd=tmp_path).stdout)
+    assert qg["qg_plan"]["physical_execution"] is False and len(qg["digest"]) == 64
+
+
+def test_exe_doctor_reports_components(tmp_path):
+    report = json.loads(_run("--format", "json", "doctor", cwd=tmp_path).stdout)
+    assert "vulkan_loader" in report["components"] and set(report["backends"]) == {"A", "B", "C", "D"}

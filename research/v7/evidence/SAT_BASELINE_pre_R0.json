@@ -1,0 +1,593 @@
+{
+  "cqhecs_version": "5.0.0",
+  "engines_requested": [
+    "watched",
+    "omniwave",
+    "cadical",
+    "scan"
+  ],
+  "focused_tests": {
+    "command": "-m pytest tests/test_unified_solver.py tests/test_drat.py tests/test_sat_external.py -q -rs -p no:cacheprovider",
+    "returncode": 0,
+    "summary": "======================== 22 passed, 1 skipped in 1.92s ========================",
+    "wall_seconds": 3.11
+  },
+  "formulas": [
+    {
+      "engines": [
+        {
+          "engine": "watched",
+          "max_wall_seconds": 0.004136,
+          "median_wall_seconds": 0.003817,
+          "min_wall_seconds": 0.003707,
+          "proof_labels": [
+            "model verified against the original CNF"
+          ],
+          "runs": [
+            {
+              "proof": "model verified against the original CNF",
+              "reason": "model verified clause by clause",
+              "status": "SAT",
+              "wall_seconds": 0.004136
+            },
+            {
+              "proof": "model verified against the original CNF",
+              "reason": "model verified clause by clause",
+              "status": "SAT",
+              "wall_seconds": 0.003707
+            },
+            {
+              "proof": "model verified against the original CNF",
+              "reason": "model verified clause by clause",
+              "status": "SAT",
+              "wall_seconds": 0.003817
+            }
+          ],
+          "state": "RUN",
+          "statuses": [
+            "SAT"
+          ]
+        },
+        {
+          "engine": "omniwave",
+          "max_wall_seconds": 0.025049,
+          "median_wall_seconds": 0.005437,
+          "min_wall_seconds": 0.004213,
+          "proof_labels": [
+            "None"
+          ],
+          "runs": [
+            {
+              "proof": null,
+              "reason": "OMNIWAVE (1 waves); model verified clause by clause",
+              "status": "SAT",
+              "wall_seconds": 0.025049
+            },
+            {
+              "proof": null,
+              "reason": "OMNIWAVE (1 waves); model verified clause by clause",
+              "status": "SAT",
+              "wall_seconds": 0.005437
+            },
+            {
+              "proof": null,
+              "reason": "OMNIWAVE (1 waves); model verified clause by clause",
+              "status": "SAT",
+              "wall_seconds": 0.004213
+            }
+          ],
+          "state": "RUN",
+          "statuses": [
+            "SAT"
+          ]
+        },
+        {
+          "engine": "cadical",
+          "reason": "python-sat is not installed",
+          "state": "NOT_RUN"
+        },
+        {
+          "engine": "scan",
+          "max_wall_seconds": 0.004696,
+          "median_wall_seconds": 0.004612,
+          "min_wall_seconds": 0.004564,
+          "proof_labels": [
+            "None"
+          ],
+          "runs": [
+            {
+              "proof": null,
+              "reason": "model verified clause by clause",
+              "status": "SAT",
+              "wall_seconds": 0.004564
+            },
+            {
+              "proof": null,
+              "reason": "model verified clause by clause",
+              "status": "SAT",
+              "wall_seconds": 0.004696
+            },
+            {
+              "proof": null,
+              "reason": "model verified clause by clause",
+              "status": "SAT",
+              "wall_seconds": 0.004612
+            }
+          ],
+          "state": "RUN",
+          "statuses": [
+            "SAT"
+          ]
+        }
+      ],
+      "name": "random-3sat-30-sat-side",
+      "num_clauses": 100,
+      "num_vars": 30,
+      "sha256": "4552e2dcc5dc2a11f45a0c2953722c7760c35ed6f58f456e3353855f9880b440",
+      "timeout_seconds": 20.0
+    },
+    {
+      "engines": [
+        {
+          "engine": "watched",
+          "max_wall_seconds": 0.00206,
+          "median_wall_seconds": 0.002054,
+          "min_wall_seconds": 0.002019,
+          "proof_labels": [
+            "model verified against the original CNF"
+          ],
+          "runs": [
+            {
+              "proof": "model verified against the original CNF",
+              "reason": "model verified clause by clause",
+              "status": "SAT",
+              "wall_seconds": 0.00206
+            },
+            {
+              "proof": "model verified against the original CNF",
+              "reason": "model verified clause by clause",
+              "status": "SAT",
+              "wall_seconds": 0.002054
+            },
+            {
+              "proof": "model verified against the original CNF",
+              "reason": "model verified clause by clause",
+              "status": "SAT",
+              "wall_seconds": 0.002019
+            }
+          ],
+          "state": "RUN",
+          "statuses": [
+            "SAT"
+          ]
+        },
+        {
+          "engine": "omniwave",
+          "max_wall_seconds": 0.002756,
+          "median_wall_seconds": 0.002486,
+          "min_wall_seconds": 0.002462,
+          "proof_labels": [
+            "None"
+          ],
+          "runs": [
+            {
+              "proof": null,
+              "reason": "OMNIWAVE (1 waves); model verified clause by clause",
+              "status": "SAT",
+              "wall_seconds": 0.002756
+            },
+            {
+              "proof": null,
+              "reason": "OMNIWAVE (1 waves); model verified clause by clause",
+              "status": "SAT",
+              "wall_seconds": 0.002462
+            },
+            {
+              "proof": null,
+              "reason": "OMNIWAVE (1 waves); model verified clause by clause",
+              "status": "SAT",
+              "wall_seconds": 0.002486
+            }
+          ],
+          "state": "RUN",
+          "statuses": [
+            "SAT"
+          ]
+        },
+        {
+          "engine": "cadical",
+          "reason": "python-sat is not installed",
+          "state": "NOT_RUN"
+        },
+        {
+          "engine": "scan",
+          "max_wall_seconds": 0.002174,
+          "median_wall_seconds": 0.00217,
+          "min_wall_seconds": 0.002125,
+          "proof_labels": [
+            "None"
+          ],
+          "runs": [
+            {
+              "proof": null,
+              "reason": "model verified clause by clause",
+              "status": "SAT",
+              "wall_seconds": 0.00217
+            },
+            {
+              "proof": null,
+              "reason": "model verified clause by clause",
+              "status": "SAT",
+              "wall_seconds": 0.002125
+            },
+            {
+              "proof": null,
+              "reason": "model verified clause by clause",
+              "status": "SAT",
+              "wall_seconds": 0.002174
+            }
+          ],
+          "state": "RUN",
+          "statuses": [
+            "SAT"
+          ]
+        }
+      ],
+      "name": "planted-30",
+      "num_clauses": 110,
+      "num_vars": 30,
+      "sha256": "a722f364be2334f150bc380072c37554808067c8f2a21cae82904ed57dd89144",
+      "timeout_seconds": 20.0
+    },
+    {
+      "engines": [
+        {
+          "engine": "watched",
+          "max_wall_seconds": 0.002735,
+          "median_wall_seconds": 0.002562,
+          "min_wall_seconds": 0.002549,
+          "proof_labels": [
+            "no certificate produced (exhaustive search; the scan engine produces a tree-resolution proof)"
+          ],
+          "runs": [
+            {
+              "proof": "no certificate produced (exhaustive search; the scan engine produces a tree-resolution proof)",
+              "reason": "exhaustive DPLL search; no certificate requested",
+              "status": "UNSAT",
+              "wall_seconds": 0.002549
+            },
+            {
+              "proof": "no certificate produced (exhaustive search; the scan engine produces a tree-resolution proof)",
+              "reason": "exhaustive DPLL search; no certificate requested",
+              "status": "UNSAT",
+              "wall_seconds": 0.002735
+            },
+            {
+              "proof": "no certificate produced (exhaustive search; the scan engine produces a tree-resolution proof)",
+              "reason": "exhaustive DPLL search; no certificate requested",
+              "status": "UNSAT",
+              "wall_seconds": 0.002562
+            }
+          ],
+          "state": "RUN",
+          "statuses": [
+            "UNSAT"
+          ]
+        },
+        {
+          "engine": "omniwave",
+          "max_wall_seconds": 0.006744,
+          "median_wall_seconds": 0.006458,
+          "min_wall_seconds": 0.005765,
+          "proof_labels": [
+            "DRAT proof checked by cqhecs.drat"
+          ],
+          "runs": [
+            {
+              "proof": "DRAT proof checked by cqhecs.drat",
+              "reason": "OMNIWAVE complete coverage; DRAT proof (47 lemmas) checked by cqhecs.drat",
+              "status": "UNSAT",
+              "wall_seconds": 0.006744
+            },
+            {
+              "proof": "DRAT proof checked by cqhecs.drat",
+              "reason": "OMNIWAVE complete coverage; DRAT proof (47 lemmas) checked by cqhecs.drat",
+              "status": "UNSAT",
+              "wall_seconds": 0.005765
+            },
+            {
+              "proof": "DRAT proof checked by cqhecs.drat",
+              "reason": "OMNIWAVE complete coverage; DRAT proof (47 lemmas) checked by cqhecs.drat",
+              "status": "UNSAT",
+              "wall_seconds": 0.006458
+            }
+          ],
+          "state": "RUN",
+          "statuses": [
+            "UNSAT"
+          ]
+        },
+        {
+          "engine": "cadical",
+          "reason": "python-sat is not installed",
+          "state": "NOT_RUN"
+        },
+        {
+          "engine": "scan",
+          "max_wall_seconds": 0.006077,
+          "median_wall_seconds": 0.005444,
+          "min_wall_seconds": 0.00541,
+          "proof_labels": [
+            "tree-resolution certificate checked in-repo"
+          ],
+          "runs": [
+            {
+              "proof": "tree-resolution certificate checked in-repo",
+              "reason": "exhaustive DPLL search; tree-resolution certificate checked (47 steps)",
+              "status": "UNSAT",
+              "wall_seconds": 0.00541
+            },
+            {
+              "proof": "tree-resolution certificate checked in-repo",
+              "reason": "exhaustive DPLL search; tree-resolution certificate checked (47 steps)",
+              "status": "UNSAT",
+              "wall_seconds": 0.006077
+            },
+            {
+              "proof": "tree-resolution certificate checked in-repo",
+              "reason": "exhaustive DPLL search; tree-resolution certificate checked (47 steps)",
+              "status": "UNSAT",
+              "wall_seconds": 0.005444
+            }
+          ],
+          "state": "RUN",
+          "statuses": [
+            "UNSAT"
+          ]
+        }
+      ],
+      "name": "pigeonhole-5-4",
+      "num_clauses": 45,
+      "num_vars": 20,
+      "sha256": "c8a59526385b925866951e9ea410a123c4d8715d7144f038539eebbff2b2c222",
+      "timeout_seconds": 20.0
+    },
+    {
+      "engines": [
+        {
+          "engine": "watched",
+          "max_wall_seconds": 0.02066,
+          "median_wall_seconds": 0.019032,
+          "min_wall_seconds": 0.017746,
+          "proof_labels": [
+            "no certificate produced (exhaustive search; the scan engine produces a tree-resolution proof)"
+          ],
+          "runs": [
+            {
+              "proof": "no certificate produced (exhaustive search; the scan engine produces a tree-resolution proof)",
+              "reason": "exhaustive DPLL search; no certificate requested",
+              "status": "UNSAT",
+              "wall_seconds": 0.017746
+            },
+            {
+              "proof": "no certificate produced (exhaustive search; the scan engine produces a tree-resolution proof)",
+              "reason": "exhaustive DPLL search; no certificate requested",
+              "status": "UNSAT",
+              "wall_seconds": 0.019032
+            },
+            {
+              "proof": "no certificate produced (exhaustive search; the scan engine produces a tree-resolution proof)",
+              "reason": "exhaustive DPLL search; no certificate requested",
+              "status": "UNSAT",
+              "wall_seconds": 0.02066
+            }
+          ],
+          "state": "RUN",
+          "statuses": [
+            "UNSAT"
+          ]
+        },
+        {
+          "engine": "omniwave",
+          "max_wall_seconds": 0.072713,
+          "median_wall_seconds": 0.0714,
+          "min_wall_seconds": 0.07102,
+          "proof_labels": [
+            "DRAT proof checked by cqhecs.drat"
+          ],
+          "runs": [
+            {
+              "proof": "DRAT proof checked by cqhecs.drat",
+              "reason": "OMNIWAVE complete coverage; DRAT proof (239 lemmas) checked by cqhecs.drat",
+              "status": "UNSAT",
+              "wall_seconds": 0.072713
+            },
+            {
+              "proof": "DRAT proof checked by cqhecs.drat",
+              "reason": "OMNIWAVE complete coverage; DRAT proof (239 lemmas) checked by cqhecs.drat",
+              "status": "UNSAT",
+              "wall_seconds": 0.07102
+            },
+            {
+              "proof": "DRAT proof checked by cqhecs.drat",
+              "reason": "OMNIWAVE complete coverage; DRAT proof (239 lemmas) checked by cqhecs.drat",
+              "status": "UNSAT",
+              "wall_seconds": 0.0714
+            }
+          ],
+          "state": "RUN",
+          "statuses": [
+            "UNSAT"
+          ]
+        },
+        {
+          "engine": "cadical",
+          "reason": "python-sat is not installed",
+          "state": "NOT_RUN"
+        },
+        {
+          "engine": "scan",
+          "max_wall_seconds": 0.051204,
+          "median_wall_seconds": 0.040363,
+          "min_wall_seconds": 0.040181,
+          "proof_labels": [
+            "tree-resolution certificate checked in-repo"
+          ],
+          "runs": [
+            {
+              "proof": "tree-resolution certificate checked in-repo",
+              "reason": "exhaustive DPLL search; tree-resolution certificate checked (239 steps)",
+              "status": "UNSAT",
+              "wall_seconds": 0.040181
+            },
+            {
+              "proof": "tree-resolution certificate checked in-repo",
+              "reason": "exhaustive DPLL search; tree-resolution certificate checked (239 steps)",
+              "status": "UNSAT",
+              "wall_seconds": 0.051204
+            },
+            {
+              "proof": "tree-resolution certificate checked in-repo",
+              "reason": "exhaustive DPLL search; tree-resolution certificate checked (239 steps)",
+              "status": "UNSAT",
+              "wall_seconds": 0.040363
+            }
+          ],
+          "state": "RUN",
+          "statuses": [
+            "UNSAT"
+          ]
+        }
+      ],
+      "name": "pigeonhole-6-5",
+      "num_clauses": 81,
+      "num_vars": 30,
+      "sha256": "7e5d017392eaa29f07649ef4d2383bd8472e0979a3c17c46e48c7f9442fe9610",
+      "timeout_seconds": 30.0
+    },
+    {
+      "engines": [
+        {
+          "engine": "watched",
+          "max_wall_seconds": 0.00138,
+          "median_wall_seconds": 0.001377,
+          "min_wall_seconds": 0.001301,
+          "proof_labels": [
+            "no certificate produced (exhaustive search; the scan engine produces a tree-resolution proof)"
+          ],
+          "runs": [
+            {
+              "proof": "no certificate produced (exhaustive search; the scan engine produces a tree-resolution proof)",
+              "reason": "exhaustive DPLL search; no certificate requested",
+              "status": "UNSAT",
+              "wall_seconds": 0.001377
+            },
+            {
+              "proof": "no certificate produced (exhaustive search; the scan engine produces a tree-resolution proof)",
+              "reason": "exhaustive DPLL search; no certificate requested",
+              "status": "UNSAT",
+              "wall_seconds": 0.00138
+            },
+            {
+              "proof": "no certificate produced (exhaustive search; the scan engine produces a tree-resolution proof)",
+              "reason": "exhaustive DPLL search; no certificate requested",
+              "status": "UNSAT",
+              "wall_seconds": 0.001301
+            }
+          ],
+          "state": "RUN",
+          "statuses": [
+            "UNSAT"
+          ]
+        },
+        {
+          "engine": "omniwave",
+          "max_wall_seconds": 0.004018,
+          "median_wall_seconds": 0.003629,
+          "min_wall_seconds": 0.003239,
+          "proof_labels": [
+            "DRAT proof checked by cqhecs.drat"
+          ],
+          "runs": [
+            {
+              "proof": "DRAT proof checked by cqhecs.drat",
+              "reason": "OMNIWAVE complete coverage; DRAT proof (31 lemmas) checked by cqhecs.drat",
+              "status": "UNSAT",
+              "wall_seconds": 0.003239
+            },
+            {
+              "proof": "DRAT proof checked by cqhecs.drat",
+              "reason": "OMNIWAVE complete coverage; DRAT proof (31 lemmas) checked by cqhecs.drat",
+              "status": "UNSAT",
+              "wall_seconds": 0.004018
+            },
+            {
+              "proof": "DRAT proof checked by cqhecs.drat",
+              "reason": "OMNIWAVE complete coverage; DRAT proof (31 lemmas) checked by cqhecs.drat",
+              "status": "UNSAT",
+              "wall_seconds": 0.003629
+            }
+          ],
+          "state": "RUN",
+          "statuses": [
+            "UNSAT"
+          ]
+        },
+        {
+          "engine": "cadical",
+          "reason": "python-sat is not installed",
+          "state": "NOT_RUN"
+        },
+        {
+          "engine": "scan",
+          "max_wall_seconds": 0.003624,
+          "median_wall_seconds": 0.003504,
+          "min_wall_seconds": 0.003455,
+          "proof_labels": [
+            "tree-resolution certificate checked in-repo"
+          ],
+          "runs": [
+            {
+              "proof": "tree-resolution certificate checked in-repo",
+              "reason": "exhaustive DPLL search; tree-resolution certificate checked (31 steps)",
+              "status": "UNSAT",
+              "wall_seconds": 0.003455
+            },
+            {
+              "proof": "tree-resolution certificate checked in-repo",
+              "reason": "exhaustive DPLL search; tree-resolution certificate checked (31 steps)",
+              "status": "UNSAT",
+              "wall_seconds": 0.003504
+            },
+            {
+              "proof": "tree-resolution certificate checked in-repo",
+              "reason": "exhaustive DPLL search; tree-resolution certificate checked (31 steps)",
+              "status": "UNSAT",
+              "wall_seconds": 0.003624
+            }
+          ],
+          "state": "RUN",
+          "statuses": [
+            "UNSAT"
+          ]
+        }
+      ],
+      "name": "tseitin-3x3",
+      "num_clauses": 32,
+      "num_vars": 12,
+      "sha256": "92f2ac012759ca0a23e9b8e50b4a67a6abf2447034f79b67ebb20ea81e58d625",
+      "timeout_seconds": 20.0
+    }
+  ],
+  "git_branch": "claude/repo-status-agents-v6-49d8ca",
+  "git_sha": "5ab028a663f8a9fdae34716d32ad80f2179acc04",
+  "machine": "AMD64",
+  "note": "Pre-change timing baseline. Timings are for this machine only; no asymptotic or competitive claim.",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.13.13",
+  "repeat": 3,
+  "schema": "hcs.sat.baseline_snapshot.v1",
+  "worktree_dirty_files": [
+    "?? scripts/sat_baseline_snapshot.py"
+  ]
+}

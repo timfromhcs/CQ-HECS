@@ -287,6 +287,19 @@ class ExactMPSTensorChain:
         self.discarded_spectral_norm = 0.0
         self.max_retained_singular_value = 0.0
         self.num_two_qubit_rewrites = 0
+        # SVD instrumentation (diagnostic only; see numerical contract).
+        #: Largest single discarded singular value (absolute).
+        self.max_discarded_singular_value = 0.0
+        #: Largest discarded value relative to that step's largest value.
+        self.max_discarded_relative = 0.0
+        #: Smallest retained value relative to that step's largest value.
+        self.min_retained_relative = 1.0
+        #: Number of SVD steps that discarded at least one value.
+        self.svd_steps_with_discard = 0
+        #: Number of SVDs performed.
+        self.svd_count = 0
+        #: Squared norm <psi|psi> measured at the last sample() call.
+        self.last_sample_norm_sq: Optional[float] = None
 
         self._initialize_state()
 
@@ -437,6 +450,22 @@ class ExactMPSTensorChain:
         self.sites[right] = np.ascontiguousarray(new_right)
 
         self.discarded_spectral_norm += discarded
+        if S.size:
+            self.svd_count += 1
+            if discarded > 0.0:
+                self.svd_steps_with_discard += 1
+                top_disc = float(np.max(S[~keep_mask]))
+                self.max_discarded_singular_value = max(
+                    self.max_discarded_singular_value, top_disc
+                )
+                if s_max > 0.0:
+                    self.max_discarded_relative = max(
+                        self.max_discarded_relative, top_disc / s_max
+                    )
+            if s_max > 0.0 and exact_rank >= 1:
+                self.min_retained_relative = min(
+                    self.min_retained_relative, float(S[exact_rank - 1]) / s_max
+                )
         self.num_two_qubit_rewrites += 1
         self.max_observed_chi = max(self.max_observed_chi, exact_rank)
 
@@ -676,6 +705,7 @@ class ExactMPSTensorChain:
             R[k] = np.einsum("asd, bsd -> ab", W, np.conj(tk))
 
         norm_sq = float(R[0][0, 0].real)
+        self.last_sample_norm_sq = norm_sq
         if norm_sq <= 1e-15:
             raise ValueError(
                 "State has zero norm; cannot sample. The MPS chain likely "
@@ -779,6 +809,12 @@ def _numerical_rank_metadata(mps: ExactMPSTensorChain) -> Dict[str, Any]:
         # singular values, not a spectral norm or an end-to-end error bound.
         "discarded_spectral_mass_diagnostic": discarded,
         "discarded_singular_value_sum": discarded,
+        "max_discarded_singular_value": float(mps.max_discarded_singular_value),
+        "max_discarded_relative": float(mps.max_discarded_relative),
+        "min_retained_relative": float(mps.min_retained_relative),
+        "svd_steps_with_discard": int(mps.svd_steps_with_discard),
+        "svd_count": int(mps.svd_count),
+        "state_norm_sq_at_sampling": mps.last_sample_norm_sq,
         "numerical_rank_truncation_applied": rank_reduced,
         "bond_dimension_truncation_applied": False,
         "silent_truncation": False,

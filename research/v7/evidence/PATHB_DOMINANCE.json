@@ -1,0 +1,97 @@
+{
+  "cases": [
+    {
+      "branches": 1,
+      "dense_median_seconds": 0.000475,
+      "num_qubits": 8,
+      "path_b_median_seconds": 0.001271,
+      "ratio_path_b_over_dense": 2.6758,
+      "state": "RUN",
+      "t_count": 0
+    },
+    {
+      "branches": 16,
+      "dense_median_seconds": 0.000559,
+      "num_qubits": 8,
+      "path_b_median_seconds": 0.003418,
+      "ratio_path_b_over_dense": 6.1145,
+      "state": "RUN",
+      "t_count": 4
+    },
+    {
+      "branches": 256,
+      "dense_median_seconds": 0.000647,
+      "num_qubits": 8,
+      "path_b_median_seconds": 0.037349,
+      "ratio_path_b_over_dense": 57.7264,
+      "state": "RUN",
+      "t_count": 8
+    },
+    {
+      "branches": 1,
+      "dense_median_seconds": 0.000881,
+      "num_qubits": 10,
+      "path_b_median_seconds": 0.001615,
+      "ratio_path_b_over_dense": 1.8331,
+      "state": "RUN",
+      "t_count": 0
+    },
+    {
+      "branches": 16,
+      "dense_median_seconds": 0.000802,
+      "num_qubits": 10,
+      "path_b_median_seconds": 0.006143,
+      "ratio_path_b_over_dense": 7.6596,
+      "state": "RUN",
+      "t_count": 4
+    },
+    {
+      "branches": 256,
+      "dense_median_seconds": 0.000871,
+      "num_qubits": 10,
+      "path_b_median_seconds": 0.080767,
+      "ratio_path_b_over_dense": 92.729,
+      "state": "RUN",
+      "t_count": 8
+    },
+    {
+      "branches": 1,
+      "dense_median_seconds": 0.001206,
+      "num_qubits": 12,
+      "path_b_median_seconds": 0.002438,
+      "ratio_path_b_over_dense": 2.0216,
+      "state": "RUN",
+      "t_count": 0
+    },
+    {
+      "branches": 16,
+      "dense_median_seconds": 0.001332,
+      "num_qubits": 12,
+      "path_b_median_seconds": 0.016794,
+      "ratio_path_b_over_dense": 12.6081,
+      "state": "RUN",
+      "t_count": 4
+    },
+    {
+      "branches": 256,
+      "dense_median_seconds": 0.001393,
+      "num_qubits": 12,
+      "path_b_median_seconds": 0.252393,
+      "ratio_path_b_over_dense": 181.1866,
+      "state": "RUN",
+      "t_count": 8
+    }
+  ],
+  "cqhecs_version": "5.0.0",
+  "git_sha": "9d9a720870bac5b1b58d725a7959cf808385d2e6",
+  "machine": "AMD64",
+  "note": "Path B is a branch decomposition that contracts onto a dense statevector, not a true stabilizer-rank method. Timings are this machine only; the result is a measured input to P1-04, not an asymptotic or competitive claim.",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.14.6",
+  "repeat": 3,
+  "schema": "hcs.pathb.vs_dense.v1",
+  "shots": 2000,
+  "worktree_dirty_files": [
+    "?? scripts/bench_path_b_vs_dense.py"
+  ]
+}

@@ -1,0 +1,165 @@
+{
+  "status": "RUN_PARTIAL",
+  "adapter": {
+    "vendor": "amd",
+    "architecture": "rdna-2",
+    "isFallbackAdapter": null
+  },
+  "browser": "Google Chrome 157.0.8103.79 (installed, channel=chrome), headless, flags --enable-unsafe-webgpu --ignore-gpu-blocklist",
+  "page": "web/dist served by vite preview 127.0.0.1:4183 (built at HEAD 38e799b, 2026-11-22 07:55)",
+  "declared_tolerance": {
+    "max_abs_probability_diff": 5e-06,
+    "total_variation": 1e-05
+  },
+  "cases_measured": 20,
+  "worst_max_abs_probability_diff": 1.7348836617303576e-08,
+  "worst_cross_check_tv": 7.774124843641131e-08,
+  "cases": [
+    {
+      "name": "bell",
+      "n": 2,
+      "engine": "webgpu",
+      "maxAbs": 1.1102230246251565e-16,
+      "tv": 1.1102230246251565e-16
+    },
+    {
+      "name": "ghz-3",
+      "n": 3,
+      "engine": "webgpu",
+      "maxAbs": 1.1102230246251565e-16,
+      "tv": 1.1102230246251565e-16
+    },
+    {
+      "name": "ghz-12",
+      "n": 12,
+      "engine": "webgpu",
+      "maxAbs": 1.1102230246251565e-16,
+      "tv": 1.1102230246251565e-16
+    },
+    {
+      "name": "s-interference",
+      "n": 1,
+      "engine": "webgpu",
+      "maxAbs": 1.1102230246251565e-16,
+      "tv": 2.220446049250313e-16
+    },
+    {
+      "name": "t-interference",
+      "n": 1,
+      "engine": "webgpu",
+      "maxAbs": 1.2445851793607687e-08,
+      "tv": 1.244585101645157e-08
+    },
+    {
+      "name": "rx-rz",
+      "n": 1,
+      "engine": "webgpu",
+      "maxAbs": 6.735743851571385e-09,
+      "tv": 6.735743601771205e-09
+    },
+    {
+      "name": "global-phase-only",
+      "n": 1,
+      "engine": "webgpu",
+      "maxAbs": 0,
+      "tv": 0
+    },
+    {
+      "name": "controlled-phase",
+      "n": 2,
+      "engine": "webgpu",
+      "maxAbs": 8.704518439373032e-09,
+      "tv": 8.70451905693459e-09
+    },
+    {
+      "name": "control-direction",
+      "n": 2,
+      "engine": "webgpu",
+      "maxAbs": 0,
+      "tv": 0
+    },
+    {
+      "name": "endianness-x-q0",
+      "n": 3,
+      "engine": "webgpu",
+      "maxAbs": 0,
+      "tv": 0
+    },
+    {
+      "name": "endianness-x-q2",
+      "n": 3,
+      "engine": "webgpu",
+      "maxAbs": 0,
+      "tv": 0
+    },
+    {
+      "name": "endianness-x-q1-q3",
+      "n": 4,
+      "engine": "webgpu",
+      "maxAbs": 0,
+      "tv": 0
+    },
+    {
+      "name": "toffoli",
+      "n": 3,
+      "engine": "webgpu",
+      "maxAbs": 0,
+      "tv": 0
+    },
+    {
+      "name": "swap-network",
+      "n": 3,
+      "engine": "webgpu",
+      "maxAbs": 0,
+      "tv": 0
+    },
+    {
+      "name": "qft-4",
+      "n": 4,
+      "engine": "webgpu",
+      "maxAbs": 1.112582748152846e-09,
+      "tv": 8.900661735422588e-09
+    },
+    {
+      "name": "mixed-6-seed11",
+      "n": 6,
+      "engine": "webgpu",
+      "maxAbs": 1.7348836617303576e-08,
+      "tv": 5.375432481644418e-08
+    },
+    {
+      "name": "mixed-10-seed7",
+      "n": 10,
+      "engine": "webgpu",
+      "maxAbs": 1.3727374549576954e-09,
+      "tv": 7.774124843641131e-08
+    },
+    {
+      "name": "measure-identity",
+      "n": 3,
+      "engine": "webgpu",
+      "maxAbs": 0,
+      "tv": 0
+    },
+    {
+      "name": "measure-partial",
+      "n": 3,
+      "engine": "webgpu",
+      "maxAbs": 0,
+      "tv": 0
+    },
+    {
+      "name": "measure-remap",
+      "n": 3,
+      "engine": "webgpu",
+      "maxAbs": 0,
+      "tv": 0
+    },
+    {
+      "name": "measure-mid-circuit",
+      "n": 2,
+      "error": "TimeoutError: page.waitForSelector: Timeout 20000ms exceeded.",
+      "body": "WebGPU runs circuits without mid-circuit measurement, reset or gate noise only. Please choose WebAssembly. | "
+    }
+  ]
+}

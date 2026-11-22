@@ -86,9 +86,10 @@ Python-Engine; behauptet wird nur Übereinstimmung auf einem erklärten Korpus.
 - **Bundle-Budget:** `npm run build` schlägt über 270 KB gzip JavaScript, 18 KB WASM und
   8 KB CSS fehl; gemessen am 2026-11-02: 233,5 / 15,0 / 6,6 KB.
 - **Delivery-Check:** `npm run verify:deploy -- <url>` prüft Shell, Security-Header,
-  WASM-MIME-Typ und Cache-Policy. Das Production-Deployment von `1d38df2` bestand 10/10 -
-  über `vercel curl`, weil das Deployment durch Vercel Deployment Protection geschützt ist;
-  das Skript sagt das, statt eine öffentliche URL zu behaupten.
+  WASM-MIME-Typ und Cache-Policy. Das öffentliche Production-Deployment (`https://cq-hecs-web.vercel.app`, älterer Commit `e7e5c1e`, für den 7.0.0-Kandidaten nicht erneut geprüft) bestand
+  10/10 anonym, ohne `--via-cli` (Deployment Protection ist seit 2026-11-02 deaktiviert,
+  siehe `docs/WEB_ENGINES.md`); sollte eine Schutzseite zurückkehren, erkennt das Skript sie und
+  endet mit Code 3.
 
 - **Korpus mit unabhängigem Orakel:** sechs OpenQASM-Fälle werden vom Browser-Parser
   gelesen und mit **Qiskit 2.5.1 Statevector** bei `1e-12` verglichen; ein Test vertauscht
@@ -113,7 +114,50 @@ Branch-Heuristik. Unterstützt mit klarem Umfang:
   auf der zurückgehaltenen Pigeonhole-Instanz braucht sie 157 973 Fronts statt 10 079.
 - Referenz: [`docs/OMNIWAVE.md`](docs/OMNIWAVE.md).
 
-## Verifikation (exakter Stand `c854560` und danach)
+## Neu seit der letzten Veröffentlichung (Entwurf `7.0.0`)
+
+Dieser Zweig ist der letzten Veröffentlichung voraus. Aufgeteilt in implementiert /
+experimentell / gemessen / formal geprüft / nicht unterstützt steht es in
+[`RELEASE_NOTES_DRAFT.md`](RELEASE_NOTES_DRAFT.md); jede für Aufrufer sichtbare Änderung
+mit ausgeführten Beispielen in [`MIGRATION_V7.md`](MIGRATION_V7.md). Kurz:
+
+- **Ein Plan, vier Oberflächen:** `cq-hecs plan`, Python, MCP und Studio liefern dasselbe
+  `ExecutionPlan`-Dokument (ein Test prüft die Gleichheit). Studio hat OpenAPI 3.1 und
+  `/api/v1`; jeder Aufruf braucht ein Token pro Start (**Änderung für Skripte**).
+- **Typisiertes MaxSAT:** `OPTIMAL` nur nach erschöpfender Aufzählung (höchstens 20
+  Variablen), sonst `UNKNOWN`; kein Optimalitätszertifikat.
+- **Ehrliche Fehlerangaben:** Pfad A zieht jede angeforderte Shot-Zahl oder verweigert
+  typisiert; für Pfade B und C bleibt `numerical_error_bound` `None` (nicht hergeleitet,
+  nicht null). Gatter ohne kalibrierten Kanal stehen in `uncovered_gates`; Kalibrierschema
+  v3 trägt Herkunft und Frische.
+- **Nativ und Web:** ABI 1.1, geprüfte Argumente, Vulkan-Fehlerinjektion; WebGPU fällt
+  bei Geräteverlust sichtbar auf WASM zurück.
+- **Quantum-Gravity-Labor:** endliche Modelle auf klassischer Referenz, ohne Jobversand,
+  ohne Zugangsdaten und ohne Kosten; keine Gravitationsmessung.
+- **Formal:** Lean-Spezifikationslemmata (`FORMALIZED_LEMMA`), kein Verfeinerungsbeweis des
+  Codes. Die Forschungspfade E, F, G blieben `RESEARCH_ONLY` und sind nicht routbar.
+
+## Verifikation
+
+Zwei getrennte Tabellen, damit keine Zahl dem falschen Commit zugeschrieben wird.
+
+### Aktueller Entwicklungsstand (`release/v7-stable`)
+
+| Prüfung | Ergebnis | Beleg |
+|---|---|---|
+| Python-Suite, Windows, erneut gelaufen auf `f880d0a` + Wave-F-Arbeitsbaum | 4314 bestanden, 133 übersprungen, 0 fehlgeschlagen | `research/v7/evidence/waveE_E2.md` (Integrator-Protokoll) |
+| Übersprungene Tests | umgebungsabhängig, keine Fehlschläge, aber auch kein Nachweis. Das Skip-Budget-Gate (`skip_budget.py --check`) schlug beim Freeze fehl (134 gegen Budget 105; B-V7-11); das Budget ist jetzt pro Umgebung geführt, die 133 Skips des frischen Laufs liegen im Budget `default` | `research/v7/SKIP_BUDGET.json` |
+| Mutationstests, beim Freeze vor Ort | 95/95 getötet | `research/v7/evidence/waveE_E2.md` |
+| CTest nativ (Vulkan an / nur CPU) | 26/26 / 15/15 | `research/v7/evidence/waveE_E2.md`, `waveA_A2.md` |
+| Web-Unit-Tests | 167/167 | `research/v7/evidence/waveE_E2.md` |
+| Playwright | 128 bestanden / 1 übersprungen (WebGPU, NOT_RUN: kein Adapter); Studio-Plan-UI: 6 | `research/v7/evidence/waveE_E2.md` |
+| Gehostetes CI | bei `38e799b` rot (B-V7-15); bei `f880d0a` laut Integrator alle Lanes grün außer der noch ausstehenden Windows-Volllauf-Lane, hier nicht erneut gegen GitHub geprüft | `research/v7/RELEASE_CANDIDATE_AUDIT.md` |
+| Release-Artefakte | aus `38e799b` gebaut, nicht veröffentlicht | `research/v7/evidence/waveE_E2.md` |
+| Zusätzlich gelaufen (gehostet, `38e799b`) | Linux GCC-12 ASan+UBSan 9/9, Linux nur CPU, Linux lavapipe (Software-ICD) CTest 26/26 (nur Konformität, kein Nachweis für physische GPU) | `research/v7/evidence/waveE_E3.md` |
+| Nicht ausgeführt | Clang-Sanitizer, WebGPU auf Hardware (nur Teillauf), `drat-trim`, `lrat-check`, `cake_lpr`, saubere Installation auf Fremdrechner, Veröffentlichung (es gibt noch kein Tag) | `RELEASE_NOTES_DRAFT.md` |
+
+### Historische Messung (exakter Stand `c854560`)
+
 
 | Prüfung | Ergebnis |
 |---|---|
@@ -157,6 +201,9 @@ python -m pytest tests/ -q
 | Lokale Bridge | [`docs/LOCAL_BRIDGE.md`](docs/LOCAL_BRIDGE.md) |
 | SHA-Rundenanalyse | [`docs/SHA_ROUND_ANALYZER.md`](docs/SHA_ROUND_ANALYZER.md) |
 | Forschungsakte | [`research/sha_forge/`](research/sha_forge/) (Englisch) |
+| Architektur (maßgeblich) | [`ARCHITECTURE.md`](ARCHITECTURE.md) (`docs/ARCHITECTURE.md` ist ein historischer Stand) |
+| Migration | [`MIGRATION_V7.md`](MIGRATION_V7.md) |
+| Release-Notes-Entwurf | [`RELEASE_NOTES_DRAFT.md`](RELEASE_NOTES_DRAFT.md) |
 
 ## Lizenz
 

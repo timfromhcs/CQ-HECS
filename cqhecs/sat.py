@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -54,10 +55,48 @@ UNKNOWN = "UNKNOWN"
 #: ``engine`` and this field. Nothing was removed.
 RESULT_CONTRACT_VERSION = "1.2"
 
+#: Schema id for an exact model-count document (``count_models``). The count is always a
+#: decimal string (never a JSON number) so a value above 2**53 survives JSON (W4-07).
+COUNT_SCHEMA = "hcs.sat.count.v1"
+
 #: Values of ``SATResult.certification``.
 CERTIFICATIONS = ("MODEL_VERIFIED", "TREE_RESOLUTION_CHECKED", "DRAT_CHECKED", "UNCERTIFIED", "NONE")
 
 _CLAUSE_SEPARATORS = {"0"}
+
+#: Largest ``num_vars`` a DIMACS header may declare (SEC-M1). Every surface (Python API, CLI,
+#: Studio, MCP, service) parses through :func:`parse_dimacs`, so this one constant is shared.
+#: Reason for the value: solve and count allocate O(num_vars) lists/sets before any search
+#: (measured: 10,000,000 declared variables took 0.7 s and hundreds of MB; 10**13 raised
+#: ``MemoryError`` from a ~25 byte request). One million variables is far beyond anything the
+#: exact pure-Python engines decide, and bounds that allocation to roughly 100 MB. The refusal
+#: happens on the header, before any list is built.
+MAX_DIMACS_VARS = 1_000_000
+
+#: DIMACS integers are ASCII digits with an optional ``-``; ``int()`` alone also accepts
+#: ``1_0``, ``+1`` and non-ASCII digits (SEC-L4).
+_DIMACS_INT = re.compile(r"-?[0-9]+")
+
+
+def _dimacs_int(token: str) -> int:
+    if not _DIMACS_INT.fullmatch(token):
+        raise ValueError(f"{token!r} is not a DIMACS integer")
+    return int(token)
+
+
+def int_to_decimal_string(value: int) -> str:
+    """
+    Exact decimal string of ``value`` for any size (SEC-L5).
+
+    ``str(int)`` raises ``ValueError`` above Python's 4300-digit conversion limit; changing the
+    process-wide limit is not thread-safe, so large values go through :mod:`decimal`, whose
+    ``Decimal(int)`` constructor is exact and not subject to that limit.
+    """
+    if value.bit_length() < 12_000:  # < ~3,600 digits: always inside the default limit
+        return str(value)
+    import decimal
+
+    return format(decimal.Decimal(value), "f")
 
 
 class CNFFormatError(ValueError):
@@ -168,18 +207,23 @@ def parse_dimacs(text: str, source: Optional[str] = None) -> CNF:
             if len(parts) != 4 or parts[1].lower() != "cnf":
                 raise CNFFormatError(f"line {line_number}: expected 'p cnf <vars> <clauses>'")
             try:
-                num_vars = int(parts[2])
-                declared_clauses = int(parts[3])
+                num_vars = _dimacs_int(parts[2])
+                declared_clauses = _dimacs_int(parts[3])
             except ValueError as exc:
                 raise CNFFormatError(f"line {line_number}: header counts are not integers") from exc
             if num_vars < 0 or declared_clauses < 0:
                 raise CNFFormatError(f"line {line_number}: header counts must be non-negative")
+            if num_vars > MAX_DIMACS_VARS:
+                raise CNFFormatError(
+                    f"line {line_number}: header declares {num_vars} variables; the limit is "
+                    f"{MAX_DIMACS_VARS} (refused before any allocation)"
+                )
             continue
         if num_vars is None:
             raise CNFFormatError(f"line {line_number}: clause before the 'p cnf' header")
         for token in line.split():
             try:
-                literal = int(token)
+                literal = _dimacs_int(token)
             except ValueError as exc:
                 raise CNFFormatError(f"line {line_number}: {token!r} is not an integer") from exc
             if literal == 0:
@@ -249,6 +293,10 @@ class SATResult:
     certified: bool = False
     #: Proof system of a certified UNSAT: ``"tree-resolution"``, ``"DRAT"`` or None.
     proof_system: Optional[str] = None
+    #: Outcome of the UNSAT proof check, machine-readable: ``"accepted"``,
+    #: ``"rejected"``, ``"undecided"``, ``"disabled"`` or None when no verdict or
+    #: no proof check applies. ``certified`` is True only for ``"accepted"``.
+    proof_status: Optional[str] = None
     #: ``"dpll"`` (built-in) or ``"cadical"`` (:mod:`cqhecs.sat_external`).
     engine: str = "dpll"
 
@@ -292,6 +340,7 @@ class SATResult:
             "certificate_steps": len(self.certificate) if self.certificate else 0,
             "certification": self.certification,
             "proof_system": self.proof_system if self.certified else None,
+            "proof_status": self.proof_status,
             "engine": self.engine,
             "contract_version": RESULT_CONTRACT_VERSION,
         }
@@ -874,6 +923,7 @@ def solve(
     note: str
     certificate: Optional[Tuple[Tuple[Any, ...], ...]] = None
     certified = False
+    proof_status: Optional[str] = None
 
     # An empty clause makes the formula UNSAT without any search.
     if any(len(clause) == 0 for clause in formula.clauses):
@@ -928,8 +978,10 @@ def solve(
         if outcome == "DISAGREEMENT":
             status = UNKNOWN
             note = f"UNSAT withheld: {certificate_note}; refusing to report either verdict"
+            proof_status = "rejected"
         else:
             certified = outcome == "CERTIFIED"
+            proof_status = "accepted" if certified else "undecided"
             note = f"exhaustive DPLL search; {certificate_note}"
 
     elapsed_ms = (time.perf_counter() - started) * 1000.0
@@ -950,6 +1002,7 @@ def solve(
         certificate=certificate if status == UNSAT else None,
         certified=bool(certified and status == UNSAT),
         proof_system="tree-resolution" if (certified and status == UNSAT) else None,
+        proof_status=proof_status if status == UNSAT else None,
         engine="dpll-watched" if propagation == "watched" else "dpll",
     )
 
@@ -1083,8 +1136,9 @@ def count_models(
     if sep["status"] == COUNTED:
         value = sep["count"]
         return {
+            "schema": COUNT_SCHEMA,
             "status": COUNTED,
-            "count": str(value),
+            "count": int_to_decimal_string(value),
             "satisfiable": value > 0,
             "num_vars": formula.num_vars,
             "num_clauses": formula.num_clauses,
@@ -1103,6 +1157,7 @@ def count_models(
 
     if method == "separator":
         return {
+            "schema": COUNT_SCHEMA,
             "status": UNKNOWN,
             "count": None,
             "satisfiable": None,
@@ -1253,8 +1308,9 @@ def _count_models_dpll(
                 "claimed (method='separator' or 'auto' may decide this formula)"
             )
     return {
+        "schema": COUNT_SCHEMA,
         "status": status,
-        "count": str(value) if value is not None else None,
+        "count": int_to_decimal_string(value) if value is not None else None,
         "satisfiable": None if value is None else value > 0,
         "num_vars": formula.num_vars,
         "num_clauses": formula.num_clauses,
@@ -1327,6 +1383,87 @@ def max_sat(
         "method": f"exhaustive over 2^{formula.num_vars} assignments",
         "formula_sha256": formula.sha256,
         "formula_original_sha256": formula.original_sha256,
+    }
+
+
+MAXSAT_CONTRACT = "hcs.sat.maxsat.v1"
+
+
+def max_sat_checked(
+    formula: CNF,
+    clause_weights: Optional[Sequence[float]] = None,
+    *,
+    max_vars: int = 20,
+) -> Dict[str, Any]:
+    """
+    Typed MaxSAT contract: ``OPTIMAL`` only when exhaustive enumeration ran.
+
+    Unlike :func:`max_sat` this never raises on the size limit. Above ``max_vars``
+    it returns ``status="UNKNOWN"`` with ``limit_reached=True`` and no optimum or
+    assignment: a limit is not an optimum. An ``OPTIMAL`` result is re-verified
+    here (the reported weight is recomputed from the returned assignment and the
+    unsatisfied/satisfied partition is checked). The optimality *claim* rests on
+    exhaustive enumeration, not on a proof certificate:
+    ``optimality_certificate`` is always ``None``.
+    """
+    base = {
+        "contract": MAXSAT_CONTRACT,
+        "num_vars": formula.num_vars,
+        "num_clauses": formula.num_clauses,
+        "formula_sha256": formula.sha256,
+        "formula_original_sha256": formula.original_sha256,
+        "optimality_certificate": None,
+    }
+    if clause_weights is not None:
+        weights = [float(w) for w in clause_weights]
+        if len(weights) != formula.num_clauses:
+            raise ValueError("clause_weights must have one entry per clause")
+        if any(w < 0 or w != w for w in weights):
+            raise ValueError("clause_weights must be non-negative numbers")
+    if formula.num_vars > max_vars:
+        return {
+            **base,
+            "status": UNKNOWN,
+            "limit_reached": True,
+            "satisfied_weight": None,
+            "assignment": None,
+            "reason": (
+                f"{formula.num_vars} variables exceed the exact limit {max_vars}; "
+                "no optimum is claimed"
+            ),
+            "trust": "NONE",
+        }
+    result = max_sat(formula, clause_weights, max_vars=max_vars)
+    assignment = result["assignment"]
+    weights = (
+        [1.0] * formula.num_clauses
+        if clause_weights is None
+        else [float(w) for w in clause_weights]
+    )
+    satisfied = [
+        i for i, clause in enumerate(formula.clauses)
+        if any(assignment[abs(lit)] == (lit > 0) for lit in clause)
+    ]
+    recomputed = sum(weights[i] for i in satisfied)
+    if satisfied != result["satisfied_clauses"] or abs(recomputed - result["satisfied_weight"]) > 1e-9:
+        return {
+            **base,
+            "status": UNKNOWN,
+            "limit_reached": False,
+            "satisfied_weight": None,
+            "assignment": None,
+            "reason": "internal re-verification of the optimum failed; result refused",
+            "trust": "NONE",
+        }
+    return {
+        **base,
+        **{k: result[k] for k in ("total_weight", "satisfied_clauses", "unsatisfied_clauses", "method")},
+        "status": "OPTIMAL",
+        "limit_reached": False,
+        "satisfied_weight": recomputed,
+        "assignment": assignment,
+        "reason": None,
+        "trust": "EXHAUSTIVE_ENUMERATION_REVERIFIED",
     }
 
 

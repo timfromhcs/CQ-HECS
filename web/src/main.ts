@@ -11,12 +11,15 @@ import { pigeonhole, random3Sat, toDimacs, type SweepPoint } from "./sat";
 import type { EngineInfo, EngineKind, Noise, RunResult, WorkerRequest, WorkerResponse } from "./protocol";
 import type { CodeEditor } from "./editor";
 import { buildRunCard } from "./provenance";
+import { parseRunCard } from "./runcard_import";
+import { hasGateNoise, webgpuRefusal } from "./noise_predicate";
+import { fallbackLimit } from "./fallback";
 import { trajectoryCount } from "./simulate";
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
-type Route = "home" | "guide" | "lab" | "code" | "sat" | "compare" | "device";
+type Route = "home" | "guide" | "lab" | "code" | "sat" | "compare" | "device" | "qg";
 
 let device: DeviceReport | null = null;
 let engineInfo: EngineInfo | null = null;
@@ -38,22 +41,39 @@ const drafts: Record<"qasm" | "js", string> = {
 
 // ------------------------------------------------------------------ worker
 
+/** Workers that have already reported an `error` event (script failed to load, uncaught throw). */
+const failedWorkers = new WeakMap<Worker, string>();
+
 function startWorker(): Worker {
-  return new Worker(new URL("./engine.worker.ts", import.meta.url), { type: "module" });
+  const w = new Worker(new URL("./engine.worker.ts", import.meta.url), { type: "module" });
+  // The event can fire before anyone is waiting on this worker (a script that fails to load
+  // does so during boot), so the failure is remembered instead of being missed.
+  w.addEventListener("error", (e) => failedWorkers.set(w, (e as ErrorEvent).message || t("err.worker")));
+  return w;
 }
 
 function ask<T extends WorkerResponse["type"]>(msg: WorkerRequest, type: T, id?: number): Promise<Extract<WorkerResponse, { type: T }> | { type: "error"; message: string }> {
   return new Promise((resolve) => {
+    const current = worker;
+    const earlier = failedWorkers.get(current);
+    if (earlier !== undefined) { resolve({ type: "error", message: earlier }); return; }
     const handler = (e: MessageEvent<WorkerResponse>) => {
       const m = e.data;
       const sameId = id === undefined || !("id" in m) || (m as { id?: number }).id === id;
       if ((m.type === type || (m.type === "error" && id !== undefined)) && sameId) {
-        worker.removeEventListener("message", handler);
+        current.removeEventListener("message", handler);
+        current.removeEventListener("error", crashed);
         resolve(m as Extract<WorkerResponse, { type: T }>);
       }
     };
-    worker.addEventListener("message", handler);
-    worker.postMessage(msg);
+    const crashed = (e: Event) => {
+      current.removeEventListener("message", handler);
+      current.removeEventListener("error", crashed);
+      resolve({ type: "error", message: (e as ErrorEvent).message || t("err.worker") });
+    };
+    current.addEventListener("message", handler);
+    current.addEventListener("error", crashed);
+    current.postMessage(msg);
   });
 }
 
@@ -132,7 +152,7 @@ function renderHeroDevice() {
 
 // ------------------------------------------------------------------ routing
 
-const ROUTES: Route[] = ["home", "guide", "lab", "code", "sat", "compare", "device"];
+const ROUTES: Route[] = ["home", "guide", "lab", "code", "sat", "compare", "device", "qg"];
 
 function currentRoute(): Route {
   const r = location.hash.replace(/^#\/?/, "").split(/[?&]/)[0] as Route;
@@ -149,9 +169,31 @@ function show(r: Route) {
   bench.querySelector<HTMLElement>(".view-lab")!.hidden = r !== "lab";
   bench.querySelector<HTMLElement>(".view-code")!.hidden = r !== "code";
   if (r === "code") ensureEditor();
+  if (r === "qg") void ensureQg();
   if (r === "compare") $("#cmp-circuit").textContent = describeCircuit();
   window.scrollTo({ top: 0 });
   updateEstimate();
+}
+
+// Quantum Gravity Lab: its own lazy chunk, mounted into a section that is created here so the
+// page markup in index.html stays untouched. Credential-free, local and read-only by design.
+function setupQg() {
+  const section = document.createElement("section");
+  section.className = "page";
+  section.dataset.page = "qg";
+  section.id = "qg-root";
+  section.hidden = true;
+  $("#main").append(section);
+  const link = document.createElement("a");
+  link.href = "#/qg";
+  link.dataset.route = "qg";
+  link.textContent = "QG Lab";
+  document.querySelector(".tabs")!.append(link);
+}
+let qgLoaded: Promise<void> | null = null;
+function ensureQg(): Promise<void> {
+  qgLoaded ??= import("./qg").then((m) => m.mountQg($("#qg-root")));
+  return qgLoaded;
 }
 
 function go(r: Route) {
@@ -171,10 +213,18 @@ function setupChrome() {
   onLangChange(relocalize);
   setLang(initial);
 
+  // Theme: a stored choice wins; otherwise follow the OS preference (W4-13). Always set
+  // data-theme so the toggle's first click flips a known value instead of reading undefined.
+  let theme: "light" | "dark";
   try {
     const stored = localStorage.getItem("theme");
-    if (stored === "light" || stored === "dark") document.documentElement.dataset.theme = stored;
-  } catch { /* storage blocked */ }
+    theme = stored === "light" || stored === "dark"
+      ? stored
+      : (window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  } catch {
+    theme = "dark";
+  }
+  document.documentElement.dataset.theme = theme;
   $("#theme").addEventListener("click", () => {
     const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
@@ -210,6 +260,8 @@ function renderGuide() {
       ${s.body[getLang()]}
       ${s.action ? `<button class="btn primary small-btn" data-try="${s.id}">${esc(ui.tryIt)} →</button>` : ""}
     </section>`).join("");
+  // Code blocks can scroll sideways on a phone; a scrollable region must be keyboard-focusable.
+  document.querySelectorAll<HTMLElement>("#guide-sections pre").forEach((pre) => pre.setAttribute("tabindex", "0"));
 }
 
 function setupGuide() {
@@ -343,16 +395,19 @@ function setupNoise() {
 
 // ------------------------------------------------------------------ code
 
+// Debounce handle for the typing-triggered re-estimate. runCurrent cancels it: a pending
+// estimate firing after Run would hide the run's own error message (updateEstimate clears it).
+let estimateTimer = 0;
+
 async function ensureEditor() {
   if (editor) return;
   const host = $("#editor");
   const { createEditor } = await import("./editor");
   host.replaceChildren();
-  let pending = 0;
   // Re-estimate (limits, memory, runtime) as the user types, debounced.
   editor = createEditor(host, drafts[codeLang], codeLang, runCurrent, () => {
-    clearTimeout(pending);
-    pending = window.setTimeout(updateEstimate, 250);
+    clearTimeout(estimateTimer);
+    estimateTimer = window.setTimeout(updateEstimate, 250);
   });
   updateEstimate();
 }
@@ -430,8 +485,13 @@ function plan() {
   const shots = Math.max(1, Math.min(1_000_000, Math.round(Number($<HTMLInputElement>("#shots").value)) || 1));
   const noise = noiseFor(c.numQubits);
   const terminal = isTerminalOnly(ops);
-  const gateNoisy = noise.p1 > 0 || noise.p2 > 0 || (noise.xflip ?? []).some((v) => v > 0);
-  if (engine === "webgpu" && (!terminal || gateNoisy)) throw new Error(t("run.gpuNoise"));
+  const gateNoisy = hasGateNoise(noise);
+  if (engine === "webgpu") {
+    // The stable code (noise_predicate.ts) lets a caller act on the refusal without parsing a
+    // localized message; the message stays local, the code does not.
+    const refusal = webgpuRefusal(terminal, noise, t("run.gpuNoise"));
+    if (refusal) throw refusal;
+  }
   const gateOps = ops.filter((o) => o.kind === "u").length;
   const trajectories = !terminal ? shots : gateNoisy ? trajectoryCount(shots, gateOps, c.numQubits) : 1;
   const est = estimate(c.numQubits, gateOps, shots, trajectories, limits, engine === "webgpu");
@@ -484,15 +544,31 @@ function stopRun() {
 function runOnce(c: Circuit, ops: ReturnType<typeof compile>, shots: number, engine: EngineKind, noise: Noise, onProgress?: (f: number, label: string) => void, seed = (Math.random() * 2 ** 31) | 0): Promise<RunResult> {
   const id = ++reqId;
   return new Promise((resolve, reject) => {
+    const current = worker;
+    if (failedWorkers.has(current)) { current.terminate(); worker = startWorker(); ask({ type: "init" }, "init"); reject(new Error(t("err.worker"))); return; }
+    const cleanup = () => {
+      current.removeEventListener("message", onMsg);
+      current.removeEventListener("error", onCrash);
+      current.removeEventListener("messageerror", onCrash);
+    };
+    // A worker that dies (out of memory, uncaught exception, script failure) never answers.
+    // Without this the page would stay "busy" forever: settle the run, restart the worker.
+    const onCrash = () => {
+      cleanup();
+      if (worker === current) { current.terminate(); worker = startWorker(); ask({ type: "init" }, "init"); }
+      reject(new Error(t("err.worker")));
+    };
     const onMsg = (e: MessageEvent<WorkerResponse>) => {
       const m = e.data;
       if (m.type === "progress" && m.id === id) onProgress?.(m.fraction, m.label);
       else if ((m.type === "result" && m.result.id === id) || (m.type === "error" && m.id === id)) {
-        worker.removeEventListener("message", onMsg);
+        cleanup();
         if (m.type === "result") resolve(m.result); else reject(new Error(m.message));
       }
     };
     worker.addEventListener("message", onMsg);
+    worker.addEventListener("error", onCrash);
+    worker.addEventListener("messageerror", onCrash);
     worker.postMessage({
       type: "run", id, numQubits: c.numQubits, numClbits: c.numClbits, ops, shots,
       seed, engine, noise,
@@ -502,6 +578,7 @@ function runOnce(c: Circuit, ops: ReturnType<typeof compile>, shots: number, eng
 
 async function runCurrent() {
   if (!$("#stop").hidden) return;
+  clearTimeout(estimateTimer);
   let p: ReturnType<typeof plan>;
   try { p = plan(); } catch (e) { showCodeError(e); return; }
   if (!p.est.safe) { $("#estimate").textContent = `⚠ ${t("run.refused", { reason: estimateReason(p) })}`; return; }
@@ -545,9 +622,11 @@ function showResult(r: RunResult) {
   ];
   if (extra.profile) chips.push(profiles.find((p) => p.id === extra.profile)?.label ?? extra.profile);
   if (extra.extrapolated) chips.push(t("res.extrap", { n: extra.extrapolated }));
+  if (r.fallback) chips.unshift(t("res.fallback", { kind: r.fallback.kind }));
   if (r.mode === "trajectories") chips.push(t("res.traj", { n: r.trajectories }));
   if (r.crossCheckTv !== undefined) chips.push(t("res.tv", { v: r.crossCheckTv.toExponential(1) }));
   $("#stats").innerHTML = chips.map((c) => `<span class="chip">${esc(c)}</span>`).join("");
+  if (r.fallback) disableWebgpuOption(r.fallback.reason);
   renderProvenance(r);
   renderHistogram($("#res-hist"), r);
   renderTable($("#res-table"), r);
@@ -568,6 +647,7 @@ function renderProvenance(r: RunResult) {
   const items = [
     t(r.engine === "wasm" ? "prov.engine.wasm" : "prov.engine.webgpu"),
     noiseLine,
+    ...(r.fallback ? [t("prov.fallback", { kind: r.fallback.kind, reason: r.fallback.reason })] : []),
     t("prov.sampling"),
     t("prov.not"),
     t("prov.build", { version: __APP_VERSION__, sha: __SOURCE_SHA__.slice(0, 12) }),
@@ -591,7 +671,7 @@ async function exportResult() {
       seed: lastRunInput.seed,
     },
     lastResult,
-    [t("prov.not")],
+    [t("prov.not"), ...(lastResult.fallback ? [fallbackLimit(lastResult.fallback)] : [])],
   );
   const blob = new Blob([JSON.stringify(card, null, 2)], { type: "application/json" });
   const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `cqhecs-run-${Date.now()}.json` });
@@ -599,8 +679,39 @@ async function exportResult() {
   URL.revokeObjectURL(a.href);
 }
 
+async function importRunCard(file: File) {
+  const status = $("#import-status");
+  status.hidden = false;
+  status.classList.remove("bad");
+  const r = await parseRunCard(await file.text());
+  if (!r.ok) {
+    status.classList.add("bad");
+    status.textContent = t("import.fail", { code: r.code, message: t(`import.${r.code}`) });
+    return;
+  }
+  drafts.qasm = r.qasm;
+  const circuit = parseQasm(r.qasm);
+  if (circuit.numQubits <= 24) {
+    composer.load(circuit);
+    $<HTMLInputElement>("#qubits").value = String(circuit.numQubits);
+  }
+  $<HTMLInputElement>("#shots").value = String(r.shots);
+  const gpu = document.querySelector<HTMLOptionElement>('#engine option[value="webgpu"]');
+  $<HTMLSelectElement>("#engine").value = r.engine === "webgpu" && gpu && !gpu.disabled ? "webgpu" : "wasm";
+  editor?.set(r.qasm, "qasm");
+  status.textContent = t("import.ok", { shots: r.shots, seed: r.seed, digest: r.digest.slice(0, 12) });
+  updateEstimate();
+}
+
 function setupRun() {
   $("#res-export").addEventListener("click", exportResult);
+  const importInput = $<HTMLInputElement>("#res-import-file");
+  $("#res-import").addEventListener("click", () => importInput.click());
+  importInput.addEventListener("change", async () => {
+    const file = importInput.files?.[0];
+    importInput.value = "";
+    if (file) await importRunCard(file);
+  });
   $("#run").addEventListener("click", runCurrent);
   $("#stop").addEventListener("click", stopRun);
   $<HTMLInputElement>("#shots").addEventListener("input", updateEstimate);
@@ -613,6 +724,17 @@ function setupRun() {
       for (const k of ["hist", "table", "bloch", "state"]) $(`#res-${k}`).hidden = k !== b.dataset.res;
       if (lastResult && b.dataset.res === "bloch") renderBloch($("#res-bloch"), lastResult);
     }));
+}
+
+/** After a GPU failure the option stays off for this page load; the worker restarts on cancel/reload. */
+function disableWebgpuOption(reason: string) {
+  if (engineInfo) engineInfo.gpu = { ok: false, maxQubits: 0, maxBytes: 0, error: reason };
+  const sel = $<HTMLSelectElement>("#engine");
+  const opt = sel.querySelector<HTMLOptionElement>('option[value="webgpu"]')!;
+  opt.disabled = true;
+  opt.dataset.i18n = "run.gpuNo";
+  opt.textContent = t("run.gpuNo");
+  if (sel.value === "webgpu") { sel.value = "wasm"; updateEstimate(); }
 }
 
 function setupEngineOptions() {
@@ -758,11 +880,11 @@ function renderProfiles() {
     <article class="profile card">
       <header><b>${esc(p.label)}</b><span class="badge ${p.validation.h_v3_8 === "SUPPORTED" ? "b-beginner" : "b-adv"}">H-V3-8 ${esc(p.validation.h_v3_8)}</span></header>
       <p class="muted small">CX dep. ${p.cx_depolarizing.toFixed(4)} · ${p.shots_per_circuit} shots · ΔTV ${p.validation.median_delta_tv_m_fit.toFixed(4)}</p>
-      <table class="mini"><thead><tr><th>${esc(t("dev.qubit"))}</th>${p.p01.map((_, q) => `<th class="num">q${q}</th>`).join("")}</tr></thead><tbody>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="${esc(p.label)}"><table class="mini"><thead><tr><th>${esc(t("dev.qubit"))}</th>${p.p01.map((_, q) => `<th class="num">q${q}</th>`).join("")}</tr></thead><tbody>
         <tr><td>${esc(t("dev.p01"))}</td>${p.p01.map((v) => `<td class="num">${v.toFixed(4)}</td>`).join("")}</tr>
         <tr><td>${esc(t("dev.p10"))}</td>${p.p10.map((v) => `<td class="num">${v.toFixed(4)}</td>`).join("")}</tr>
         <tr><td>${esc(t("dev.xflip"))}</td>${p.x_bitflip.map((v) => `<td class="num${v > 0 ? " hot" : ""}">${v.toFixed(3)}</td>`).join("")}</tr>
-      </tbody></table>
+      </tbody></table></div>
       <p class="muted small"><a href="https://github.com/timfromhcs/CQ-HECS/tree/main/${esc(p.evidence)}" rel="noopener">evidence</a></p>
     </article>`).join("");
   $("#vendor-strip").innerHTML = profiles.map((p) => `<span class="chip">${esc(p.label)}</span>`).join("");
@@ -831,6 +953,7 @@ function loadFromHash(): boolean {
 
 function start() {
   setupChrome();
+  setupQg();
   setupGuide();
   setupLab();
   setupNoise();

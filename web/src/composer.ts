@@ -2,6 +2,7 @@
 
 import { GATES, type Circuit, type Gate, type GateName, type GateSpec } from "./circuit";
 import { t } from "./i18n";
+import { isNavKey, moveCursor, type Cursor } from "./composer_nav";
 
 interface Placed { col: number; gate: Gate }
 
@@ -28,13 +29,89 @@ export class Composer {
   private placed: Placed[] = [];
   private tool: GateName | "erase" = "h";
   private pending: { col: number; qubits: number[] } | null = null;
+  private cursor: Cursor = { col: 0, q: 0 };
+  private live: HTMLElement;
+  private swallowClick = false;
+  private pressTimer: ReturnType<typeof setTimeout> | null = null;
   numQubits = 2;
   onChange: () => void = () => {};
 
   constructor(private host: HTMLElement, private palette: HTMLElement) {
     this.buildPalette();
     this.host.addEventListener("contextmenu", (e) => e.preventDefault());
+    // Keyboard access (W4-12): the grid is one tab stop; arrows move a visible cursor, and
+    // changes are announced through a polite live region.
+    this.host.setAttribute("role", "application");
+    this.host.setAttribute("aria-label", t("lab.kbdLabel"));
+    this.live = document.createElement("span");
+    this.live.className = "sr-only";
+    this.live.setAttribute("role", "status");
+    this.live.setAttribute("aria-live", "polite");
+    this.host.insertAdjacentElement("afterend", this.live);
+    this.host.addEventListener("keydown", (e) => this.onKey(e));
+    // After a long-press erase the finger lifts over the now-empty cell; that release would
+    // otherwise be a click and place a gate right back. Swallow exactly that one click.
+    this.host.addEventListener("pointerdown", () => { this.swallowClick = false; }, true);
+    this.host.addEventListener("click", (e) => {
+      if (!this.swallowClick) return;
+      this.swallowClick = false;
+      e.stopPropagation();
+      e.preventDefault();
+    }, true);
+    // No re-render on focus: replacing the SVG between mousedown and mouseup would swallow the click.
+    this.host.addEventListener("focus", () => this.announce(t("lab.kbdPos", { q: this.cursor.q, c: this.cursor.col + 1 })));
     this.render();
+  }
+
+  private announce(msg: string) {
+    this.live.textContent = msg;
+  }
+
+  private columns(): number {
+    return Math.max(8, ...this.placed.map((p) => p.col + 3));
+  }
+
+  private onKey(e: KeyboardEvent) {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    const { col, q } = this.cursor;
+    if (isNavKey(e.key)) {
+      e.preventDefault();
+      this.cursor = moveCursor(this.cursor, e.key, this.numQubits, this.columns() + (e.key === "ArrowRight" ? 1 : 0));
+      this.render();
+      this.scrollCursorIntoView();
+      this.announce(t("lab.kbdPos", { q: this.cursor.q, c: this.cursor.col + 1 }));
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      const before = this.placed.length;
+      this.click(col, q);
+      if (this.pending) this.announce(t("lab.kbdPending", { q }));
+      else if (this.placed.length > before) this.announce(t("lab.kbdPlaced", { gate: this.placed[this.placed.length - 1].gate.name, q, c: col + 1 }));
+      else if (this.tool !== "erase" && this.occupied(col, [q])) this.announce(t("lab.kbdBusy", { q, c: col + 1 }));
+    } else if (e.key === "Delete" || e.key === "Backspace") {
+      e.preventDefault();
+      if (this.eraseAt(col, q)) this.announce(t("lab.kbdRemoved", { q, c: col + 1 }));
+    } else if (e.key === "Escape" && this.pending) {
+      this.pending = null;
+      this.render();
+    }
+  }
+
+  /** Remove the gate covering (col, q); returns whether one was removed. */
+  private eraseAt(col: number, q: number): boolean {
+    const hit = this.placed.findIndex((p) => p.col === col && p.gate.qubits.includes(q));
+    if (hit < 0) return false;
+    this.placed.splice(hit, 1);
+    this.render();
+    this.onChange();
+    return true;
+  }
+
+  private eraseGate(p: Placed): void {
+    const idx = this.placed.indexOf(p);
+    if (idx < 0) return; // already removed (long-press and contextmenu can both fire)
+    this.placed.splice(idx, 1);
+    this.render();
+    this.onChange();
   }
 
   private spec(name: string): GateSpec | undefined {
@@ -140,8 +217,7 @@ export class Composer {
 
   private click(col: number, q: number) {
     if (this.tool === "erase") {
-      const hit = this.placed.findIndex((p) => p.col === col && p.gate.qubits.includes(q));
-      if (hit >= 0) { this.placed.splice(hit, 1); this.render(); this.onChange(); }
+      this.eraseAt(col, q);
       return;
     }
     const spec = this.spec(this.tool)!;
@@ -175,8 +251,9 @@ export class Composer {
   }
 
   render() {
-    const cols = Math.max(8, ...this.placed.map((p) => p.col + 3));
+    const cols = this.columns();
     const n = this.numQubits;
+    this.cursor = { col: Math.min(this.cursor.col, cols - 1), q: Math.min(this.cursor.q, Math.max(0, n - 1)) };
     const width = LEFT + cols * CELL + 16, height = TOP * 2 + n * CELL - 10;
     const svg = el("svg", { width, height, viewBox: `0 0 ${width} ${height}`, role: "img", "aria-label": t("lab.aria", { n }) });
     const y = (q: number) => TOP + q * CELL + CELL / 2 - 5;
@@ -189,11 +266,10 @@ export class Composer {
       for (let q = 0; q < n; q++) {
         const pending = this.pending?.col === c && this.pending.qubits.includes(q);
         const cell = el("rect", { x: LEFT + c * CELL + 2, y: y(q) - CELL / 2 + 2, width: CELL - 4, height: CELL - 4, rx: 10, class: `cell${pending ? " pending" : ""}` }, svg);
-        cell.addEventListener("click", () => this.click(c, q));
+        cell.addEventListener("click", () => { this.cursor = { col: c, q }; this.click(c, q); });
         cell.addEventListener("contextmenu", (e) => {
           e.preventDefault();
-          const hit = this.placed.findIndex((p) => p.col === c && p.gate.qubits.includes(q));
-          if (hit >= 0) { this.placed.splice(hit, 1); this.render(); this.onChange(); }
+          this.eraseAt(c, q);
         });
       }
     }
@@ -203,14 +279,17 @@ export class Composer {
       const name = p.gate.name;
       const remove = (e: Event) => {
         e.preventDefault();
-        if (e.type === "contextmenu" || this.tool === "erase") {
-          this.placed.splice(this.placed.indexOf(p), 1);
-          this.render();
-          this.onChange();
-        }
+        if (e.type === "contextmenu" || this.tool === "erase") this.eraseGate(p);
       };
       g.addEventListener("click", remove);
       g.addEventListener("contextmenu", remove);
+      // Touch has no right-click: a long press (550 ms without moving) removes the gate.
+      g.addEventListener("pointerdown", (e) => {
+        if (e.pointerType !== "touch") return;
+        this.cancelPress();
+        this.pressTimer = setTimeout(() => { this.pressTimer = null; this.swallowClick = true; this.eraseGate(p); }, 550);
+      });
+      for (const ev of ["pointerup", "pointercancel", "pointermove", "pointerleave"]) g.addEventListener(ev, () => this.cancelPress());
       if (qs.length > 1) {
         el("line", { x1: cx, y1: y(Math.min(...qs)), x2: cx, y2: y(Math.max(...qs)), class: "link" }, g);
         const controls = name === "swap" ? [] : name === "cswap" ? [qs[0]] : name === "mcz" ? qs : qs.slice(0, -1);
@@ -240,6 +319,21 @@ export class Composer {
         el("text", { x: cx, y: y(qs[0]) + 12, "text-anchor": "middle", class: "gparam" }, g).textContent = p.gate.params.map(shortParam).join(",");
       }
     }
+    // Always drawn, shown only while the grid has keyboard focus (CSS :focus-visible).
+    el("rect", { x: LEFT + this.cursor.col * CELL + 4, y: y(this.cursor.q) - CELL / 2 + 4, width: CELL - 8, height: CELL - 8, rx: 9, class: "kcursor" }, svg);
     this.host.replaceChildren(svg);
+  }
+
+  private cancelPress() {
+    if (this.pressTimer !== null) { clearTimeout(this.pressTimer); this.pressTimer = null; }
+  }
+
+  private scrollCursorIntoView() {
+    const left = LEFT + this.cursor.col * CELL, top = TOP + this.cursor.q * CELL;
+    const h = this.host;
+    if (left < h.scrollLeft + LEFT) h.scrollLeft = Math.max(0, left - LEFT);
+    else if (left + CELL > h.scrollLeft + h.clientWidth) h.scrollLeft = left + CELL - h.clientWidth + 8;
+    if (top < h.scrollTop) h.scrollTop = top;
+    else if (top + CELL > h.scrollTop + h.clientHeight) h.scrollTop = top + CELL - h.clientHeight + 8;
   }
 }

@@ -1,0 +1,57 @@
+Test project C:/Users/hcsme/AppData/Local/Temp/claude/ea4239657ff02f28/2f71cbc2-b903-4f5f-a652-9d9a8b578722/scratchpad/wF_vk
+      Start  1: test_reversibility
+ 1/26 Test  #1: test_reversibility ...............   Passed    3.36 sec
+      Start  2: test_ghz300
+ 2/26 Test  #2: test_ghz300 ......................   Passed    0.77 sec
+      Start  3: test_constraint_solver
+ 3/26 Test  #3: test_constraint_solver ...........   Passed    0.93 sec
+      Start  4: cq_hecs_cpp_hardening
+ 4/26 Test  #4: cq_hecs_cpp_hardening ............   Passed    0.82 sec
+      Start  5: cq_hecs_full_verification
+ 5/26 Test  #5: cq_hecs_full_verification ........   Passed    2.09 sec
+      Start  6: test_bitexact_and_stress
+ 6/26 Test  #6: test_bitexact_and_stress .........   Passed   11.39 sec
+      Start  7: test_exact_algebra
+ 7/26 Test  #7: test_exact_algebra ...............   Passed    0.51 sec
+      Start  8: test_stabilizer
+ 8/26 Test  #8: test_stabilizer ..................   Passed    8.86 sec
+      Start  9: test_hybrid_mps
+ 9/26 Test  #9: test_hybrid_mps ..................   Passed    0.10 sec
+      Start 10: test_stress_limits
+10/26 Test #10: test_stress_limits ...............   Passed   13.45 sec
+      Start 11: test_exact_ring
+11/26 Test #11: test_exact_ring ..................   Passed    0.51 sec
+      Start 12: test_stabilizer_extreme
+12/26 Test #12: test_stabilizer_extreme ..........   Passed  141.94 sec
+      Start 13: test_300q_stress
+13/26 Test #13: test_300q_stress .................   Passed    0.02 sec
+      Start 14: test_qasm_contract
+14/26 Test #14: test_qasm_contract ...............   Passed    0.18 sec
+      Start 15: test_sat_parser
+15/26 Test #15: test_sat_parser ..................   Passed    0.04 sec
+      Start 16: test_release_assert_meta
+16/26 Test #16: test_release_assert_meta .........   Passed    0.02 sec
+      Start 17: test_vulkan_device_policy
+17/26 Test #17: test_vulkan_device_policy ........   Passed    0.02 sec
+      Start 18: test_statevector_contract
+18/26 Test #18: test_statevector_contract ........   Passed    0.03 sec
+      Start 19: test_mps_contract
+19/26 Test #19: test_mps_contract ................   Passed    0.08 sec
+      Start 20: test_qpu_facade_contract
+20/26 Test #20: test_qpu_facade_contract .........   Passed    0.03 sec
+      Start 21: test_vulkan_compute_contract
+21/26 Test #21: test_vulkan_compute_contract .....   Passed    0.38 sec
+      Start 22: test_vulkan_fault_init
+22/26 Test #22: test_vulkan_fault_init ...........   Passed    0.16 sec
+      Start 23: test_vulkan_fault_device
+23/26 Test #23: test_vulkan_fault_device .........   Passed    1.10 sec
+      Start 24: test_vulkan_bcp_validation
+24/26 Test #24: test_vulkan_bcp_validation .......   Passed    0.03 sec
+      Start 25: test_vulkan_bcp_differential
+25/26 Test #25: test_vulkan_bcp_differential .....   Passed    3.97 sec
+      Start 26: test_c_abi_core
+26/26 Test #26: test_c_abi_core ..................   Passed    0.06 sec
+
+100% tests passed out of 26
+
+Total Test time (real) = 190.96 sec

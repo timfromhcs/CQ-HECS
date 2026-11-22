@@ -10,7 +10,7 @@
   Track A noise model, Track C bounded gauge toy, and a **real-QPU campaign** (smoke, BMV phase
   scan, SYK).
 - In progress / next: M6 runner (functional), M9/M10/M11/M12; SYK hardware follow-up (F-10).
-- Blocker: **B-1 RESOLVED**. Live QPU work done (21/25 Spark). **Key wiped** — a new key is
+- Blocker: **B-1 RESOLVED**. Live QPU work done (25/25 Spark). **Key wiped** — a new key is
   needed for further runs; rotate the used key at the portal.
 
 ## Live QPU campaign (Stage 2 smoke) — COMPLETE
@@ -59,8 +59,8 @@ and the ⟨X⊗X⟩(θ) trend recorded (F-11). Key wiped at session end (rotate 
 | M3 BMV effective-phase | DONE (local; noise model QG-BMV-03 verified, device comparison NOT_RUN) |
 | M4 SYK reference | DONE (exact; Trotter implemented, QG-SYK-02 partial) |
 | M5 Contract integration | DONE (`cqhecs.quantum_gravity`, `cqhecs.qg.experiment.v1`, CLI, docs) |
-| M6 OQ adapter/runner | IN_PROGRESS — BLOCKED for quote/submit (B-1) |
-| M7 QPU campaign | BLOCKED (B-1, credits) |
+| M6 OQ adapter/runner | DONE (quote/submit/collect used for the campaign; offline `analyse`/`report` still partial) |
+| M7 QPU campaign | DONE (25/25 Spark; smoke + BMV + SYK, findings F-08..F-11) |
 | M8 Studio API + MCP | IN_PROGRESS (local routes + 3 MCP tools done; paid OQ proxy pending B-1) |
 | M9 Web/Studio UI | NOT_RUN |
 | M10 CPU/Vulkan split | NOT_RUN (scoped: headers `cq_hecs/vulkan/*` + tensor_network/constraint_solver couple Vulkan) |

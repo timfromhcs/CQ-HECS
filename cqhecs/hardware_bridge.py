@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import math
 import re
-import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
@@ -773,6 +772,24 @@ class BackendProfile:
                     return f"qubit {int(q)} has no usable T1/T2: {reason}"
         return None
 
+    def uncovered_gates(self, instructions: Any) -> List[str]:
+        """Gates used by ``instructions`` that this profile has no channel for (D4).
+
+        The noise model is built from ``gate_errors`` plus the declared
+        ``basis_gates``; a circuit is *not* transpiled into that basis. A gate the
+        profile never declared therefore runs with no noise while the result is still
+        labelled ``NOISY_CLASSICAL`` under a profile id. This returns those gate
+        names so a caller can warn, refuse or accept them explicitly instead of
+        silently simulating them noiselessly.
+        """
+        covered = set(self.gate_errors) | set(self.basis_gates) | {"barrier"}
+        uncovered: List[str] = []
+        for name, _qubits, _params in instructions:
+            if name in covered or name in uncovered:
+                continue
+            uncovered.append(name)
+        return sorted(uncovered)
+
     def _qubit(self, value: Any, where: str) -> int:
         """Returns ``value`` as an in-range qubit index or raises."""
         if not isinstance(value, (int, np.integer)) or isinstance(value, (bool, np.bool_)):
@@ -1095,7 +1112,7 @@ def create_linear_profile(
         name=name,
         num_qubits=num_qubits,
         provider_name="CQ-HECS-Synthetic",
-        capture_timestamp=time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        capture_timestamp=None,
         is_synthetic=True,
         basis_gates=["cx", "id", "rz", "sx", "x", "measure"],
         coupling_map=coupling,
@@ -1130,11 +1147,29 @@ class FakeHardwareBackend:
         profile: BackendProfile,
         noise_model: Optional[NoiseModel] = None,
         relaxation: bool = False,
+        uncovered_gate_policy: str = "warn",
     ):
+        if uncovered_gate_policy not in ("warn", "refuse", "ideal"):
+            raise ValueError("uncovered_gate_policy must be 'warn', 'refuse' or 'ideal'")
         self.profile = profile
         self.relaxation = bool(relaxation)
+        self.uncovered_gate_policy = uncovered_gate_policy
         self.noise_model = noise_model or profile.to_noise_model(relaxation=self.relaxation)
         self.name = profile.name
+
+    def _uncovered_or_raise(self, instructions: List[Tuple[str, List[int], List[float]]]) -> List[str]:
+        """Gates with no calibrated channel, refusing them under the ``refuse`` policy (D4)."""
+        uncovered = self.profile.uncovered_gates(instructions)
+        if uncovered and self.uncovered_gate_policy == "refuse":
+            raise OutOfModelError(
+                "Refusing circuit: gate(s) "
+                + ", ".join(repr(g) for g in uncovered)
+                + f" have no calibrated channel in profile {self.profile.name!r}. "
+                "They would otherwise run noiselessly while the result is labelled "
+                "NOISY_CLASSICAL. Transpile into the profile's basis, choose another "
+                "profile, or set uncovered_gate_policy='warn'/'ideal' to accept them."
+            )
+        return uncovered
 
     def validate_circuit_topology(self, instructions: List[Tuple[str, List[int], List[float]]]) -> None:
         """Verify that all two-qubit operations respect the backend coupling map."""
@@ -1180,6 +1215,7 @@ class FakeHardwareBackend:
             )
         self.validate_circuit_topology(instructions)
         self._check_in_model(instructions)
+        uncovered = self._uncovered_or_raise(instructions)
         result = noisy_expectation_values(circuit, observables, self.noise_model, **options)
         result.metadata.update({
             "backend_profile_id": self.profile.name,
@@ -1188,6 +1224,8 @@ class FakeHardwareBackend:
             "calibration_timestamp": self.profile.capture_timestamp,
             "relaxation_modelled": self.relaxation,
             "is_real_hardware": False,
+            "uncovered_gates": list(uncovered),
+            "uncovered_gate_policy": self.uncovered_gate_policy,
         })
         return result
 
@@ -1221,6 +1259,7 @@ class FakeHardwareBackend:
         effective_noise = self.noise_model if execution_mode == ExecutionMode.NOISY_CLASSICAL else None
         if effective_noise is not None:
             self._check_in_model(instructions)
+        uncovered = self._uncovered_or_raise(instructions)
 
         backend = NoisyDensityMatrixBackend()
         res = backend.simulate(
@@ -1234,11 +1273,14 @@ class FakeHardwareBackend:
         res.noise_model_id = effective_noise.name if effective_noise else None
         res.is_real_hardware = False
         res.calibration_timestamp = self.profile.capture_timestamp
+        res.uncovered_gates = list(uncovered)
         res.metadata["simulated_hardware"] = True
         res.metadata["provider_name"] = self.profile.provider_name
         res.metadata["profile_is_synthetic"] = self.profile.is_synthetic
         res.metadata["profile_source_sha256"] = self.profile.source_sha256
         res.metadata["relaxation_modelled"] = self.relaxation and effective_noise is not None
+        res.metadata["uncovered_gates"] = list(uncovered)
+        res.metadata["uncovered_gate_policy"] = self.uncovered_gate_policy
         return res
 
 

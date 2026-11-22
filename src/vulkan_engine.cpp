@@ -55,7 +55,12 @@ bool VulkanEngine::initialize() {
 
     // 2. Select Physical Device
     uint32_t device_count = 0;
-    vkEnumeratePhysicalDevices(m_instance, &device_count, nullptr);
+    VkResult enum_res = vkEnumeratePhysicalDevices(m_instance, &device_count, nullptr);
+    if (enum_res != VK_SUCCESS) {
+        std::cerr << "[VulkanEngine] vkEnumeratePhysicalDevices failed (VkResult "
+                  << static_cast<int>(enum_res) << "). Operating in software emulation mode.\n";
+        device_count = 0;
+    }
     if (device_count == 0) {
         std::cerr << "[VulkanEngine] No physical Vulkan compute devices found. Operating in software emulation mode.\n";
         m_initialized = true;
@@ -63,7 +68,14 @@ bool VulkanEngine::initialize() {
     }
 
     std::vector<VkPhysicalDevice> devices(device_count);
-    vkEnumeratePhysicalDevices(m_instance, &device_count, devices.data());
+    enum_res = vkEnumeratePhysicalDevices(m_instance, &device_count, devices.data());
+    if (enum_res != VK_SUCCESS && enum_res != VK_INCOMPLETE) {
+        std::cerr << "[VulkanEngine] vkEnumeratePhysicalDevices (list) failed (VkResult "
+                  << static_cast<int>(enum_res) << "). Operating in software emulation mode.\n";
+        devices.clear();
+    } else {
+        devices.resize(device_count);
+    }
     bool found_device = false;
     for (const auto& dev : devices) {
         uint32_t qf_count = 0;
@@ -183,12 +195,13 @@ uint32_t VulkanEngine::find_memory_type(uint32_t type_filter, VkMemoryPropertyFl
     VkPhysicalDeviceMemoryProperties mem_properties;
     vkGetPhysicalDeviceMemoryProperties(m_physical_device, &mem_properties);
 
-    for (uint32_t i = 0; i < mem_properties.memoryTypeCount; i++) {
-        if ((type_filter & (1 << i)) && (mem_properties.memoryTypes[i].propertyFlags & properties) == properties) {
+    for (uint32_t i = 0; i < mem_properties.memoryTypeCount && i < 32; i++) {
+        if ((type_filter & (1u << i)) && (mem_properties.memoryTypes[i].propertyFlags & properties) == properties) {
             return i;
         }
     }
-    throw std::runtime_error("Failed to find suitable memory type!");
+    // Callers sit behind a C ABI: report "none" instead of throwing across it.
+    return UINT32_MAX;
 }
 
 bool VulkanEngine::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage,
@@ -214,6 +227,8 @@ bool VulkanEngine::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage,
     buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     if (vkCreateBuffer(m_device, &buffer_info, nullptr, &out_buffer.buffer) != VK_SUCCESS) {
+        out_buffer.buffer = VK_NULL_HANDLE;
+        out_buffer.size = 0;
         return false;
     }
 
@@ -224,17 +239,36 @@ bool VulkanEngine::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage,
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.allocationSize = mem_reqs.size;
     alloc_info.memoryTypeIndex = find_memory_type(mem_reqs.memoryTypeBits, properties);
+    if (alloc_info.memoryTypeIndex == UINT32_MAX) {
+        vkDestroyBuffer(m_device, out_buffer.buffer, nullptr);
+        out_buffer.buffer = VK_NULL_HANDLE;
+        out_buffer.size = 0;
+        return false;
+    }
 
     if (vkAllocateMemory(m_device, &alloc_info, nullptr, &out_buffer.memory) != VK_SUCCESS) {
         vkDestroyBuffer(m_device, out_buffer.buffer, nullptr);
         out_buffer.buffer = VK_NULL_HANDLE;
+        out_buffer.memory = VK_NULL_HANDLE;
+        out_buffer.size = 0;
         return false;
     }
 
-    vkBindBufferMemory(m_device, out_buffer.buffer, out_buffer.memory, 0);
-
-    if (properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-        vkMapMemory(m_device, out_buffer.memory, 0, size, 0, &out_buffer.mapped);
+    // Bind and map are checked: an unbound buffer or a failed mapping must not be
+    // handed back as a usable buffer (callers memcpy through `mapped`).
+    bool ready = vkBindBufferMemory(m_device, out_buffer.buffer, out_buffer.memory, 0) == VK_SUCCESS;
+    if (ready && (properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
+        ready = vkMapMemory(m_device, out_buffer.memory, 0, size, 0, &out_buffer.mapped) == VK_SUCCESS &&
+                out_buffer.mapped != nullptr;
+    }
+    if (!ready) {
+        out_buffer.mapped = nullptr;
+        vkDestroyBuffer(m_device, out_buffer.buffer, nullptr);
+        vkFreeMemory(m_device, out_buffer.memory, nullptr);
+        out_buffer.buffer = VK_NULL_HANDLE;
+        out_buffer.memory = VK_NULL_HANDLE;
+        out_buffer.size = 0;
+        return false;
     }
 
     m_active_vram_bytes += size;
@@ -452,99 +486,116 @@ bool VulkanEngine::run_cq_hecs_core_phase(uint32_t* state_data, uint32_t count, 
         return true;
     }
 
+    // Fail-closed GPU path: every Vulkan step is checked and state_data is
+    // overwritten ONLY after the dispatch completed and the readback is valid.
+    // On any failure the buffer is left untouched and false is returned (never a
+    // silent CPU "success" and never half-written output).
     size_t buffer_size = sizeof(uint32_t) * count;
     VulkanBufferLegacy in_buf, out_buf, dummy_a, dummy_carry;
-    create_buffer(buffer_size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, in_buf);
-    create_buffer(buffer_size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, out_buf);
-    create_buffer(64, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, dummy_a);
-    create_buffer(64, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, dummy_carry);
+    VkDescriptorSet desc_set = VK_NULL_HANDLE;
+    VkCommandBuffer cmd = VK_NULL_HANDLE;
+    VkFence fence = VK_NULL_HANDLE;
+    bool ok = false;
 
-    std::memcpy(in_buf.mapped, state_data, buffer_size);
+    const VkMemoryPropertyFlags host_props =
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    do {
+        if (!create_buffer(buffer_size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, host_props, in_buf)) break;
+        if (!create_buffer(buffer_size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, host_props, out_buf)) break;
+        if (!create_buffer(64, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, host_props, dummy_a)) break;
+        if (!create_buffer(64, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, host_props, dummy_carry)) break;
+        if (!in_buf.mapped || !out_buf.mapped) break;
 
-    VkDescriptorSet desc_set;
-    VkDescriptorSetAllocateInfo alloc_info{};
-    alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    alloc_info.descriptorPool = m_descriptor_pool;
-    alloc_info.descriptorSetCount = 1;
-    alloc_info.pSetLayouts = &m_desc_layout_core;
-    vkAllocateDescriptorSets(m_device, &alloc_info, &desc_set);
+        std::memcpy(in_buf.mapped, state_data, buffer_size);
 
-    VkDescriptorBufferInfo buf_infos[4]{};
-    buf_infos[0] = {in_buf.buffer, 0, buffer_size};
-    buf_infos[1] = {out_buf.buffer, 0, buffer_size};
-    buf_infos[2] = {dummy_a.buffer, 0, 64};
-    buf_infos[3] = {dummy_carry.buffer, 0, 64};
+        VkDescriptorSetAllocateInfo alloc_info{};
+        alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        alloc_info.descriptorPool = m_descriptor_pool;
+        alloc_info.descriptorSetCount = 1;
+        alloc_info.pSetLayouts = &m_desc_layout_core;
+        if (vkAllocateDescriptorSets(m_device, &alloc_info, &desc_set) != VK_SUCCESS) {
+            desc_set = VK_NULL_HANDLE;
+            break;
+        }
 
-    VkWriteDescriptorSet writes[4]{};
-    for (int i = 0; i < 4; ++i) {
-        writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[i].dstSet = desc_set;
-        writes[i].dstBinding = i;
-        writes[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        writes[i].descriptorCount = 1;
-        writes[i].pBufferInfo = &buf_infos[i];
-    }
-    vkUpdateDescriptorSets(m_device, 4, writes, 0, nullptr);
+        VkDescriptorBufferInfo buf_infos[4]{};
+        buf_infos[0] = {in_buf.buffer, 0, buffer_size};
+        buf_infos[1] = {out_buf.buffer, 0, buffer_size};
+        buf_infos[2] = {dummy_a.buffer, 0, 64};
+        buf_infos[3] = {dummy_carry.buffer, 0, 64};
 
-    VkCommandBufferAllocateInfo cmd_info{};
-    cmd_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cmd_info.commandPool = m_command_pool;
-    cmd_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    cmd_info.commandBufferCount = 1;
+        VkWriteDescriptorSet writes[4]{};
+        for (int i = 0; i < 4; ++i) {
+            writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writes[i].dstSet = desc_set;
+            writes[i].dstBinding = i;
+            writes[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            writes[i].descriptorCount = 1;
+            writes[i].pBufferInfo = &buf_infos[i];
+        }
+        vkUpdateDescriptorSets(m_device, 4, writes, 0, nullptr);
 
-    VkCommandBuffer cmd;
-    vkAllocateCommandBuffers(m_device, &cmd_info, &cmd);
+        VkCommandBufferAllocateInfo cmd_info{};
+        cmd_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cmd_info.commandPool = m_command_pool;
+        cmd_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cmd_info.commandBufferCount = 1;
+        if (vkAllocateCommandBuffers(m_device, &cmd_info, &cmd) != VK_SUCCESS) {
+            cmd = VK_NULL_HANDLE;
+            break;
+        }
 
-    VkCommandBufferBeginInfo begin_info{};
-    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    vkBeginCommandBuffer(cmd, &begin_info);
+        VkCommandBufferBeginInfo begin_info{};
+        begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        if (vkBeginCommandBuffer(cmd, &begin_info) != VK_SUCCESS) break;
 
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline_core);
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_layout_core, 0, 1, &desc_set, 0, nullptr);
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline_core);
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_layout_core, 0, 1, &desc_set, 0, nullptr);
 
-    struct {
-        uint32_t mode;
-        uint32_t gate_phase_shift;
-        uint32_t state_count;
-        uint32_t entropy_seed;
-        uint32_t local_minima_flag;
-    } pc = {0, phase_shift, count, 0, 0};
+        struct {
+            uint32_t mode;
+            uint32_t gate_phase_shift;
+            uint32_t state_count;
+            uint32_t entropy_seed;
+            uint32_t local_minima_flag;
+        } pc = {0, phase_shift, count, 0, 0};
 
-    vkCmdPushConstants(cmd, m_layout_core, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pc), &pc);
-    uint32_t groups = (count + 63) / 64;
-    vkCmdDispatch(cmd, groups, 1, 1);
+        vkCmdPushConstants(cmd, m_layout_core, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pc), &pc);
+        uint32_t groups = (count + 63) / 64;
+        if (groups > 65535u) break;  // beyond the guaranteed maxComputeWorkGroupCount
+        vkCmdDispatch(cmd, groups, 1, 1);
 
-    vkEndCommandBuffer(cmd);
+        if (vkEndCommandBuffer(cmd) != VK_SUCCESS) break;
 
-    VkSubmitInfo submit_info{};
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &cmd;
+        VkSubmitInfo submit_info{};
+        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit_info.commandBufferCount = 1;
+        submit_info.pCommandBuffers = &cmd;
 
-    VkFence fence;
-    VkFenceCreateInfo fence_info{};
-    fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    vkCreateFence(m_device, &fence_info, nullptr, &fence);
+        VkFenceCreateInfo fence_info{};
+        fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        if (vkCreateFence(m_device, &fence_info, nullptr, &fence) != VK_SUCCESS) {
+            fence = VK_NULL_HANDLE;
+            break;
+        }
 
-    vkQueueSubmit(m_compute_queue, 1, &submit_info, fence);
-    vkWaitForFences(m_device, 1, &fence, VK_TRUE, UINT64_MAX);
+        if (vkQueueSubmit(m_compute_queue, 1, &submit_info, fence) != VK_SUCCESS) break;
+        if (vkWaitForFences(m_device, 1, &fence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) break;
 
-    std::memcpy(state_data, out_buf.mapped, buffer_size);
+        std::memcpy(state_data, out_buf.mapped, buffer_size);
+        ok = true;
+    } while (false);
 
-    vkDestroyFence(m_device, fence, nullptr);
-    vkFreeCommandBuffers(m_device, m_command_pool, 1, &cmd);
-    vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &desc_set);
+    if (fence != VK_NULL_HANDLE) vkDestroyFence(m_device, fence, nullptr);
+    if (cmd != VK_NULL_HANDLE) vkFreeCommandBuffers(m_device, m_command_pool, 1, &cmd);
+    if (desc_set != VK_NULL_HANDLE) vkFreeDescriptorSets(m_device, m_descriptor_pool, 1, &desc_set);
 
     destroy_buffer(in_buf);
     destroy_buffer(out_buf);
     destroy_buffer(dummy_a);
     destroy_buffer(dummy_carry);
 
-    return true;
+    return ok;
 }
 
 bool VulkanEngine::run_destructive_interference(uint32_t* state_data, uint32_t pair_count) {

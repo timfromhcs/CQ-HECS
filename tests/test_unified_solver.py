@@ -175,3 +175,75 @@ def test_a_model_that_fails_verification_is_refused(monkeypatch):
     refused = [a for a in result.attempts if a.engine == "watched"]
     assert refused and refused[0].status == UNKNOWN
     assert "fails verification" in refused[0].reason
+
+
+# ------------------------------------------------------- certification (D3, W3-09)
+
+def test_unsat_without_a_certificate_is_labelled_uncertified():
+    """An exhaustive UNSAT without a checked proof is UNSAT, not 'proof checked' (D3)."""
+    result = unified.solve_unified(unsat_formula(), timeout_seconds=10.0, engines=("watched",))
+    assert result.status == UNSAT
+    assert result.certified is False
+    assert result.proof_level == "UNCERTIFIED"
+
+
+def test_unsat_with_a_checked_certificate_is_labelled_checked():
+    result = unified.solve_unified(unsat_formula(), timeout_seconds=10.0, engines=("scan",))
+    assert result.status == UNSAT
+    assert result.certified is True
+    assert result.proof_level == "TREE_RESOLUTION_CHECKED"
+
+
+def test_require_certified_downgrades_an_uncertified_unsat_to_unknown():
+    """require_certified=True must not return an UNSAT that has no accepted proof."""
+    result = unified.solve_unified(
+        unsat_formula(), timeout_seconds=10.0, engines=("watched",), require_certified=True
+    )
+    assert result.status == UNKNOWN
+    assert result.certified is False
+    refused = result.attempts[-1]
+    assert refused.status == UNKNOWN
+    assert "require_certified" in refused.reason
+
+
+def _fake_unsat_result(proof_status, certified=False):
+    return sat.SATResult(
+        status=UNSAT,
+        assignment=None,
+        decisions=0,
+        propagations=0,
+        conflicts=0,
+        nodes=0,
+        max_depth=0,
+        elapsed_ms=0.0,
+        timeout_seconds=1.0,
+        model_verified=False,
+        formula_sha256="",
+        note="stub",
+        certified=certified,
+        proof_status=proof_status,
+        engine="stub",
+    )
+
+
+def test_a_rejected_proof_is_never_labelled_checked(monkeypatch):
+    """A CaDiCaL UNSAT whose DRAT proof was rejected must not read as 'DRAT checked' (D3)."""
+    from cqhecs import sat_external
+
+    monkeypatch.setattr(sat_external, "available", lambda: True)
+    monkeypatch.setattr(sat_external, "solve_external", lambda formula, **kw: _fake_unsat_result("rejected"))
+    result = unified.solve_unified(unsat_formula(), timeout_seconds=5.0, engines=("cadical",))
+    assert result.status == UNSAT
+    assert result.certified is False
+    assert result.proof_level == "REJECTED"
+    winner = [a for a in result.attempts if a.status == UNSAT][0]
+    assert winner.proof and "checked" not in winner.proof
+    assert "UNCERTIFIED" in winner.proof
+
+
+def test_certified_and_proof_level_are_in_the_result_document():
+    document = unified.solve_unified(unsat_formula(), timeout_seconds=10.0, engines=("scan",)).to_dict()
+    assert document["certified"] is True
+    assert document["proof_level"] == "TREE_RESOLUTION_CHECKED"
+    json.dumps(document)
+

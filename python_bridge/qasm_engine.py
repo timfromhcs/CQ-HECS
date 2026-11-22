@@ -14,6 +14,8 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
+from cqhecs.circuit_parsing import parse_angle_expression
+
 from python_bridge.cq_hecs import (
     MPS300QubitSimulator,
     TieredMemoryGovernor,
@@ -158,12 +160,13 @@ class QASMParser:
 
     @staticmethod
     def _eval_param_expr(expr: str) -> float:
-        expr = expr.replace("pi", str(math.pi))
-        try:
-            # Safe evaluation for basic arithmetic expressions like pi/4, 2*pi
-            return float(eval(expr, {"__builtins__": None, "math": math}, {}))
-        except Exception:
-            return 0.0
+        """Evaluates one angle with the shared safe parser (no eval, SEC-M2).
+
+        Grammar: + - * / parentheses, numbers and ``pi``. Anything else is a
+        ``ValueError``; the previous silent fallback to 0.0 would have turned a
+        malformed angle into a different, valid circuit.
+        """
+        return parse_angle_expression(expr)
 
 
 class QASMCircuitSimulator:

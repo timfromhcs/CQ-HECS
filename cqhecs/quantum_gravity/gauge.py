@@ -155,3 +155,128 @@ def gauss_law_satisfied(state: np.ndarray, lattice: Z2Lattice, *, tol: float = 1
         if not np.allclose(generator @ vec, vec, atol=tol):
             return False
     return True
+
+
+# -- constraint-leakage observable (W8) -------------------------------------------------
+LEAKAGE_SCHEMA = "cqhecs.qg.gauge_leakage.v1"
+
+
+def _as_density(state: np.ndarray, dim: int) -> np.ndarray:
+    arr = np.asarray(state, dtype=complex)
+    if arr.ndim == 1 or (arr.ndim == 2 and 1 in arr.shape):
+        vec = arr.reshape(-1)
+        if vec.size != dim:
+            raise QGModelError(f"state dimension {vec.size} does not match lattice dimension {dim}")
+        norm = float(np.linalg.norm(vec))
+        if norm == 0.0:
+            raise QGModelError("state has zero norm")
+        vec = vec / norm
+        return np.outer(vec, vec.conj())
+    if arr.shape != (dim, dim):
+        raise QGModelError(f"density matrix must be {dim}x{dim}")
+    if not np.isclose(np.trace(arr).real, 1.0, atol=1e-9):
+        raise QGModelError("density matrix must have unit trace")
+    return arr
+
+
+def gauss_projector(lattice: Z2Lattice) -> np.ndarray:
+    """Projector onto the physical subspace ``prod_v (1 + G_v) / 2``."""
+    dim = 2 ** lattice.num_links
+    proj = np.eye(dim, dtype=complex)
+    for _, generator in lattice.gauss_generators():
+        proj = proj @ ((np.eye(dim, dtype=complex) + generator) / 2.0)
+    return proj
+
+
+def gauss_leakage(state: np.ndarray, lattice: Z2Lattice) -> float:
+    """Constraint leakage ``1 - Tr[P_phys rho]``: weight outside the Gauss-law subspace.
+
+    Zero for a gauge-invariant state; ``1`` when no weight remains in the physical sector. A
+    pure model quantity (a simulation-hygiene observable for the toy Z2 model), not a
+    statement about gravity or a continuum constraint algebra.
+    """
+    rho = _as_density(state, 2 ** lattice.num_links)
+    value = 1.0 - float(np.real(np.trace(gauss_projector(lattice) @ rho)))
+    return float(min(1.0, max(0.0, value)))
+
+
+def gauss_violation_profile(state: np.ndarray, lattice: Z2Lattice) -> Dict[Tuple[int, int], float]:
+    """Per-vertex probability of ``G_v = -1``: ``(1 - <G_v>) / 2``."""
+    rho = _as_density(state, 2 ** lattice.num_links)
+    return {
+        vertex: float(min(1.0, max(0.0, (1.0 - float(np.real(np.trace(generator @ rho)))) / 2.0)))
+        for vertex, generator in lattice.gauss_generators()
+    }
+
+
+def link_rotation(lattice: Z2Lattice, link: int, axis: str, angle: float) -> np.ndarray:
+    """``exp(-i angle P_link)`` for ``P`` in ``{X, Z}``; ``Z`` breaks Gauss law, ``X`` preserves it."""
+    if axis not in ("X", "Z"):
+        raise QGModelError("axis must be 'X' or 'Z'")
+    if not 0 <= link < lattice.num_links:
+        raise QGModelError(f"link {link} out of range")
+    op = pauli_matrix(_label(lattice.num_links, [link], axis))
+    dim = op.shape[0]
+    return np.cos(angle) * np.eye(dim, dtype=complex) - 1j * np.sin(angle) * op
+
+
+def apply_link_z_error(rho: np.ndarray, lattice: Z2Lattice, link: int, p: float) -> np.ndarray:
+    """Incoherent single-link phase-flip channel ``(1-p) rho + p Z_l rho Z_l`` (a gauge-breaking error)."""
+    if not (0.0 <= p <= 1.0):
+        raise QGModelError("p must be in [0, 1]")
+    if not 0 <= link < lattice.num_links:
+        raise QGModelError(f"link {link} out of range")
+    dense = _as_density(rho, 2 ** lattice.num_links)
+    z = pauli_matrix(_label(lattice.num_links, [link], "Z"))
+    return (1.0 - p) * dense + p * (z @ dense @ z.conj().T)
+
+
+def uniform_plus_state(lattice: Z2Lattice) -> np.ndarray:
+    """``|+>^{(x)L}``: every ``X_l = +1``, hence every ``G_v = +1`` (a physical state)."""
+    dim = 2 ** lattice.num_links
+    return np.full(dim, 1.0 / np.sqrt(dim), dtype=complex)
+
+
+def leakage_under_evolution(
+    lattice: Z2Lattice,
+    psi0: np.ndarray,
+    t: float,
+    *,
+    perturbation: str = "none",
+    strength: float = 0.0,
+) -> Dict[str, object]:
+    """Exact (dense ``expm``) leakage after evolving under ``H + strength * V``.
+
+    ``perturbation``: ``"none"``; ``"x_field"`` (``V = sum_l X_l``, gauge-preserving control);
+    ``"z_field"`` (``V = sum_l Z_l``, gauge-breaking). No sampling error is involved.
+    """
+    from scipy.linalg import expm
+
+    if perturbation not in ("none", "x_field", "z_field"):
+        raise QGModelError("perturbation must be 'none', 'x_field' or 'z_field'")
+    if not np.isfinite(t) or not np.isfinite(strength):
+        raise QGModelError("t and strength must be finite")
+    ham = lattice.hamiltonian()
+    if perturbation != "none":
+        char = "X" if perturbation == "x_field" else "Z"
+        pert = np.zeros_like(ham)
+        for link in range(lattice.num_links):
+            pert += pauli_matrix(_label(lattice.num_links, [link], char))
+        ham = ham + float(strength) * pert
+    psi = np.asarray(psi0, dtype=complex).reshape(-1)
+    evolved = expm(-1j * float(t) * ham) @ psi
+    return {
+        "schema": LEAKAGE_SCHEMA,
+        "model_id": lattice.model_id,
+        "surface": "CLASSICAL_REFERENCE",
+        "t": float(t),
+        "perturbation": perturbation,
+        "strength": float(strength),
+        "initial_leakage": gauss_leakage(psi, lattice),
+        "leakage": gauss_leakage(evolved, lattice),
+        "violation_profile": {f"{i},{j}": v for (i, j), v in gauss_violation_profile(evolved, lattice).items()},
+        "limitations": [
+            "toy Z2 model; leakage is a constraint-hygiene observable, not a quantum-gravity result",
+            "dense exact evolution; no shot or device-noise error is included",
+        ],
+    }

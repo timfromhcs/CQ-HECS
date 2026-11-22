@@ -1,0 +1,19 @@
+name = "cqhecs_formal"
+version = "0.1.0"
+defaultTargets = ["CQHECS"]
+
+[leanOptions]
+autoImplicit = false
+relaxedAutoImplicit = false
+
+# Same Mathlib pin as the external `anthropics/formal-math` ETH artifact (Lean 4.33.1),
+# so the compiled Mathlib cache is shared.
+[[require]]
+name = "mathlib"
+git = "https://github.com/leanprover-community/mathlib4"
+rev = "0df444a360eaa60ab8c11dca51a86af692955474"
+
+# Specification lemmas for shipped CQ-HECS invariants. Correctness scope only; a proved
+# specification is NOT a refinement proof of the Python/C++ implementation (V7 section 7.4).
+[[lean_lib]]
+name = "CQHECS"

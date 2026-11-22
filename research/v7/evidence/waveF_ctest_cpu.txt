@@ -1,0 +1,35 @@
+Test project C:/Users/hcsme/AppData/Local/Temp/claude/ea4239657ff02f28/2f71cbc2-b903-4f5f-a652-9d9a8b578722/scratchpad/wF_cpu
+      Start  1: test_bitexact_and_stress
+ 1/15 Test  #1: test_bitexact_and_stress .........   Passed    9.13 sec
+      Start  2: test_exact_algebra
+ 2/15 Test  #2: test_exact_algebra ...............   Passed    0.64 sec
+      Start  3: test_stabilizer
+ 3/15 Test  #3: test_stabilizer ..................   Passed    8.91 sec
+      Start  4: test_hybrid_mps
+ 4/15 Test  #4: test_hybrid_mps ..................   Passed    0.09 sec
+      Start  5: test_stress_limits
+ 5/15 Test  #5: test_stress_limits ...............   Passed   11.78 sec
+      Start  6: test_exact_ring
+ 6/15 Test  #6: test_exact_ring ..................   Passed    0.65 sec
+      Start  7: test_stabilizer_extreme
+ 7/15 Test  #7: test_stabilizer_extreme ..........   Passed  123.14 sec
+      Start  8: test_300q_stress
+ 8/15 Test  #8: test_300q_stress .................   Passed    0.03 sec
+      Start  9: test_sat_parser
+ 9/15 Test  #9: test_sat_parser ..................   Passed    0.05 sec
+      Start 10: test_release_assert_meta
+10/15 Test #10: test_release_assert_meta .........   Passed    0.11 sec
+      Start 11: test_vulkan_device_policy
+11/15 Test #11: test_vulkan_device_policy ........   Passed    0.08 sec
+      Start 12: test_statevector_contract
+12/15 Test #12: test_statevector_contract ........   Passed    0.20 sec
+      Start 13: test_mps_contract
+13/15 Test #13: test_mps_contract ................   Passed    1.08 sec
+      Start 14: test_qpu_facade_contract
+14/15 Test #14: test_qpu_facade_contract .........   Passed    0.13 sec
+      Start 15: test_c_abi_core
+15/15 Test #15: test_c_abi_core ..................   Passed    0.10 sec
+
+100% tests passed out of 15
+
+Total Test time (real) = 156.58 sec

@@ -5,9 +5,17 @@ authors:
     given-names: "Tim Johann"
     alias: "timfromhcs"
 title: "CQ-HECS: Classical Quantum High-Efficiency Compute Simulator & Four-Path Engine"
-version: 5.0.0
-date-released: 2026-10-31
+version: 7.0.0
+date-released: 2026-11-22
 license: "Apache-2.0"
+abstract: >-
+  CQ-HECS is a router-based classical simulator for quantum circuits with explicit
+  capability contracts (stabilizer tableau, low-T branch sum, untruncated MPS, sparse-Pauli
+  observables with a per-observable truncation bound), a typed result contract that keeps
+  approximation, floating-point and sampling error apart, a sound SAT surface with checked
+  certificates, local Studio/MCP/CLI/browser surfaces and a research evidence ledger. It is
+  not a quantum computer, does not claim to resolve P versus NP, and its Quantum Gravity
+  workbench studies finite models, not nature.
 url: "https://github.com/timfromhcs/CQ-HECS"
 keywords:
   - "quantum-simulation"
@@ -18,3 +26,5 @@ keywords:
   - "exact-ring-arithmetic"
   - "cryptanalysis"
   - "sat-solver"
+  - "execution-planning"
+  - "proof-checking"

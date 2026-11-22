@@ -1,0 +1,86 @@
+{
+ "points": [
+  {
+   "chsh_max": 2.0,
+   "concurrence": 0.0,
+   "entropy_bits": -0.0,
+   "negativity": -5.551115123125783e-17,
+   "qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nh q[0];\nh q[1];\ncx q[0],q[1];\nrz(0) q[1];\ncx q[0],q[1];\nrz(0) q[0];\nrz(0) q[1];\nmeasure q -> c;\n",
+   "qasm_sha256": "f5107260a7bb56c88391f369bfbf7d643fdb501258546988336d0dc083787797",
+   "theta": 0.0
+  },
+  {
+   "chsh_max": 2.141444941535249,
+   "concurrence": 0.3826834323650896,
+   "entropy_bits": 0.23332662865093512,
+   "negativity": 0.1913417161825448,
+   "qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nh q[0];\nh q[1];\ncx q[0],q[1];\nrz(0.39269908169872414) q[1];\ncx q[0],q[1];\nrz(0) q[0];\nrz(0) q[1];\nmeasure q -> c;\n",
+   "qasm_sha256": "1c87cc3b59ad8936c45eb0a7b2ebb729879d6e68d3ef5e77fe16fd253a66069c",
+   "theta": 0.39269908169872414
+  },
+  {
+   "chsh_max": 2.449489742783179,
+   "concurrence": 0.7071067811865478,
+   "entropy_bits": 0.6008760366928557,
+   "negativity": 0.3535533905932742,
+   "qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nh q[0];\nh q[1];\ncx q[0],q[1];\nrz(0.78539816339744828) q[1];\ncx q[0],q[1];\nrz(0) q[0];\nrz(0) q[1];\nmeasure q -> c;\n",
+   "qasm_sha256": "0643cd0735f79decb8c876a7868c8585eea6505c62034977ac62493310705bdf",
+   "theta": 0.7853981633974483
+  },
+  {
+   "chsh_max": 2.722905353179412,
+   "concurrence": 0.9238795325112871,
+   "entropy_bits": 0.8916186018581329,
+   "negativity": 0.4619397662556437,
+   "qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nh q[0];\nh q[1];\ncx q[0],q[1];\nrz(1.1780972450961724) q[1];\ncx q[0],q[1];\nrz(0) q[0];\nrz(0) q[1];\nmeasure q -> c;\n",
+   "qasm_sha256": "a61441f340092090c950bf7202e158b12a79f7858cadba2601bb3e7fbade807c",
+   "theta": 1.1780972450961724
+  },
+  {
+   "chsh_max": 2.8284271247461907,
+   "concurrence": 1.0000000000000002,
+   "entropy_bits": 0.9999999999999999,
+   "negativity": 0.5000000000000002,
+   "qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nh q[0];\nh q[1];\ncx q[0],q[1];\nrz(1.5707963267948966) q[1];\ncx q[0],q[1];\nrz(0) q[0];\nrz(0) q[1];\nmeasure q -> c;\n",
+   "qasm_sha256": "3d3d48ac3ebcb9198f3dcf42fc001fd38ac22d8f579235d0f5af9125cf331a09",
+   "theta": 1.5707963267948966
+  },
+  {
+   "chsh_max": 2.0099420002372,
+   "concurrence": 0.09983341664682778,
+   "entropy_bits": 0.025193870126760467,
+   "negativity": 0.04991670832341433,
+   "qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nh q[0];\nh q[1];\ncx q[0],q[1];\nrz(0.10000000000000001) q[1];\ncx q[0],q[1];\nrz(0) q[0];\nrz(0) q[1];\nmeasure q -> c;\n",
+   "qasm_sha256": "41f0ce59f9ec98cb22d999265e4f11388b1a983be437f0438f325f837c9ebcb9",
+   "theta": 0.1
+  },
+  {
+   "chsh_max": 2.613865657047868,
+   "concurrence": 0.8414709848078966,
+   "entropy_bits": 0.7777477169623613,
+   "negativity": 0.4207354924039485,
+   "qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nh q[0];\nh q[1];\ncx q[0],q[1];\nrz(1) q[1];\ncx q[0],q[1];\nrz(0) q[0];\nrz(0) q[1];\nmeasure q -> c;\n",
+   "qasm_sha256": "5fb20d84a441bf2d68173f46276698b6d93c1870018324b9c014c30c9898a638",
+   "theta": 1.0
+  },
+  {
+   "chsh_max": 2.2179710070836647,
+   "concurrence": 0.4794255386042034,
+   "entropy_bits": 0.3322245124675499,
+   "negativity": 0.23971276930210172,
+   "qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nh q[0];\nh q[1];\ncx q[0],q[1];\nrz(-0.5) q[1];\ncx q[0],q[1];\nrz(0) q[0];\nrz(0) q[1];\nmeasure q -> c;\n",
+   "qasm_sha256": "7dd1648eba9bfcd1bbc5b5f45f733820c0edacfeb9f55f968e7a7e4aca1ae740",
+   "theta": -0.5
+  },
+  {
+   "chsh_max": 2.0,
+   "concurrence": 5.190961447898282e-13,
+   "entropy_bits": -0.0,
+   "negativity": 0.0,
+   "qasm": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\nh q[0];\nh q[1];\ncx q[0],q[1];\nrz(3.1415926535897931) q[1];\ncx q[0],q[1];\nrz(0) q[0];\nrz(0) q[1];\nmeasure q -> c;\n",
+   "qasm_sha256": "c7a8c4bcb5c4a61a747749f60be73eb3a977b159b8d3d6db95c6aa462f956ef9",
+   "theta": 3.141592653589793
+  }
+ ],
+ "schema": "cqhecs.web.qg_oracle.v1"
+}

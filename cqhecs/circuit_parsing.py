@@ -34,6 +34,8 @@ import re
 from collections.abc import Iterable as _Iterable
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from cqhecs.gate_manifest import repeated_operands
+
 #: Parsed instruction: (gate_name_lowercase, qubit_indices, params)
 Instruction = Tuple[str, List[int], List[float]]
 
@@ -285,6 +287,18 @@ def _sort_terminal_measurements(
     left exactly where it is; sorting it to the end would change the state the
     later gates see.
     """
+    for idx, (name, qs, _p) in enumerate(instructions):
+        if name == "barrier":
+            continue
+        repeated = repeated_operands(qs)
+        if repeated:
+            # Shared by the Qiskit, list and QASM inputs: refused before any
+            # backend sees the instruction (finding C1-FIND-01).
+            raise UnsupportedCircuitInputError(
+                f"Instruction {idx} ({name!r}) repeats qubit operand(s) "
+                f"{list(repeated)}; every operand of a gate must be a "
+                "distinct qubit."
+            )
     positions = [
         i for i, (name, _q, _p) in enumerate(instructions) if name == "measure"
     ]
@@ -778,6 +792,14 @@ class _QasmReader:
                 "operand_count_mismatch",
             )
         for offset in range(0, len(qubits), spec.arity):
+            repeated = repeated_operands(qubits[offset:offset + spec.arity])
+            if repeated:
+                raise QASMParseError(
+                    f"gate {name!r} repeats qubit operand(s) {list(repeated)}; "
+                    "every operand of a gate must be a distinct qubit",
+                    line,
+                    "repeated_operand",
+                )
             self.instructions.append(
                 (name.lower(), qubits[offset:offset + spec.arity], params)
             )

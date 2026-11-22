@@ -68,8 +68,11 @@ under `research/qg_2026/raw/bmv_qpu/` and `raw/bmv_scan2/`; the combined scan is
 
 `<X(x)X>` = 0.954 / 0.818 / 0.808 at theta = 0 / pi/4 / pi/2.
 
-- Monotone increase tracking `sin(theta)`; the measured correlator sits at **0.85-1.0x sin(theta)**
-  (device attenuation), and the theta=0 **null control is consistent with 0** (no false signal).
+- Monotone increase tracking `sin(theta)`; the measured correlator sits at **0.779-1.009x sin(theta)**
+  across the YZ and ZY bases (device attenuation; the two bases differ by up to ~0.23 at pi/8), and
+  the theta=0 **null control is consistent with 0** (no false signal). Per-point ratios and standard
+  errors are in `processed/bmv_phase_scan.json` (YZ/ZY ratios: 0.779/0.871/0.794/0.854 and
+  1.009/0.942/0.888/0.874).
 - Noise attenuation is consistent with the Stage-2 smoke device characterisation; per-point
   finite-shot 95% intervals are in `processed/bmv_phase_scan.json`.
 - Scientific status: the declared finite two-qubit **model** is reproduced on hardware within the

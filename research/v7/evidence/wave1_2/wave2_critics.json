@@ -1,0 +1,1169 @@
+[
+ {
+  "part": "quantum-paths",
+  "open_questions": [
+   {
+    "question": "Wave-1 'missing_from_plan' says no Stim/Aer differential tests exist (P1-03 as new work). Is that true?",
+    "answer_or_experiment": "FALSE in part. tests/test_adversarial_aer_and_stim.py exists and pyproject.toml line 38 lists stim>=1.12.0 as a dependency. First action for P1-03: read that file, record what circuit families and paths it covers, and extend it into the shared corpus rather than building a new lane. Also check whether stim is in a required or optional extra, since that decides whether skips are possible and whether NOT RUN reporting is needed.",
+    "why_it_matters": "Duplicating existing work, and mis-stating the repo as lacking oracles, contradicts the honesty rule.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is D1 (Path A 100-shot cap) a real silent truncation or a disclosed, intended behaviour?",
+    "answer_or_experiment": "Verified partially: path_a_stabilizer.py:73 and :113 define MAX_RESAMPLE_SHOTS = 100, line 290-291 caps per-shot re-measurement via a configurable max_resample_shots, and line 506 returns sampled_shots in metadata. So the cap is real and only metadata-disclosed. Open: does the final SimulationResult/CLI count dict sum to requested shots, or to 100? Cheap experiment: run a 35-qubit non-trivial Clifford with shots=1000 via Python, CLI and MCP, and assert sum(counts)==shots. Note the same constant is defined twice (73 and 113), suggesting two classes; confirm which one is used. The existing scripts/verify_no_silent_truncation.py probably should have caught this; find out why it did not.",
+    "why_it_matters": "The P1-01 acceptance gate ('counts sum to requested shots or typed refusal') is untestable until the actual output contract is pinned. A fix by sampling more shots with O(n^2) re-measurement may blow time budgets.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "What is the actual wording of the stale Path B comment and is the 1e-15 skip a correctness issue or only a bookkeeping one?",
+    "answer_or_experiment": "Verified: path_b_stabilizer_rank.py:124 comment says 'n <= 16' while MAX_STATEVECTOR_QUBITS=22 (line 52); line 147 skips branches with abs(weight) <= 1e-15. Bound on error from skipping is at most (#skipped * 1e-15 * 1) in amplitude, negligible next to float64 noise, so it is a documentation/accounting defect, not a correctness one. Experiment: count skipped branches on T-count 14 circuits and compare dense-oracle error. Plan labels D10 as an 'honesty defect' alongside D1-D4; severity should be downgraded to LOW.",
+    "why_it_matters": "The RC criterion 1 says no D1-D11 open; over-classifying trivial items inflates the gate and risks wave R0 overrun.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "P1-04 'honest Path B' says it is a dense 2^T-branch sum. Is relabelling acceptable given AGENTS.md describes Path B as 'stabilizer-rank expansion' and public docs/README use that name?",
+    "answer_or_experiment": "Needs a decision. The sum over stabilizer-decomposition terms of dense Clifford statevectors is a legitimate stabilizer-rank-style exact decomposition, but with cost 2^T*2^n it gives no asymptotic advantage over a plain 2^n statevector simulator for n<=22 (a dense statevector at 22 qubits is only 64 MiB complex128). Experiment: time Path B vs Qiskit Statevector / numpy dense at n=12..22, T=4..14. If dense is faster everywhere, Path B has no niche and should be either deprecated from auto-routing or reimplemented; the router currently prefers B before C, which would then be a performance regression, not just a labelling issue.",
+    "why_it_matters": "Possible finding that a whole path is dominated; affects router order and H4-ROUTE-01 baselines.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "The plan's P1-05 promotion gate ('wins on >=2 families') needs a benchmark metric. Which metric: peak bond dimension, RAM, scratch I/O, wall time including swap overhead?",
+    "answer_or_experiment": "Not defined in the plan. Preregister a primary metric (suggest peak resident RAM + scratch bytes, with wall time as a no-regression constraint at e.g. 1.25x) and fix the family list and seeds in research/v7/HYPOTHESES.md before running. Cheap experiment: compute the existing planner cut metric for identity vs RCM/min-fill on grid, star, ladder, QFT at n=16..40 without executing any circuit; this shows if there is any headroom before writing the swap-network remap. Also first verify whether Path C already contains swap routing that makes a good order partly redundant (path_c_mps_exact.py:329, 526-550 per Wave 1).",
+    "why_it_matters": "Prevents post-hoc metric selection (AGENTS.md 5: tuned-on benchmark becomes training data).",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Wave 1 says the planner cut metric 'is not an upper bound' and C-vs-D uses max_cut_width <= 32 or n <= 20. Is chi=2^32 not clearly infeasible, and what actually happens on such circuits?",
+    "answer_or_experiment": "A cut width of 32 implies a possible bond dimension of 2^32, far beyond any RAM/storage budget; so the threshold is only a pre-filter and C reports UNRESOLVED at runtime. Verify in circuit_analyzer.py:427-430 and execution_plan.py:225-228. Experiment: run a 2D 5x5 grid with depth 6 through auto and record time-to-UNRESOLVED and whether Path D fallback is silently attempted (router fallback C->D when not forced). If D fallback occurs for a request without observables, behaviour must be a refusal, since require_counts refuses D. Check that contract.",
+    "why_it_matters": "Wasted compute and misleading plan estimates; plan_check deviations are reported after the fact only.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "The plan's P1-07 'generalized Pauli grammar beyond X/Y/Z' contradicts TASKS.md claim H4-PAULI-01 SUPPORTED_IN_SCOPE. What is the actual gap?",
+    "answer_or_experiment": "Unclear; Wave-1 repo audit says native X/Y/Z are supported and tested (tests/test_path_d_pauli_observables.py), while the web audit says it did not read Path D. The residual gap may be only: multi-factor strings with repeated factors, phase/Hermiticity checks, commuting-group planning, and gates beyond the currently conjugated set. Read path_d_sparse_pauli.py around lines 397 and 778-800 and list the unsupported gates. Define P1-07 as a delta list rather than a rewrite.",
+    "why_it_matters": "Avoids re-implementing finished work and keeps the SUPPORTED_IN_SCOPE status honest.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Licences: can Stim, MQT DDSIM, quimb, cotengra, PauliPropagation.jl be used as CI oracles or comparators?",
+    "answer_or_experiment": "Unverified. From my own knowledge (not verified this session): Stim, quimb and cotengra and MQT DDSIM are commonly published under Apache-2.0 / BSD / MIT-style licences, and PauliPropagation.jl under MIT, but this must be confirmed by opening each LICENSE file at a pinned tag. Stim is already a declared dependency, so its licence needs recording now. Create a licence register (docs or research/v7) with columns package, version, licence SPDX, URL opened, date, usage (test-only vs bundled). Use as test-only dependencies, never vendored code.",
+    "why_it_matters": "AGENTS.md 4.1 requires licence review; plan lists nearly all licences as unverified, which blocks promotion.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Does the optional oracle lane (P1-03) belong in the required CI or nightly, given stim is already a dependency but Aer is heavy?",
+    "answer_or_experiment": "Maintainer decision on CI cost. Experiment: measure wall time of tests/test_adversarial_aer_and_stim.py in CI and in a clean venv; if under about 60 s keep it in the main gate for small circuits and put larger corpus runs in nightly. A skipped lane must emit NOT RUN in the evidence ledger, and the skip budget (P10-02) should name these tests.",
+    "why_it_matters": "A nightly-only oracle can let a router change merge with unchecked correctness.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Is H4-ROUTE-01 (router cost calibration) ever promotable without a corpus of real user workloads, and what is 'regret' measured against?",
+    "answer_or_experiment": "Plan does not define the oracle for 'lowest-cost supported path'. Experiment: build the corpus of 6-8 synthetic families, run every capable path on each instance (not only the selected one) with timeouts, store raw times and peak RAM, and define regret = selected time / min time. This also requires forcing paths, which is supported. Synthetic families only represent the author's priors; label results 'synthetic benchmark' and refuse generalisation. Keep the router deterministic (AGENTS.md 3.2) and treat any learned policy as out of scope for the RC.",
+    "why_it_matters": "Without a defined regret baseline, any threshold change is unfalsifiable.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "P1-09 dynamic circuits in Path A: does the fail-closed refusal need to change for 6.0.0, and is Stim's behaviour a valid oracle?",
+    "answer_or_experiment": "Stim supports measurement feed-forward only via record targets in a restricted Clifford form and Aer treats dynamic circuits differently, so the semantic specification must come first. Defer implementation; deliver only a written spec (classical register semantics, bit ordering, sampling) plus typed-refusal tests in R6. Do not count it towards the RC's 'two promoted capabilities'.",
+    "why_it_matters": "High risk item with unclear oracle; scope creep into the RC.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Is the version decision (6.0.0 vs 5.1.0) affected by quantum-paths changes?",
+    "answer_or_experiment": "Yes, one item only: P1-01 changes Path A counts (sum==100 to sum==shots or a refusal), which is caller-visible, and P1-02 parser unification may change accepted QASM. If these ship with a typed refusal for formerly accepted input that is a breaking change; if they only fix counts to match request it is arguably a bug fix. Decide per item and record in MIGRATION notes.",
+    "why_it_matters": "Major bump justification (RC criterion 8) rests on these contract changes.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Native-vs-Python parity (P5-05) and the 'native C++ stabilizer/hybrid-MPS' claim: does the native code actually implement the same semantics as Path A/C?",
+    "answer_or_experiment": "Wave 1 cites tests/test_stabilizer.cpp and tests/test_hybrid_mps.cpp but the plan's cannot_do section says the native engine is not an end-to-end simulator. Experiment: list C ABI entry points that apply gates, and determine whether a shared JSON corpus can drive both. If hybrid MPS truncates, parity must be tolerance-based and labelled differently from Path C (which is untruncated apart from the 1e-13 rank floor).",
+    "why_it_matters": "A parity gate between non-equivalent algorithms would produce false failures or hide differences.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "The 1e-13 MPS rank cutoff is a numerical policy that is not a propagated error bound. Does any surface still show 'exact' for Path C results?",
+    "answer_or_experiment": "Check cqhecs/result.py and the run-card/provenance code for how Path C is labelled; Wave 1 says numerical_mode discloses the cutoff. Experiment: grep for exact=True in path_c_mps_exact.py and the Studio/web renderers, then add a test for a circuit whose singular values straddle 1e-13 to see the result flag. AGENTS.md 0.1 forbids equating exact with zero numerical error.",
+    "why_it_matters": "Possible live honesty defect not in D1-D11.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "P1-10 prototypes (QMDD, TN contraction, checkpoint) cost 'L' each. Is any of it affordable inside the plan, or should they be dropped?",
+    "answer_or_experiment": "Cheap pre-experiment, no code: run MQT DDSIM (pip) and quimb/cotengra on 5 circuit families against Path C and Path B timings for n=20..30, only to see if any family beats Path C by an order of magnitude. If none, record H4-* as REJECTED/DEFERRED with the data and delete the prototypes from R6. This is a half-day experiment and avoids multi-week work. Installing comparators in a throwaway venv does not touch the repo.",
+    "why_it_matters": "R6 is optional but the plan lists many L-sized items without a go/no-go criterion.",
+    "needs_maintainer": true
+   }
+  ],
+  "plan_corrections": [
+   "P1-03 / 'missing_from_plan' claim that no Stim/Aer tests exist is wrong: tests/test_adversarial_aer_and_stim.py exists and stim>=1.12.0 is in pyproject.toml (line 38). Reword P1-03 as 'audit and extend the existing adversarial Aer/Stim tests into a shared corpus with explicit NOT RUN reporting'.",
+   "D10 is overstated as an honesty defect: the Path B 1e-15 skip (path_b_stabilizer_rank.py:147) has negligible numerical effect and the n<=16 comment (line 124) is merely stale. Reclassify as LOW documentation/accounting.",
+   "D1 is confirmed in code (path_a_stabilizer.py:73, 113, 290-291, 506) but MAX_RESAMPLE_SHOTS is defined twice (lines 73 and 113); the fix item should include removing the duplicate and checking which constant is used.",
+   "P1-07 should be expressed as a delta against the existing H4-PAULI-01 SUPPORTED_IN_SCOPE implementation, not as new Pauli support.",
+   "P1-04 should include a measured dominance test (Path B vs plain dense statevector at n<=22) before deciding between relabel, reimplement or de-prioritise in routing.",
+   "P1-05 and P1-06 need a preregistered primary metric and a defined regret baseline (all capable paths run on each instance) added to the acceptance gate.",
+   "R6 quantum prototypes (P1-08..P1-10) need an explicit go/no-go criterion from a cheap comparator-timing experiment; P1-09 should be spec-only and excluded from the RC promotion count.",
+   "Add a licence register as a concrete R0/R2 deliverable (none exists); currently every comparator licence is 'unverified' and several promotions depend on it.",
+   "Add an item to check whether Path C results are labelled 'exact' anywhere despite the 1e-13 rank floor (possible additional honesty defect not in D1-D11)."
+  ]
+ },
+ {
+  "part": "noise-hardware",
+  "open_questions": [
+   {
+    "question": "Is the D2 ledger bug (guard sums only 'submitted') actually harmful today, or only once the budget is raised?",
+    "answer_or_experiment": "Verified in research/qg_2026/JOB_LEDGER.jsonl: 27 submitted, 27 collected, 2 failed, 2 refunded (1.0 credit each). Net spend is 25.0, exactly the ceiling, which matches AGENTS_V6.md:48 (25/25). The guard (scripts/run_qg_openquantum_campaign.py:90-106) computes 27. With a ceiling of 25 both values refuse any further submit, so the bug does not change behaviour at this ceiling. It bites only if the ceiling is raised or a new campaign reuses this ledger (27 vs 25 would then mis-gate by 2 credits, in the safe direction). So it is a correctness and honesty defect, but low urgency and not an overspend risk. Experiment: unit test with the real ledger as fixture asserting net=25.0, plus a synthetic ledger with a truncated last line asserting the guard aborts.",
+    "needs_maintainer": false,
+    "why_it_matters": "The plan ranks it R0 and implies a live blocker; it is a fail-safe over-count. Priority and wording should reflect that. The opposite bug (silently skipped corrupt lines at :101-103) fails open and is the real spend risk."
+   },
+   {
+    "question": "Do the two refunds carry enough information for net accounting, and are failed jobs always refunded?",
+    "answer_or_experiment": "Refund events carry refunded_credits and provider_job_id, but no preparation_id or circuit-level link beyond circuit_id. Net spend = sum(quoted_credits of submitted) - sum(refunded_credits). Whether a failed job is always refunded is unknown: the provider's refund policy for 'disconnected qubits' failures was observed twice only. Experiment: read the Open Quantum terms and the oq failure output; make the ledger store refund status explicitly (refunded | pending | none) rather than infer it, and treat failed-without-refund as spent.",
+    "needs_maintainer": false,
+    "why_it_matters": "Fixing the guard to subtract refunds assumes refunds are reliable. If a refund is pending or denied, subtracting it under-counts spend and fails open."
+   },
+   {
+    "question": "Is Qiskit Aer an optional new oracle dependency as the plan says (P2-05, P1-03)?",
+    "answer_or_experiment": "No. pyproject.toml already lists qiskit-aer>=0.12.0 and stim>=1.12.0 in the [dev] extra, and hypothesis. The plan's 'optional oracle lane' and Wave-1's 'Aer is not confirmed as already used' are partly resolved: they are dev dependencies already, not new. The licence question for Aer/Stim is therefore about CI use, which is already happening. Experiment: grep tests/ for which tests import Aer/Stim and whether they skip when missing (feeds the skip-budget P10-02).",
+    "needs_maintainer": false,
+    "why_it_matters": "Changes effort and risk: the Aer noise differential (S effort) can start in R0/R1 without a dependency decision. Remaining risk is Aer version drift (>=0.12.0 is a floor with no upper pin)."
+   },
+   {
+    "question": "What licence does the repo itself use, and does it affect Mitiq (GPL-3.0) handling?",
+    "answer_or_experiment": "pyproject.toml says license = \"Apache-2.0\" and LICENSE is the Apache 2.0 text. Importing or vendoring GPL-3.0 Mitiq into an Apache-2.0 package is incompatible for distribution as a combined work; a user-installed optional plugin that is only called through a documented interface is a grey area. The plan's clean-room ZNE decision is therefore right, but 'clean-room' needs a rule: implementers must not read Mitiq source, only the published papers. The Mitiq GPL status itself is from a search snippet; open the repo LICENSE to confirm.",
+    "needs_maintainer": true,
+    "why_it_matters": "A licence register does not exist (plan open question 3). One wrongly vendored GPL file would taint the Apache-2.0 release."
+   },
+   {
+    "question": "Does the uncalibrated-gate silence (D4) really exist, and what would the policy default break?",
+    "answer_or_experiment": "Consistent with the code read: hardware_bridge.py:756 docstring says circuits are not transpiled to the device basis; basis_gates defaults to cx/id/rz/sx/x/measure (:639) and nothing in the path warns. The Wave-1 grep found no warning. Not re-run here: write a test with an H gate on an IBM-style profile and assert no channel is attached. Open decision: the default policy. 'refuse' is honest but breaks existing tests and every circuit with h/cz; 'warn' keeps behaviour but a warning in metadata can still be ignored by UI. The plan says 'no silently noiseless gate' but does not choose the default.",
+    "needs_maintainer": true,
+    "why_it_matters": "This is the central honesty risk for the NOISY_CLASSICAL label. It also changes the public result contract (new field listing uncovered gates), which feeds the 6.0.0-vs-5.1.0 decision."
+   },
+   {
+    "question": "Is a basis-aware transpile-then-noise (P2-05) feasible with the existing code, and what is the oracle?",
+    "answer_or_experiment": "cqhecs/gate_lowering.py exists, so a lowering pass has a starting point. But the plan gives no gate-equivalence oracle beyond 'dense oracle', and global phase policy is unspecified. Aer NoiseModel.from_backend uses Qiskit's transpiler, so differential testing would compare a Qiskit-transpiled circuit against CQ-HECS lowering: they will choose different decompositions and layouts, so counts differ legitimately. Experiment: restrict the first version to circuits already in the profile basis (identity lowering) plus one-step decompositions of h, cz, swap, and compare final density matrices up to global phase; layout stays pinned, no routing.",
+    "needs_maintainer": false,
+    "why_it_matters": "The gate 'beats frozen baseline with CI excluding 0' (AGENTS.md 3.5) needs a held-out set; the 25-job suite is already used for FIT/EVAL, so a new backend or fresh jobs are required, which costs credits (see next question)."
+   },
+   {
+    "question": "Where does the held-out data for H4-NOISE-01 and P3-05 come from without new spend?",
+    "answer_or_experiment": "The 25 Spark credits are exhausted (net 25.0). All Wave-1 and plan items that need fresh held-out QPU data (P2-05 gate, P3-05 drift/XX validation, P3-08, P2-07 verification) are blocked by STATUS.md's note that a new key is needed. Free alternatives: IBM fake_provider snapshots (calibration_import.py loader) give hardware-like noise but are simulated, so they can test code but not claim device prediction. Experiment: define the evaluation as 'code correctness on fake backends' versus 'predictive claim on measured data' and mark the second NOT RUN until budget exists.",
+    "needs_maintainer": true,
+    "why_it_matters": "Without this split the promotion gate cannot be satisfied and an agent might be tempted to evaluate on FIT data or on simulator data and call it validated."
+   },
+   {
+    "question": "Is a provider adapter (P2-08) in scope for the RC, and who authorizes credit use?",
+    "answer_or_experiment": "RealHardwareBackend.run raises NotImplementedError after auth checks (hardware_bridge.py:1299). Per AGENTS.md 3.6 and the safety rules, per-run authorization and spend need an explicit user yes. Open Quantum's ToS, rate limits, and whether a Python API (not the oq.py CLI) exists are unverified: Wave-1 only read the runner script. Experiment: read the oq CLI --help and the Open Quantum API docs; check whether the CLI is a pinned dependency or an external script (the runner calls it by path). Plan lists P2-08 as design-only in R5, which is sound; keep the fake-provider contract tests as the only deliverable.",
+    "needs_maintainer": true,
+    "why_it_matters": "Spend and credential handling are the highest-harm items; the plan correctly keeps them out of the RC but should state that the runner script itself stays the only submit path until then."
+   },
+   {
+    "question": "Is P2-07 quote-time topology preflight feasible given the failure cause?",
+    "answer_or_experiment": "Both failures are 'has disconnected qubits $0 and $2' on syk-forward-v3 and syk-mirror-v3 (ledger). That is a provider-side compile error on a logical circuit with 3 interacting qubits on a 108-qubit Rigetti device, so the provider did not route. The plan assumes coupling data is available from discover. Unverified: whether the discover output contains the coupling graph or only names; and whether the provider offers auto-routing at all. Cheap experiment: run discover (read-only, no spend) and inspect for coupling data; if absent, preflight must use a pinned local copy of the Cepheus topology with a provenance label.",
+    "needs_maintainer": false,
+    "why_it_matters": "If coupling data is not exposed, the item becomes M-L effort with an unverified data source and should not sit in R3."
+   },
+   {
+    "question": "Does making create_linear_profile deterministic (P2-03) change existing digests or tests?",
+    "answer_or_experiment": "Confirmed hardware_bridge.py:1098 uses time.strftime now for capture_timestamp on a synthetic profile. Experiment: grep tests and research/ for profile digests that embed this field, and run the suite twice a minute apart to see which tests are time-dependent. Also, a synthetic profile with any capture_timestamp contradicts the label rule; the cleaner fix is capture_timestamp=None for synthetic profiles (the validator at :677 only requires it for non-synthetic ones).",
+    "needs_maintainer": false,
+    "why_it_matters": "Wave-1 calls the fix S/low risk without checking dependents; saved profile JSON or run cards could change shape."
+   },
+   {
+    "question": "Is the claim 'cqhecs/hardware/ is an unrelated miner namespace; rename it' safe?",
+    "answer_or_experiment": "Wave-1 asserts it is unrelated (bridge.py, research_client.py). A rename breaks the public import path cqhecs.hardware and any docs. Under AGENTS.md section 2.2 public APIs need deprecation adapters. Check: grep for 'cqhecs.hardware' imports in tests, docs and pyproject packages. Recommend documentation-only disambiguation first, rename as a separate deprecation item.",
+    "needs_maintainer": true,
+    "why_it_matters": "Bundling a rename into an R0 'no new features' wave contradicts the wave's own scope and adds migration burden."
+   },
+   {
+    "question": "Which MCP/Studio surfaces currently expose profile provenance labels, and is the proposed label enum (measured/synthetic/derived/post_hoc) consistent with existing fields?",
+    "answer_or_experiment": "Not verified in Wave 1. The repo has is_synthetic (bool), source_sha256, calibration_flags, and noise_fit states 'post-hoc'. A v3 enum must map is_synthetic and 'post-hoc' without changing the meaning of existing v1/v2 profiles (AGENTS.md M3: no silent change of meaning). Experiment: enumerate every place that serialises a profile (to_dict, provenance.py, studio, mcp_server, web) and add a migration fixture from a v2 profile and the M-FIT-2 profile.",
+    "needs_maintainer": false,
+    "why_it_matters": "Schema v3 is M effort in the plan but touches every surface; without the enumeration the effort and the 'label never blurred' gate are not measurable."
+   },
+   {
+    "question": "What are the acceptance gates for calibration freshness and the 'stale' threshold?",
+    "answer_or_experiment": "Plan and Wave-1 propose a staleness warning but no threshold. IBM calibrates daily; the drift data (research/qg_2026/raw/bmv_drift) could estimate a window, but that is one backend (Rigetti Cepheus) and few time points. Do not hard-code a number from IBM folklore. Proposal: threshold is a profile field set by the importer (default unknown = warn that freshness is unknown); refuse only on explicit user policy.",
+    "needs_maintainer": true,
+    "why_it_matters": "A hard-coded threshold would be an invented fact and could wrongly refuse valid offline fixtures (fake_provider snapshots are years old by design)."
+   },
+   {
+    "question": "Are mitigation (P2-09) and wider noisy simulation (P2-10) correctly sequenced, and what are their statistical gates?",
+    "answer_or_experiment": "Both are R6 research. Readout-matrix inversion on a 25-job set with few shots can produce negative probabilities; the gate 'variance overhead reported' lacks a rule for clipping or constrained least squares. ZNE needs noise scaling by gate folding, which needs the basis-aware path (P2-05) first, so P2-09 depends on P2-05 and this dependency is not written in the plan. Trajectories (P2-10) need a stated sampling-error field distinct from the Hoeffding witness used in cqhecs/quantum_gravity/noise.py.",
+    "needs_maintainer": false,
+    "why_it_matters": "Hidden prerequisite chain: P2-09 ZNE depends on P2-05; P2-10 depends on a result-schema field for Monte Carlo error (also needed by web H4-WEB-01)."
+   },
+   {
+    "question": "Does the plan's multi-vendor importer item (P2-06) have legal and format sources?",
+    "answer_or_experiment": "No source was opened for IQM, Quantinuum, Rigetti or Open Quantum calibration formats, and Wave-1 states so. Calibration data from providers may be under terms that limit redistribution (AGENTS.md 3.6: store only with required terms). Fixtures committed to the repo therefore need a ToS check per vendor; the existing IQM Garnet and Rigetti Cepheus datasets under research/ should be checked for the same. Experiment: add a data-provenance column to the licence register for every committed dataset.",
+    "needs_maintainer": true,
+    "why_it_matters": "Committing vendor payloads as pinned fixtures could breach terms; the plan treats them as free."
+   },
+   {
+    "question": "Is the test claim 'no tests exercise refunded/failed ledger events or oq failure' true?",
+    "answer_or_experiment": "Wave-1 says it did not find such tests in tests/test_quantum_gravity_campaign.py; absence was not proven by search. Experiment: grep tests/ for 'refunded', 'failed', 'JOB_LEDGER' and fake oq usage. If absent, the new tests belong with P2-01.",
+    "needs_maintainer": false,
+    "why_it_matters": "Avoids duplicating tests and makes the 'failing first' requirement concrete."
+   },
+   {
+    "question": "Is the DEFER of OpenQASM 3 hardware path consistent with the 'dynamic circuits refused' contract?",
+    "answer_or_experiment": "Wave-1 lists OQ3 import/export and 3-qubit-gate topology checks as an improvement but the plan did not carry it into any P2 item. Dynamic circuits are refused everywhere, so OQ3 value is limited to annotations and interchange. Decision: either add a P2 item with a supported-subset table, or record it as DEFERRED with the reason, as AGENTS.md 2.3 requires a status.",
+    "needs_maintainer": true,
+    "why_it_matters": "Wave-1 missing_from_plan items should not vanish between findings and plan; the integrator dropped OQ3, freshness and the cross-surface noise-provenance parity test without a status."
+   },
+   {
+    "question": "Is there a cross-surface parity test for noise/profile provenance in the plan?",
+    "answer_or_experiment": "Wave-1 flags missing parity for Python, CLI, MCP, Studio and web noise provenance; the plan only has P6-01 (web predicate) and P8-03 (general parity corpus). Add noise cases (synthetic, measured, post_hoc, uncovered gate list) to the P8-03 corpus as an explicit acceptance line.",
+    "needs_maintainer": false,
+    "why_it_matters": "D4 and D5 fixes would otherwise pass per-surface tests but still disagree between surfaces."
+   }
+  ],
+  "plan_corrections": [
+   "D2 severity: in research/qg_2026/JOB_LEDGER.jsonl net spend is 27 - 2 = 25, equal to the ceiling, so the over-count (27 > 25) does not change behaviour at the current ceiling; it fails safe. The fail-open risk is the silent skip of unparsable ledger lines (run_qg_openquantum_campaign.py:101-103). Reword the plan and reorder: corrupt-line fail-closed and idempotent submit first, refund netting second.",
+   "Plan section 4a calls Aer and Stim 'optional oracle'. pyproject.toml [project.optional-dependencies].dev already contains qiskit-aer>=0.12.0, stim>=1.12.0 and hypothesis. P1-03 and the P2-05 Aer differential need no new dependency decision; the real risk is the floor-only pin.",
+   "The plan treats P2-03 as S and Low risk. The fix needs to decide synthetic capture_timestamp=None (validator at hardware_bridge.py:677 only requires it for non-synthetic) and check dependents. Rename of cqhecs/hardware/ should be split out as a deprecation item, not placed in R0 which is declared 'no new features'.",
+   "P2-09 (ZNE) has an unstated dependency on P2-05 (basis-aware lowering, gate folding). Add it, and add the Monte-Carlo error field dependency for P2-10.",
+   "Wave-1 missing items dropped without status: calibration freshness/drift gating, OpenQASM 3 and 3-qubit topology, cross-surface noise provenance parity. Add each as a P2 item or mark DEFERRED with reason (AGENTS.md 2.3).",
+   "P2-05 acceptance needs held-out QPU data; credits are exhausted (net 25/25) so the promotion gate is NOT RUN until a new key and authorization exist. State this in the roadmap and do not allow evaluation on FIT data or simulator-only data to count.",
+   "P2-07 should include a prerequisite step: run the read-only discover to check whether coupling data is exposed; if not, the item becomes larger. Both ledger failures (syk-forward-v3 and syk-mirror-v3) are provider compile errors 'disconnected qubits $0 and $2'.",
+   "Licence register: repo is Apache-2.0 (pyproject.toml, LICENSE). GPL-3.0 Mitiq must not be vendored; also add dataset terms (IQM Garnet, Rigetti Cepheus payloads) to the register, not only software licences."
+  ]
+ },
+ {
+  "part": "quantum-gravity",
+  "open_questions": [
+   {
+    "question": "Is D2 (ledger guard over-counts spend) real, and does the 'net = submitted - refunded' fix match the data?",
+    "answer_or_experiment": "Verified partly: JOB_LEDGER.jsonl has 27 submitted, 27 collected, 2 failed, 2 refunded, 1 init; _load_ledger_spend (run_qg_openquantum_campaign.py:90-106) sums only 'submitted' and skips corrupt lines, ceiling is 25.0 (line 48). Open: refunded events may not carry a credits field and failed jobs may be refunded only partly. Experiment: write a ledger fixture from the real file and assert spent==25 net of refund credits; confirm the refunded event schema before coding the fix.",
+    "why_it_matters": "A fail-closed guard that wrongly refuses every submit blocks any future live run; the opposite bug spends credits.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Which accounting is the authoritative '25/25 Spark' figure: 25 collected jobs, 27 submitted minus 2 refunded, or provider-side balance?",
+    "answer_or_experiment": "Ledger counts alone show 27 collected jobs vs a '25 job suite'. Compare QUOTE_LEDGER.json credits per job with refund amounts and the Open Quantum account balance export; record one definition in STATUS.md.",
+    "why_it_matters": "The plan's P2-01 acceptance gate (spent=25) assumes a definition nobody has pinned; the 'complete' claim in STATUS.md depends on it.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Plan says SYK/gauge are not runnable from any surface (P3-03). Is that fully true, and what does 'catalog lists them' imply?",
+    "answer_or_experiment": "Verified: cli.py defines only catalog/preview/run-local under cmd_qg (lines 826-875) and grep finds no SYK reference in cli.py nor any .py referencing syk_qpu. Remaining check: whether Studio /api/qg/v1/run-local rejects non-BMV models with a typed refusal or silently ignores model. Experiment: call each surface with model=syk and assert a typed refusal.",
+    "why_it_matters": "A catalog entry that cannot run is an honesty risk (UI promises capability); P3-03 may be partly a refusal-fix, which is cheaper than wiring.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Are the SYK v3/v5 QASM files regenerable at all, or were they produced by a transient script? Without that, P3-02's 'bit-identical regeneration' gate is unachievable.",
+    "answer_or_experiment": "No .py in the repo references syk_qpu (verified by grep). Experiment: parse qasm/syk_qpu_v3 header, gate counts and angles, try to match them to cqhecs/quantum_gravity/hamiltonians.py with a first-order Trotter ordering and the recorded seed; if no match, downgrade the gate to 'semantically equivalent (same unitary within 1e-9) and manifest-hashed new files' and keep v3/v5 as archived evidence.",
+    "why_it_matters": "Bit-identical regeneration may be impossible; the gate would then silently block R2 or get waived.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Does QGRAVITY.md exist anywhere tracked, and which files link to it?",
+    "answer_or_experiment": "Verified: QGRAVITY.md is absent in this worktree. Run git ls-files and git log --all -- QGRAVITY.md; grep docs/QUANTUM_GRAVITY_LAB.md, AGENTS.md, AGENTS_V6.md for links. TASKS M0 says it is untracked in the primary checkout; decide whether to track it, inline it or drop the links.",
+    "why_it_matters": "Dangling links break the doc-consistency script proposed in P3-01 and AGENTS_V6 references.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "F-08 ratio claim: is the corrected range 0.78-0.79 or does it depend on shot noise and theta point?",
+    "answer_or_experiment": "Plan repeats the audit's numbers (0.298/0.383, 0.734/0.924) without recomputing. Experiment: recompute all five theta points, both YZ/ZY and XX, from research/qg_2026/processed/bmv_phase_scan.json with binomial CIs (1000 shots gives SE about 0.03) and state a range with interval; the attenuation may be statistically indistinguishable from 0.85.",
+    "why_it_matters": "Replacing one unsupported range with another equally unsupported point estimate repeats the same honesty error.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is the planned statistics (Holm, circuit-level bootstrap, P3-05) valid for 25 jobs with single runs and 1000 shots each?",
+    "answer_or_experiment": "Unclear: bootstrap unit is one circuit per theta, so a circuit-level bootstrap has n=1 per point; only the drift repeat gives replication. Experiment: preregister the unit (shots via binomial, not circuits) and the family of tests before fitting; accept INCONCLUSIVE as the default outcome.",
+    "why_it_matters": "AGENTS.md 3.5 demands a declared bootstrap unit; promising a circuit-level bootstrap with no replicates is not satisfiable and invites post-hoc tuning.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "P3-05 (fit noise model on F-08, validate on drift/XX) leaks: the validation data come from the same device, same day, same layout. How is held-out defined?",
+    "answer_or_experiment": "Define split by job/time before fitting; the drift repeat is the only temporally separate data and the XX trend is a different observable. If no fresh data exist, label the result post_hoc and not a H4-NOISE-01 promotion. A new live run needs a new key and credit authorization (STATUS.md: key wiped, Spark exhausted).",
+    "why_it_matters": "Without a held-out set the 'predictive' claim is a fit, violating AGENTS.md 3.5 data separation.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Cost/ToS: are further Open Quantum runs, and publication of raw rigetti:cepheus-1-108q data and calibration payloads in the repo, permitted?",
+    "answer_or_experiment": "Not checked in Wave 1. Read Open Quantum and Rigetti terms for result-data redistribution and calibration payload licensing; check whether raw/ and QPU_*.md contain account or job IDs that should be redacted (AGENTS.md section 13). Quick secret/ID scan of research/qg_2026 before any release.",
+    "why_it_matters": "A public repo and release assets may redistribute provider data; STATUS.md M13 secret scan is still pending.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Plan item P3-08 and P8-09 propose provider/hardware tools; what stops an MCP agent from spending credits?",
+    "answer_or_experiment": "Runner enforces a script-level 25.0 ceiling, but the ceiling is a constant, and the guard is currently over-counting (D2); the MCP QG tools are local-only today (mcp_server.py:133-150). Design requirement: hardware tool lives in a separate, default-disabled server, requires a per-run authorization object, and has an offline fake provider; do not ship any submit path before P2-01 is fixed and tested.",
+    "why_it_matters": "Irreversible spend and AGENTS.md section 3.6 (no live provider calls without per-run authorization).",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Can SYK/OTOC be scaled beyond 8 qubits via Path C/D (P3-07), and is that a meaningful goal?",
+    "answer_or_experiment": "Unclear: OTOC and Loschmidt need full-state or dense operator evolution; Path D handles Z/ZZ/X/Y/Z observables only with a triangle bound that degrades for a dense SYK Hamiltonian (about N^4 terms), and q=4 SYK scrambles, so MPS bond dimension grows exponentially. Cheap experiment: run Trotter circuits for N=8..14 Majoranas through Path C with the bond-dimension telemetry and record growth; expect refusal, which is itself a result.",
+    "why_it_matters": "The plan assigns L effort with 'ED cross-check at n<=8' as gate but no feasibility evidence; SYK is the canonical fast-scrambling case.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Does the Qiskit Fermions/Nature cross-check (P3-10) have a stable dependency and licence?",
+    "answer_or_experiment": "Wave 1 reports Qiskit Fermions at 0.1.0 and no licence read. Qiskit Nature is a more mature alternative; check pip metadata/licence and whether pinning adds heavy transitive deps. Fallback: an independent 30-line dense Jordan-Wigner builder in the test file as the oracle, avoiding any dependency.",
+    "why_it_matters": "AGENTS.md section 2.2 requires licence, maintenance and supply-chain review before new dependencies.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "New 2026 arXiv IDs (2611.07153, 2611.08313, 2601.06608) and Williams APS 2026 DOI: do they exist and say what Wave 1 claims?",
+    "answer_or_experiment": "Unverified; only listing excerpts were seen. Open each abstract page and record title, authors, version, status; if any does not resolve, drop it from LITERATURE_MAP. Do not add a BMV scenario catalog parameterised from unread preprints.",
+    "why_it_matters": "Fabricated or misquoted citations breach the honesty rule; the table in the plan has no verification column.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "What claim scope text does the plan require, and where does it conflict with the Sycamore 'wormhole reference circuit' idea?",
+    "answer_or_experiment": "Wave-1 suggested a Gao-Jafferis reference circuit; the plan dropped it from the roadmap but kept the critique pin. Decide: either no wormhole circuit (needs published coefficients and a learned N=7 model, which may not be reproducible) or a clearly labelled 'dynamics of the protocol only' item. Check whether the paper's Hamiltonian coefficients are public in a licensed form.",
+    "why_it_matters": "Reusing the word 'wormhole' invites an overclaim the authors themselves disclaim.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "The plan puts a QG Lab in web/Studio (P7-06, L effort) before the SYK/gauge surface (P3-03) lands on the same wave? Is the dependency order consistent?",
+    "answer_or_experiment": "P3-03 is R1, P7-06 is R4: consistent. But the web is a WASM statevector engine; the plan does not say whether QG runs in-browser (needs a JS port of BMV closed forms and a conformance corpus) or via Studio HTTP only. Decide that; if Studio-only, web shows static evidence cards and the 'e2e + axe' gate applies to Studio, which has no i18n (plan P7-04).",
+    "why_it_matters": "Without the decision, P7-06 balloons into a second implementation of the QG layer, violating AGENTS.md 3.7 on shared contracts.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Is cqhecs.qg.experiment.v1 (results.py) actually the right frozen envelope, and does the CLI drift from it?",
+    "answer_or_experiment": "Wave 1 says cli.py:859+ builds its payload inline. Experiment: diff the CLI JSON keys against results.py dataclass fields and against Studio/MCP outputs for the same BMV request; write the parity test first, then fix the drift. Also decide schema_version bump policy when SYK fields are added.",
+    "why_it_matters": "P3-03's gate 'one envelope' is a test that does not exist yet; without it R1 schema freeze is untested for QG.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Which QG items should be mutation-tested and what is the kill criterion (P10-03)?",
+    "answer_or_experiment": "Candidate targets: noise.py Hoeffding bound (176-186), closed-form concurrence/CHSH, ledger guard, manifest tamper detection, hamiltonian Hermiticity checks. Propose a fixed list of about 12 mutants, with a requirement that each has a probe asserting wrong values (not an import crash), and an equivalent-mutant policy; count against the 60-mutant baseline.",
+    "why_it_matters": "AGENTS.md 7.8 says survivors reported by severity; the plan states no list, so the item has no acceptance gate for QG.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Are the 8-qubit SYK dense cap and gauge lattice cap tested for refusal, and is the cap a hard-coded constant used consistently?",
+    "answer_or_experiment": "hamiltonians.py:15 is cited. Experiment: grep for the constant, call with 9 Majoranas/10 qubits and assert QGResourceError (typed) with no partial result; add a plan-level estimate (2^n memory) to P3-04's QG ExecutionPlan so the refusal appears before running.",
+    "why_it_matters": "Resource-limit tests are mandated by AGENTS.md 7.9; P3-04 depends on the cap being a single source of truth.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "What should be done with the 'holographic tensor-network toy view' and the Quirk-style live panel (Wave-1 ideas) given licence and scope?",
+    "answer_or_experiment": "Plan marks holography DEFER. Quirk licence is only 'per author post'. Decision: keep both out of the RC; if a live entropy strip is wanted, implement from closed-form BMV observables already in observables.py, no third-party code. Check the Quirk LICENSE file in its repo before even reading its source.",
+    "why_it_matters": "Avoids scope creep and an unverified licence entering a Python/web bundle.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Is a 6.0.0 major bump justified by anything in the QG part?",
+    "answer_or_experiment": "QG changes planned are additive (new models on existing envelope, plan field). Only breaking candidate: renaming or tightening the run-local payload if the CLI inline payload differs from the envelope. Record in the R1 decision whether QG contributes any breaking change; if not, QG does not support 6.0.0.",
+    "why_it_matters": "Version policy (AGENTS.md 12) says a major bump needs contract changes, not a number.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "What does 'complete the QG board' mean for BLOCKERS.md B-2 ('gates not run') and TASKS M7..M14 versus F-09..F-11 evidence?",
+    "answer_or_experiment": "Wave 1 reports contradictory statuses (21/25 vs 25/25, M6 blocked vs complete). Experiment: re-run the offline gates (pytest tests/test_quantum_gravity*.py, runner validate/doctor against the fixture) and write the actual pass counts into STATUS.md; mark everything not re-run as NOT RUN, then fix TASKS checkboxes from evidence rather than from memory.",
+    "why_it_matters": "Reconciling docs without rerunning gates just replaces one unverified status with another.",
+    "needs_maintainer": false
+   }
+  ],
+  "plan_corrections": [
+   "P2-01 acceptance 'spent=25 net' is unverified: the real ledger has 27 submitted, 27 collected, 2 failed, 2 refunded; define net spend from refunded credit amounts, not event counts, and confirm what the refunded event carries.",
+   "P3-02 gate 'v3/v5 QASM regenerated bit-identically' is likely unachievable (no code references syk_qpu; grep confirmed); replace with 'new generator output is unitary-equivalent and manifest-hashed; v3/v5 stay as archived evidence', unless a header match shows otherwise.",
+   "P3-01: QGRAVITY.md is confirmed missing in the worktree; state whether it will be tracked or the links removed, rather than 'restore'.",
+   "P3-05: a 'circuit-level bootstrap' is not defined with one circuit per theta point; specify the resampling unit (shot-level binomial plus job-level only for the drift repeat) and call the result post_hoc unless fresh held-out data exist.",
+   "P3-07 (SYK beyond 8 qubits) lacks a feasibility check; q=4 SYK is fast-scrambling, so Path C bond growth probably makes this a refusal. Add a time-boxed telemetry experiment before assigning L effort and R6.",
+   "P3-08 / P2-08: ledger guard must be fixed and covered by the fake-provider tests before any further live path; currently the plan lists these in R5 while P2-01 is R0, fine, but add an explicit dependency edge and an explicit 'no live call without user authorization and a new key' line.",
+   "P3-09: the Wave-1 literature items (arXiv 2611.*, 2601.06608, Williams APS 2026) are listing excerpts only; add a verification column (opened abstract page yes/no) and exclude unverified items from LITERATURE_MAP.",
+   "P3-10: do not make Qiskit Fermions (0.1.0) a required test dependency; prefer an in-repo independent dense JW oracle, with Qiskit Nature as optional if licence and pin check out.",
+   "P7-06: specify whether QG Lab runs in the browser engine or only via Studio HTTP; the web WASM engine has no QG implementation, so a browser QG lab means a second implementation needing its own conformance corpus.",
+   "Section 1 table row D2 says 'budget fails open' for corrupt ledger lines: correct per code (JSONDecodeError is skipped), but add that the over-count and the fail-open point in opposite directions, so tests must cover both.",
+   "The plan omits a secret/ID scan of research/qg_2026 (raw/, QPU_*.md, JOB_LEDGER.jsonl) and a data-redistribution/ToS check for Open Quantum and Rigetti data; add as an R0 item before any release asset includes these files."
+  ]
+ },
+ {
+  "part": "sat-omniwave",
+  "open_questions": [
+   {
+    "question": "Is the D3 'mislabelled UNSAT' defect real in the cadical path, and what exactly should the fixed contract be?",
+    "answer_or_experiment": "Verified by reading code. cqhecs/sat_external.py:91-103 sets status=UNSAT first, then only downgrades the NOTE to 'undecided' or 'rejected' and sets certified=check.valid is True. cqhecs/unified.py:192 sets proof='DRAT proof checked by cqhecs.drat' whenever result.status==UNSAT, ignoring result.certified. Same pattern at unified.py:184 for OMNIWAVE (safe there only because engine.py:651-658 downgrades to UNKNOWN). Open design question: a DRAT proof REJECTED by the checker is a possible solver bug or checker bug, not merely 'uncertified'. It should probably be status=ERROR or UNKNOWN, not UNSAT. Cheap experiment: write a failing test that monkeypatches check_drat to return valid=False and valid=None and asserts the Attempt.proof string and UnifiedResult never claim 'checked'.",
+    "why_it_matters": "Honesty rule in AGENTS.md 0.1 and the W5 gate 'every UNSAT certificate replayed'; P4-01 acceptance gate does not say what status a rejected proof maps to.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Does the plan's P4-02 deadline fix cover the OMNIWAVE path too, not only CaDiCaL?",
+    "answer_or_experiment": "No, the plan only names sat_external. Code shows two overruns: sat_external.py:95 grants max(10.0, 2*timeout) for the DRAT check, and omniwave/engine.py:107 has proof_timeout_seconds=60.0 on top of timeout_seconds, applied after search (engine.py:654). In solve_unified, OMNIWAVE is called with only timeout_seconds=budget, so a 3 s share can cost up to 63 s. Fix needs a remaining-deadline parameter threaded into both. Experiment: run solve_unified(timeout_seconds=1) on pigeonhole_6_5 with engines=('omniwave',) and assert wall time <= 1+epsilon.",
+    "why_it_matters": "P4-02's gate 'elapsed <= timeout + epsilon' would pass for CaDiCaL yet still fail for OMNIWAVE. Also decide: is a proof-check time-out counted against the user's deadline (then UNKNOWN is common) or is a separate documented proof budget acceptable?",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Is 'UNSAT_UNCERTIFIED' a new status value compatible with existing consumers (CLI exit codes, MCP, Studio, web SAT lab, schema hcs.sat.unified.v1)?",
+    "answer_or_experiment": "Unknown from plan. A new top-level status string is caller-visible and may break exit-code mapping and the 'certified-first' default. Alternative with lower breakage: keep status=UNSAT and add certified: bool + proof_level in the schema (additive, hcs.sat.unified.v1 -> v1.1 or v2), plus a require_certified flag that converts uncertified UNSAT to UNKNOWN. Experiment: grep cli.py, mcp_server.py, web/src and studio static for 'UNSAT' string handling and list every switch that would need updating before choosing.",
+    "why_it_matters": "Feeds the 6.0.0-vs-5.1.0 decision at R1 exit. The plan proposes both an additive field (P4-01) and a new status (P4-02) without saying which one is the contract.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "The default unified order starts with the uncertified 'watched' engine. Does certified-first mean changing DEFAULT_ORDER?",
+    "answer_or_experiment": "unified.py:39 DEFAULT_ORDER=('watched','omniwave','cadical','scan') and the docstring says changing it is schema-visible. watched runs with certify=False (line 164), so under stop_on_decision=True most UNSAT results come back uncertified. Options: (a) keep order, add certified field, document; (b) add a 'certify' policy that re-runs a certificate lane after watched says UNSAT; (c) change order. Cheap experiment: run the existing measurement script over benchmarks/sat/*.cnf plus the unit corpus and report how many UNSAT answers are uncertified under the default order.",
+    "why_it_matters": "Without this number the plan cannot say whether P4-01/02 are cosmetic or a behavioural change; also affects performance since certified lanes (scan, DRAT check) are much slower.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Is the claim 'DRAT checker cannot check real CaDiCaL proofs within budget' measured or inferred?",
+    "answer_or_experiment": "Inferred from code reading only: drat.py:104 _propagates_to_conflict and drat.py:147 'for clause in list(self.db)' copy the DB per lemma; no watches. No measurement exists in the Wave-1 findings, and research/v7/BLOCKERS.md B-002 says python-sat and drat-trim are not installed here. Cheap experiment before committing a Medium-risk checker rewrite (P4-04): pip install python-sat in a venv (Linux/WSL, not Windows py3.14), solve uf50_hard.cnf and a 100-300 variable UNSAT formula, log proof size, and time check_drat. Record lemma count vs seconds. Also fix: is the checker forward-only on purpose (no core-first deletion info), and does a backward-mode rewrite change the trust-root contract?",
+    "why_it_matters": "P4-04 is M effort and touches a trust root; the gate 'real CaDiCaL proofs checkable within budget' has no defined benchmark proof set or time budget.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "What is the DRAT checker's RAT behaviour versus drat-trim, and is differential testing against drat-trim feasible on the CI platform?",
+    "answer_or_experiment": "drat.py header (per Wave-1) checks RAT on first literal only. drat-trim semantics for the pivot and for unit-deletion ignoring may differ. Experiment: build drat-trim from source on Linux CI (pin commit SHA), run a differential corpus including tampered proofs (delete lemma, flip literal, truncate, reorder) and record disagreements. Windows availability of drat-trim is unverified; plan should say Linux-only lane.",
+    "why_it_matters": "P4-04 oracle is 'differential vs drat-trim' but nothing says how drat-trim is obtained or pinned; AGENTS.md section 4.4 forbids calling a lane PASS when the tool is missing.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "LRAT lane (P4-05): which LRAT producer, and is cake_lpr buildable/obtainable reproducibly?",
+    "answer_or_experiment": "Repo state confirmed: tests/test_lrat_external.py skips unless CQ_CAKE_LPR or CQ_LRAT_CHECK is set and uses a committed pigeonhole_6_5 vector. The plan says 'emit LRAT' but the package has no LRAT writer; CaDiCaL via python-sat emits DRAT only (python-sat's LRAT support is unverified here). Options: drat-trim -L to convert DRAT to LRAT, or have OMNIWAVE log LRAT hints directly. cake_lpr needs a CakeML-compiled binary; release binaries and licence are unverified. Experiment: attempt 'drat-trim -L' on the committed fixture, then cake_lpr; record if a prebuilt binary exists on https://github.com/tanyongkiam/cake_lpr and its licence file.",
+    "why_it_matters": "Without a named producer the P4-05 effort estimate (M) may be an underestimate; scoping label CAKELPR_CHECKED_VECTOR must apply to the vector only.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Licence compatibility of external SAT tools with this repo's Apache-2.0 licence (pyproject.toml:11).",
+    "answer_or_experiment": "Repo is Apache-2.0. Plan lists CaDiCaL, Kissat, Ganak, d4, SharpSAT-TD, cake_lpr, SBVA, CryptoMiniSat with 'licence unverified'. From memory (NOT verified in this pass): CaDiCaL, Kissat and python-sat are permissive; some counters/preprocessors may be GPL or LGPL. Safe policy that does not depend on the answer: run external tools only as separate optional processes, never vendor or link, record each licence file URL and commit in a licence register, and never ship benchmark instances without a redistribution check (SAT Competition instances often carry per-family terms). Experiment: for each tool open its LICENSE at a pinned commit and fill the register before R2 starts.",
+    "why_it_matters": "P4-07 and P10 oracle lanes rely on these tools; a GPL binary downloaded in CI is fine, bundling it in a release asset is not.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Who won SAT Competition 2025 main track, and does it matter for the plan?",
+    "answer_or_experiment": "Wave-1 left this unreconciled (slide excerpt vs IJCAI 2026 paper). It does not change the plan if the policy is 'compare against pinned CaDiCaL and Kissat versions and do not quote a winner'. Quick resolution: open https://satcompetition.github.io/2025/results and read the main-track table and the track definitions (sequential vs parallel vs 'SAT' vs 'main'); AE-Kissat-MAB may have won a differently scoped ranking. Until read, drop the winner sentence from any doc.",
+    "why_it_matters": "An unreconciled winner claim in README or release notes violates the honesty rule; the plan only needs this if a doc cites it.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is the separator DP 'integration into unified' (P4-06) coherent when unified is a solve contract and counting is a different problem?",
+    "answer_or_experiment": "Verified: sat.py:1022 count_models(method=dpll|separator|auto) already exists, auto uses elimination at planned width <=14, and it is already in CLI (cli.py:1490) and MCP (mcp_server.py:104). So the gap is only the untyped dict (contract_version 1.2) and a typed hcs.sat.count.v1, not integration into solve_unified. Putting counting inside 'unified' would conflate an engine portfolio (order, budgets) with a counter. Suggest a sibling schema, not a unified attempt. Also check: width threshold 14 and the 500k-entry table budget have no recorded calibration; experiment: measure time/memory vs width on bounded-treewidth families and compare to DPLL counter to justify 14.",
+    "why_it_matters": "Avoids a schema design mistake in R1 and an uncalibrated magic number becoming a documented guarantee.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Does the plan's 'exact vs brute force' gate cover bigints above 2^53 and the CPOG/Lean ladder, and is certified #SAT in scope for 6.0?",
+    "answer_or_experiment": "Plan P4-06 requires decimal-string bigints (good). Brute force cannot reach counts above ~2^30 variables, so large-count validation needs an independent counter (Ganak/d4/SharpSAT-TD) as oracle, or a constructed family with a closed-form count (e.g. independent components multiplying 2^k, pigeonhole-free chains). Certified #SAT (count-catcher, CPOG) is long-term only and should be marked DEFERRED, not R2. Experiment: add a closed-form large-count test (disjoint components) now; it needs no external tool.",
+    "why_it_matters": "Otherwise the exactness claim for large counts rests only on self-consistency between two in-repo counters sharing the parser.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "What are the preregistered held-out instance sets for P4-07/P4-11, and are they distributable?",
+    "answer_or_experiment": "benchmarks/sat/ contains only pigeonhole_6_5.cnf and uf50_hard.cnf (verified by glob). Plan names 'SAT Competition instances with licence check' but gives no selection rule, size limits for a Python solver, or train/held-out split. In-repo engines are pure Python, so competition instances are mostly out of reach; a family generator with fixed seeds (random k-SAT, planted, pigeonhole, Tseitin, bounded-treewidth) is realistic and licence-free. Decide: generator-based suite committed with hashes, competition instances only as external, never-redistributed lane with CaDiCaL/Kissat only. Experiment: write the generator manifest (family, n, seed, sha256) and run CaDiCaL only to pick sizes that take 0.1-30 s.",
+    "why_it_matters": "AGENTS.md 8 and H4-OMNI-01 require a held-out set; tuning on the 2 current files would make them training data immediately.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Is the cube-and-conquer / CDCL / XOR work (P4-08..P4-11) credible within the plan's R3/R6 waves given Python and GIL, and what is the kill criterion?",
+    "answer_or_experiment": "engine.py:46 documents that threads do not scale (GIL). A Python CDCL will be orders of magnitude slower than CaDiCaL, so H4-CDCL-01's 'declared hard family' must be one where correctness/proof is the point, not speed. For cube-and-conquer, proof stitching (Proof-Stitch) is not a plug-in: stitched proof must still pass an independent checker, and cadical-on-cubes proofs would need the DRAT check budget fix first (P4-04). Add explicit kill criteria in HYPOTHESES.md: e.g. stop if per-cube proofs cannot be merged and accepted by drat-trim on 5 instances; stop XOR if no benchmark family where Gauss-Jordan helps beyond existing xor_view. Experiment: first measure what fraction of OMNIWAVE time is Python overhead vs BCP using cProfile on one UNSAT family.",
+    "why_it_matters": "Prevents L-effort high-risk items from being scheduled without falsification conditions, as AGENTS.md 2.3 requires.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "P4-03 isolates optional python-sat tests in a subprocess; is the Windows py3.14 abort (0xC0000409) still reproducible, and does it also hit the unified/CLI runtime path?",
+    "answer_or_experiment": "Not re-verified here. Plan treats it as a test-harness issue only, but unified.py:189-191 calls sat_external.available() and solve_external in-process, so a native abort would kill the user's CLI/MCP/Studio process, not only pytest. Experiment: on the Windows/py3.14 box run python -c with solve_unified(engines=('cadical',)) in a subprocess and record exit code. If it aborts, the adapter itself should run CaDiCaL in a child process (also gives a hard timeout, which fixes the proof-overrun and cancellation issues).",
+    "why_it_matters": "A hard process crash from an optional dependency is a RESOURCE/INTEROP defect in product code, bigger than a test isolation task; also relevant to MCP cancellation (P8-01).",
+    "needs_maintainer": false
+   },
+   {
+    "question": "The W2 findings propose SAT MCP tools (sat_solve, sat_count, sat_plan, sat_check_proof). Which already exist, and what input limits apply?",
+    "answer_or_experiment": "mcp_server.py:104 already exposes counting; Wave-1 plan D7 notes timeout, workers, waves, limit are unbounded at mcp_server.py:230,275,365,412. A new sat_check_proof tool would accept untrusted DRAT text of arbitrary size and run a Python checker with up to proof_timeout, so it needs byte/lemma caps and a CPU deadline before being exposed. Experiment: grep tools/list for current SAT tool names and call each with a 50 MB proof to measure memory and time.",
+    "why_it_matters": "Adds an untrusted-input attack surface (resource exhaustion) not discussed in the plan; sat_check_proof must be NOT_RUN-capable when external checkers are missing.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Does SBVA/preprocessing belong in the plan at all for an Apache-2.0 pure-Python project?",
+    "answer_or_experiment": "P4-09 says 'refuse SBVA-style re-encoding for #SAT' which is correct since SBVA adds auxiliary variables. But SBVA is C++ and only helps if CaDiCaL runs; in-repo engines would not benefit. Cheap decision: restrict P4-09 to units, pure literals, components and bounded BVE with logged resolvents in-repo, and treat SBVA as an out-of-scope external preprocessing lane with no proof witness (so UNSAT certification is lost unless the pipeline logs DRAT for the extension variables).",
+    "why_it_matters": "Keeps scope honest: SBVA without proof witness would downgrade certification, contradicting the plan's certified-first goal.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "What does 'baseline numbers' for SAT look like before any change (needed to detect regressions), given the unified result is going to change?",
+    "answer_or_experiment": "Plan has no frozen pre-R0 SAT baseline. AGENTS.md 8 says never regenerate a baseline from a modified engine. Experiment: before touching unified.py, run the existing measurement script and tests/test_unified_solver.py (12 tests per Wave-1) and archive raw JSON with git SHA 7cf2c3b plus environment under research/v7/evidence/; otherwise the 'no performance regression' gate in R0 is unmeasurable.",
+    "why_it_matters": "R0 exit gate says 'equal or better than W0 baseline' but W0 baseline records test counts only, not SAT timings.",
+    "needs_maintainer": false
+   }
+  ],
+  "plan_corrections": [
+   "P4-02 should name omniwave/engine.py:107 (proof_timeout_seconds=60.0, applied after search at engine.py:654) as a second deadline overrun, not only sat_external.py:95 max(10, 2*timeout). solve_unified can exceed its total timeout via either.",
+   "D3 is confirmed but incomplete: sat_external.py:91 returns status UNSAT even when the DRAT proof is REJECTED, and unified.py:192 labels it checked. A rejected proof should not map to a plain uncertified UNSAT; decide ERROR/UNKNOWN. Also unified.py:177 labels scan as 'tree-resolution certificate checked in-repo' based on result.certificate being present; verify that the checker actually ran (cheap test).",
+   "P4-06 wording 'separator DP integrated into unified' is inaccurate: count_models(method=auto) with separator/elimination already exists in sat.py:1022 and is already exposed in CLI and MCP. The real work is a typed hcs.sat.count.v1 result and width-threshold calibration (14 is uncalibrated), kept as a sibling schema, not a solve_unified engine.",
+   "The plan says LRAT 'emission' (P4-05) but the package has no LRAT writer and python-sat's LRAT support is unverified. Add a sub-task naming the producer (drat-trim -L conversion, or native OMNIWAVE LRAT hints) and a Linux-only pinned lane; Windows availability of drat-trim/cake_lpr is unverified.",
+   "The licence column for SAT tools is 'unverified' across the board. Add a P10 task 'licence register' and state the policy: external tools run as separate optional processes only; no vendoring; no redistribution of competition instances without checking. Repo licence is Apache-2.0 (pyproject.toml:11).",
+   "The SAT Competition 2025 winner sentence should be removed from any doc until https://satcompetition.github.io/2025/results is read; the plan itself already marks it unreconciled.",
+   "P4-03 is framed as test isolation, but unified.py runs CaDiCaL in-process, so a native abort would kill CLI/MCP/Studio too. Reclassify as a product-code RESOURCE defect and consider a child process for the adapter if the abort reproduces.",
+   "Add a frozen pre-R0 SAT timing baseline (existing measurement script plus benchmarks/sat/*) archived with the git SHA before changing unified.py; R0's regression gate has no SAT numbers otherwise. benchmarks/sat has only 2 files, so P4-07 also needs a seeded generator suite.",
+   "New MCP tool sat_check_proof (idea from Wave 1) needs input size and CPU caps before exposure; add to P8-01 clamps."
+  ]
+ },
+ {
+  "part": "native-vulkan",
+  "open_questions": [
+   {
+    "question": "Is the cq_hecs_core SHARED target really loader-free under -DCQ_ENABLE_VULKAN=OFF?",
+    "answer_or_experiment": "Partly answered from CMakeLists.txt. The target is declared at line 275, outside the CQ_HAVE_VULKAN guard. It lists src/vulkan/vulkan_engine.cpp (line 283) and links ${Vulkan_LIBRARIES} (line 286), with CQ_NATIVE_VULKAN=0 when Vulkan is off. test_300q_stress (line 326) also compiles src/vulkan/vulkan_engine.cpp unconditionally. Whether that file compiles without vulkan.h is not settled by CMake text. Experiment: configure with -DCQ_ENABLE_VULKAN=OFF on a host with no Vulkan SDK, build, then run dumpbin /dependents or ldd on cq_hecs_core and test_300q_stress. The existing check in tests/test_native_cpu_only.py greps binaries for the loader name only, so it would not catch leftover header dependencies.",
+    "why_it_matters": "CPU-only is a headline v6 item (T6-03). P5-06 may be a verification task rather than a fix.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is the sanitizer lane really limited to 4 tests with leak checks off, and is enabling detect_leaks=1 (P5-03, rated S/low risk) safe?",
+    "answer_or_experiment": "Verified in ci.yml: line 393 sets ASAN_OPTIONS=detect_leaks=0:abort_on_error=1 and line 396 runs a filtered ctest. The reason leaks are disabled is not recorded. Experiment: run the full CPU-only ctest once under ASan with detect_leaks=1 locally and list the leaking tests before promising a green lane. Keep Vulkan/lavapipe tests out of the leak run, since the loader and software ICD report their own leaks and would need a suppression file.",
+    "why_it_matters": "P5-03 may be underestimated; real leaks in engine code would need their own tasks.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Are the C ABI defects (void returns, silent null handling, RZ cast) real, and is the RZ cast actually undefined behaviour?",
+    "answer_or_experiment": "Confirmed by reading src/cq_c_api.cpp: cq_apply_h/s/cx/swap/rz return void and silently ignore a null handle; cq_measure_qubit returns 0 on null; cq_apply_rz does static_cast<uint32_t>((angle/(2*pi))*4294967296.0). Converting a negative or >=2^32 double to uint32_t is UB in C++, so negative angles are an actual risk; the plan's D6 wording is right but should split into 'negative angle = UB' and 'no error channel'. Also, cq_sample_counts_json uses strncpy after a size check (harmless but noisy). Note qubit-range checking may happen inside HybridEngine; the audit did not read it. Experiment: add a UBSan test with angle=-0.5 and angle=1e12 plus out-of-range q, and see which engine throws or traps. Policy decision needed: wrap angle mod 2pi (exact for Q32) vs refuse.",
+    "why_it_matters": "Changing void to int return changes the ABI. The plan lists it as additive (P5-02), but changing a return type is not source- or binary-compatible for existing callers.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Is the legacy src/vulkan_engine.cpp actually in the shipped build, and can it be removed (P5-06)?",
+    "answer_or_experiment": "CMakeLists.txt:184 lists src/vulkan_engine.cpp in CORE_SOURCES (Vulkan build), while src/vulkan/vulkan_engine.cpp is a separate file used by cq_hecs_core and test_300q_stress. They are different classes, not duplicates in the strict sense, and the CLI/cq_hecs_shared depend on the legacy one. Removal needs a consumer inventory (grep include of vulkan_engine.hpp, cq_hecs_api.cpp, main.cpp, examples, python_bridge) and a decision on which is canonical. Experiment: build with the legacy file excluded and see what breaks.",
+    "why_it_matters": "Medium-risk deletion; unclear public status of the cq_hecs_shared facade and CLI.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "What does a bounded VkWaitForFences timeout mean for correctness, and what timeout value is justified (P5-01)?",
+    "answer_or_experiment": "Verified src/vulkan_engine.cpp:531-534 ignores results of vkCreateFence, vkQueueSubmit and vkWaitForFences (UINT64_MAX). Open design point: a fixed timeout can abort legitimate long dispatches (300q stress, large tensor contract) and on timeout the GPU work may still be in flight, so buffers cannot be freed safely. Needs: a typed error, a device-lost state that blocks further use, and a documented timeout configurable by the caller. Experiment: inject failure via a mock vk function table or a VK_LAYER (e.g. validation layer / device-loss test layer) rather than real hardware; check whether lavapipe can simulate VK_ERROR_DEVICE_LOST at all (probably not, so fault injection must be in the wrapper, which does not exist yet).",
+    "why_it_matters": "The plan rates this S/low but it needs a fault-injection seam that does not exist, which is closer to M.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Does the Windows lane ever prove a Vulkan device dispatch ran?",
+    "answer_or_experiment": "Wave-1 says only the Linux lane sets CQ_REQUIRE_VULKAN (ci.yml:140; Windows ctest at line 273 does not). Verified by grep: CQ_REQUIRE_VULKAN appears once. Hosted Windows runners have no GPU, so a required-device Windows step would fail unless a software ICD (e.g. SwiftShader or lavapipe build) is installed. Experiment: check the Windows job log for test_vulkan_compute_contract exit code 77 and add a step that prints SKIP counts. Decision: accept that Windows proves build-only, and label it so.",
+    "why_it_matters": "A green Windows 'Vulkan' badge may mean 'compiled, not run', which AGENTS.md section 3.8 forbids implying.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "What tolerance policy and oracle defines CPU-vs-Vulkan agreement (P5-04), and does an existing CPU reference exist for each shader?",
+    "answer_or_experiment": "Not defined anywhere in the plan. Shaders are fixed-point ring multiply, CORDIC, tensor contract, state reset. Fixed-point should be bit-exact, but CORDIC and tensor contract may differ between lavapipe and real GPUs due to integer-only vs float paths; unverified. Experiment: write the table first (shader, type, expected exactness, CPU function to call) and check by grep which CPU functions in src/ correspond; run the existing compute contract on lavapipe and on a real GPU if the maintainer has one and diff outputs. Also decide whether software-ICD results count as conformance, since lavapipe is itself an implementation of the spec, not independent hardware evidence.",
+    "why_it_matters": "Without this, T6-04 can pass while proving nothing about real GPUs.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Is a GPU speedup question (H4-GPU-01, P5-08) worth pursuing at all given the C ABI core is CPU-only?",
+    "answer_or_experiment": "cq_c_api.cpp includes only cq/hybrid_engine.hpp and qasm_parser.hpp, no Vulkan, so no end-to-end GPU path exists through the ABI. Timestamp queries (P5-08) would only time primitives that no user-facing path calls. Decision for maintainer: either define one real workload that the GPU should accelerate (e.g. OMNIWAVE BCP batches), or retire the GPU-speedup framing and keep Vulkan as a verified-primitive showcase. Cheap experiment: time one existing primitive end to end (upload+dispatch+download) versus its CPU twin on a single batch size; if the CPU twin wins by an order of magnitude, record it and stop.",
+    "why_it_matters": "Avoids spending L-effort on benchmarks and a research prototype (P5-10) for a path that may not have a consumer.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Licences and cost of oracles/tools proposed: Qulacs, Aer, Stim, Slang, wgpu-native, Kompute, cuStateVec.",
+    "answer_or_experiment": "Plan statuses were mostly 'unverified'. Cheap resolution: open each LICENSE file (Qulacs MIT, Aer Apache-2.0, Kompute Apache-2.0 were stated by Wave-1; Slang, wgpu-native, Stim, Intel-QS not opened). Wave-1 cited no read of wgpu-native or Slang licences, and I did not re-verify them either. Adding Qulacs/Aer as dev-only oracles requires a pip wheel for Windows plus Python version constraint (repo runs 3.11-3.14; Qulacs wheels for 3.14 are unverified). cuStateVec is proprietary and CUDA-only so it cannot be a CI oracle on the Vulkan/Windows runners. Record results in a licence register (none exists).",
+    "why_it_matters": "Adding a dependency that lacks wheels for the supported Python range would break the dev install.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is the Slang/wgpu-native/Kompute prototype (P5-10) consistent with AGENTS.md rules on new dependencies and with the web WGSL kernels existing?",
+    "answer_or_experiment": "AGENTS.md section 2.2 requires licence, maintenance, supply-chain and platform checks per dependency; no such review exists for these three. Also the shaders in shaders/ are int fixed-point primitives while the web WGSL kernels are f32 statevector gates, so they are different algorithms and a shared Slang source would first need a shared kernel design. Experiment: list the overlap between shaders/*.comp and web/src WGSL files; if overlap is empty, drop the single-source claim.",
+    "why_it_matters": "The 'closes the native-vs-web shader duplication gap' premise may be false because there is no duplicated kernel.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is the Vulkan 1.3 vs 1.2 inconsistency a real defect?",
+    "answer_or_experiment": "Wave-1 cites vulkan_engine.cpp:38 (1.3 with 1.2 fallback at line 47) vs vulkan_context.cpp:111 (1.2). A 1.2 request on a 1.3 driver is valid, so this is a consistency smell, not a bug, unless a shader uses a 1.3-only feature (e.g. SPIR-V 1.6 or Synchronization2). Check the glslang target environment flag in CMakeLists.txt (grep --target-env) against the requested API version. Timeline semaphores (core in 1.2) already fit the lower version, so the sync2 upgrade idea would force 1.3 as a minimum, which excludes some older drivers and lavapipe versions on the CI image.",
+    "why_it_matters": "Raising the minimum Vulkan version is a platform-support decision.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Fuzzing (P5-09) and TSan: do the targets have real input surface and threads?",
+    "answer_or_experiment": "Plan proposes TSan, but no evidence in the findings of native multithreading in the CPU core (AVX2 is SIMD, not threads). If there are no threads, a TSan lane gives nothing; grep for std::thread/async/OpenMP in src/ first. For fuzzing, the native parsers (qasm_parser.cpp, cq_qasm_parser, sat_solver) are reachable from cq_execute_qasm via the C ABI, which is the right harness entry. libFuzzer needs Clang; the Windows MSVC lane cannot run it, so make it Linux nightly only. Python-side parsers are not covered by this item.",
+    "why_it_matters": "Prevents adding lanes with no signal and clarifies CI cost.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Missing item: C ABI and headers export, shared library symbol visibility and Windows DLL packaging (T6-07).",
+    "answer_or_experiment": "Plan mentions install(EXPORT) but not symbol visibility, CQ_API macro behaviour on Windows, or whether python_bridge loads cq_hecs_core via ctypes and what the release package ships. The AGENTS_V6 T6-07 says 'CPU/Vulkan EXEs' but CPU-only builds no CLI. Experiment: list exports with dumpbin /exports on a Windows build and compare to include/cq/cq_c_api.h; check tests/test_c_api.py for how it locates the DLL. Maintainer decision: is the product the shared library, the CLI, or both for CPU-only releases?",
+    "why_it_matters": "The acceptance gate for P9-05 (native release assets) depends on it.",
+    "needs_maintainer": true
+   }
+  ],
+  "plan_corrections": [
+   "P5-01 is rated S/low risk, but the legacy engine has no fault-injection seam; add the seam as part of the item or re-rate it M. The original claim that the bug is real is confirmed (src/vulkan_engine.cpp:531-534).",
+   "P5-02 calls the ABI change additive, but changing void-returning cq_apply_* functions to int returns is not binary or source compatible; use new names (cq_apply_*_checked) or a major ABI version with cq_abi_version().",
+   "P5-03 should include a leak-check pre-experiment (detect_leaks is currently 0 in ci.yml:393) and a suppression file for Vulkan loader leaks; do not promise a green lane.",
+   "P5-06 should be split: first verify the CPU-only cq_hecs_core and test_300q_stress (CMakeLists.txt:275-294, 326) actually build without the SDK headers, then decide on removing the legacy src/vulkan_engine.cpp; they are not exact duplicates and the CLI depends on the legacy one.",
+   "P5-04 needs a per-shader tolerance table and must state that lavapipe agreement is not evidence about real GPU hardware; require at least one hardware lane or label the result software-ICD only.",
+   "P5-08 and P5-10 should be gated on identifying a real consumer of GPU compute, since the C ABI core is CPU-only (src/cq_c_api.cpp includes no Vulkan). The claim that Slang would close a native-vs-web shader duplication is unproven because the native shaders are fixed-point primitives and the web kernels are f32 statevector gates.",
+   "The TSan lane in P5-03 should be dropped unless the CPU core is shown to use threads.",
+   "Licence statements for Slang, wgpu-native, Stim and Intel-QS remain unverified; the plan's table should say so explicitly and a licence register should be created before any is added.",
+   "Windows Vulkan lane: state in the plan that it proves build only unless a software ICD is installed and CQ_REQUIRE_VULKAN is set there; the current green does not show a dispatch ran."
+  ]
+ },
+ {
+  "part": "web-wasm-webgpu",
+  "open_questions": [
+   {
+    "question": "Is D5 (run card labels xflip-only or p01/p10-only runs as SAMPLED) real, and what is the full set of card/engine disagreements?",
+    "answer_or_experiment": "Verified by reading code. web/src/provenance.ts:36-40 modeOf() checks only p1, p2 and readout. web/src/simulate.ts:46 and web/src/main.ts:433 treat p1, p2 and xflip as gate noise. simulate.ts:95 treats readout, p01 and p10 as readout noise. So xflip-only and p01/p10-only runs are exported as SAMPLED. Note also that provenance.ts:71 sets precision to f32 for any engine other than wasm, and the card input has no field for crossCheckTv, so the f32 drift measured in engine.worker.ts never reaches the card. Cheap experiment: add one unit test per noise field (p1, p2, readout, xflip, p01, p10) that asserts mode is NOISY_CLASSICAL. Then extract one shared predicate. Decide whether a readout-only run is NOISY_CLASSICAL, which it is today, even though main.ts counts it as 1 trajectory.",
+    "why_it_matters": "The run card is the project's provenance claim. A wrong mode label contradicts AGENTS.md 3.7 and 9.2.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is the WebGPU 'device-loss is never handled' claim in P6-02 accurate for all code, or only gpu.ts?",
+    "answer_or_experiment": "Partly. grep finds no device.lost or uncapturederror in web/src/gpu.ts. But web/src/forge/gpu_sha.ts:59 already has a device.lost handler that reports reason and message. The Forge lab therefore already has a pattern to reuse. Plan item P6-02 should reuse that code rather than design it anew. Cheap experiment: in Chromium call device.destroy() on the GpuEngine device from a test hook, then run again and assert a visible fallback reason.",
+    "why_it_matters": "It avoids duplicated work and ensures one device-loss code path for both labs.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Can a WebGPU conformance lane (P6-04) run in CI at all? The plan leaves the environment open (Q4).",
+    "answer_or_experiment": "Unresolved. web/playwright.config.ts has a single chromium project with devices['Desktop Chrome'] and no launch args. There are no WebGPU flags, no SwiftShader or Dawn adapter, and no GPU runner. So WebGPU is untested in CI, and the e2e only covers the unavailable fallback. Cheap experiment: in a throwaway CI job on ubuntu-latest, launch Chromium with --enable-unsafe-webgpu and --use-angle=swiftshader (or --enable-features=Vulkan with lavapipe, which the native lane already uses). Then run navigator.gpu.requestAdapter() and log the result. Also check adapter.isFallbackAdapter. A software adapter proves f32 shader correctness only, not hardware behaviour. The lane must report NOT RUN when no adapter exists. I did not run this experiment.",
+    "why_it_matters": "P6-04 is a release-RC criterion (oracle lanes). Without a decided environment it cannot be a gate.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Which cancel design is allowed: SharedArrayBuffer stop flag or message polling? (P6-05)",
+    "answer_or_experiment": "SharedArrayBuffer needs cross-origin isolation (COOP and COEP headers). The plan did not check whether the Vercel headers or any embedded CDN content (CodeMirror is lazy-loaded locally) would break under COEP. Cheap experiment: check web/vercel.json headers, then try COOP same-origin and COEP require-corp on a preview deployment and run the e2e. Alternative with no isolation: chunk the WASM loop and poll with a MessageChannel or yield. This costs throughput and lib.rs uses global mutable STATE, so chunked calls must stay in one worker. Also note that engine.worker.ts passes () => false to GpuEngine.run, so the existing shouldStop hook in gpu.ts:96 is already wired inside the kernel loop and only needs a real source.",
+    "why_it_matters": "It determines whether the cancel item is S/M effort or needs a hosting-header change that can affect production.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "The plan lists web test counts of 61 (W0 baseline) while the Wave-1 repo audit says 63 node tests. Which number is the working baseline, and do the suites include the committed tests/*.test.bundle.mjs files?",
+    "answer_or_experiment": "Unreconciled by the plan. The plan already says to use BASELINE_W0.md (61 web). The audit's 63 may count a different set or a later commit. Cheap experiment: run npm test in web/ and record the count and file list. Run git ls-files web/tests and check whether *.test.bundle.mjs are tracked. If they are tracked generated files, they should be gitignored (stale-artifact risk named in the audit).",
+    "why_it_matters": "The RC gate says counts must not drop without documented reason. Two baselines make that check meaningless.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "WASM loading: P6-06 only mentions the base URL. Are there other hard-coded absolute URLs?",
+    "answer_or_experiment": "Yes, two places. web/src/engine.worker.ts:46 uses new URL('/cqhecs_core.wasm', self.location.origin). web/src/forge/wasm_sha.ts:39 defaults to '/cqhecs_core.wasm'. Both need the fix, and the integrity SHA-256 check must be defined once. Cheap experiment: build with vite base set to a sub-path and run the e2e against it. Also decide where the expected hash lives. A hash baked at build time is useful for drift detection, but it protects only against a mismatched deploy, not against a hostile host, because the page and hash come from the same origin. Say so in the docs.",
+    "why_it_matters": "It avoids an overclaimed 'integrity' feature and a half-fixed deployment path.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Run-card error scope (P6-03): what is the statistically correct content, and how large a schema change is it?",
+    "answer_or_experiment": "Currently error {approximation, numerical, sampling} are hard-coded null (provenance.ts:78). Open points: (1) a per-outcome binomial CI is valid only for i.i.d. shots; terminal noisy runs use trajectoryCount(shots, ...) trajectories in main.ts:436, so shots are not independent and the CI would be wrong unless it is based on the trajectory count; (2) for WebGPU, crossCheckTv exists only for n<=20; for n>20 the field must be explicitly null with a reason, not 0; (3) the schema hcs.run.v2 is shared with Python, so any change is a v3 or needs additive optional fields. Cheap experiment: check the Python schema file under cqhecs/provenance.py and its JSON schema tests for additionalProperties rules. Then prototype adding optional fields only and see whether Python validation accepts the card.",
+    "why_it_matters": "A wrong CI is worse than a null. It would be the kind of unsupported certainty AGENTS.md 0.1 prohibits.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Is the WASM-versus-WebGPU cross-check bound (n<=20, crossCheckTv) a total-variation distance on the full distribution, and what tolerance defines a pass?",
+    "answer_or_experiment": "The worker computes crossCheckTv = tv/2 against the f64 core (engine.worker.ts ~106-112), so it is TV over the exact distribution and only for n<=20. The plan never states a pass threshold. webgpu-q's F>=1-1e-5 comes from an unverified third-party page and must not be adopted as a project threshold. Cheap experiment: run the existing quantum_conformance.json corpus through both engines on any available adapter and plot TV versus n and depth. Then preregister the threshold (an H4-WEB-01 entry) before looking at EVAL cases, per AGENTS.md section 5.",
+    "why_it_matters": "Without a preregistered threshold the 'f32 drift reported' gate is unfalsifiable.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "The plan's SOTA picks (qasm-ts, quantum-viz.js, js-quantum, wgpu, Pyodide, luma.gl showcase) have no verified licence or maturity. Which of them can enter CI?",
+    "answer_or_experiment": "All licences are unverified in Wave 1. Cheap experiment: read the LICENSE file and npm/crates metadata for each before any dependency is added (qasm-ts, js-quantum on jsr.io). Per AGENTS.md section 2.2, add a dependency only after a licence, maintenance and supply-chain check. Treat qasm-ts as a dev-only test oracle, never a runtime dependency, unless the local parser has a demonstrated gap. First compare the gap by running both parsers over the conformance corpus.",
+    "why_it_matters": "A licence register does not exist today (plan open question 3). Adding a package before it exists creates a compliance gap.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is the GPU performance work (P6-07: bind-group reuse, gate fusion, PARAM_STRIDE) justified before data exists?",
+    "answer_or_experiment": "The audit asserts a per-op createBindGroup and a hard-coded PARAM_STRIDE of 256. The plan marks P6-07 R6. Before any change: the WebGPU spec guarantees minUniformBufferOffsetAlignment of at most 256 by default limits, so 256 is only wrong if a device reports a larger limit, which should be verified against requested limits rather than assumed. Cheap experiment: log adapter.limits.minUniformBufferOffsetAlignment on several devices, and time upload, dispatch, mapAsync and CPU sampling separately for n=18..24. Only then decide on fusion. A transfer-inclusive benchmark also needs the hardware metadata from AGENTS.md section 8.",
+    "why_it_matters": "Avoids a speed claim from a kernel-only microbenchmark. Also the init benchmark (an 18-qubit H loop in the worker) drives the device label and runtime estimates, which AGENTS.md 3.7 warns against.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is the WebGPU refusal for mid-circuit measurement and gate noise (main.ts:434) shown as a typed refusal in the run card and plan, or only as a thrown UI error?",
+    "answer_or_experiment": "main.ts:434 throws Error(t('run.gpuNoise')) before any run, so no card is produced. The plan's P6-08 (shared plan/refusal schema) is R4, but the refusal path itself is R0-R1 material. Cheap experiment: e2e that selects WebGPU with a noisy circuit and asserts the refusal code (not just a localized string). Decide whether the string is the only machine-readable signal; if so, add a stable error code shared with Python refusal codes.",
+    "why_it_matters": "Cross-surface parity for refusals is an RC criterion (item 2), and a localized string cannot be parsed by tests or MCP.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "The Wave-1 web part cites an unattributed 'WebGPU Inspector MCP', a third-party devtools MCP supply-chain incident, and Chrome 151-152 features. Are these usable as plan inputs?",
+    "answer_or_experiment": "No. The Wave-1 findings state that the Inspector MCP had no URL and that only the Chrome 151-152 blog page was fetched in full; the rest came from search snippets. I did not re-search. Keep these out of the plan, or label them as unverified leads. For the supply-chain note, if Chrome DevTools MCP or Playwright MCP is added, pin the exact version and record it in a licence and dependency register. Cheap experiment: none needed beyond a version pin and an npm audit.",
+    "why_it_matters": "Honesty rule: unverified claims should not become roadmap items.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is 'WebGPU is f32 and cross-checked' enough for the browser engine to claim parity with Python on a common subset (H4-WEB-01)?",
+    "answer_or_experiment": "Not yet. The Python corpus is consumed by WASM tests only. WebGPU, noise, measurement mapping and endianness are not compared through a single runner. The plan's H4-WEB-01 does not yet have a written hypothesis in research/v7/HYPOTHESES.md for the WebGPU part (I did not re-open that file). Cheap experiment: grep HYPOTHESES.md for H4-WEB-01 status. Then add corpus cases that include measurement maps and bit order, and run them in WASM first, which needs no GPU. That alone gives a CI-testable result.",
+    "why_it_matters": "It separates what can be gated now (WASM vs Python) from what needs a GPU environment (WebGPU).",
+    "needs_maintainer": false
+   }
+  ],
+  "plan_corrections": [
+   "D5 is confirmed in code (web/src/provenance.ts:36-40 vs web/src/simulate.ts:46,95 and web/src/main.ts:433). Extend the fix: the card also takes precision f32 for any engine other than wasm (provenance.ts:71) and has no field for crossCheckTv. Add both to P6-01/P6-03.",
+   "P6-02 says WebGPU device loss is unhandled. True for web/src/gpu.ts, but web/src/forge/gpu_sha.ts:59 already handles device.lost. Reuse that handler instead of designing a new one.",
+   "P6-06 mentions only engine.worker.ts. The absolute '/cqhecs_core.wasm' also appears in web/src/forge/wasm_sha.ts:39. Fix both and define the integrity hash once.",
+   "P6-05: the shouldStop hook exists inside GpuEngine.run (gpu.ts:75,96) but engine.worker.ts:68 passes () => false. The work is wiring a stop source, not building a hook. Also resolve the SharedArrayBuffer/COOP-COEP header question first; the plan did not flag it.",
+   "P6-04: web/playwright.config.ts has one chromium project with no WebGPU launch flags and no adapter, so WebGPU is untested in CI. The plan's Q4 stays open and should be a maintainer decision with a CI probe of requestAdapter/isFallbackAdapter before the lane is scheduled.",
+   "The web unit-test count differs between sources (plan: 61 from BASELINE_W0.md; Wave-1 audit: 63). Run npm test in web/ and fix one baseline number before the R0 exit gate, and check whether the tests/*.test.bundle.mjs generated files are tracked.",
+   "P6-03 must not add a binomial CI that assumes i.i.d. shots: noisy terminal runs use trajectoryCount(...) trajectories (main.ts:436). Specify the estimator, preregister it, and make crossCheckTv explicitly null with a reason for n>20.",
+   "Typed refusal for WebGPU with mid-circuit measure or gate noise (main.ts:434) is a thrown localized string and produces no card. Move a stable refusal code to R0-R1 rather than waiting for P6-08 in R4.",
+   "P6-07 should name a measurement step first (adapter limits, upload/dispatch/map/sampling split). PARAM_STRIDE 256 is spec-default-safe; verify against reported limits before calling it a defect.",
+   "SOTA items for this part (qasm-ts, quantum-viz.js, js-quantum, wgpu, Pyodide, WebGPU Inspector MCP, webgpu-q threshold) are unverified for licence and maturity. Keep them as DEFER or ORACLE-after-licence-check, and do not cite webgpu-q's F>=1-1e-5 as a CQ-HECS criterion."
+  ]
+ },
+ {
+  "part": "studio-ui-design",
+  "open_questions": [
+   {
+    "question": "Which UI is canonical: web/ (Vite, Vercel) or cqhecs/studio/static (packaged in the wheel)? P7-04, P7-05, P7-06 and P7-08 all assume the answer.",
+    "answer_or_experiment": "Repo fact: pyproject.toml:61 ships cqhecs.studio static/data in the wheel, so Studio is the offline, loopback, bearer-token surface. web/ is the Vercel-deployed app and has i18n and the composer. Studio has no i18n, and the plan has no decision. Cheap resolution: write a one-page ADR listing which features live where (QG Lab needs /api/qg/v1, which exists only in Studio's Python server, so it can't be a pure Vercel page). Likely answer: QG Lab goes in Studio only, and web/ gets a read-only evidence viewer. Maintainer decision needed.",
+    "why_it_matters": "Building QG Lab in both UIs doubles the work and recreates the string and esc() drift the plan wants to remove.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "P7-06 says the QG Lab is a client of /api/qg/v1. Does web/ have any backend to call? The Vercel app is static.",
+    "answer_or_experiment": "web/ is a static Vite build, so it can't reach a loopback Python server without CORS and a token flow. It would need either a WASM/TS port of the BMV oracles or a mode that renders exported run-card/envelope JSON only. Experiment: check Studio's CORS and Origin handling in cqhecs/studio/app.py and tests/test_studio_security.py to confirm a cross-origin client is refused, which is the secure default. Recommend the file-import viewer in web/ and the live lab in Studio.",
+    "why_it_matters": "The plan's R4 exit gate (QG Lab in web and Studio with axe + e2e) is unachievable as worded without weakening the Studio security model.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Is the axe gap really as the findings say (impact filter and the Forge tag set)? Verified.",
+    "answer_or_experiment": "Confirmed by reading the code. web/e2e/app.spec.ts:155-156 uses wcag2a/2aa/21aa/22aa tags and blocks only on critical or serious impact. web/e2e/forge.spec.ts:128 omits wcag22aa and its filter is not visible in the grep. The Forge change is a one-line tag addition. For the impact filter, run the suite with moderate included and count new violations before making it blocking, since turning it on may red the gate. Also the rule-set claim is partly overstated: axe-core has few WCAG 2.2 rules (target-size is the main one), so 'wcag22aa' adds little. Check which rule IDs the installed @axe-core/playwright ^4.14.0 actually enables for that tag.",
+    "why_it_matters": "P7-01 is the cheapest item in the plan, but its acceptance gate ('catches known contrast issues first') has no measured baseline.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is the composer keyboard defect real, and what does the fix break?",
+    "answer_or_experiment": "Confirmed. web/src/composer.ts has contextmenu handlers at lines 36, 193 and 213 (right-click is the delete path, line 206), and grep finds no keydown or tabindex in the file. So keyboard and touch delete is missing. Risk: the existing e2e click SVG cells. Experiment: list which tests in web/e2e/app.spec.ts touch composer cells so the roving-tabindex change can be done behind the same selectors. Also note WCAG 2.5.7 (dragging) is moot today because there is no drag; it only applies once P7-09 adds drag and drop. The plan's open question 8 can therefore be closed as 'not applicable until drag exists'. Cite the WCAG 2.2 text before asserting this.",
+    "why_it_matters": "It is a real WCAG 2.1.1 failure axe cannot see, and the one UI item an accessibility audit would flag first.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Does web/ really ignore prefers-color-scheme (D-theme claim)?",
+    "answer_or_experiment": "Grep for prefers-color-scheme and matchMedia in web/src/*.ts and styles.css returned nothing, so the claim holds. AGENTS.md's artifact guidance is irrelevant here. Fix is S effort. Question for the maintainer: is dark-by-default an intentional brand choice? If so, the change is a product decision, not a defect. Experiment: a Playwright run with colorScheme light on first visit plus the contrast script from P7-03.",
+    "why_it_matters": "Changes first-visit appearance for every user, so it needs a decision and updated screenshots.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "What are the licences and costs of the UI tooling the plan lists (Storybook, Observable Plot, Carbon, Geist, Radix, Quirk, Figma MCP)?",
+    "answer_or_experiment": "Unverified in Wave 1 except Radix (MIT per excerpt) and Quirk (Apache-2.0 per author post). Geist fonts and Carbon assets have their own licences; Figma MCP needs OAuth and a paid seat for some features. Cheap experiment: open each LICENSE file and put the results in one licence register (the plan already notes none exists). Observable Plot is ISC and D3 is ISC to my knowledge, but I did not verify that in this pass. Do not add any until checked. Radix implies React, which contradicts the framework-light web/ app, so drop it from the plan unless React is adopted.",
+    "why_it_matters": "The plan marks several items 'adopt' with licence 'unverified', which contradicts its own honesty rule.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Can Storybook (P7-08) fit a vanilla-TS app without breaking the bundle budget and the stability of the pinned toolchain?",
+    "answer_or_experiment": "Unknown. web/package.json has only axe, playwright, vite 6.4 and typescript 5.9 as devDependencies. The budget script scripts/check_bundle_budget.mjs measures the production build, so devDependencies should not count, but Storybook's Vite builder version support for vite ^6.4.5 must be checked. A lighter alternative is a static /gallery.html route rendered by the existing Playwright setup with axe per state. Experiment: prototype the gallery page in a branch and compare CI time.",
+    "why_it_matters": "Storybook adds a large transitive dependency tree that conflicts with the supply-chain goals in P9.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "How is H4-UX-01 (provenance-first UI reduces interpretation errors) measured? P7-05 claims to satisfy it but defines no task or sample.",
+    "answer_or_experiment": "The plan has no acceptance metric. A defensible cheap version is an expert-review checklist plus a small task test: 5 scripted questions ('which engine ran, is it exact, what does the bound cover') answered from a run card before and after, with n and participants declared. With a single maintainer the result is INCONCLUSIVE at best and should be recorded as such. Write the protocol in HYPOTHESES.md before building P7-05.",
+    "why_it_matters": "Otherwise 'provenance UI done' becomes a visual-polish claim, which AGENTS.md section 5 explicitly rejects.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Does P7-05 depend on stable schemas that don't exist yet, and does it contradict D5/P6-03?",
+    "answer_or_experiment": "Yes. The plan notes the run card has null error fields and modeOf() mislabels noise (P6-01, P6-03, R0/R1), and Studio has no run card. Typed result-state rendering in R4 must therefore consume the R1 schema, and a Studio card needs the Python hcs.run.v2 builder (cqhecs/provenance.py) exposed over HTTP. Check whether /api/ routes already return it; if not, P8-03/P8-04 are a hard prerequisite. Add that explicit dependency to the roadmap.",
+    "why_it_matters": "The plan sequences P7-05 in R4 but does not list the dependency, risking a UI built on a schema that then changes.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is there a snapshot or screenshot policy for visual regression (P7-08), given dark neon theme, fonts and OS differences?",
+    "answer_or_experiment": "Not addressed. Playwright screenshots differ across OS and font rendering, so goldens made on Windows will fail on Linux CI. Resolve by generating goldens only in the CI Linux container, or restrict to DOM/ARIA snapshots (toHaveAriaSnapshot) first, which are stable. Experiment: add one ARIA snapshot test per route and watch for flake over 20 runs.",
+    "why_it_matters": "A flaky screenshot gate violates the plan's own rule against raising timeouts or weakening tests to get green.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is the innerHTML/XSS risk real in Studio and web, and is it tested?",
+    "answer_or_experiment": "The finding lists several innerHTML sinks and a hand-written esc() in web/src/charts.ts:17, plus the footer interpolation at main.ts:187. This was not reproduced. Cheap experiment: a Playwright test that feeds QASM, SAT text and profile names containing <img onerror> and angle brackets through every sink, asserting no script runs and the text renders literally. Add the same for Studio's app.js. Treat as SECURITY category per AGENTS.md section 14, and add CSP header checks (Studio is loopback but still serves results). Check whether vercel.json sets a Content-Security-Policy.",
+    "why_it_matters": "It is a security claim with no failing test yet, and the fix (shared escape helper or textContent) can be small.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is i18n parity really untested and is translation quality acceptable?",
+    "answer_or_experiment": "Wave 1 saw no parity test in web/tests (run.mjs lists core, conformance, circuit_conformance, forge, provenance, wasm). Experiment: a 20-line script comparing key sets in web/src/i18n.ts DICTS and forge/i18n.ts. Terminology quality (DE/FR for 'certified', 'unresolved', 'refusal') needs a human native-speaker review, not a script, and nobody in the plan owns it. Studio i18n then needs a decision about a shared dictionary format: web/ is TS, Studio is plain JS served from Python; a generated JSON file from one source is simplest.",
+    "why_it_matters": "P7-04 is rated M but the sharing mechanism between the TS build and the Python wheel is undecided.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Are the effort estimates and wave placement realistic, and is anything misplaced?",
+    "answer_or_experiment": "P7-01 (S) is placed in R1 although it is independent and could go in R0 as a gate-only change. P7-02/03 sit in R4 but are small, standalone fixes that don't depend on schemas, so they could ship earlier and reduce risk. Conversely P7-06 (L) bundles four screens plus evidence viewer plus e2e, and depends on P3-03 (R1) and the canonical-UI decision, so it likely exceeds L. Recommend splitting P7-06 into BMV-only first (the only model with local CLI/MCP/Studio support per the plan) and SYK/gauge later.",
+    "why_it_matters": "The plan's own cannot-do list says SYK and gauge cannot be run from any surface, so a QG Lab for them would show nothing real.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Mobile/touch and low-resource behaviour: is there evidence the UI works on small screens or with large histograms?",
+    "answer_or_experiment": "Wave 1 saw 3 breakpoints (styles.css:280-288) and MAX_BARS=32 in charts.ts, but no mobile viewport tests are mentioned beyond the proposed addition. Experiment: add Playwright projects for a 375px and a 768px viewport, run the existing 32 e2e tests, and count failures; include target-size checks (24x24 CSS px) on composer cells, which are likely too small at 375px.",
+    "why_it_matters": "The plan asserts target size and touch fixes but has no baseline measurement of how many controls fail.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Agent-facing design ideas (Playwright MCP, Storybook MCP, Figma MCP, lean-lsp, 'run-card snapshot' MCP tool) carry supply-chain and scope risk. Which are in scope?",
+    "answer_or_experiment": "The plan lists them as dev-only, but one search result mentioned a supply-chain incident for a third-party devtools MCP package, and Figma requires OAuth. Proposed rule: no new MCP server runtime dependency in the shipped package; dev-time agents pin exact versions and run on loopback only. A new 'run_card_snapshot' MCP tool should wait until P8-04 schemas are frozen and must not expose local paths or device IDs (AGENTS.md section 13). Maintainer should confirm that agent tooling is dev-only.",
+    "why_it_matters": "Avoids adding MCP surface area before the contract (P8) is frozen.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Is a notebook widget (P7-10) or a holography toy view worth any scope?",
+    "answer_or_experiment": "No evidence of demand in the repo. Both depend on schema stability and add maintenance. Keep them DEFERRED, not R6, unless the maintainer names a user for them. A cheap check: search the repo's issues or docs for notebook usage requests.",
+    "why_it_matters": "Keeps the RC from carrying unowned surfaces.",
+    "needs_maintainer": true
+   }
+  ],
+  "plan_corrections": [
+   "P7-01 detail: web/e2e/app.spec.ts:155 already includes wcag22aa; only web/e2e/forge.spec.ts:128 lacks it (tags wcag2a, wcag2aa, wcag21aa). The first plan's wording is correct for Forge only. The impact filter (critical/serious) is at app.spec.ts:156.",
+   "P7-02 evidence: confirmed that web/src/composer.ts has contextmenu handlers (lines 36, 193, 213) and no keydown/tabindex. WCAG 2.5.7 (dragging) does not apply today because the composer has no drag; it becomes relevant only with P7-09. Open question 8 in the plan can be closed with that wording once the WCAG 2.2 text is cited.",
+   "P7-03 confirmed: no prefers-color-scheme or matchMedia use in web/src; but the change is a product decision (dark-by-default), so mark it as needing maintainer approval rather than a pure defect fix.",
+   "R4 gate says 'QG Lab in web and Studio'. Studio's /api/qg/v1 is a loopback Python server and the Vercel web/ app is static, so a live QG Lab in web/ is not possible without weakening the security model. Reword to 'live QG Lab in Studio; web/ renders exported envelopes/run cards'.",
+   "P7-06 should be split: BMV-only first (only model with local CLI/MCP/Studio support), SYK and gauge after P3-03. Showing SYK or gauge screens before the surface exists would be empty or misleading.",
+   "P7-05 needs an explicit prerequisite list (P6-01, P6-03, P8-03, P8-04, and an HTTP route exposing the Python hcs.run.v2 card). Add them to the roadmap row.",
+   "P7-01, P7-02, P7-03 are small and independent of schemas; move them to R0/R1 rather than R4 (P7-02) to remove the largest accessibility defect early.",
+   "SOTA table: Radix Primitives implies React, contradicting the framework-light web/ app; mark as AVOID/DEFER, not 'only for new panels'. All 'unverified' licences (Storybook, Plot, Carbon, Geist, Figma MCP terms) need a licence register entry before any 'adopt' verdict.",
+   "Add an H4-UX-01 protocol (tasks, n, metric, INCONCLUSIVE rule) to research/v7/HYPOTHESES.md before P7-05 starts; the plan currently names the hypothesis without an acceptance test.",
+   "Add a security test row to P7: XSS sink test across innerHTML sinks (charts.ts, main.ts, Studio app.js) and a CSP check, since the finding is unreproduced and has no failing test.",
+   "Visual regression: prefer ARIA snapshots or Linux-CI-generated goldens; Windows-generated screenshots will not match Linux CI."
+  ]
+ },
+ {
+  "part": "api-mcp-integration",
+  "open_questions": [
+   {
+    "question": "Is MCP spec 2026-07-28 final or still draft, and is it the right target for P8-05?",
+    "answer_or_experiment": "Checked the changelog page (modelcontextprotocol.io/specification/2026-07-28/changelog). It lists the revision as the successor of 2025-11-25 but item 12 says 'Renumber the error codes introduced in this draft', which suggests the text was still draft-edited. I did not find a release-status banner. Cheap experiment: read the spec index/versioning page and the GitHub release tags, and check which protocolVersion strings Claude Desktop, Claude Code and the MCP Inspector send in their initialize/_meta. Until confirmed, target 2025-06-18/2025-11-25 as primary and treat 2026-07-28 as opt-in.",
+    "why_it_matters": "P8-05 and P8-09 depend on stateless/server-discover/tasks semantics that may still change.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "The plan's gate 'Ping works during a long call' (P8-01) conflicts with the 2026-07-28 spec dual-mode goal (P8-05). Which is it?",
+    "answer_or_experiment": "Contradiction confirmed from the changelog: item 5 removes `ping` and `logging/setLevel`, and item 2 removes `initialize`. The repo handles `ping` and `initialize` (tests/test_mcp_server.py:34 test_initialize_and_tool_list). Resolve by defining the gate per mode: legacy mode keeps ping responsive during a long tool call (needs a worker thread); new mode has no ping and must instead answer `server/discover` and honour cancellation. Write both as separate subprocess tests.",
+    "why_it_matters": "An ambiguous acceptance gate will be passed or failed arbitrarily.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Does `notifications/cancelled` really need a worker-thread redesign, and what does the cancel contract return for non-cooperative engines?",
+    "answer_or_experiment": "Repo: mcp_server.py:400 drops notifications/cancelled, and tools run synchronously on the read loop. Pure-Python SAT and Path C runs have no cooperative check points in most places, so a worker thread can only abandon the result, not stop compute (GIL, same issue as the plan's P6-05). Experiment: add a threading.Event plumbed into solve_external/omniwave timeout paths and measure cancel latency for 3 engines. Contract must be: cancelled => status UNKNOWN/CANCELLED with no partial verdict, and the thread must be killed or the process restarted if compute cannot stop. Decide whether a subprocess-per-call model is acceptable for stdio.",
+    "why_it_matters": "Without real cancellation the 'bounded' claim is only cosmetic and compute leaks accumulate.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Are the claimed repo defects D7 (unbounded timeout/workers/waves/limit) and 'Studio clamps' accurately described?",
+    "answer_or_experiment": "Verified in cqhecs/mcp_server.py: timeout read via float(arguments.get('timeout',5.0)) at lines 230, 253, 275, 365 with no clamp; workers/waves int() with no clamp (235); limit int() (274). Generic -32000 at line 413. Not verified here: the Studio clamp value (0.01-30 s at studio/app.py:656) and shots max 20000. Experiment: add a failing MCP test sending timeout=1e9 and workers=10000, assert refusal (isError) before work starts.",
+    "why_it_matters": "Confirms D7 is real; the fix needs a shared clamp table to avoid drift between Studio and MCP.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Tool annotations: what exactly is claimed, and is it safe to mark everything readOnlyHint?",
+    "answer_or_experiment": "Repo grep confirms no annotations/outputSchema/isError in mcp_server.py. Hint field names (readOnlyHint, idempotentHint, openWorldHint, destructiveHint) were not confirmed by Wave 1 on the tools page; fetch the 2025-06-18 or 2025-11-25 tools page to verify. Risk: cqhecs_run with run-card output, cqhecs_hardware reading research/ files, and any future file-writing tool are not all pure; sat_solve with cadical may spawn a subprocess (openWorld false but side effects on temp files). Mark readOnly only after auditing each handler for filesystem writes (scratch dir for Path C MPS pages is written to disk per AGENTS.md section 1.2).",
+    "why_it_matters": "Hosts auto-approve readOnly tools; a wrong hint is an honesty/safety defect, and the spec says hints are untrusted anyway.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "outputSchema/structuredContent: from which single source can schemas be generated, and what is the freeze point?",
+    "answer_or_experiment": "Only docs/provenance/hcs.run.v2.schema.json exists (confirmed by glob; no docs/schemas). CLI JSON carries schema_version '1.0' (cli.py:49) with no schema file. Wave 1 says 'generate from dataclasses' but SimulationResult/UnifiedResult/ExecutionPlan have different shapes and per-tool results (sat_count, qg_*) have none. Experiment: write a script that dumps the current result of each of the 11 tools on a fixed corpus, infer draft schemas, and diff against dataclass fields; the diff size tells whether generation is feasible. Also decide: is `hcs.run.v2` the outputSchema, or a field inside it? It is a provenance card, not a result type.",
+    "why_it_matters": "Wave 1's 'hcs.run.v2 as the schema' claim conflates provenance card and result; per MCP spec the server MUST conform to a declared schema.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Does the plan's version-bump logic (6.0.0 vs 5.1.0) properly account for MCP and API changes?",
+    "answer_or_experiment": "isError instead of JSON-RPC -32000, protocol negotiation and structuredContent are visible changes to MCP clients that parse error.message; /api/v1 re-routing breaks every Studio/web caller of /api/*. Experiment: list every consumer of /api/simulate etc. in web/ and cqhecs/studio/static, plus docs, and decide alias-forever vs deprecation. If aliases stay, MCP/HTTP changes are additive and 5.1.0 is defensible.",
+    "why_it_matters": "Version semantics and migration notes (AGENTS.md section 12) are release gates.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "P8-03 shared service layer: how large is the refactor and what is the parity oracle?",
+    "answer_or_experiment": "mcp_server.py:177-179 builds StudioState(ROOT) per call, cli.py is 1605 lines, and the CLI accepts name:ghz8 while MCP accepts preset:<name>. A 'one parity corpus' needs agreed canonical outputs and an allow-list of fields that legitimately differ (timings, run id, timestamps). Experiment: write the parity test first against current behaviour and count the diffs; that count sizes the refactor. Also measure StudioState construction time to see whether the latency claim is real.",
+    "why_it_matters": "Effort M may be L; the 'identical across surfaces' gate is untestable without an exclusion list.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is a standard-library-only MCP server a deliberate constraint, and does adding the official MCP SDK change dependencies/licence?",
+    "answer_or_experiment": "mcp_server.py is hand-rolled with no SDK (docstring and zero mcp entries in pyproject.toml). Implementing server/discover, MRTR, tasks extension and cache hints by hand is error-prone. Options: keep stdlib and implement only the legacy+discover subset, or add the official `mcp` Python SDK as an optional extra. Check SDK licence and whether it supports 2026-07-28 yet. Maintainer decision needed, since the project also pins dependencies carefully (AGENTS.md section 2.2).",
+    "why_it_matters": "Largest cost and supply-chain choice in P8-05/P8-09; not discussed in plan.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "llms.txt refresh: how stale is it and what should CI assert?",
+    "answer_or_experiment": "Confirmed: llms.txt has zero occurrences of 'mcp' (case-insensitive count 0). The CI check should assert (a) tool names listed equal tools/list, (b) version equals pyproject, (c) no 'No physical GPU execution' style claims contradicting README. Cheap: a 20-line pytest. Also decide whether to emit .md mirrors (llmstxt.org) and whether llms-full.txt is generated.",
+    "why_it_matters": "Cheap R0 item; the assertion list defines its acceptance gate which the plan lacks.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Elicitation/MRTR for a hardware tool: can it be safe given client support is uncertain?",
+    "answer_or_experiment": "AGENTS.md section 3.6 requires per-run authorization with shot/credit estimate. If a client does not implement elicitation (or MRTR in the new spec), a tool that falls back to 'proceed' would violate it. The plan says fail closed, good, but also: elicitation responses are produced by the client and an agent harness could auto-accept; the authorization must also bind circuit digest, provider target, max credits and a nonce, and the server must re-check the Open Quantum balance. Experiment: design the authorization object with a fake provider and confirm that replaying an old authorization is refused. Additionally AGENTS-level safety rules say no agent message is consent; an MCP elicitation reply may not count as user consent for spend, so a human-only out-of-band step (CLI confirm with TTY) may be required.",
+    "why_it_matters": "Paid, irreversible actions; the plan keeps it design-only (R5) but underplays the consent question.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Remote MCP (Streamable HTTP + OAuth) and A2A: is deferral enough and what is verified?",
+    "answer_or_experiment": "Plan defers P8-10. A2A v1.0 details are secondary-source only; Braket API research found nothing. Do not list A2A as an adopt candidate until the spec at a2a-protocol.org is opened. Also OAuth DCR is deprecated in 2026-07-28 in favour of Client ID Metadata Documents, so any future design should target CIMD. No experiment now; record as DEFERRED with the rationale.",
+    "why_it_matters": "Avoids building on a deprecated flow and on unverified protocol text.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Licences and ToS for third-party MCP/API references (Qiskit mcp-servers, coda-mcp, YuChenSSR, qBraid, IBM Runtime REST).",
+    "answer_or_experiment": "Qiskit/mcp-servers Apache-2.0 per Wave 1 (not opened by me). coda-mcp and YuChenSSR licences unchecked (a guessed URL 404'd). The plan says 'copy the split' as a pattern, which is fine, but copying code needs NOTICE. For IBM Runtime REST/qBraid the ToS may restrict automated use and the plan quotes a '5 jobs/min' rate limit that comes from a search excerpt. Experiment: open each LICENSE/ToS and put the result in a licence register (the plan already notes none exists). Nothing should be vendored.",
+    "why_it_matters": "Open question 3 in the plan is still unresolved for this part.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "HTTP API versioning and OpenAPI: what is the compatibility policy and who consumes it?",
+    "answer_or_experiment": "Only /api/qg/v1 is versioned; others are unversioned and used by the local web UI. The plan proposes /api/v1 for all. The Studio token is per-launch and delivered in a URL fragment (app.py:1272-1295), so programmatic consumers essentially do not exist today. Experiment: grep consumers in repo; if only the bundled UI uses it, OpenAPI is documentation value and not a compatibility burden, and a lighter option is to version only the schema docs. The OpenAPI 3.2.1 claim comes from a partial read (100k of 350k chars); tool choice should be OpenAPI 3.1 for broad tooling support, verify generator support first.",
+    "why_it_matters": "Avoids spending M effort on a surface with no external consumers.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Studio programmatic auth (P8-08): does `--token`/env weaken the loopback security model?",
+    "answer_or_experiment": "Wave 1 flagged it as usability only. Risks: tokens on the command line appear in process lists and shell history; a fixed token across launches loses per-launch rotation and weakens CSRF/DNS-rebinding protections that rely on freshness plus Host/Origin checks. Safer: token file with 0600 (Windows ACL semantics differ and chmod does not apply on Windows, which is this user's platform) or env var only. Test on Windows before claiming 0600.",
+    "why_it_matters": "The plan's acceptance 'no leakage in logs' ignores the Windows ACL point and rotation loss.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "MCP resources/prompts (P8-06): any data-exposure risk from resource URIs?",
+    "answer_or_experiment": "Resources like cqhecs://evidence/{ledger} and run/{digest} map to files under research/. Experiment: path-traversal tests on templated URIs, an allow-list of directories, size caps, and confirmation that nothing under ignored credential paths (AGENTS.md section 13) can be listed. Also, the existing cqhecs_hardware handler 'silently skips missing files' (mcp_server.py ~282-303 per Wave 1) which returns empty-but-successful; the resource version must return a typed not-found (-32602 in the new spec) instead.",
+    "why_it_matters": "Resources increase the read surface; security gate for M16.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Test coverage gap claim: are 9 tests enough baseline and what regression suite does R1 need?",
+    "answer_or_experiment": "Confirmed: tests/test_mcp_server.py has 9 tests (initialize_and_tool_list, run_and_sat_tools, unknown_tool, sat_models_and_hardware, devices, sat_count, sat_solve_watched, omniwave, qg_tools) and no cqhecs_plan test, no malformed JSON/batch/bad-args test. Add before any refactor: characterisation tests of current wire output (golden JSON for every tool, so that the isError/structuredContent migration is a reviewable diff), plus fuzz that stdout contains only valid JSON-RPC lines.",
+    "why_it_matters": "Refactoring three public surfaces without golden tests violates the failing-test-first rule.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is the MCP tool-namespace split (separate servers by trust class) worth the cost for a 11-tool server?",
+    "answer_or_experiment": "Wave 1 suggests splitting sim/sat/hardware/qg like Qiskit's servers. For 11 local read-only tools the per-client setup cost and docs burden may outweigh token savings; the only real safety boundary is the future provider tool. Experiment: count tokens of the current tools/list payload (json.dumps length / 4). If under ~3k tokens, keep one server and make the provider tool a separate disabled-by-default entry point.",
+    "why_it_matters": "Avoids needless architecture churn; ties directly to the CLAUDE.md token-budget preference.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Run-handle / tasks design (P8-09): where do run state and run cards persist, and with what retention?",
+    "answer_or_experiment": "The 2026-07-28 spec says no protocol sessions, handles must be server-minted; a stdio server process is short-lived, so handles die with the process unless stored on disk. Needs: store location (must be outside Git and not in research/), retention/cleanup, handle unguessability, and a statement of what happens to run cards containing the exact DIMACS payload (provenance cards include it; cli.py:491-520), which may contain user-private formulas. Experiment: prototype a file-based store with TTL and test crash recovery.",
+    "why_it_matters": "Privacy and reproducibility; the plan lists the feature but not the storage contract.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Interop claim: 'CQ-HECS niche is differentiated; no other quantum MCP advertises typed refusals/certificates.' How strong is it?",
+    "answer_or_experiment": "Based on search listings only; tool lists of coda-mcp, YuChenSSR and barvhaim were not opened. Soften to 'not observed in the pages read'. Experiment: fetch each README/tools list and tabulate tool names, input limits and error handling, as a one-page comparison before any public positioning.",
+    "why_it_matters": "AGENTS.md section 0.1 forbids unsupported claims; this one could leak into README/llms.txt.",
+    "needs_maintainer": false
+   }
+  ],
+  "plan_corrections": [
+   "P8-01 acceptance gate 'Ping works during a long call' contradicts P8-05 dual-mode: the 2026-07-28 changelog removes `ping` and `initialize` (verified at modelcontextprotocol.io/specification/2026-07-28/changelog). Split the gate into a legacy-mode ping test and a new-mode server/discover plus cancellation test.",
+   "The plan treats 2026-07-28 as an adoptable spec; the changelog still contains the wording 'error codes introduced in this draft', so status is unconfirmed. Make 2025-06-18/2025-11-25 the primary target and 2026-07-28 opt-in until its status is checked.",
+   "P8-05 says 'outputSchema ... hcs.run.v2 as the schema'. hcs.run.v2 is a provenance card (docs/provenance/hcs.run.v2.schema.json), not a result type; per-tool result schemas for the 11 tools do not exist. State the real work as 'define result schemas, embed or link the card'.",
+   "D7 verified in code: timeouts, workers, waves and limit are unclamped in cqhecs/mcp_server.py (lines 230-275, 365) and errors map to generic -32000 (line 413). The Studio clamp numbers (0.01-30 s, shots 20000) were quoted from Wave 1 and not re-verified here.",
+   "P8-07/llms.txt: verified llms.txt contains no mention of MCP; add the CI assertions (tool names equal tools/list, version equals pyproject, no contradicting GPU claims) to the acceptance gate.",
+   "P8-08 'token file mode 0600' does not translate to Windows (the user's platform); specify ACL handling or use an env var, and keep per-launch rotation as the default.",
+   "P8-03 and the 'identical schema across surfaces' gate need an explicit allow-list of fields that may differ (timings, run id, timestamps, surface name) or the parity test cannot pass.",
+   "Add a prerequisite item before any P8 refactor: golden-output characterisation tests for all 11 current MCP tools (today 9 tests, none for cqhecs_plan, malformed JSON, batch or bad arguments).",
+   "Add an explicit maintainer decision item: stdlib-only hand-rolled MCP versus adopting the official MCP Python SDK as an optional extra (affects effort of P8-05/P8-09 and dependency policy).",
+   "Hardware/elicitation (P8-09, P2-08): record that MCP elicitation or MRTR responses from a client are not by themselves sufficient proof of human consent for paid QPU spend; require an out-of-band human confirmation and bind circuit digest, provider target, credit cap and nonce.",
+   "Soften the interop statement that no other quantum MCP offers typed refusals/certificates to 'not observed in pages read'; coda-mcp and YuChenSSR tool lists and licences were not opened.",
+   "A2A and Braket rows should be marked UNVERIFIED in the SOTA table until the primary spec is opened; also note OAuth Dynamic Client Registration is deprecated in 2026-07-28 so remote-MCP designs should target Client ID Metadata Documents."
+  ]
+ },
+ {
+  "part": "packaging-ci-release",
+  "open_questions": [
+   {
+    "question": "Is the Rust toolchain actually pinned for the WASM rebuild-and-compare gate (ci.yml ~420-440)?",
+    "answer_or_experiment": "Partly answered: a grep of .github/workflows/*.yml, web/wasm/Cargo.toml and any rust-toolchain* file for 'rust-toolchain|dtolnay|toolchain:|rust-version' returned no matches. So no pin is visible in those locations. Experiment: read the web job's Rust setup step directly (it may use a preinstalled runner rustc) and check whether web/wasm/Cargo.lock is committed. Then run the job twice on different dates or with a newer stable. If the hashes differ, add a rust-toolchain.toml and --locked.",
+    "why_it_matters": "A floating rustc can turn the committed-binary SHA check into a random red on every Rust release. It would block the exact-SHA release gate.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Does the plan's claim that the release is a side effect of a main push hold, and is a human gate actually wanted?",
+    "answer_or_experiment": "Verified partly: release.yml has a resolve-tag step that creates a tag via the API on a main push (tag_name at line 262), and a grep found no 'environment:' key and no id-token. P9-02 proposes a GitHub Environment with a required reviewer. That changes the whole release flow. AGENTS.md section 11.4/19 requires user authorization for publishing, so the Environment fits. Decision needed: should every main merge pause at an approval, or only a tag created manually? Experiment: dry-run on a fork with the Environment set to see how the verify-required-ci job behaves with a pending approval.",
+    "why_it_matters": "Required reviewers on a solo-maintainer repo can deadlock (self-review is not always permitted). Releases would then stall, or the maintainer would disable the gate.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Is SECURITY.md really stale, and what support policy should replace it?",
+    "answer_or_experiment": "Confirmed: SECURITY.md lines 9-10 list '4.0.x Yes' and '< 4.0 No'; the version is 5.0.0. This is a docs defect. Open: which versions are supported (5.x only? 4.x security fixes?). The maintainer must pick; the check_version.py extension in P9-01 then enforces consistency.",
+    "why_it_matters": "The repo says no supported version exists. P9-01 cannot define a check without the policy.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Will GitHub artifact attestations work for this repo (plan tier, visibility)?",
+    "answer_or_experiment": "Unverified in the wave-1 findings. Finding 2 itself flags that attestations on private repos need an appropriate plan. The repo is under the timfromhcs account (github.com/timfromhcs/CQ-HECS); its visibility and plan were not checked. Experiment: run 'gh repo view --json visibility' and add attest-build-provenance in a dry-run workflow on a feature branch, then run 'gh attestation verify' on the artifact. Claim only 'SLSA Build L2' if it works; do not claim L3 without a reusable workflow.",
+    "why_it_matters": "P9-03 is a release-gate item for the RC. If it fails on the plan tier, R5 slips.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Is a build-twice reproducibility gate realistic for the wheel and sdist?",
+    "answer_or_experiment": "Unknown. The plan itself notes setuptools sdist timestamps have known gaps (pypa/setuptools issue 2133, cited in wave-1). The SBOM uses datetime.now, so SBOM bytes will differ unless SOURCE_DATE_EPOCH is honoured. Cheap experiment: locally, run 'SOURCE_DATE_EPOCH=1 python -m build' twice in clean checkouts and diff sha256 of the wheel and sdist. Set the acceptance gate as 'report result honestly', not 'must be identical', and exclude the SBOM from the hash comparison (or fix its timestamp).",
+    "why_it_matters": "The plan's P9-06 gate says 'compare hashes' without a pass condition. A mandatory bit-identical rule could block the RC for a cosmetic reason.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Which licences does the project ship under, and does the plan's SBOM and dependency list handle them?",
+    "answer_or_experiment": "A LICENSE file exists at the repo root (found by glob); its identifier was not read here. Open: the SPDX identifier in pyproject vs LICENSE vs the SBOM (the generator only knows numpy and qiskit licences; everything else is NOASSERTION per wave-1). Experiment: read LICENSE and the pyproject 'license' field; run pip-licenses on the clean-venv install. Also build a licence register for the oracles in section 4 (Stim, DDSIM, cotengra, Ganak, etc.), which the plan says is unverified and which does not exist.",
+    "why_it_matters": "A real SBOM will expose licence gaps (e.g. Qiskit Apache-2.0 vs a project licence). Bundling a GPL tool (Mitiq) is already flagged as AVOID; the others are unchecked.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Can PyPI publication proceed: is the name 'cqhecs' free, and does the maintainer want it?",
+    "answer_or_experiment": "Not checked. Experiment: query https://pypi.org/pypi/cqhecs/json (404 means free) and https://test.pypi.org/pypi/cqhecs/json. Publishing is irreversible (files cannot be re-uploaded), and per the safety rules and AGENTS.md it needs explicit user authorization. The plan already puts P9-09 after the RC and user-gated; keep it out of the 6.0.0 exit criteria so the RC does not depend on it. Also consider reserving the name on TestPyPI first.",
+    "why_it_matters": "Name squatting by a third party would force a rename. The MCP Registry route (server.json) also depends on a public install channel.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Where does the claimed 'verify-required-ci on the exact SHA' fail against Vercel production?",
+    "answer_or_experiment": "The plan says Vercel deploys main on push, outside the release gates (web/vercel.json exists; deployment is via Git integration). I can list deployments and project settings with the Vercel MCP (get_project, list_deployments) but those need auth and a team/project ID; I did not call them. Experiment: read-only list of the project's production deployments to see whether the deployed commit SHA is exposed, and whether 'ignored build step' or deployment protection can be keyed to a GitHub check. Changing settings is a user-owned action.",
+    "why_it_matters": "P9-08's acceptance gate is 'deployed SHA equals tag SHA'. If production deploys before the release gates run, an untested SHA can be live for a period and the gate can never be strict.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Are native release assets (Windows CPU and Vulkan zips, Linux CPU) feasible in release.yml, and what is the runtime redistribution story for Vulkan?",
+    "answer_or_experiment": "ci.yml already has a windows-latest job with the Vulkan SDK action and a CPU-only Linux lane, so building is likely feasible. Unanswered: whether the Vulkan loader (vulkan-1.dll) may be redistributed or must be a system dependency; whether the Vulkan SDK licence allows bundling; what runs the 'clean-extract smoke test' on a runner with no GPU (lavapipe/software ICD only, which P5-04 says must be reported as software-ICD). Experiment: a feature-branch job that builds the CPU-only Windows zip and runs cq_hecs --version after extraction on a clean runner image; record DLL dependencies with dumpbin /dependents.",
+    "why_it_matters": "T6-07 promises EXEs in AGENTS_V6.md but none are built. An asset that fails to start on a user's machine is worse than none.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "What does 'native wheels' (P9-10) do to the pure-Python install path, and is the C ABI loadable without per-Python tags?",
+    "answer_or_experiment": "Wave-1 proposes cibuildwheel + scikit-build-core; pyproject currently uses setuptools. Open: whether the native core is loaded through ctypes/C ABI (py3-none-<platform> tag would do) or nanobind (needs per-version wheels; pyproject lists nanobind only as a dev extra). Experiment: grep for the loader used by python_bridge and the cq_c_api.cpp exports; decide the tag policy before choosing a backend. Post-6.0 deferral in the plan is sensible.",
+    "why_it_matters": "A backend change from setuptools touches every release and CI step and could break the pure wheel smoke test.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Are the pyproject classifiers a real defect, and what is the right change?",
+    "answer_or_experiment": "Wave-1 states pyproject carries 'Development Status :: 5 - Production/Stable' and 'Programming Language :: C++' for a pure-Python wheel. I did not re-open pyproject.toml here, so this is unconfirmed by me. Experiment: grep the classifiers and compare with README's own 'experimental' labelling (AGENTS.md says OMNIWAVE and several paths are experimental). Maintainer decision: downgrade to Beta, drop the C++ classifier until native wheels exist.",
+    "why_it_matters": "Metadata overstates delivery, which conflicts with the honesty rule and appears on the PyPI page if P9-09 happens.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Does build/publish split break the existing 'five assets exist' assertion and the SBOM step that updates audit/release_tracking.json?",
+    "answer_or_experiment": "Wave-1 says the generator also updates audit/release_tracking.json. If a build job runs it and a separate publish job has no checkout write rights, the file change (a repo mutation) has nowhere to go; the plan does not say whether the file is committed or only a release artifact. Experiment: read generate_sbom_and_checksums.py around the tracking-file write and CI for any commit-back step; decide whether to drop the repo write.",
+    "why_it_matters": "An unreviewed path that writes into the repo from a release job could make the split impossible or let the privileged job modify tracked files.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is the plan's wave R5 sequenced correctly given R0 touches release.yml (P9-01) and R7 needs MIGRATION_V6?",
+    "answer_or_experiment": "P9-01 (pin build tools via constraints) is R0; P9-02..P9-07 are R5. Constraint pinning without hash checking gives limited reproducibility, and P9-04 (resolved SBOM) and P9-06 depend on it. Unclear acceptance threshold: 'pinned' means constraints file only, or --require-hashes? Experiment: try 'pip install --require-hashes -r' with pip-compile --generate-hashes for setuptools, wheel and build on the release runner image; if it works for the three tools, require it. Setuptools>=61 in build-system.requires is resolved by pip's isolated build, so the constraint must also be passed to 'python -m build' (e.g. via PIP_CONSTRAINT), otherwise the pin has no effect on the actual build.",
+    "why_it_matters": "A naive 'pip install setuptools==X' in the outer venv does not change what the isolated build env installs. The R0 fix could pass review without changing anything.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Which supply-chain additions create cost or ToS issues?",
+    "answer_or_experiment": "Unverified items: StepSecurity Harden-Runner (third-party SaaS-backed; wave-1 says evaluate trust and licence), OpenSSF Scorecard (public repo only for the publish option), CodeQL (free for public repos, paid for private), Dependabot (free). Also a note: a Dependabot flow that auto-bumps SHA-pinned actions opens PRs but must not auto-merge, since the repo deploys on main push. Decision: skip Harden-Runner for now; adopt zizmor and Dependabot (no external service).",
+    "why_it_matters": "An external service receiving CI telemetry can conflict with a privacy-first stance; paid-tier features on a private repo can add cost without notice.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Does the plan's P9 release scope overlap and conflict with other parts' items (D3/P8 contract changes vs the version-bump decision)?",
+    "answer_or_experiment": "Goal 8 says decide 6.0.0 vs 5.1.0 at R1 exit, yet P9-01 extends check_version.py and the release workflow derives the tag from scripts/version.py. If the bump is 5.1.0, then MIGRATION_V6.md, SECURITY.md and the filename of the notes change. Experiment: have the version decision recorded in research/v7/DECISIONS.md before R5 starts; add a test that the tag, the CHANGELOG heading, SECURITY.md and MIGRATION file name agree.",
+    "why_it_matters": "Late renaming of release documents and the checks that reference them is error-prone and breaks the 'every public surface agrees' rule.",
+    "needs_maintainer": true
+   }
+  ],
+  "plan_corrections": [
+   "P9-01 as written (pin build tools via constraints in release.yml) will not take effect unless the constraint also reaches pip's isolated build environment (for example PIP_CONSTRAINT or --no-isolation with pre-installed pinned tools). The build-system requires 'setuptools>=61' is resolved separately from the outer 'pip install wheel setuptools build' (release.yml:166-167). Add that to the acceptance gate and test it by checking the setuptools version recorded in the built wheel's metadata.",
+   "Rust toolchain pinning is listed as an unverified question in wave-1 and an open point in the plan, but a repo grep found no toolchain pin in the workflows or Cargo manifest. Treat the WASM rebuild-compare gate as a probable flake source and schedule the pin in R0/R2 alongside P6-06, rather than leaving it only as an improvement bullet.",
+   "SECURITY.md is confirmed stale (lists 4.0.x only, line 9-10), but P9-01 has no stated target policy. Add a maintainer decision for the supported-version table before the check is written.",
+   "P9-02 (GitHub Environment with required reviewer) is not 'S' effort and 'L' risk on a solo-maintainer repo: self-approval may be blocked and the workflow as written creates the tag itself on a main push. Re-estimate it as a design item with a maintainer decision, and say what happens to the existing auto-tag behaviour.",
+   "P9-03 should add a precondition: confirm repository visibility and plan support for attestations, and require a successful 'gh attestation verify' as the gate. Claim only Build L2; do not claim L3 unless the reusable-workflow split is done.",
+   "P9-06 needs a stated pass condition. Replace 'compare hashes' with 'report identical or not, and list differing members', and exclude or fix the SBOM timestamp (datetime.now) so the SBOM does not make the result trivially negative.",
+   "P9-05 should state how the Vulkan loader and runtime are handled in the Windows zip (system dependency vs bundled) and label software-ICD smoke tests as such, consistent with P5-04. Also state that package_release.ps1 stops deleting dist and that checksums use a single file name (sha256sums.txt).",
+   "Add an explicit item for a licence register (LICENSE identifier, pyproject licence field, SBOM licence data, dependency licences for new oracle tools). Wave-1 for this part found only numpy and qiskit licences handled by the SBOM generator; the plan's section 4 marks nearly all licences as unverified.",
+   "The release job also updates audit/release_tracking.json (per wave-1). The build/publish split in P9-02 must say whether this repo write is kept, moved to a separate PR flow, or dropped; otherwise the privileged job mutates tracked files.",
+   "Section 5 goal 6 lists 'native artifacts matching the claimed asset list' as an RC criterion while P9-05 is M effort with medium risk and P9-10 native wheels is post-6.0. Keep the asset list in release notes generated from the actual published files so the claim cannot drift, and make the native zips optional for the RC if the runner experiment fails."
+  ]
+ },
+ {
+  "part": "verification-research",
+  "open_questions": [
+   {
+    "question": "Is the 60-mutant harness (60/60 killed) a real quality signal, or a hand-tuned score? What is the equivalent-mutant policy and is there any independent survivor measurement?",
+    "answer_or_experiment": "Verified: scripts/run_mutation_tests.py contains exactly 60 SourceMutant entries; tests/test_mutation_harness_meta.py:11 still says '35-mutant' (stale docstring, plan D11 confirmed). Experiment: run mutmut/cosmic-ray (Linux CI or WSL) on sat.py, drat.py, path_a_stabilizer.py only, and list survivors not covered by the 60 hand mutants. Add a meta-test asserting the mutant count so the docstring cannot drift again. Decide a kill threshold and an equivalent-mutant register (B-004 is the only example today).",
+    "why_it_matters": "Plan P10-03/P10-08 treat mutation coverage as a gate but give no threshold, no tool choice and no equivalent-mutant rule; 100% on a curated table can hide untested code.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "The coverage floor is 70% (ci.yml:154 --fail-under=70). Is a per-package floor (sat, drat, omniwave 90%) achievable now, or would it fail immediately?",
+    "answer_or_experiment": "Run `python -m coverage report --include='cqhecs/sat*,cqhecs/drat*,cqhecs/omniwave/*'` on the current suite and set the floor to current minus a small margin, not an aspirational number. Also check whether cqhecs/quantum_gravity is even inside the measured source set.",
+    "why_it_matters": "A floor set above reality turns every later PR red; a floor of 70% global lets critical modules regress silently. The plan's P10-08 does not say what number.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "The skip budget (P10-02): what is the baseline, and are the 109 skips legitimate? The plan assumes most hide native/optional-extra tests, but this is unverified.",
+    "answer_or_experiment": "Run `pytest -rs -q` and bucket skip reasons (native lib missing, CQ_DRAT_TRIM/CQ_LRAT_CHECK/CQ_CAKE_LPR unset, python-sat, slow marker). Commit the per-reason counts as the budget file. Note the budget must be per-reason, otherwise a native test can be swapped for an optional-extra skip without the total changing.",
+    "why_it_matters": "AGENTS.md section 1.1 treats skip expansion as failure; a total-only budget is gameable and unfair across Windows vs Linux lanes (different legitimate skips).",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Which baseline file is authoritative? BASELINE_W0.md (2814 passed) vs older v7 TEST_MATRIX/BASELINE (about 1964-2503 passed, 3 failed attributed to stale build artifacts). The B-001 'FIXED (environment)' claim has no passing rerun of that commit in the ledger.",
+    "answer_or_experiment": "Cheap experiment: in a clean worktree, delete build/ artifacts, rebuild, run the full suite, and record the result as the single v5/v6 baseline. Mark the v7 TEST_MATRIX figures HISTORICAL with a pointer. Also confirm tests/native_artifacts.py prefers stale local builds; if so, add a version-mismatch check that fails loudly rather than flaking.",
+    "why_it_matters": "The honesty rule depends on one trusted baseline; P10-01 only says 'reconcile' without a procedure.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Does any CI workflow exercise Lean at all? The plan's P10-09 assumes a new pinned Linux lane.",
+    "answer_or_experiment": "Verified by Wave-1 grep: no lean/lake in .github/workflows. Remaining question is whether Lean evidence in research/v6 is reproducible from the repo (pinned toolchain, lake-manifest) or only recorded as text. Experiment: on a Linux runner, clone the pinned anthropics/formal-math SHA from research/v6/evidence/LEAN_ETH_BUILD.md and run lake build with a time and disk budget; record cost (Mathlib cache download size, minutes). Landrun for Comparator needs Linux and a pinned main commit.",
+    "why_it_matters": "P10-09 is rated L effort with unknown CI cost; a Mathlib build can dominate runner minutes. Also Windows cannot run Comparator, so the lane is nightly-only.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Which lemma is worth formalizing first, and is the statement-to-code mapping reviewable? The Path D triangle bound is trivial in Lean but its connection to the Python truncation code is the real risk.",
+    "answer_or_experiment": "Prefer the separator recurrence or Pauli multiplication/phase table first: both are discrete and can be cross-checked by exhaustive Python enumeration against the Lean statement. Write the mapping document (Lean theorem name -> Python function -> exhaustive test) before writing proofs. Label only FORMALIZED_LEMMA, never 'verified component'.",
+    "why_it_matters": "AGENTS.md 4.3-4.4 forbids collapsing the trust ladder; a bound proved over reals does not cover float64 arithmetic in the implementation.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Are external-checker lanes (drat-trim, lrat-check, cake_lpr) feasible on the project's CI, and are their licences compatible with downloading/redistribution?",
+    "answer_or_experiment": "Do not vendor; build from pinned commit in CI and cache. Read each repository's LICENSE file (not just search snippets) and record in a licence register: drat-trim, lrat-check (from the drat-trim/LRAT tooling), cake_lpr, HypoFuzz, Atheris, Comparator, lean-lsp-mcp. Wave-1 verified none of these. Also test memory: SAT Comp 2025 slides reportedly show memory problems for large proofs, so set a proof-size budget and treat checker timeout as UNKNOWN.",
+    "why_it_matters": "HypoFuzz and some SAT tools have non-permissive or dual licences; running them in CI is usually fine, redistributing in release assets is not.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Does the nightly external-checker lane fail when it silently skips? The tests currently skip when CQ_DRAT_TRIM etc. are unset.",
+    "answer_or_experiment": "Add an env var such as CQ_REQUIRE_EXTERNAL=1 that converts those skips into failures on the Linux nightly lane only. Add a meta-test that asserts the lane's JUnit has zero skips tagged 'external'. Without this, the lane can go green with nothing run.",
+    "why_it_matters": "This is the exact failure mode AGENTS.md warns about ('NOT RUN is not PASS'); plan P10-05 says 'fail when they silently skip' but gives no mechanism.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is mutmut usable at all on this project (Windows 11 dev, Unix-only per search summary)? Wave-1 versions (mutmut 3.5.0, cosmic-ray 8.4.6) come from snippets.",
+    "answer_or_experiment": "Run mutmut in WSL or a Linux CI job on one small module first (e.g. cqhecs/sat_separator.py) with covered-lines-only and a 30-minute cap; record runtime and survivor count. Pin versions only after pip index confirms them. Treat results as advisory per plan; a 2800-test suite may make full runs impractical.",
+    "why_it_matters": "Cost/benefit unknown; an academic comparison cited in Wave-1 reported inconsistent tool quality, so scores are not ground truth.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "The preregistration manifest (P10-06) is only useful if the git timestamp predates the benchmark run. How is that enforced, and how are already-run benchmarks (H4-SAT-01 etc.) treated?",
+    "answer_or_experiment": "Design: a manifest file {hypothesis_id, script_sha256, seeds, split_spec, commit} committed in its own commit; the evidence JSON must contain the manifest's commit SHA and CI checks that this commit is an ancestor of the evidence commit and strictly earlier. Existing results must be labelled RETROSPECTIVE rather than preregistered. OSF registration is optional and must contain no credentials or QPU job IDs.",
+    "why_it_matters": "Without ancestry checks the manifest is ceremony; git history can be rewritten pre-push, so only pushed, protected-branch commits count.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Hypothesis tuning for CI: what max_examples and seed policy avoids flakes but still finds bugs? Current property tests use max_examples 5-30 and only test_property_parser.py sets derandomize=True (verified).",
+    "answer_or_experiment": "Register two Hypothesis profiles in conftest (ci: derandomize=True, small; nightly: larger, database persisted as artifact). Cheap experiment: run the nightly profile for 30 minutes on SAT scan vs watched vs brute force and count distinct failures found. If zero after substantial runs, that is a result, not a failure of the idea.",
+    "why_it_matters": "Derandomized CI means the same examples every time, so the CI lane adds no discovery power; discovery must come from nightly runs whose failures are saved and replayed.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Stim as an oracle for Path A: licence, install on Windows/Python 3.14, and whether the 100-shot cap defect (D1) can be demonstrated against it.",
+    "answer_or_experiment": "pip install stim in a scratch venv, sample a 40-qubit GHZ with 1000 shots, compare to Path A counts total. Read Stim's LICENSE (Apache-2.0 per memory, unverified here). Also check wheel availability for the project's Python versions.",
+    "why_it_matters": "The plan lists Stim as ORACLE with 'Unverified' licence; this is a 10-minute check that decides whether P1-03 is cheap.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is the proposed 'verify_claim' MCP tool and Stryker-schema report worth the surface area? It adds a new public contract that the plan's freeze-before-RC rule would then lock.",
+    "answer_or_experiment": "Defer as a read-only MCP resource first (evidence ledger digest + trust-ladder level) rather than a callable tool. Experiment: emit the mutation report as Stryker JSON locally and render with mutation-test-elements offline; verify it needs no network upload (privacy rule).",
+    "why_it_matters": "New schemas increase freeze burden in R1; verification tooling is not user-facing value for a simulator.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Plan P4-01..P4-02 say UNSAT must be certified; how does this interact with the verification claim 'timeouts yield UNKNOWN'? Verified source behavior: Wave-1 claims max(10s, 2x timeout) proof-check overrun in sat_external.py.",
+    "answer_or_experiment": "Write a failing test first: stub a proof checker that sleeps beyond the total timeout and assert the unified result is UNKNOWN or UNSAT_UNCERTIFIED within timeout + epsilon. Then confirm by reading unified.py lines near 184-192 and sat_external.py:91 before changing anything.",
+    "why_it_matters": "Several plan defects (D3) were taken from audit text, not re-run; the AGENTS.md rules require a failing reproducer before any fix.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Wave-1 'research' claims about tool versions and licences came from search snippets. Which of them can be trusted for pinning?",
+    "answer_or_experiment": "None. Add a rule to the plan: any version or licence in section 4 is 'UNVERIFIED' until the registry page or LICENSE file is opened and the URL, date and commit/tag are recorded in research/v7/LITERATURE_MAP.md. Also the SAT Comp 2025 winner conflict should not be quoted.",
+    "why_it_matters": "The project's own honesty rules forbid inventing facts; the plan already warns but several rows still carry licences (e.g. 'MIT per excerpt').",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Is the R0 wave realistically sized? It bundles 15 items across 8 parts and states exit gate 'every D1-D11 reproduced then fixed' though several defects (D2 runner, D6 Vulkan) need external tools or a Vulkan device.",
+    "answer_or_experiment": "Split R0 into R0a (pure-Python, deterministic fixes: D1, D3, D4, D5, D7, D10, D11) and R0b (needs fake oq script, lavapipe, or Windows Vulkan). Verify each defect reproduces with a unit test before committing to the exit gate; any that do not reproduce are downgraded to 'not reproduced' rather than fixed.",
+    "why_it_matters": "An unreachable exit gate encourages weakening tests to get green, which AGENTS.md calls a failure.",
+    "needs_maintainer": false
+   },
+   {
+    "question": "Who is the 'independent auditor' for T6-13/P10-10? The same agent system writing and auditing the code is not independent.",
+    "answer_or_experiment": "Decide: a human maintainer review of a generated checklist, or a separate agent with no write access and a fixed checklist (gates, ledger diffs, exact-SHA CI, asset hashes). Document the limitation in the release report either way.",
+    "why_it_matters": "Release sign-off semantics in AGENTS.md M19 require independence; without a decision the claim 'independently audited' is unsupported.",
+    "needs_maintainer": true
+   },
+   {
+    "question": "Cost and ToS of the optional lanes: GitHub Actions minutes (Lean/Mathlib, mutation, fuzz nightly), and third-party MCP packages (lean-lsp-mcp via uvx, Figma/Playwright MCP).",
+    "answer_or_experiment": "Estimate: run each lane once locally with timing, then multiply by nightly count; set a monthly minutes budget. For MCP servers, pin exact versions and run only in isolated subagents per user CLAUDE.md; check each server's README for what data it sends off-host (Figma needs OAuth). Never include private repo content in third-party dashboards (Stryker dashboard upload excluded).",
+    "why_it_matters": "The plan has no cost accounting; a failing quota would silently drop the nightly evidence lanes.",
+    "needs_maintainer": true
+   }
+  ],
+  "plan_corrections": [
+   "Verified in repo: scripts/run_mutation_tests.py has exactly 60 SourceMutant entries; tests/test_mutation_harness_meta.py:11 still says '35-mutant'. D11 is confirmed. Add a meta-test asserting the mutant count so it cannot drift again.",
+   "Verified: ci.yml:154 has --fail-under=70, and only tests/test_property_parser.py sets derandomize=True. The plan's claim that Hypothesis is thin and CI examples are not derandomized in most tests holds; but derandomized CI adds no discovery power, so P10-04 needs a nightly profile with a persisted failure database, not just a bigger max_examples.",
+   "P10-02 skip budget must be per skip reason and per platform lane, not a single total; otherwise swapping a native skip for an optional-extra skip passes unnoticed.",
+   "P10-05 needs a concrete mechanism to make skipped external checkers fail (for example CQ_REQUIRE_EXTERNAL=1 on the Linux nightly lane); 'fail when they silently skip' is not an acceptance gate on its own.",
+   "P10-06 preregistration manifest must be checked by git ancestry (manifest commit strictly earlier than evidence commit, on a protected branch) and existing results must be labelled RETROSPECTIVE; otherwise the manifest is documentation, not enforcement.",
+   "P10-09 (Lean lemmas): a real-number triangle-inequality proof does not cover the float64 implementation, so the plan must state the label scope as FORMALIZED_LEMMA only and start with discrete lemmas (separator recurrence, Pauli phase table) that exhaustive Python tests can cross-check. No Lean step exists in any workflow, so a Linux-only nightly lane with a cost estimate is a prerequisite.",
+   "R0 exit gate ('every D1-D11 reproduced then fixed') is not achievable as written: D2 (runner ledger, needs a fake oq) and D6 (Vulkan VkResult) need external tooling. Split into R0a pure-Python fixes and R0b tool-dependent fixes, and permit 'not reproduced' as an outcome.",
+   "Section 4 versions and licences are mostly from search snippets and must be treated as UNVERIFIED until the registry page or LICENSE file is opened; the plan should add a licence register item before any CI lane installs a third-party tool. HypoFuzz's licence is specifically unconfirmed.",
+   "T6-13/P10-10 'independent audit' needs a stated independence model (human maintainer or a read-only separate agent); the plan currently implies independence it does not define.",
+   "Mutation tooling: mutmut is Unix-only (per Wave-1 search summary, unverified), the project develops on Windows 11, so any mutmut/cosmic-ray step must be a Linux/WSL CI job and advisory; do not feed its results into a hard gate. Stryker dashboard upload must be excluded (privacy); local mutation-test-elements HTML only.",
+   "The proposed verify_claim MCP tool and Stryker-schema resource add public contracts that the R1 schema freeze would lock; defer them or expose them as read-only resources after the freeze decision.",
+   "Plan has no cost/minutes budget for nightly lanes (Lean/Mathlib, mutation, fuzz, external checkers); add one before committing to the lanes."
+  ]
+ }
+]

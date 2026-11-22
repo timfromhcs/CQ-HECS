@@ -30,13 +30,28 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history: the ancestry guard below needs the commits between the tag and main.
+          fetch-depth: 0
 
       - name: Decide tag and whether to publish
         id: tag
         run: |
           set -euo pipefail
           VERSION="$(python3 scripts/version.py)"
+          # Release guard: only a commit that is already on main may be released. A v* tag on a
+          # side branch (or a force-moved tag) must not publish untested/unreviewed code.
+          git fetch --no-tags origin '+refs/heads/main:refs/remotes/origin/main'
+          RELEASE_SHA="$(git rev-parse "${GITHUB_SHA}^{commit}")"
+          if ! git merge-base --is-ancestor "${RELEASE_SHA}" origin/main; then
+            echo "::error::Refusing to release ${GITHUB_REF_NAME}: commit ${RELEASE_SHA} is not an ancestor of origin/main. Merge or fast-forward it into main first (see docs/RELEASE_PROCESS.md), then tag a commit that is on main."
+            exit 1
+          fi
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            if [ "${GITHUB_REF_NAME}" != "v${VERSION}" ]; then
+              echo "::error::Tag ${GITHUB_REF_NAME} does not match the canonical version v${VERSION} (scripts/version.py); refusing to build or publish."
+              exit 1
+            fi
             echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
             echo "publish=true" >> "$GITHUB_OUTPUT"
             exit 0
@@ -78,7 +93,7 @@ jobs:
               --json status,conclusion,event,databaseId,url,headSha)" || {
                 echo "gh run list failed; retrying"; sleep 30; continue; }
             rc=0
-            python - "$runs" <<'PY' || rc=$?
+            python3 - "$runs" <<'PY' || rc=$?
           import json
           import sys
 
@@ -86,10 +101,12 @@ jobs:
           if not runs:
               print("WAIT: no ci.yml run for this SHA yet")
               sys.exit(3)
+          # A cancelled run (superseded by concurrency) is neither green nor red: it is ignored,
+          # so the gate keeps waiting for a real success and times out (fail closed) if none comes.
+          bad = ("failure", "timed_out", "startup_failure")
           failed = [
               r for r in runs
-              if r.get("status") == "completed"
-              and r.get("conclusion") not in ("success", "skipped", None)
+              if r.get("status") == "completed" and r.get("conclusion") in bad
           ]
           if failed:
               for run in failed:
@@ -99,6 +116,8 @@ jobs:
               r for r in runs
               if r.get("status") == "completed"
               and r.get("conclusion") == "success"
+              # A pull_request run tests the PR merge ref, not this exact commit.
+              and r.get("event") in ("push", "workflow_dispatch")
           ]
           if green:
               for run in green:
@@ -110,8 +129,8 @@ jobs:
             if [ "$rc" -eq 0 ]; then
               green_url="$(gh run list --repo "$REPO" --workflow ci.yml \
                 --commit "$SHA" --limit 50 \
-                --json status,conclusion,url \
-                --jq '[.[] | select(.status == "completed" and .conclusion == "success")][0].url')"
+                --json status,conclusion,url,event \
+                --jq '[.[] | select(.status == "completed" and .conclusion == "success" and (.event == "push" or .event == "workflow_dispatch"))][0].url')"
               echo "url=$green_url" >> "$GITHUB_OUTPUT"
               echo "Required CI is green for $SHA: $green_url"
               exit 0
@@ -125,20 +144,45 @@ jobs:
           echo "::error::Timed out waiting for required CI on $SHA"
           exit 1
 
-  release:
-    name: Build and Publish Release
+  # The release publishes EXACTLY the artifacts that package.yml builds from this
+  # commit (reusable workflow, same SHA): wheel, sdist, Windows onedir zip, native
+  # cpu/vulkan zips and the CycloneDX SBOMs, plus a SHA256SUMS over precisely that set.
+  # Nothing is rebuilt here, so the published bytes are the bytes package.yml
+  # inspected and smoke-tested.
+  package:
+    name: Build packaging artifacts (package.yml)
     needs: [resolve-tag, verify-required-ci]
+    if: needs.resolve-tag.outputs.publish == 'true'
+    uses: ./.github/workflows/package.yml
+    permissions:
+      contents: read
+
+  release:
+    name: Assemble and Publish Release
+    needs: [resolve-tag, verify-required-ci, package]
     if: needs.resolve-tag.outputs.publish == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     env:
       CI_RUN_URL: ${{ needs.verify-required-ci.outputs.ci_url }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: recursive
+
+      - name: Refuse to touch an already published release
+        run: |
+          set -uo pipefail
+          TAG="${{ needs.resolve-tag.outputs.tag }}"
+          # The releases/tags endpoint returns published releases only; a draft left by a
+          # partially failed earlier run is 404 here and is reused (re-run is safe).
+          if gh api "repos/${REPO}/releases/tags/${TAG}" >/dev/null 2>&1; then
+            echo "::error::Release ${TAG} is already published; published releases are immutable. Follow the yank procedure in docs/RELEASE_PROCESS.md and release a new version."
+            exit 1
+          fi
+          echo "No published release for ${TAG}; continuing (draft reuse allowed)"
 
       - name: Setup Python 3.11
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -161,107 +205,182 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install wheel setuptools build
+      - name: Download the packaging artifacts built by package.yml
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: package-*
+          merge-multiple: true
+          path: bundle
 
-      - name: Build wheel and sdist
-        run: |
-          set -euo pipefail
-          python -m build
-          ls -l dist/
-
-      - name: Smoke test the built wheel in a clean environment
-        run: |
-          set -euo pipefail
-          python -m venv /tmp/relvenv
-          /tmp/relvenv/bin/pip install --upgrade pip
-          WHEEL="$(ls dist/*.whl | head -1)"
-          /tmp/relvenv/bin/pip install "$WHEEL"
-          /tmp/relvenv/bin/cq-hecs --help
-          /tmp/relvenv/bin/cq-hecs version
-          /tmp/relvenv/bin/cq-hecs doctor
-          # A tiny run must succeed and emit one valid JSON document.
-          /tmp/relvenv/bin/cq-hecs --format json run name:bell --shots 128 \
-            > /tmp/run.json
-          /tmp/relvenv/bin/python - <<'PY'
-          import json
-          with open("/tmp/run.json", encoding="utf-8") as handle:
-              payload = json.load(handle)
-          assert payload["schema_version"], "missing schema_version"
-          assert payload["result"]["counts"], "no counts returned"
-          print("wheel smoke test OK:", payload["result"]["path"])
-          PY
-
-      # The notes must exist before the checksum generator runs, otherwise the
-      # published checksum file cannot cover every release asset.
-      - name: Assemble release notes for the tagged version
+      - name: Select exactly the release assets and write SHA256SUMS over them
         run: |
           set -euo pipefail
           VERSION="$(python scripts/version.py)"
-          NOTES="dist/RELEASE_NOTES_v${VERSION}.md"
+          mkdir -p release-assets
+          ASSETS=(
+            "cqhecs-${VERSION}-py3-none-any.whl"
+            "cqhecs-${VERSION}.tar.gz"
+            "cqhecs-${VERSION}-windows-x64.zip"
+            "cq-hecs-cpu-${VERSION}-windows-x64.zip"
+            "cq-hecs-vulkan-${VERSION}-windows-x64.zip"
+            "cqhecs-${VERSION}-wheel.cdx.json"
+            "cqhecs-${VERSION}-windows-x64.cdx.json"
+          )
+          for asset in "${ASSETS[@]}"; do
+            if [ ! -f "bundle/$asset" ]; then
+              echo "::error::package.yml did not produce release asset: $asset"
+              ls -l bundle/ || true
+              exit 1
+            fi
+            # Byte-identity with what package.yml's own manifest recorded.
+            want="$(awk -v n="${asset}" '$2 == n { print $1 }' bundle/SHA256SUMS)"
+            have="$(sha256sum "bundle/$asset" | cut -d' ' -f1)"
+            if [ -z "$want" ] || [ "$want" != "$have" ]; then
+              echo "::error::$asset does not match package.yml SHA256SUMS"
+              exit 1
+            fi
+            cp "bundle/$asset" "release-assets/$asset"
+          done
+          python scripts/make_manifest.py release-assets --out release-assets/SHA256SUMS
+          python scripts/make_manifest.py release-assets --verify release-assets/SHA256SUMS
+          ls -l release-assets/
+
+      - name: Verify embedded build identity (BUILD-INFO.json and SBOM revision)
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import zipfile
+
+          v = os.popen("python scripts/version.py").read().strip()
+          sha = os.environ["GITHUB_SHA"]
+          for z in (f"cqhecs-{v}-windows-x64.zip", f"cq-hecs-cpu-{v}-windows-x64.zip",
+                    f"cq-hecs-vulkan-{v}-windows-x64.zip"):
+              with zipfile.ZipFile(f"release-assets/{z}") as zf:
+                  names = [n for n in zf.namelist() if n.count("/") == 1 and n.endswith("/BUILD-INFO.json")]
+                  assert len(names) == 1, f"{z}: expected exactly one root BUILD-INFO.json, got {names}"
+                  info = json.loads(zf.read(names[0]))
+              assert info["source_sha"] == sha, f"{z}: BUILD-INFO source_sha {info['source_sha']} != {sha}"
+              assert info["version"] == v, f"{z}: BUILD-INFO version {info['version']} != {v}"
+          for s in (f"cqhecs-{v}-wheel.cdx.json", f"cqhecs-{v}-windows-x64.cdx.json"):
+              bom = json.load(open(f"release-assets/{s}", encoding="utf-8"))
+              props = {p["name"]: p["value"] for p in bom["metadata"]["component"]["properties"]}
+              assert props.get("cqhecs:source-revision") == sha, f"{s}: SBOM source revision != {sha}"
+          # The wheel SBOM must be the wheel's dependency closure, not the build venv.
+          wheel_bom = json.load(open(f"release-assets/cqhecs-{v}-wheel.cdx.json", encoding="utf-8"))
+          venv_tooling = {"setuptools", "wheel", "autocommand", "jaraco-text", "jaraco-functools",
+                          "jaraco-context", "inflect", "zipp", "tomli", "typeguard", "more-itertools"}
+          leaked = sorted(c["name"] for c in wheel_bom["components"] if c["name"].lower().replace("_", "-") in venv_tooling)
+          assert not leaked, f"wheel SBOM lists venv tooling that is not a runtime dependency: {leaked}"
+          print("build identity OK for", sha)
+          PY
+
+      - name: Assemble the release body
+        run: |
+          set -euo pipefail
+          BODY="release-body.md"
           {
             echo "**Source commit:** \`${GITHUB_SHA}\`"
             echo ""
             echo "**Required CI:** ${CI_RUN_URL}"
             echo ""
             cat RELEASE_NOTES.md
-          } > "$NOTES"
-
-      - name: Generate checksums and SPDX SBOM
-        run: python scripts/generate_sbom_and_checksums.py
-
-      - name: Verify every release asset exists
-        run: |
-          set -euo pipefail
-          VERSION="$(python scripts/version.py)"
-          for asset in \
-            "dist/cqhecs-${VERSION}-py3-none-any.whl" \
-            "dist/cqhecs-${VERSION}.tar.gz" \
-            "dist/sha256sums.txt" \
-            "dist/cqhecs-sbom.spdx.json" \
-            "dist/RELEASE_NOTES_v${VERSION}.md" ; do
-            if [ ! -f "$asset" ]; then
-              echo "::error::missing release asset: $asset"
-              ls -l dist/ || true
-              exit 1
-            fi
-          done
-          echo "all release assets present"
-
-      - name: Append final SHA256 values to the release body
-        run: |
-          set -euo pipefail
-          VERSION="$(python scripts/version.py)"
-          BODY="dist/release-body.md"
-          {
-            cat "dist/RELEASE_NOTES_v${VERSION}.md"
             echo ""
             echo "---"
             echo ""
-            echo "## SHA256 checksums (final assets)"
+            echo "## SHA256 checksums (published assets)"
             echo ""
             echo '```'
-            cat dist/sha256sums.txt
+            cat release-assets/SHA256SUMS
             echo '```'
           } > "$BODY"
           cat "$BODY"
 
-      - name: Create GitHub Release
+      # Step 1 of 3: create/refresh the release as a DRAFT. A failed upload therefore never leaves a
+      # public half-release; a re-run reuses and overwrites the draft's assets.
+      - name: Create or refresh the DRAFT GitHub Release and upload all assets
+        id: draft
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           files: |
-            dist/cqhecs-${{ steps.meta.outputs.version }}-py3-none-any.whl
-            dist/cqhecs-${{ steps.meta.outputs.version }}.tar.gz
-            dist/sha256sums.txt
-            dist/cqhecs-sbom.spdx.json
-            dist/RELEASE_NOTES_v${{ steps.meta.outputs.version }}.md
+            release-assets/cqhecs-${{ steps.meta.outputs.version }}-py3-none-any.whl
+            release-assets/cqhecs-${{ steps.meta.outputs.version }}.tar.gz
+            release-assets/cqhecs-${{ steps.meta.outputs.version }}-windows-x64.zip
+            release-assets/cq-hecs-cpu-${{ steps.meta.outputs.version }}-windows-x64.zip
+            release-assets/cq-hecs-vulkan-${{ steps.meta.outputs.version }}-windows-x64.zip
+            release-assets/cqhecs-${{ steps.meta.outputs.version }}-wheel.cdx.json
+            release-assets/cqhecs-${{ steps.meta.outputs.version }}-windows-x64.cdx.json
+            release-assets/SHA256SUMS
           # On a main push the tag does not exist yet; the release API creates
-          # it on exactly the commit whose CI was verified above.
+          # it (when publishing the draft) on exactly the commit whose CI was verified above.
           tag_name: ${{ needs.resolve-tag.outputs.tag }}
           target_commitish: ${{ github.sha }}
           generate_release_notes: false
-          draft: false
+          fail_on_unmatched_files: true
+          overwrite_files: true
+          draft: true
           prerelease: false
-          body_path: dist/release-body.md
+          body_path: release-body.md
+
+      # Step 2 of 3: download what was ACTUALLY uploaded and check it against SHA256SUMS.
+      - name: Verify the uploaded draft assets against the uploaded SHA256SUMS
+        env:
+          RELEASE_ID: ${{ steps.draft.outputs.id }}
+          TAG: ${{ needs.resolve-tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          test -n "$RELEASE_ID" || { echo "::error::draft release id missing"; exit 1; }
+          rm -rf uploaded && mkdir uploaded
+          gh api "repos/${REPO}/releases/${RELEASE_ID}" > uploaded.json
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          v = os.popen("python scripts/version.py").read().strip()
+          rel = json.load(open("uploaded.json", encoding="utf-8"))
+          if not rel.get("draft"):
+              sys.exit("::error::release is not a draft; refusing to continue")
+          if rel.get("tag_name") != os.environ["TAG"]:
+              sys.exit(f"::error::draft tag {rel.get('tag_name')} != {os.environ['TAG']}")
+          want = {
+              f"cqhecs-{v}-py3-none-any.whl", f"cqhecs-{v}.tar.gz", f"cqhecs-{v}-windows-x64.zip",
+              f"cq-hecs-cpu-{v}-windows-x64.zip", f"cq-hecs-vulkan-{v}-windows-x64.zip",
+              f"cqhecs-{v}-wheel.cdx.json", f"cqhecs-{v}-windows-x64.cdx.json", "SHA256SUMS",
+          }
+          have = {a["name"]: a for a in rel["assets"]}
+          if set(have) != want:
+              sys.exit(f"::error::uploaded asset set differs: missing={sorted(want - set(have))} extra={sorted(set(have) - want)}")
+          bad = [n for n, a in have.items()
+                 if a["state"] != "uploaded" or a["size"] != os.path.getsize(f"release-assets/{n}")]
+          if bad:
+              sys.exit(f"::error::assets not fully uploaded (state/size mismatch): {bad}")
+          with open("assets.list", "w", encoding="utf-8") as fh:
+              for n, a in sorted(have.items()):
+                  fh.write(f"{a['id']} {n}\n")
+          PY
+          while read -r id name; do
+            gh api -H "Accept: application/octet-stream" "repos/${REPO}/releases/assets/${id}" > "uploaded/${name}"
+          done < assets.list
+          cmp uploaded/SHA256SUMS release-assets/SHA256SUMS
+          python scripts/make_manifest.py uploaded --verify uploaded/SHA256SUMS
+          echo "Uploaded draft assets match SHA256SUMS"
+
+      # Step 3 of 3: promote the verified draft. This is the only step that makes anything public.
+      - name: Publish the verified draft
+        env:
+          RELEASE_ID: ${{ steps.draft.outputs.id }}
+        run: |
+          set -euo pipefail
+          # target_commitish is only used when the tag does not exist yet; sending the tested SHA again
+          # guarantees a reused (stale) draft cannot create the tag on an older commit.
+          gh api -X PATCH "repos/${REPO}/releases/${RELEASE_ID}"             -F draft=false -f target_commitish="${GITHUB_SHA}" >/dev/null
+          TAG="${{ needs.resolve-tag.outputs.tag }}"
+          # Tripwire: the published tag must resolve to the tested commit.
+          got="$(gh api "repos/${REPO}/commits/${TAG}" --jq .sha)"
+          if [ "$got" != "${GITHUB_SHA}" ]; then
+            echo "::error::Published ${TAG} resolves to ${got}, not the tested ${GITHUB_SHA}; yank per docs/RELEASE_PROCESS.md"
+            exit 1
+          fi
+          echo "Published ${TAG} at ${got}"

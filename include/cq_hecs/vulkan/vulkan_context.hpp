@@ -22,6 +22,11 @@ public:
     void cleanup();
 
     bool is_initialized() const { return m_initialized; }
+    /// True once any call returned VK_ERROR_DEVICE_LOST. The context is then unusable:
+    /// every dispatch fails fast; destroy and recreate it to recover.
+    bool is_device_lost() const { return m_device_lost; }
+    /// VkResult of the most recent failing Vulkan call (VK_SUCCESS after a good dispatch).
+    VkResult last_result() const { return m_last_result; }
     bool is_lavapipe_emulation() const { return m_is_lavapipe; }
     const std::string& get_device_name() const { return m_device_name; }
     /// Vendor/device/driver/API identity of the selected device.
@@ -56,6 +61,10 @@ public:
                                uint32_t num_clauses, uint32_t num_fronts, uint32_t words);
 
 private:
+    static constexpr uint32_t kMaxBindings = 8;
+    bool run_compute(VulkanPipeline& pipeline, VulkanBuffer* const* buffers, uint32_t buffer_count,
+                     const void* push, uint32_t push_size, uint32_t gx, uint32_t gy, bool host_barrier);
+    bool fail(VkResult result);
     bool create_instance();
     bool select_physical_device();
     bool create_logical_device();
@@ -76,6 +85,8 @@ private:
     std::string m_selection_reason;
     bool m_is_lavapipe = false;
     bool m_initialized = false;
+    bool m_device_lost = false;
+    VkResult m_last_result = VK_SUCCESS;
 
     VulkanMemoryManager m_memory_manager;
 

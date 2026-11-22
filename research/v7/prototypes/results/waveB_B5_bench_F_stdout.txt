@@ -1,0 +1,1 @@
+F RESEARCH_ONLY {'F-H2': True, 'F-1': False, 'F-2': True, 'F-3': True, 'F-4': False} 1316.4s

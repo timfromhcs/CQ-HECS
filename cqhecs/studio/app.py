@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 import threading
 import time
 import webbrowser
@@ -58,6 +59,7 @@ _STATIC_FILES = {
     "app.js": "application/javascript; charset=utf-8",
     "style.css": "text/css; charset=utf-8",
     "logo.svg": "image/svg+xml",
+    "qg.js": "application/javascript; charset=utf-8",
 }
 
 _ONE_QUBIT = ("h", "x", "s", "sdg", "t", "tdg", "sx", "rx", "ry", "rz")
@@ -70,6 +72,19 @@ class StudioError(Exception):
         super().__init__(message)
         self.status = status
         self.code = code
+
+
+class StudioPortError(OSError):
+    """The Studio could not bind its address (port occupied or not permitted)."""
+
+    def __init__(self, host: str, port: int, cause: OSError):
+        # Windows reports an occupied port as WinError 10048, or as 10013 (WSAEACCES) when the
+        # port is held exclusively or reserved; POSIX reports EADDRINUSE / EACCES.
+        self.host, self.port, self.cause = host, port, cause
+        super().__init__(
+            f"cannot listen on {host}:{port}: {cause.strerror or cause} "
+            f"(port in use or not permitted); choose another with --port"
+        )
 
 
 def _int(value: Any, name: str, low: int, high: int, default: int) -> int:
@@ -394,20 +409,26 @@ class StudioState:
         )
 
     def plan(self, request: Mapping[str, Any]) -> Dict[str, Any]:
-        """Dry-run ExecutionPlan; same schema as the CLI, MCP and Python API."""
+        """Dry-run ExecutionPlan; same document as the CLI, MCP and Python API (shared service layer)."""
+        from cqhecs import service
+
         circuit = self._resolve_circuit(str(request.get("source", "preset:bell")))
-        path = str(request.get("path", "auto")).upper()
-        if path != "AUTO" and path not in ("A", "B", "C", "D"):
-            raise StudioError("path must be auto, A, B, C or D", code="invalid_path")
         try:
-            plan = self._router.plan(
+            path = service.normalize_force_path(str(request.get("path", "auto")))
+        except service.ServiceError as exc:
+            raise StudioError(str(exc), code=exc.code) from exc
+        try:
+            document = service.plan_document(
                 circuit,
-                preferred_path=None if path == "AUTO" else path,
+                force_path=path,
                 require_counts=bool(request.get("require_counts", False)),
+                analyzer=self._router.analyzer,
+                max_storage_mb=self._router.max_storage_mb,
+                max_pauli_terms=self._router.max_pauli_terms,
             )
         except (TypeError, ValueError) as exc:
             raise StudioError(str(exc), status=422, code="invalid_circuit") from exc
-        return {"schema_version": "1.0", "plan": plan.to_dict()}
+        return {"schema_version": "1.0", "plan": document}
 
     def simulate(self, request: Mapping[str, Any]) -> Dict[str, Any]:
         source = str(request.get("source", "preset:bell"))
@@ -419,11 +440,27 @@ class StudioState:
         if path != "AUTO" and path not in ("A", "B", "C", "D"):
             raise StudioError("path must be auto, A, B, C or D", code="invalid_path")
         noise = str(request.get("noise", "ideal"))
-        if noise not in ("ideal", "mfit", "mfit2", "custom") and not noise.startswith("device:"):
-            raise StudioError("noise must be ideal, mfit, mfit2, custom or device:<id>", code="invalid_noise")
+        if noise not in ("ideal", "mfit", "mfit2", "custom", "calibration_v3") and not noise.startswith("device:"):
+            raise StudioError(
+                "noise must be ideal, mfit, mfit2, custom, calibration_v3 or device:<id>", code="invalid_noise"
+            )
 
         instructions, num_qubits = parse_circuit(circuit)
-        if noise == "ideal":
+        calibration_info = None
+        if noise == "calibration_v3":
+            from cqhecs import service
+
+            if not isinstance(request.get("calibration"), Mapping):
+                raise StudioError("noise 'calibration_v3' needs a 'calibration' object", code="invalid_calibration")
+            try:
+                result, calibration_info = service.run_with_calibration(
+                    circuit, request["calibration"],
+                    policy=str(request.get("uncovered_gates", "warn")), shots=shots, seed=seed,
+                )
+            except service.ServiceError as exc:
+                raise StudioError(str(exc), status=exc.status, code=exc.code) from exc
+            model_label = f"calibration_v3 ({calibration_info['provenance_label']}, {calibration_info['freshness']['status']})"
+        elif noise == "ideal":
             result = self._router.route_and_execute(
                 circuit,
                 shots=shots,
@@ -465,7 +502,11 @@ class StudioState:
             )
         if result.state == SimulationState.UNRESOLVED:
             notes.append(str(result.metadata.get("reason", "path refused the circuit")))
-        return {
+        if calibration_info is not None:
+            notes.extend((calibration_info.get("gate_coverage") or {}).get("warnings", []))
+            if calibration_info["freshness"]["status"] != "fresh":
+                notes.append(f"calibration freshness is {calibration_info['freshness']['status']}")
+        response = {
             "schema_version": "1.0",
             "result": payload,
             "analysis": payload.get("metadata", {}).get("analysis"),
@@ -474,6 +515,9 @@ class StudioState:
             "noise": {"mode": noise, "model": model_label},
             "notes": notes,
         }
+        if calibration_info is not None:
+            response["calibration"] = calibration_info
+        return response
 
     def _outcomes(self, payload: Mapping[str, Any], num_qubits: int) -> List[Dict[str, Any]]:
         counts = payload.get("counts") or {}
@@ -747,9 +791,13 @@ class StudioState:
             text = str(request["cnf"])
             if len(text) > 200_000:
                 raise StudioError("CNF text is larger than 200 kB", code="cnf_too_large")
-            formula = parse_dimacs(text)
+            formula = parse_dimacs(text)  # CNFFormatError (incl. the MAX_DIMACS_VARS cap) is mapped by do_POST
         elif "random" in request:
-            spec = request["random"] or {}
+            spec = request["random"]
+            if spec is None:
+                spec = {}
+            if not isinstance(spec, Mapping):
+                raise StudioError("random must be an object", code="invalid_argument")
             n = _int(spec.get("num_vars"), "random.num_vars", 3, 120, 20)
             ratio = _float(spec.get("ratio"), "random.ratio", 0.0, 20.0, 4.26)
             seed = _int(spec.get("seed"), "random.seed", 0, 2**31 - 1, 20261030)
@@ -770,8 +818,15 @@ class StudioState:
         return formula
 
     def sat_sweep(self, request: Mapping[str, Any]) -> Dict[str, Any]:
-        sizes = [int(v) for v in request.get("sizes", [10, 15, 20])]
-        ratios = [float(v) for v in request.get("ratios", [3.0, 3.5, 4.0, 4.26, 4.5, 5.0])]
+        raw_sizes = request.get("sizes", [10, 15, 20])
+        raw_ratios = request.get("ratios", [3.0, 3.5, 4.0, 4.26, 4.5, 5.0])
+        if not isinstance(raw_sizes, (list, tuple)) or not isinstance(raw_ratios, (list, tuple)):
+            raise StudioError("sizes and ratios must be lists", code="invalid_argument")
+        try:
+            sizes = [int(v) for v in raw_sizes]
+            ratios = [float(v) for v in raw_ratios]
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise StudioError("sizes must be integers and ratios numbers", code="invalid_argument") from exc
         trials = _int(request.get("trials"), "trials", 1, 20, 3)
         timeout = _float(request.get("timeout"), "timeout", 0.01, 5.0, 1.0)
         if len(sizes) > 8 or len(ratios) > 10:
@@ -865,6 +920,133 @@ class StudioState:
 
         return catalog()
 
+    # Files shown by the Evidence Ledger: a fixed list, never user-supplied. ``raw/`` and
+    # ``JOB_LEDGER.jsonl`` are immutable evidence and are deliberately not exposed here.
+    _QG_EVIDENCE_FILES = (
+        "MODEL_MANIFEST.json",
+        "QUOTE_LEDGER.json",
+        "qasm/CIRCUIT_MANIFEST.json",
+        "processed/bmv_phase_scan.json",
+        "processed/bmv_qpu_analysis.json",
+        "processed/bmv_xx_trend.json",
+        "processed/final_analysis.json",
+        "processed/qpu_smoke_analysis.json",
+        "processed/syk_qpu_analysis.json",
+        "processed/syk_qpu_v3_analysis.json",
+    )
+
+    def qg_evidence(self) -> Dict[str, Any]:
+        """Read-only view of the committed ``research/qg_2026`` evidence (hashes + the BMV scan).
+
+        A missing or unreadable file is reported as such, with no substitute values.
+        """
+        import hashlib
+
+        base = self.root / "research" / "qg_2026"
+        files: List[Dict[str, Any]] = []
+        for relative in self._QG_EVIDENCE_FILES:
+            path = base / relative
+            entry: Dict[str, Any] = {"path": f"research/qg_2026/{relative}"}
+            try:
+                data = path.read_bytes().replace(b"\r\n", b"\n")
+            except OSError:
+                entry.update(status="missing", bytes=None, sha256=None)
+            else:
+                entry.update(status="present", bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
+            files.append(entry)
+        scan = self._load_json(base / "processed" / "bmv_phase_scan.json")
+        points: List[Dict[str, Any]] = []
+        if isinstance(scan, dict) and isinstance(scan.get("points"), list):
+            for point in scan["points"]:
+                if isinstance(point, dict):
+                    points.append({k: point.get(k) for k in ("basis", "circuit_id", "theta", "correlator", "std_err", "shots")})
+        return {
+            "schema": "cqhecs.qg.evidence.v1",
+            "read_only": True,
+            "sha_policy": "sha256 of the file bytes with CRLF normalised to LF",
+            "backend": scan.get("backend") if isinstance(scan, dict) else None,
+            "surface": "OPENQUANTUM_QPU (recorded measurements)",
+            "files": files,
+            "bmv_scan": points,
+            "excluded": ["research/qg_2026/raw", "research/qg_2026/JOB_LEDGER.jsonl"],
+            "network": "local-only",
+        }
+
+    @staticmethod
+    def _svc(fn: Any, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        """Call a shared-service function, mapping its typed error onto a Studio error."""
+        from cqhecs import service
+
+        try:
+            return fn(*args, **kwargs)
+        except service.ServiceError as exc:
+            raise StudioError(str(exc), status=exc.status, code=exc.code) from exc
+
+    def qg_experiments(self) -> Dict[str, Any]:
+        from cqhecs import service
+
+        return service.qg_experiments_document()
+
+    def qg_backends(self) -> Dict[str, Any]:
+        from cqhecs import service
+
+        return service.qg_backends_document(
+            credentials_present=bool(
+                os.environ.get("OPENQUANTUM_CLIENT_ID") and os.environ.get("OPENQUANTUM_CLIENT_SECRET")
+            )
+        )
+
+    def qg_plan(self, request: Mapping[str, Any]) -> Dict[str, Any]:
+        """QG plan envelope + digest; same document as ``cq-hecs qg plan`` and MCP ``cqhecs_qg_plan``."""
+        from cqhecs import service
+
+        params = {k: v for k, v in request.items() if k not in ("experiment", "path", "require_counts")}
+        path = request.get("path")
+        document = self._svc(
+            service.qg_plan_document,
+            request.get("experiment", "bmv"),
+            params,
+            force_path=None if path in (None, "auto") else str(path),
+            require_counts=bool(request.get("require_counts", True)),
+        )
+        return {"schema_version": "1.0", **document}
+
+    def qg_compare(self, request: Mapping[str, Any]) -> Dict[str, Any]:
+        from cqhecs import service
+
+        theta = self._bounded_float(request, "theta", 0.0, low=-service.QG_THETA_BOUND, high=service.QG_THETA_BOUND)
+        shots = _int(request.get("shots"), "shots", 1, 20000, 4096)
+        seed = _int(request.get("seed"), "seed", 0, 2**31 - 1, 42)
+        return self._svc(service.qg_compare_document, theta, shots=shots, seed=seed)
+
+    def qg_export(self, experiment_id: str, params: Mapping[str, Any]) -> Dict[str, Any]:
+        from cqhecs import service
+
+        return self._svc(service.qg_export_document, experiment_id, params)
+
+    def qg_paid(self, action: str) -> Dict[str, Any]:
+        from cqhecs import service
+
+        return self._svc(service.qg_paid_refusal, action)
+
+    def qg_evidence_for(self, experiment_id: str) -> Dict[str, Any]:
+        """The recorded-evidence view restricted to one experiment family (read-only)."""
+        from cqhecs import service
+
+        if experiment_id not in service.QG_EXPERIMENT_PARAMS:
+            raise StudioError(f"unknown experiment {experiment_id!r}", status=404, code="unknown_experiment")
+        full = self.qg_evidence()
+        files = [f for f in full["files"] if experiment_id in f["path"].lower()]
+        scan = full["bmv_scan"] if experiment_id == "bmv" else []
+        return {
+            **{k: full[k] for k in ("schema", "read_only", "sha_policy", "surface", "excluded", "network")},
+            "experiment_id": experiment_id,
+            "recorded_qpu_evidence": bool(files),
+            "files": files,
+            "bmv_scan": scan,
+            "note": "" if files else "no recorded QPU evidence for this experiment; model values only",
+        }
+
     def qg_models(self) -> Dict[str, Any]:
         from cqhecs.quantum_gravity.hamiltonians import build_syk
         from cqhecs.quantum_gravity.models import BMVEffectivePhaseModel
@@ -901,44 +1083,18 @@ class StudioState:
         }
 
     def qg_preview(self, request: Mapping[str, Any]) -> Dict[str, Any]:
-        from cqhecs.quantum_gravity.circuits import bmv_qasm, sha256_text
+        from cqhecs import service
 
-        theta = self._bounded_float(request, "theta", 0.0)
-        qasm = bmv_qasm(theta)
-        return {
-            "status": "OK",
-            "execution_surface": "CLASSICAL_REFERENCE",
-            "spend_credits": 0.0,
-            "network": "none",
-            "qubits": 2,
-            "qasm": qasm,
-            "qasm_sha256": sha256_text(qasm),
-        }
+        return service.qg_preview_document(self._bounded_float(request, "theta", 0.0))
 
     def qg_run_local(self, request: Mapping[str, Any]) -> Dict[str, Any]:
-        from cqhecs.quantum_gravity.models import BMVEffectivePhaseModel
+        from cqhecs import service
 
-        theta = self._bounded_float(request, "theta", 0.0)
-        phase_a = self._bounded_float(request, "local_phase_a", 0.0)
-        phase_b = self._bounded_float(request, "local_phase_b", 0.0)
-        model = BMVEffectivePhaseModel(theta=theta, local_phase_a=phase_a, local_phase_b=phase_b)
-        state = model.state()
-        probabilities = {format(index, "02b"): float(abs(state[index]) ** 2) for index in range(4)}
-        return {
-            "status": "COMPLETED",
-            "execution_surface": "CLASSICAL_REFERENCE",
-            "precision": "f64",
-            "qubits": 2,
-            "bit_order": "q0q1 (q0 most significant)",
-            "probabilities": probabilities,
-            "observables": {
-                "concurrence": model.concurrence(),
-                "negativity": model.negativity(),
-                "entanglement_entropy": model.entropy(),
-                "chsh_max": model.chsh_max(),
-            },
-            "limitations": ["finite two-qubit model; not a gravitational measurement"],
-        }
+        return service.qg_run_local_document(
+            self._bounded_float(request, "theta", 0.0),
+            self._bounded_float(request, "local_phase_a", 0.0),
+            self._bounded_float(request, "local_phase_b", 0.0),
+        )
 
 
 def _width_histogram(formula: CNF) -> Dict[str, int]:
@@ -1044,13 +1200,18 @@ def _research_payload() -> Dict[str, Any]:
 
 class StudioHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
-    allow_reuse_address = True
+    # On Windows SO_REUSEADDR lets a second process bind a port that is already in use (the
+    # connection then goes to either server), so an occupied port would not be reported at all.
+    # POSIX SO_REUSEADDR only skips TIME_WAIT and still fails with EADDRINUSE (P-01).
+    allow_reuse_address = os.name != "nt"
 
     def __init__(self, address: Tuple[str, int], state: StudioState, token: Optional[str] = None):
         self.state = state
         # Per-launch bearer token for every /api/ route. A web page open in the user's browser can reach a
         # loopback server (cross-site simple POST, DNS rebinding); without this token it cannot start jobs.
+        # A caller may supply one (env / file, W4-06) for a programmatic client; otherwise it is ephemeral.
         self.token = token or secrets.token_urlsafe(32)
+        self.token_ephemeral = token is None or token == ""
         super().__init__(address, StudioHandler)
         bind_host = str(address[0])
         names = {"127.0.0.1", "localhost", "[::1]"}
@@ -1068,6 +1229,16 @@ class StudioHTTPServer(ThreadingHTTPServer):
         if isinstance(error, (ConnectionResetError, BrokenPipeError)):
             return
         super().handle_error(request, client_address)
+
+
+def canonical_api_path(path: str) -> str:
+    """``/api/v1/x`` is an alias of ``/api/x`` (W4-04); every other path is returned unchanged.
+
+    ``/api/qg/v1/...`` is a separately versioned family and is not touched.
+    """
+    if path.startswith("/api/v1/"):
+        return "/api/" + path[len("/api/v1/"):]
+    return path
 
 
 class StudioHandler(BaseHTTPRequestHandler):
@@ -1149,7 +1320,12 @@ class StudioHandler(BaseHTTPRequestHandler):
         return True
 
     def _read_json(self) -> Dict[str, Any]:
-        length = int(self.headers.get("Content-Length", "0") or 0)
+        declared = (self.headers.get("Content-Length", "0") or "0").strip()
+        if not (declared.isascii() and declared.isdigit()):
+            # F-10: a non-numeric, negative or signed length is a client error, not a 500.
+            self.close_connection = True
+            raise StudioError("Content-Length must be a non-negative integer", code="invalid_content_length")
+        length = int(declared)
         if length <= 0:
             return {}
         if length > MAX_BODY:
@@ -1159,7 +1335,8 @@ class StudioHandler(BaseHTTPRequestHandler):
         raw = self.rfile.read(length)
         try:
             payload = json.loads(raw.decode("utf-8"))
-        except (UnicodeDecodeError, ValueError) as exc:
+        except (UnicodeDecodeError, ValueError, RecursionError) as exc:
+            # RecursionError: a ~1 MB body of '[' nests deeper than the interpreter allows (SEC-L2).
             raise StudioError("request body is not valid JSON", code="invalid_json") from exc
         if not isinstance(payload, dict):
             raise StudioError("request body must be a JSON object", code="invalid_json")
@@ -1167,7 +1344,7 @@ class StudioHandler(BaseHTTPRequestHandler):
 
     # -- routes ---------------------------------------------------------
     def do_GET(self) -> None:  # noqa: N802
-        path = urlparse(self.path).path
+        path = canonical_api_path(urlparse(self.path).path)
         if not self._guard(api=path.startswith("/api/")):
             return
         try:
@@ -1177,6 +1354,10 @@ class StudioHandler(BaseHTTPRequestHandler):
                 return self._static(path[len("/static/") :])
             if path == "/api/health":
                 return self._json(HTTPStatus.OK, self.server.state.health())
+            if path == "/api/openapi.json":
+                from cqhecs.studio.openapi import build_openapi
+
+                return self._json(HTTPStatus.OK, build_openapi())
             if path == "/api/suite":
                 return self._json(HTTPStatus.OK, self.server.state.suite())
             if path == "/api/noise":
@@ -1191,6 +1372,10 @@ class StudioHandler(BaseHTTPRequestHandler):
                 return self._json(HTTPStatus.OK, self.server.state.hardware())
             if path == "/api/omniwave/status":
                 return self._json(HTTPStatus.OK, self.server.state.omniwave("status"))
+            if path == "/api/diagnostics":
+                from cqhecs import service
+
+                return self._json(HTTPStatus.OK, service.doctor_report("1.0"))
             if path == "/api/reference":
                 return self._json(HTTPStatus.OK, self.server.state.reference())
             if path == "/api/preset":
@@ -1203,6 +1388,24 @@ class StudioHandler(BaseHTTPRequestHandler):
                 return self._json(HTTPStatus.OK, self.server.state.qg_catalog())
             if path == "/api/qg/v1/models":
                 return self._json(HTTPStatus.OK, self.server.state.qg_models())
+            if path == "/api/qg/v1/evidence":
+                return self._json(HTTPStatus.OK, self.server.state.qg_evidence())
+            if path == "/api/qg/v1/experiments":
+                return self._json(HTTPStatus.OK, self.server.state.qg_experiments())
+            if path == "/api/qg/v1/backends":
+                return self._json(HTTPStatus.OK, self.server.state.qg_backends())
+            if path.startswith("/api/qg/v1/evidence/"):
+                return self._json(
+                    HTTPStatus.OK, self.server.state.qg_evidence_for(path[len("/api/qg/v1/evidence/"):])
+                )
+            if path.startswith("/api/qg/v1/exports/"):
+                query = {k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}
+                return self._json(
+                    HTTPStatus.OK, self.server.state.qg_export(path[len("/api/qg/v1/exports/"):], query)
+                )
+            if path.startswith("/api/qg/v1/openquantum/jobs/"):
+                action = "results" if path.endswith("/results") else "status"
+                return self._qg_paid_refusal(action)
             return self._error(HTTPStatus.NOT_FOUND, "not_found", f"no route for {path}")
         except StudioError as exc:
             return self._error(exc.status, exc.code, str(exc))
@@ -1215,7 +1418,7 @@ class StudioHandler(BaseHTTPRequestHandler):
             self._refuse(405, "method_not_allowed", "OPTIONS is not supported")
 
     def do_POST(self) -> None:  # noqa: N802
-        path = urlparse(self.path).path
+        path = canonical_api_path(urlparse(self.path).path)
         if not self._guard(api=True):
             return
         if self.headers.get("Content-Type", "").split(";")[0].strip().lower() != "application/json":
@@ -1247,6 +1450,12 @@ class StudioHandler(BaseHTTPRequestHandler):
                 return self._json(HTTPStatus.OK, self.server.state.qg_preview(body))
             if path == "/api/qg/v1/experiments/run-local":
                 return self._json(HTTPStatus.OK, self.server.state.qg_run_local(body))
+            if path == "/api/qg/v1/experiments/plan":
+                return self._json(HTTPStatus.OK, self.server.state.qg_plan(body))
+            if path == "/api/qg/v1/experiments/compare":
+                return self._json(HTTPStatus.OK, self.server.state.qg_compare(body))
+            if path in ("/api/qg/v1/openquantum/quote", "/api/qg/v1/openquantum/submit"):
+                return self._qg_paid_refusal(path.rsplit("/", 1)[1])
             return self._error(HTTPStatus.NOT_FOUND, "not_found", f"no route for {path}")
         except (StudioError, CNFFormatError) as exc:
             status = getattr(exc, "status", 400)
@@ -1256,6 +1465,12 @@ class StudioHandler(BaseHTTPRequestHandler):
             return self._error(422, "refused", f"{type(exc).__name__}: {exc}")
         except Exception as exc:  # noqa: BLE001
             return self._error(500, "internal_error", f"{type(exc).__name__}: {exc}")
+
+    def _qg_paid_refusal(self, action: str) -> None:
+        """Every Open Quantum route is a typed 403: nothing is quoted, submitted or spent here."""
+        document = self.server.state.qg_paid(action)
+        body = {"error": {"code": "qg_paid_path_unavailable", "message": document["reason"]}, **document}
+        return self._json(HTTPStatus.FORBIDDEN, body)
 
     def _static(self, name: str) -> None:
         if name not in _STATIC_FILES:
@@ -1269,9 +1484,41 @@ class StudioHandler(BaseHTTPRequestHandler):
 
 
 def launch_url(server: StudioHTTPServer) -> str:
-    """URL to open in a browser. The token travels in the fragment, which is never sent to a server."""
+    """URL to open in a browser. The token travels in the fragment, which is never sent to a server.
+
+    A per-launch ephemeral token is embedded so the printed URL is click-to-run. A
+    token supplied by the caller (env / file, W4-06) is **not** embedded, so it does not
+    leak into logs; the caller passes it in the Authorization header.
+    """
     host = str(server.server_address[0]) or "127.0.0.1"
-    return f"http://{host}:{server.server_address[1]}/#token={server.token}"
+    base = f"http://{host}:{server.server_address[1]}/"
+    if getattr(server, "token_ephemeral", True):
+        return f"{base}#token={server.token}"
+    return base
+
+
+def resolve_studio_token() -> Optional[str]:
+    """A Studio bearer token from the environment or a file, or None for a per-launch one.
+
+    ``CQ_HECS_STUDIO_TOKEN`` is used if set; otherwise ``CQ_HECS_STUDIO_TOKEN_FILE``
+    names a file whose stripped contents are the token. An env var is preferred over a
+    CLI argument so the token never appears in a process listing (W4-06).
+    """
+    token = os.environ.get("CQ_HECS_STUDIO_TOKEN")
+    if token:
+        return token
+    path = os.environ.get("CQ_HECS_STUDIO_TOKEN_FILE")
+    if path:
+        try:
+            value = Path(path).read_text(encoding="utf-8").strip()
+        except OSError as exc:
+            raise StudioError(
+                f"cannot read CQ_HECS_STUDIO_TOKEN_FILE {path!r}: {exc}", code="studio_token"
+            ) from exc
+        if not value:
+            raise StudioError("CQ_HECS_STUDIO_TOKEN_FILE is empty", code="studio_token")
+        return value
+    return None
 
 
 def create_server(
@@ -1280,7 +1527,19 @@ def create_server(
     root: Optional[Path | str] = None,
 ) -> StudioHTTPServer:
     state = StudioState(root)
-    return StudioHTTPServer((host, port), state)
+    return StudioHTTPServer((host, port), state, token=resolve_studio_token())
+
+
+def is_loopback_host(host: str) -> bool:
+    """True for 127.0.0.0/8, ::1 and 'localhost'; False for 0.0.0.0, '::' and anything else."""
+    import ipaddress
+
+    if host.strip().lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host.strip("[]")).is_loopback
+    except ValueError:
+        return False
 
 
 def serve(
@@ -1289,11 +1548,25 @@ def serve(
     root: Optional[Path | str] = None,
     open_browser: bool = True,
 ) -> None:
-    server = create_server(host, port, root)
-    url = f"http://{host}:{server.server_address[1]}/"
+    try:
+        server = create_server(host, port, root)
+    except OSError as exc:
+        raise StudioPortError(host, port, exc) from exc
+    url =f"http://{host}:{server.server_address[1]}/"
     print(f"CQ-HECS Studio {__version__} on {url}")
-    print(f"Open (the token is in the fragment, keep this URL private): {launch_url(server)}")
-    print("Local only. Press Ctrl+C to stop.")
+    if getattr(server, "token_ephemeral", True):
+        print(f"Open (the token is in the fragment, keep this URL private): {launch_url(server)}")
+    else:
+        print("Using the token from CQ_HECS_STUDIO_TOKEN(_FILE); send it as a Bearer token.")
+    if not is_loopback_host(host):
+        print(
+            f"WARNING: Studio is bound to non-loopback address {host!r}. The Host allow-list only accepts "
+            "localhost names, so remote clients receive bad_host; do not expose this server to a network "
+            "(token + Host/Origin checks are not a substitute for network isolation).",
+            file=sys.stderr,
+        )
+    else:
+        print("Local only. Press Ctrl+C to stop.")
     print(server.state.dataset.note)
     if open_browser:
         threading.Timer(0.6, lambda: webbrowser.open(launch_url(server))).start()

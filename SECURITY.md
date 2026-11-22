@@ -2,12 +2,12 @@
 
 ## Supported Versions
 
-Security fixes are provided for the current release line only.
+Security fixes are provided for the latest minor of the current release line only.
 
 | Version | Supported |
 | :--- | :---: |
-| 4.0.x | Yes |
-| < 4.0 | No |
+| 7.0.x | Yes |
+| < 7.0 | No |
 
 ## Reporting a Vulnerability
 

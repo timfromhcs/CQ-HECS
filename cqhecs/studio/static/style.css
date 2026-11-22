@@ -255,3 +255,19 @@ pre { background: rgba(8, 12, 23, .7); border: 1px solid var(--line); border-rad
   .grid.three, .grid.four { grid-template-columns: 1fr; }
   .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Quantum Gravity Lab view: long hashes wrap, tabs scroll, inputs never overflow. */
+#qg-studio { min-width: 0; }
+#qg-studio p, #qg-studio li, #qg-studio h3, #qg-studio h4, #qg-studio pre { overflow-wrap: anywhere; }
+#qg-studio .chips { justify-content: flex-start; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 6px; }
+#qg-studio .chips button { white-space: nowrap; min-height: 36px; }
+#qg-studio label { display: grid; gap: 4px; margin: 8px 0; color: var(--muted); font-size: 13px; }
+#qg-studio input[type=number] { max-width: 100%; min-height: 36px; }
+@media (prefers-reduced-motion: reduce) { #qg-studio * { transition: none !important; animation: none !important; } }
+
+/* Execution plan panel */
+#plan-panel { margin-top: 16px; }
+#plan-output { overflow-wrap: anywhere; }
+#plan-output h4 { margin: 14px 0 6px; }
+#plan-output .plan-message { border: 1px solid rgba(255,255,255,.15); border-radius: 10px; padding: 10px 12px; }
+#plan-output:focus-visible, #plan-run:focus-visible { outline: 2px solid #55d7ff; outline-offset: 2px; }

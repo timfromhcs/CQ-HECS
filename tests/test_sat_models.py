@@ -100,3 +100,51 @@ def test_max_sat_refuses_large_instances_and_bad_weights():
         max_sat(formula, [1.0])
     with pytest.raises(ValueError):
         max_sat(formula, [1.0, -1.0])
+
+
+# --- typed MaxSAT contract (limit is never an optimum) --------------------------
+from cqhecs.sat import MAXSAT_CONTRACT, max_sat_checked  # noqa: E402
+
+
+def test_max_sat_checked_optimal_matches_max_sat_and_is_uncertified():
+    formula = parse_dimacs("p cnf 2 3\n1 0\n-1 0\n2 0\n")
+    got = max_sat_checked(formula, [1.0, 5.0, 2.0])
+    ref = max_sat(formula, [1.0, 5.0, 2.0])
+    assert got["status"] == "OPTIMAL" and got["contract"] == MAXSAT_CONTRACT
+    assert got["satisfied_weight"] == ref["satisfied_weight"] == 7.0
+    assert got["optimality_certificate"] is None
+    assert got["trust"] == "EXHAUSTIVE_ENUMERATION_REVERIFIED"
+
+
+def test_max_sat_checked_limit_is_unknown_not_optimal_and_does_not_raise():
+    got = max_sat_checked(random_3sat(21, 40, seed=1))
+    assert got["status"] == "UNKNOWN" and got["limit_reached"] is True
+    assert got["satisfied_weight"] is None and got["assignment"] is None
+    assert got["trust"] == "NONE" and "no optimum is claimed" in got["reason"]
+    raised = False
+    try:
+        max_sat(random_3sat(21, 40, seed=1))
+    except ValueError:
+        raised = True
+    assert raised
+
+
+def test_max_sat_checked_raises_only_on_malformed_weights():
+    formula = parse_dimacs("p cnf 1 2\n1 0\n-1 0\n")
+    with pytest.raises(ValueError):
+        max_sat_checked(formula, [1.0])
+    with pytest.raises(ValueError):
+        max_sat_checked(formula, [1.0, -1.0])
+    with pytest.raises(ValueError):
+        max_sat_checked(formula, [1.0, float("nan")])
+
+
+@pytest.mark.parametrize("seed", range(20))
+def test_max_sat_checked_agrees_with_brute_force(seed):
+    formula = random_3sat(6, 30, seed=seed)
+    got = max_sat_checked(formula)
+    best = 0
+    for bits in range(1 << 6):
+        a = {v: bool((bits >> (v - 1)) & 1) for v in range(1, 7)}
+        best = max(best, sum(any(a[abs(l)] == (l > 0) for l in c) for c in formula.clauses))
+    assert got["status"] == "OPTIMAL" and got["satisfied_weight"] == best

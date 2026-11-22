@@ -83,12 +83,34 @@ def check() -> list:
             "they must be resolved dynamically"
         )
 
-    # SECURITY.md must not advertise a different supported major line.
+    # SECURITY.md must advertise exactly the current release line as supported.
     security = _read("SECURITY.md")
-    if re.search(r"\|\s*4\.5\.x\s*\|", security):
+    line = ".".join(VERSION.split(".")[:2]) + ".x"
+    if not re.search(r"\|\s*" + re.escape(line) + r"\s*\|\s*Yes\s*\|", security):
         problems.append(
-            "SECURITY.md advertises support for 4.5.x, which is not the "
-            f"current version line ({VERSION})"
+            f"SECURITY.md does not advertise the current line {line} as supported"
+        )
+    current_major = VERSION.split(".")[0]
+    supported = sorted(set(re.findall(r"\|\s*(\d+)\.\d+\.x\s*\|\s*Yes\s*\|", security)))
+    stale_lines = [major for major in supported if major != current_major]
+    if stale_lines:
+        problems.append(
+            f"SECURITY.md advertises support for non-current major line(s) {stale_lines}"
+        )
+
+    # Classifiers must describe the shipped artifact honestly (D8): the released
+    # wheel is pure Python and not yet Production/Stable (no native wheels).
+    project = _read("pyproject.toml")
+    if "Development Status :: 5 - Production/Stable" in project:
+        problems.append(
+            "pyproject.toml claims Production/Stable; the release is Beta until "
+            "native wheels exist"
+        )
+    elif "Development Status :: 4 - Beta" not in project:
+        problems.append("pyproject.toml has no recognised Development Status classifier")
+    if "Programming Language :: C++" in project:
+        problems.append(
+            "pyproject.toml claims the C++ classifier, but the shipped wheel is pure Python"
         )
 
     # The changelog must contain a section for the released version. An

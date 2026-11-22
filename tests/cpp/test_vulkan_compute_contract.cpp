@@ -66,16 +66,14 @@ bool test_state_reset(VulkanContext& ctx) {
     }
 
     std::vector<ComplexAmp> initial(kElements, ComplexAmp{123, 456});
-    buffer.copy_to_buffer(initial.data(), initial.size() * sizeof(ComplexAmp));
-
+    if (!buffer.copy_to_buffer(initial.data(), initial.size() * sizeof(ComplexAmp))) { std::cerr << "FAIL: copy_to_buffer\n"; return false; }
     if (!ctx.dispatch_state_reset(buffer, kElements, /*target_basis=*/1)) {
         std::cerr << "FAIL: dispatch_state_reset returned false\n";
         return false;
     }
 
     std::vector<ComplexAmp> got(kElements);
-    buffer.copy_from_buffer(got.data(), got.size() * sizeof(ComplexAmp));
-
+    if (!buffer.copy_from_buffer(got.data(), got.size() * sizeof(ComplexAmp))) { std::cerr << "FAIL: copy_from_buffer\n"; return false; }
     bool ok = true;
     // Even indices are |0>, odd indices are |1> per site.
     ok &= expect_int("reset site0 |0> real", got[0].real_val, 0, __LINE__);
@@ -100,8 +98,7 @@ bool test_cordic_phase_and_pauli_x(VulkanContext& ctx) {
         {kFixedOne, 0}, // |0> = 1
         {0, 0},         // |1> = 0
     };
-    buffer.copy_to_buffer(initial.data(), initial.size() * sizeof(ComplexAmp));
-
+    if (!buffer.copy_to_buffer(initial.data(), initial.size() * sizeof(ComplexAmp))) { std::cerr << "FAIL: copy_to_buffer\n"; return false; }
     // Phase-shift one amplitude by pi/2. The CORDIC shader also implements an
     // inverse mode; run it after the forward pass to check readback coherence.
     if (!ctx.dispatch_cordic(buffer, /*gate_type=*/0, kAngle, /*is_inverse=*/0,
@@ -111,7 +108,7 @@ bool test_cordic_phase_and_pauli_x(VulkanContext& ctx) {
     }
 
     std::vector<ComplexAmp> rotated(2);
-    buffer.copy_from_buffer(rotated.data(), rotated.size() * sizeof(ComplexAmp));
+    if (!buffer.copy_from_buffer(rotated.data(), rotated.size() * sizeof(ComplexAmp))) { std::cerr << "FAIL: copy_from_buffer\n"; return false; }
     bool ok = true;
     ok &= expect_int("cordic pi/2 real", rotated[0].real_val, 0, __LINE__);
     ok &= expect_int("cordic pi/2 imag", rotated[0].imag_val, kFixedOne, __LINE__);
@@ -121,20 +118,20 @@ bool test_cordic_phase_and_pauli_x(VulkanContext& ctx) {
         return false;
     }
     std::vector<ComplexAmp> restored(2);
-    buffer.copy_from_buffer(restored.data(), restored.size() * sizeof(ComplexAmp));
+    if (!buffer.copy_from_buffer(restored.data(), restored.size() * sizeof(ComplexAmp))) { std::cerr << "FAIL: copy_from_buffer\n"; return false; }
     ok &= expect_int("cordic inverse real", restored[0].real_val, kFixedOne, __LINE__);
     ok &= expect_int("cordic inverse imag", restored[0].imag_val, 0, __LINE__);
 
     // Pauli X swaps the two amplitudes. The shader consumes one pair per
     // invocation, so total_pairs=1 covers both entries.
     std::vector<ComplexAmp> basis = {{kFixedOne, 0}, {0, 0}};
-    buffer.copy_to_buffer(basis.data(), basis.size() * sizeof(ComplexAmp));
+    if (!buffer.copy_to_buffer(basis.data(), basis.size() * sizeof(ComplexAmp))) { std::cerr << "FAIL: copy_to_buffer\n"; return false; }
     if (!ctx.dispatch_cordic(buffer, /*gate_type=*/1, 0, 0, /*total_pairs=*/1)) {
         std::cerr << "FAIL: dispatch_cordic Pauli X returned false\n";
         return false;
     }
     std::vector<ComplexAmp> flipped(2);
-    buffer.copy_from_buffer(flipped.data(), flipped.size() * sizeof(ComplexAmp));
+    if (!buffer.copy_from_buffer(flipped.data(), flipped.size() * sizeof(ComplexAmp))) { std::cerr << "FAIL: copy_from_buffer\n"; return false; }
     ok &= expect_int("pauli_x |0> real", flipped[0].real_val, 0, __LINE__);
     ok &= expect_int("pauli_x |1> real", flipped[1].real_val, kFixedOne, __LINE__);
 
@@ -172,18 +169,17 @@ bool test_tensor_contract(VulkanContext& ctx) {
         std::cerr << "FAIL: tensor contract buffer allocation\n";
         return false;
     }
-    buf_a.copy_to_buffer(a.data(), a.size() * sizeof(ComplexAmp));
-    buf_b.copy_to_buffer(b.data(), b.size() * sizeof(ComplexAmp));
+    if (!buf_a.copy_to_buffer(a.data(), a.size() * sizeof(ComplexAmp))) { std::cerr << "FAIL: copy_to_buffer\n"; return false; }
+    if (!buf_b.copy_to_buffer(b.data(), b.size() * sizeof(ComplexAmp))) { std::cerr << "FAIL: copy_to_buffer\n"; return false; }
     std::vector<ComplexAmp> zero(expected.size(), ComplexAmp{0, 0});
-    buf_c.copy_to_buffer(zero.data(), zero.size() * sizeof(ComplexAmp));
-
+    if (!buf_c.copy_to_buffer(zero.data(), zero.size() * sizeof(ComplexAmp))) { std::cerr << "FAIL: copy_to_buffer\n"; return false; }
     if (!ctx.dispatch_tensor_contract(buf_a, buf_b, buf_c, M, K, N)) {
         std::cerr << "FAIL: dispatch_tensor_contract returned false\n";
         return false;
     }
 
     std::vector<ComplexAmp> got(expected.size());
-    buf_c.copy_from_buffer(got.data(), got.size() * sizeof(ComplexAmp));
+    if (!buf_c.copy_from_buffer(got.data(), got.size() * sizeof(ComplexAmp))) { std::cerr << "FAIL: copy_from_buffer\n"; return false; }
     bool ok = true;
     for (size_t i = 0; i < expected.size(); ++i) {
         ok &= expect_int("contract real", got[i].real_val, expected[i].real_val, __LINE__);
@@ -238,16 +234,16 @@ bool test_omniwave_bcp(VulkanContext& ctx) {
         std::cerr << "FAIL: omniwave buffer allocation\n";
         return false;
     }
-    b_off.copy_to_buffer(offsets.data(), offsets.size() * 4);
-    b_codes.copy_to_buffer(codes.data(), codes.size() * 4);
-    b_assigned.copy_to_buffer(assigned.data(), assigned.size() * 4);
-    b_values.copy_to_buffer(values.data(), values.size() * 4);
+    if (!b_off.copy_to_buffer(offsets.data(), offsets.size() * 4)) { std::cerr << "FAIL: copy_to_buffer\n"; return false; }
+    if (!b_codes.copy_to_buffer(codes.data(), codes.size() * 4)) { std::cerr << "FAIL: copy_to_buffer\n"; return false; }
+    if (!b_assigned.copy_to_buffer(assigned.data(), assigned.size() * 4)) { std::cerr << "FAIL: copy_to_buffer\n"; return false; }
+    if (!b_values.copy_to_buffer(values.data(), values.size() * 4)) { std::cerr << "FAIL: copy_to_buffer\n"; return false; }
     if (!ctx.dispatch_omniwave_bcp(b_off, b_codes, b_assigned, b_values, b_status, num_clauses, fronts, words)) {
         std::cerr << "FAIL: dispatch_omniwave_bcp returned false\n";
         return false;
     }
     std::vector<uint32_t> got(fronts * num_clauses);
-    b_status.copy_from_buffer(got.data(), got.size() * 4);
+    if (!b_status.copy_from_buffer(got.data(), got.size() * 4)) { std::cerr << "FAIL: copy_from_buffer\n"; return false; }
     uint32_t mismatches = 0, kinds[4] = {0, 0, 0, 0};
     for (uint32_t f = 0; f < fronts; ++f) {
         for (uint32_t c = 0; c < num_clauses; ++c) {

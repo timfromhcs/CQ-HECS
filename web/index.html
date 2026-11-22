@@ -124,8 +124,9 @@
           </div>
           <div class="card composer-card">
             <div id="palette" class="palette" role="toolbar"></div>
-            <div id="composer" class="composer" tabindex="0"></div>
+            <div id="composer" class="composer" tabindex="0" aria-describedby="composer-kbd"></div>
             <p class="hint muted small" data-i18n="lab.hint"></p>
+            <p id="composer-kbd" class="hint muted small" data-i18n="lab.kbd"></p>
           </div>
         </div>
         <div class="view-code card">
@@ -186,7 +187,10 @@ return qc.measureAll();
             <button role="tab" data-res="state" aria-selected="false" data-i18n="res.state"></button>
           </div>
           <div id="stats" class="stats"></div>
+          <button id="res-import" class="btn ghost small-btn" type="button" data-i18n="res.import"></button>
+          <input id="res-import-file" type="file" accept="application/json,.json" hidden />
         </div>
+        <p id="import-status" class="muted small pad" role="status" hidden></p>
         <div id="res-hist" class="res"><p class="muted pad" data-i18n="res.empty"></p></div>
         <div id="res-table" class="res" hidden></div>
         <div id="res-bloch" class="res" hidden></div>

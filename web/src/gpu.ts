@@ -3,6 +3,7 @@
 // The browser maps WebGPU to Vulkan, Direct3D 12 or Metal underneath.
 
 import type { Op } from "./circuit";
+import { GpuLossError } from "./fallback";
 
 const SHADER = /* wgsl */ `
 struct Params {
@@ -40,11 +41,33 @@ const PARAM_STRIDE = 256; // minUniformBufferOffsetAlignment upper bound
 const BATCH = 512; // ops per command buffer
 
 export class GpuEngine {
+  private lostReason: string | null = null;
+  private readonly lossSignal: Promise<never>;
+
   private constructor(
     private device: GPUDevice,
     private pipeline: GPUComputePipeline,
     public readonly maxBytes: number,
-  ) {}
+  ) {
+    // `device.lost` resolves once, when the device is gone. After that every call on the device
+    // fails or hangs, so each await below is raced against this signal (W4-09).
+    this.lossSignal = device.lost.then((info) => {
+      this.lostReason = `${info.reason}${info.message ? `: ${info.message}` : ""}`;
+      throw new GpuLossError(this.lostReason);
+    });
+    this.lossSignal.catch(() => {}); // the rejection is consumed via guard(), never unhandled
+  }
+
+  get isLost(): boolean {
+    return this.lostReason !== null;
+  }
+
+  private guard<T>(p: Promise<T>): Promise<T> {
+    return Promise.race([p, this.lossSignal]).catch((e) => {
+      if (this.lostReason !== null && !(e instanceof GpuLossError)) throw new GpuLossError(this.lostReason);
+      throw e;
+    });
+  }
 
   static async create(): Promise<GpuEngine> {
     if (!("gpu" in navigator) || !navigator.gpu) throw new Error("WebGPU nicht verfügbar");
@@ -73,6 +96,7 @@ export class GpuEngine {
 
   /** Run the unitary ops of a circuit from |0…0>; returns the f32 amplitudes. */
   async run(n: number, ops: Op[], shouldStop: () => boolean): Promise<Float32Array> {
+    if (this.lostReason !== null) throw new GpuLossError(this.lostReason);
     const bytes = 8 * 2 ** n;
     if (bytes > this.maxBytes) throw new Error(`GPU-Puffer zu klein für ${n} Qubits`);
     const device = this.device;
@@ -120,16 +144,16 @@ export class GpuEngine {
         device.pushErrorScope("validation");
         device.pushErrorScope("out-of-memory");
         device.queue.submit([encoder.finish()]);
-        const oom = await device.popErrorScope();
-        const invalid = await device.popErrorScope();
+        const oom = await this.guard(device.popErrorScope());
+        const invalid = await this.guard(device.popErrorScope());
         if (oom || invalid) throw new Error(`WebGPU-Fehler: ${(oom ?? invalid)!.message}`);
-        await device.queue.onSubmittedWorkDone();
+        await this.guard(device.queue.onSubmittedWorkDone());
       }
       const read = device.createBuffer({ size: bytes, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
       const encoder = device.createCommandEncoder();
       encoder.copyBufferToBuffer(state, 0, read, 0, bytes);
       device.queue.submit([encoder.finish()]);
-      await read.mapAsync(GPUMapMode.READ);
+      await this.guard(read.mapAsync(GPUMapMode.READ));
       const out = new Float32Array(read.getMappedRange().slice(0));
       read.unmap();
       read.destroy();

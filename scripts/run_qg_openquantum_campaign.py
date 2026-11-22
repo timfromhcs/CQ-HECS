@@ -87,23 +87,144 @@ def _campaign_dir(args: argparse.Namespace) -> Path:
     return Path(args.campaign)
 
 
-def _load_ledger_spend(campaign_dir: Path) -> float:
-    """Sum actually-submitted credits from the append-only job ledger."""
+class LedgerError(RuntimeError):
+    """The append-only job ledger is unreadable or inconsistent (fail closed)."""
+
+    code = "QG_LEDGER_CORRUPT"
+
+
+_KNOWN_EVENTS = frozenset({
+    "init", "submit_intent", "submitted", "submit_failed", "submit_ambiguous",
+    "collected", "collect_failed", "failed", "refunded",
+})
+# A refund counts against spend only when it is confirmed (or a legacy row that
+# predates the explicit ``refund_status`` field).
+_REFUND_COUNTED_STATUSES = frozenset({None, "confirmed", "recorded"})
+
+
+def _credit(event: Dict[str, Any], key: str, where: str) -> float:
+    value = event.get(key)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise LedgerError(f"{where}: {key!r} must be a number, got {value!r}")
+    value = float(value)
+    if value != value or value in (float("inf"), float("-inf")) or value < 0.0:
+        raise LedgerError(f"{where}: {key!r} must be finite and non-negative, got {value!r}")
+    return value
+
+
+def _read_ledger_events(campaign_dir: Path) -> List[Dict[str, Any]]:
+    """Parse ``JOB_LEDGER.jsonl`` strictly. Any malformed line raises ``LedgerError``.
+
+    A silently skipped line could hide a spend event, so corrupt, truncated,
+    non-object or unknown-event lines are never ignored.
+    """
     ledger = campaign_dir / "JOB_LEDGER.jsonl"
     if not ledger.is_file():
-        return 0.0
-    total = 0.0
-    for line in ledger.read_text("utf-8").splitlines():
-        line = line.strip()
+        return []
+    events: List[Dict[str, Any]] = []
+    for number, raw in enumerate(ledger.read_text("utf-8").splitlines(), start=1):
+        line = raw.strip()
         if not line:
             continue
+        where = f"JOB_LEDGER.jsonl:{number}"
         try:
             event = json.loads(line)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as exc:
+            raise LedgerError(f"{where}: invalid JSON ({exc.msg})") from exc
+        if not isinstance(event, dict):
+            raise LedgerError(f"{where}: line is not a JSON object")
+        kind = event.get("event")
+        if kind not in _KNOWN_EVENTS:
+            raise LedgerError(f"{where}: unknown or missing event {kind!r}")
+        if kind == "submitted":
+            _credit(event, "quoted_credits", where)
+            if not isinstance(event.get("provider_job_id"), str) or not event["provider_job_id"]:
+                raise LedgerError(f"{where}: submitted event without provider_job_id")
+        elif kind in ("submit_intent", "submit_ambiguous", "submit_failed"):
+            if not isinstance(event.get("preparation_id"), str) or not event["preparation_id"]:
+                raise LedgerError(f"{where}: {kind} event without preparation_id")
+            if kind != "submit_failed":
+                _credit(event, "quoted_credits", where)
+        elif kind == "refunded":
+            _credit(event, "refunded_credits", where)
+            if not isinstance(event.get("provider_job_id"), str) or not event["provider_job_id"]:
+                raise LedgerError(f"{where}: refunded event without provider_job_id")
+        event["_line"] = number
+        events.append(event)
+    return events
+
+
+def _ledger_summary(campaign_dir: Path) -> Dict[str, Any]:
+    """Net spend and per-preparation submit state from the ledger.
+
+    ``net = sum(quoted_credits of submitted) + unresolved intents/ambiguous
+    submits - sum(confirmed refunded_credits)``. A job that failed without a
+    refund therefore still counts as spent. A refund never exceeds the job's own
+    quoted credits and must reference a submitted job.
+    """
+    events = _read_ledger_events(campaign_dir)
+    quoted_by_job: Dict[str, float] = {}
+    gross = 0.0
+    prep_state: Dict[str, str] = {}
+    prep_credits: Dict[str, float] = {}
+    for event in events:
+        kind = event["event"]
+        if kind == "submitted":
+            credits = float(event["quoted_credits"])
+            gross += credits
+            job_id = event["provider_job_id"]
+            quoted_by_job[job_id] = quoted_by_job.get(job_id, 0.0) + credits
+            if event.get("preparation_id"):
+                prep_state[event["preparation_id"]] = "submitted"
+        elif kind in ("submit_intent", "submit_ambiguous"):
+            prep = event["preparation_id"]
+            if prep_state.get(prep) != "submitted":
+                prep_state[prep] = "intent" if kind == "submit_intent" else "ambiguous"
+                prep_credits[prep] = float(event["quoted_credits"])
+        elif kind == "submit_failed":
+            if prep_state.get(event["preparation_id"]) != "submitted":
+                prep_state[event["preparation_id"]] = "failed"
+    unresolved = {p: c for p, c in prep_credits.items() if prep_state.get(p) in ("intent", "ambiguous")}
+    refunded_by_job: Dict[str, float] = {}
+    refund_pending = 0.0
+    for event in events:
+        if event["event"] != "refunded":
             continue
-        if event.get("event") == "submitted":
-            total += float(event.get("quoted_credits", 0.0))
-    return total
+        job_id = event["provider_job_id"]
+        where = f"JOB_LEDGER.jsonl:{event['_line']}"
+        if job_id not in quoted_by_job:
+            raise LedgerError(f"{where}: refund for unknown job {job_id!r}")
+        amount = float(event["refunded_credits"])
+        if event.get("refund_status") in _REFUND_COUNTED_STATUSES:
+            headroom = quoted_by_job[job_id] - refunded_by_job.get(job_id, 0.0)
+            refunded_by_job[job_id] = refunded_by_job.get(job_id, 0.0) + min(amount, max(headroom, 0.0))
+        else:
+            refund_pending += amount
+    refunded = sum(refunded_by_job.values())
+    net = gross + sum(unresolved.values()) - refunded
+    return {
+        "gross_submitted_credits": gross,
+        "unresolved_credits": sum(unresolved.values()),
+        "refunded_credits": refunded,
+        "refund_unconfirmed_credits": refund_pending,
+        "net_spent_credits": net,
+        "prep_state": prep_state,
+        "unresolved_preparations": sorted(unresolved),
+        "events": events,
+    }
+
+
+def _load_ledger_spend(campaign_dir: Path) -> float:
+    """Net spend in credits (submitted minus confirmed refunds). Raises ``LedgerError``."""
+    return float(_ledger_summary(campaign_dir)["net_spent_credits"])
+
+
+def _ledger_failure(exc: LedgerError) -> int:
+    print(json.dumps({
+        "status": "FAILED", "code": exc.code, "detail": _redact(str(exc), 400),
+        "next_action": "repair or reconcile JOB_LEDGER.jsonl by hand; the runner will not guess",
+    }, indent=2))
+    return 3
 
 
 def _resolve_credentials():
@@ -493,7 +614,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         "analyse": cmd_analyse,
         "report": cmd_report,
     }[args.command]
-    return handler(args)
+    try:
+        return handler(args)
+    except LedgerError as exc:
+        # A corrupt ledger must produce a clean, machine-readable refusal with a
+        # defined exit code, never a traceback that hides a possible spend event.
+        return _ledger_failure(exc)
 
 
 if __name__ == "__main__":

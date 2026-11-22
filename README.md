@@ -29,7 +29,14 @@ Four classical simulation paths · one result contract · fail-closed by design
 
 ---
 
-> **Status: `v5.0.0` (2026-11-02).** One provenance contract for every surface:
+> **Development tree (`7.0.0` release candidate on branch `release/v7-stable`, unreleased).** This branch is ahead of the last
+> release. What changed, split into implemented / experimental / measured / formally checked /
+> not supported, is in [`RELEASE_NOTES_DRAFT.md`](RELEASE_NOTES_DRAFT.md); every caller-visible
+> change with an executed example is in [`MIGRATION_V7.md`](MIGRATION_V7.md); the evidence files
+> are `research/v7/evidence/waveA_*.md` and `waveB_*.md`. The release table below describes
+> published versions only.
+>
+> **Last published release: `v5.0.0` (2026-11-02).** One provenance contract for every surface:
 >
 > - **`hcs.run.v2`** (`cqhecs/provenance.py`, `web/src/provenance.ts`,
 >   `docs/provenance/hcs.run.v2.schema.json`): one card per run - the exact input text and
@@ -69,11 +76,11 @@ Four classical simulation paths · one result contract · fail-closed by design
 > - **Browser.** A six-case conformance corpus against a dense NumPy reference
 >   (`1e-12`), a bundle budget enforced by `npm run build`, a delivery check for the
 >   deployed build, and reproducible run cards with the QASM digest and the seed.
->   The Vercel production deployment is public and passes the delivery check 10/10.
+>   The delivery check passed 10/10 against the production deployment of an older commit (`e7e5c1e`, 2026-11-02); it was not re-run for the `7.0.0` candidate (NOT_RUN).
 > - **README** in English (canonical), German and French with a language selector and
 >   identical evidence numbers, asserted by a test.
 >
-> **Previous release: `v4.0.0` (2026-11-01).** Explainable planning and exact bounded-width
+> **Earlier release: `v4.0.0` (2026-11-01)** (`v4.1.0` and `v4.2.0` followed on 2026-11-02; the `v4.2.0` summary is above). Explainable planning and exact bounded-width
 > counting; nothing removed (see [`MIGRATION_V4.md`](MIGRATION_V4.md)):
 >
 > - **`ExecutionPlan` dry run.** `cq-hecs analyze CIRCUIT --explain` (also Python,
@@ -107,7 +114,7 @@ Four classical simulation paths · one result contract · fail-closed by design
 >   canonical `formula_sha256`; the parser normalizes repeated DIMACS literals.
 >   Partial assignments no longer satisfy negative literals by accident, and the
 >   certificate budget cannot extend the solve deadline.
-> - **Proof evidence.** A CaDiCaL DRAT proof and its LRAT conversion are checked
+> - **Proof evidence (historical v6 record, not re-run for v7).** A CaDiCaL DRAT proof and its LRAT conversion are checked
 >   by `cqhecs.drat`, `drat-trim`, `lrat-check` and the CakeML-verified `cake_lpr`
 >   (`research/v6/evidence/DRAT_EXTERNAL.md`). This covers that proof/formula,
 >   not the whole pipeline.
@@ -116,7 +123,9 @@ Four classical simulation paths · one result contract · fail-closed by design
 >   routes, EN/DE/FR, the WebGPU fallback, safe limits and six viewports.
 > - **Still open.** The OpenAI/Anthropic ETH proofs are *claimed* and Lean-
 >   formalized at pinned revisions, not peer-reviewed by this project. The Lean
->   build status is recorded in `research/v6/`; P vs NP stays open.
+>   build status is the historical v6 record in `research/v6/` (not re-run for v7;
+>   the v7 Lean evidence covers only this project's own specification lemmas);
+>   P vs NP stays open.
 > - **OMNIWAVE.** A multi-front exact SAT search
 >   (`--engine omniwave`, CLI/MCP, Studio **OMNIWAVE lab** with live data and
 >   pause/resume/cancel). The default `--branch auto` uses Jeroslow-Wang on
@@ -178,7 +187,7 @@ Four classical simulation paths · one result contract · fail-closed by design
 >    at TV ≤ 5e-15; 3–4 variable SAT oracles on IBM return a valid DPLL model
 >    as the top outcome on every run. This is not a complexity result.
 >
-> The release tree passes **1669 Python tests** on the Linux CI lane (4 opt-in exe
+> Historical, for that older release only (current numbers: [Verification](#verification)): the tree passed **1669 Python tests** on the Linux CI lane (4 opt-in exe
 > tests skipped, 1 opt-in slow gate), **21/21 CTest**, **54/54 source mutants**, a **12-check metamorphic
 > self-test**, and the independent oracle **21/21**.
 >
@@ -280,7 +289,7 @@ That rule is enforced in code, not only in documentation:
 | **Public surfaces** | `cq-hecs` CLI, `cq-hecs studio`, Qiskit `BackendV2`, Python API, C ABI, SAT engine |
 | **Simulation paths** | A: stabilizer tableau · B: stabilizer rank · C: untruncated MPS · D: sparse Pauli |
 | **Noise** | Typed profiles, Kraus channels, exact float64 density matrix up to 10 qubits |
-| **Verification** | 1669 Python tests, 21 CTest, 54 mutants, 12-check selftest, 13 SPIR-V shaders, 21/21 independent oracle |
+| **Verification** | see [Verification](#verification): freeze-SHA `38e799b` (Python, web unit and CTest counts re-run at `f880d0a` + wave F tree): Python 4314 passed / 133 skipped / 0 failed, 95/95 mutants, web unit 167/167, Playwright 128 passed / 1 skipped (WebGPU NOT_RUN), CTest 26/26 (Vulkan) and 15/15 (CPU); the 12-check selftest and the 21/21 independent oracle are historical (v3.x) |
 | **Platforms** | Linux x64, Windows 10/11; Python 3.11–3.14 |
 | **License** | Apache-2.0 |
 
@@ -291,10 +300,11 @@ That rule is enforced in code, not only in documentation:
 - **Not a universal quantum simulator.** Each path has a target class and a hard
   limit; no path claims polynomial-time simulation of arbitrary circuits.
 - **Not a QPU.** `RealHardwareBackend` is a fail-closed boundary without a
-  provider integration. This package has never executed a job on physical
-  hardware. One externally submitted reference suite (`r-io-7`) produced
-  measured counts that are used as evaluation data only, never as a result of
-  this package.
+  provider integration. The package API has never executed a job on physical
+  hardware. Real-QPU data in this repository was submitted by external runner
+  scripts, not by the package API: the preregistered `r-io-7` reference suite and
+  the 2026 Quantum Gravity campaign (`research/qg_2026`). Those counts are
+  evaluation and research evidence, never a result produced by this package.
 - **Not a GPU-accelerated simulator.** The Python paths are CPU-only. Vulkan
   compute was verified for native primitives, not for end-to-end circuit
   simulation.
@@ -328,7 +338,7 @@ flowchart LR
 | Path | Method | Best for | Guarantee | Hard limit |
 | :--- | :--- | :--- | :--- | :--- |
 | **A** | Gottesman–Knill tableau | pure Clifford circuits (`T = 0`) | exact GF(2) symplectic evolution, `error_bound = 0.0` | first non-Clifford gate escalates |
-| **B** | Stabilizer-rank decomposition | low `T`-count | exact algebraic decomposition, float64 evaluation | 22 qubits (implementation ceiling) |
+| **B** | Stabilizer-rank decomposition | low `T`-count (measured: a plain dense statevector was faster on every measured case, `research/v7/evidence/PATHB_DOMINANCE.json`; Path B is a low-T method, not a speed advantage) | exact algebraic decomposition, float64 evaluation; branches with \|weight\| ≤ 1e-15 are dropped and their mass is reported in `error_bound` | 22 qubits (implementation ceiling) |
 | **C** | Untruncated MPS | 1D area-law states | no deliberate truncation; `numerical_error_bound=None` | RAM budget (`ram_budget_mb`, fail-closed); dense conversion ≤ 20 qubits; sampling routing cap 500 qubits |
 | **D** | Sparse-Pauli Heisenberg | observable queries on 200+ qubits | certified bound `Δ ≤ Σ abs(c_P)` over discarded terms | no certified joint measurement distribution |
 
@@ -423,7 +433,8 @@ equivariance, zero-noise identity, and channel composition order.
 
 ### Interfaces
 
-- **CLI:** `cq-hecs` with a strict JSON contract (`--format json`).
+- **CLI:** `cq-hecs` with a strict JSON contract (`--format json`); `cq-hecs plan` is the
+  dry-run `ExecutionPlan`, `cq-hecs qg` the local Quantum Gravity tools.
 - **Qiskit:** `BackendV2` provider, tested against Aer for supported paths.
 - **Python API:** router, expectation values, profiles, reference harness.
 - **Native:** C++20 core, C ABI, Vulkan compute shaders (separately built and
@@ -432,10 +443,17 @@ equivariance, zero-noise identity, and channel composition order.
   evidence (`cq-hecs studio`).
 - **Web:** an exact emulator in the browser (WebAssembly f64 + WebGPU),
   live at https://cq-hecs-web.vercel.app; source in [`web/`](web/).
-- **MCP:** `cq-hecs mcp`, a stdio JSON-RPC server for agents (run, analyze,
-  SAT solve/models, hardware evidence).
-- **Standalone:** `cqhecs-5.0.0-windows-x64.zip` on the release page; unzip
-  and run `cq-hecs\cq-hecs.exe`. `scripts/build_exe.ps1` rebuilds it.
+- **MCP:** `cq-hecs mcp`, a stdio JSON-RPC server for agents (run, analyze, plan,
+  SAT solve/count/models, hardware evidence, local Quantum Gravity tools). It negotiates the
+  protocol version, runs calls on worker threads and answers cancellation with a typed
+  `CANCELLED`; compute is abandoned, not stopped. See
+  [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md) section 7.
+- **Plan parity:** the same `cqhecs.execution_plan/1` document comes from Python
+  (`cqhecs.service.plan_document`), `cq-hecs plan`, MCP `cqhecs_plan` and Studio
+  `POST /api/plan`; one test asserts they are identical.
+- **Standalone:** `cqhecs-7.0.0-windows-x64.zip` will be attached to the release once
+  `v7.0.0` is published (nothing is published yet); then unzip and run
+  `cq-hecs\cq-hecs.exe`. `scripts/build_exe.ps1` builds it from this tree.
 
 ### CQ-HECS Studio
 
@@ -444,7 +462,7 @@ has no build step and no new runtime dependency (standard-library HTTP server +
 the existing package).
 
 Open the private URL printed by the command: its fragment carries a per-launch
-API token. The page keeps the token in memory and removes it from the address
+API token (or set `CQ_HECS_STUDIO_TOKEN` / `CQ_HECS_STUDIO_TOKEN_FILE` to choose it). The page keeps the token in memory and removes it from the address
 bar; after reloading, reopen the printed URL. API clients must send
 `Authorization: Bearer <token>` and JSON POST bodies. Requests require an allowed
 Host/Origin, and rejected request bodies have a bounded drain deadline. The
@@ -461,8 +479,12 @@ server remains a local tool, not a production remote service.
 - **Evidence:** all 25 jobs with their circuit digests and provider job IDs.
 - **Research:** sourced notes on `P` versus `NP`, ETH, and the OpenAI math
   corpus, with the same non-claims as this README.
+- **Quantum Gravity lab (tab 08):** declared finite models on an exact classical reference;
+  no job submission, no credentials, no spend. Not a gravity measurement.
 
-See [`docs/STUDIO.md`](docs/STUDIO.md) for the API and the security model.
+The HTTP API is described by an OpenAPI 3.1 document (`GET /api/openapi.json`,
+`schemas/studio.openapi.json`), and every `/api/x` route also answers at `/api/v1/x`. See
+[`docs/STUDIO.md`](docs/STUDIO.md) for the API and the security model.
 
 ### Browser engines (Vercel, WebAssembly, WebGPU)
 
@@ -498,9 +520,9 @@ The supported standalone surface is `cqhecs/sat.py` and `cq-hecs sat`:
 cq-hecs sat solve benchmarks/sat/pigeonhole_6_5.cnf
 cq-hecs sat solve --random 30 --ratio 4.26 --timeout 5
 cq-hecs sat sweep --sizes 10,15,20,25 --ratios 3.0,4.26,6.0 --trials 5
-cq-hecs sat models --cnf "p cnf 3 2\n1 2 0\n-1 3 0\n" --limit 5
-cq-hecs sat maxsat --cnf "p cnf 2 2\n1 0\n-1 0\n" --weights 1,2
-cq-hecs sat count --cnf "p cnf 200 1\n1 2 0\n"     # exact #SAT
+cq-hecs sat models --cnf $'p cnf 3 2\n1 2 0\n-1 3 0\n' --limit 5
+cq-hecs sat maxsat --cnf $'p cnf 2 2\n1 0\n-1 0\n' --weights 1,2
+cq-hecs sat count --cnf $'p cnf 200 1\n1 2 0\n'     # exact #SAT
 cq-hecs sat solve pigeonhole_6_5.cnf --engine cadical  # optional extra, DRAT-checked
 cq-hecs sat solve pigeonhole_6_5.cnf --engine watched  # two-watched-literal propagation
 cq-hecs mcp
@@ -526,6 +548,23 @@ tree-resolution refutation that a separate checker (`check_refutation`) replays;
 reported as such (disagreement between the two searches yields `UNKNOWN`). The
 native C++ solver and `python_bridge.sat_engine` still give no proof object.
 A timeout or node budget is `UNKNOWN`, never `UNSAT`.
+
+> In a POSIX shell write multi-line DIMACS as `$'p cnf 2 2\n1 0\n-1 0\n'`; a double-quoted
+> `"...\n..."` keeps a literal backslash-n and the parser rejects it.
+
+Additions since the last release (details and executed examples in
+[`MIGRATION_V7.md`](MIGRATION_V7.md)):
+
+- **Typed MaxSAT** (`hcs.sat.maxsat.v1`): `OPTIMAL` only after exhaustive enumeration of at
+  most 20 variables and a re-verification; above that the result is `UNKNOWN` with no
+  assignment. There is no optimality certificate (`optimality_certificate` is `null`).
+- **Isolated CaDiCaL:** `solve_external_isolated` runs the solver in a child process; the
+  parent re-checks the model and the DRAT proof. A child crash is `UNKNOWN`. `python-sat`
+  remains an optional extra.
+- **Separator preflight:** exact #SAT by variable elimination refuses with `UNKNOWN`
+  before allocating a table whose predicted bound `2^(w+1)` exceeds the budget.
+- **Unified solver:** results carry `certified` and `proof_level`; `require_certified=True`
+  never reports an uncertified `UNSAT`.
 
 Since v3.5.0 every result carries `certification`:
 
@@ -570,7 +609,7 @@ engine carried.
 | Surface | Quantum engine | SAT engine |
 | :--- | :--- | :--- |
 | Python / CLI / Qiskit / MCP / Studio | routed paths A–D (CPU), density matrix ≤ 10 qubits for noise | `cqhecs.sat` DPLL (+ optional CaDiCaL), `count_models`, OMNIWAVE (`cqhecs.omniwave`, exhaustive + checked proofs, see [`docs/OMNIWAVE.md`](docs/OMNIWAVE.md)) |
-| Native C++20 / C ABI | the C++20 core behind the C ABI (CTest 21/21); 13 SPIR-V shaders validated and dispatched on a software ICD in CI, **no end-to-end GPU circuit simulator** | `cq_solve_sat` (no proof object); `cq_omniwave_bcp_eval` (one batched BCP pass for OMNIWAVE, CPU-verified) |
+| Native C++20 / C ABI | the C++20 core behind the C ABI (CTest result in [Verification](#verification)); 13 SPIR-V shaders validated and dispatched on a software ICD in CI, **no end-to-end GPU circuit simulator** | `cq_solve_sat` (no proof object); `cq_omniwave_bcp_eval` (one batched BCP pass for OMNIWAVE, CPU-verified) |
 | Web (browser) | its own state vector: WASM f64 (exact up to rounding), WebGPU f32 (single precision, cross-checked ≤ 20 qubits); **not** paths A–D | its own TS DPLL with replay-checked tree-resolution certificates, `countModels`; no CaDiCaL |
 | Windows build (`cq-hecs.exe`) | same as Python/CLI | same as Python (CaDiCaL only if built with `python-sat`) |
 
@@ -671,13 +710,24 @@ choco install vulkan-sdk cmake ninja -y --no-progress
 
 ```bash
 python -m build
-# dist/cqhecs-5.0.0-py3-none-any.whl
-# dist/cqhecs-5.0.0.tar.gz
+# dist/cqhecs-7.0.0-py3-none-any.whl
+# dist/cqhecs-7.0.0.tar.gz
 ```
 
-Published wheels, sdists, SHA-256 checksums, and the SPDX SBOM are attached to
-[GitHub Releases](https://github.com/timfromhcs/CQ-HECS/releases). The latest
-release is `v4.0.0`.
+A release attaches exactly these assets (all built by `.github/workflows/package.yml`
+from the tagged commit, none rebuilt at publish time) to
+[GitHub Releases](https://github.com/timfromhcs/CQ-HECS/releases); the latest
+published release is the one marked "Latest" there:
+
+- `cqhecs-<version>-py3-none-any.whl` and `cqhecs-<version>.tar.gz` (wheel, sdist);
+- `cqhecs-<version>-windows-x64.zip` (PyInstaller onedir folder with `cq-hecs.exe`);
+- `cq-hecs-cpu-<version>-windows-x64.zip` (CPU-only native C-ABI library) and
+  `cq-hecs-vulkan-<version>-windows-x64.zip` (Vulkan native build; without a usable
+  Vulkan device `cq_hecs.exe vrts|ghz|echo|maxcut` refuses with exit code 3 unless
+  `--cpu-reference` is passed, which labels the output as a CPU run);
+- `cqhecs-<version>-wheel.cdx.json` and `cqhecs-<version>-windows-x64.cdx.json`
+  (CycloneDX SBOMs);
+- `SHA256SUMS` (`sha256sum` format over exactly the files above).
 
 ---
 
@@ -693,6 +743,8 @@ release is `v4.0.0`.
 | `cq-hecs profile list` | Synthetic hardware profiles (`fake_manila`, `linear_5q`) |
 | `cq-hecs profile show NAME` | Profile details and calibration provenance |
 | `cq-hecs analyze name:ghz8` | Static analysis and path recommendation |
+| `cq-hecs plan name:ghz8` | Dry-run `ExecutionPlan`; allocates no simulator state |
+| `cq-hecs qg catalog` | Quantum Gravity lab catalog (local, no credentials) |
 | `cq-hecs run name:bell --shots 1000` | Execute a circuit |
 | `cq-hecs run name:bell --profile fake_manila` | Execute under a hardware profile |
 | `cq-hecs verify name:bell --reference aer` | Compare against an independent simulator |
@@ -855,25 +907,46 @@ A deeper component matrix is in [`ARCHITECTURE.md`](ARCHITECTURE.md) and
 
 ## Verification
 
-Measured on the exact head SHA `c854560` of `dev/sha-forge-hardware-lab`
-(run 41360179171, all eight jobs green). Numbers, not projections.
+Two tables, kept apart so a number is never read as belonging to a different commit. Numbers,
+not projections. A green run on an older commit is not evidence for a later commit.
+
+### Current development tree (`release/v7-stable`)
+
+| Gate | Result | Evidence |
+| :--- | :--- | :--- |
+| Python suite, Windows, re-run at `f880d0a` + wave F working tree | **4314 passed**, **133 skipped**, 0 failed | `research/v7/evidence/waveF_pytest_tail.txt`, `waveF_tests.md` |
+| Skip budget | The skips are environment-dependent (native build directory not set, optional extras and proof checkers absent), but the budget gate (`scripts/skip_budget.py --check`) was recorded FAILING at the freeze (134 skips against a budget of 105, 7 unbudgeted reasons; B-V7-11). The budget has since been made per-environment (`default`: 134 reasons budgeted, `with_native`: 13); the fresh run's 133 skips are within the `default` budget, not a pass of the original gate. Skips are not failures, but they are not evidence either. | `research/v7/SKIP_BUDGET.json`, `waveF_tests.md` |
+| Mutation suite, in place at the freeze | 95/95 killed | `research/v7/evidence/waveE_E2.md` |
+| Native CTest, Vulkan ON, one AMD iGPU, MSVC | 26/26 | `research/v7/evidence/waveE_E2.md`, `waveA_A2.md` |
+| Native CTest, CPU-only build | 15/15 | `research/v7/evidence/waveE_E2.md`, `waveA_A2.md` |
+| Web unit tests | 167/167 | `research/v7/evidence/waveE_E2.md` |
+| Playwright | 128 passed / 1 skipped (WebGPU, NOT_RUN: no adapter); Studio plan UI: 6 | `research/v7/evidence/waveE_E2.md` |
+| Hosted CI (GitHub Actions) | At `38e799b` hosted CI was red (B-V7-15). At `f880d0a` the integrator reports all lanes green except the Windows full-suite lane, which was still pending; this README has not re-checked that against GitHub, and a green run on `f880d0a` is not evidence for the current tree. | `research/v7/RELEASE_CANDIDATE_AUDIT.md`, `waveE_E3.md` |
+| Release artifacts | built from `38e799b`; not published | `research/v7/evidence/waveE_E2.md` |
+| Lean specification lemmas | `lake build` green, standard axioms only | `waveA_A5.md` |
+| Also run (hosted, `38e799b`) | Linux GCC-12 ASan+UBSan 9/9, Linux CPU-only build, Linux lavapipe (software ICD) CTest 26/26 (conformance only, not a physical-GPU claim), and a local MSVC AddressSanitizer run | `research/v7/evidence/waveE_E3.md`, `waveA_A2.md` |
+| Not run | Clang sanitizers, WebGPU on hardware (only a partial single-adapter run), `drat-trim`, `lrat-check`, `cake_lpr`, Firefox/WebKit, a clean-machine install, a release publication (no tag exists yet) | `RELEASE_NOTES_DRAFT.md`, `RELEASE_CANDIDATE_AUDIT.md` |
+
+### Historical lane (exact head SHA `c854560` of `dev/sha-forge-hardware-lab`)
+
+Run 41360179171, all eight jobs green.
 
 | Gate | Result |
 | :--- | :--- |
 | Python suite, Linux / Python 3.11 | **2786 passed**, 7 skipped, 1 deselected in 4 m 56 s |
 | Python suite, Windows / Python 3.11 | **2690 passed**, 53 skipped, 1 deselected in 4 m 11 s (the extra skips are Windows-only optional hooks) |
 | Python 3.12 / 3.13 / 3.14 lanes | green |
-| Branch coverage | measured on the Linux lane; not a release threshold |
 | CTest (native, Release) | **21/21** |
 | Source mutation | **60/60** killed |
 | SPIR-V shaders + Vulkan dispatch | green |
 | Web unit tests | **39/39** |
 | Playwright + axe (browser) | **41/41** |
-| Web build | `tsc --noEmit` clean, `dist/forge.html` + assets produced |
-| Version consistency | all surfaces report `4.0.0` |
-| Lint | `flake8 --select=E9,F` clean on `cqhecs`, `python_bridge`, `scripts`, `tests` |
-| Silent-truncation audit | no patterns found |
-| Optional `python-sat`/CaDiCaL tests | **not run** (`python-sat` is not installed here; the last recorded run is v3.7.0, external defect F-09) |
+| Optional `python-sat`/CaDiCaL tests | **not run** there (`python-sat` was not installed; the last recorded run is v3.7.0, external defect F-09) |
+
+These numbers describe that SHA only. Version consistency, lint and the silent-truncation
+audit are separate gates run by `scripts/check_version.py`, `flake8 --select=E9,F` and
+`scripts/verify_no_silent_truncation.py`; their current result is recorded per commit in the
+evidence files, not copied here.
 
 Two smaller gates that this work added and that run on every push:
 
@@ -956,6 +1029,14 @@ python scripts/verify_vulkan_shaders.py
   fail-closed boundary; nothing in `cqhecs` submits a job. The `r-io-7` counts
   were produced by a separate, manually approved runner against Open Quantum
   and enter the repository only as a pinned evaluation dataset.
+- **No certified numerical bound for Paths B and C.** `numerical_error_bound` is `None`
+  ("not derived"), not zero; the new SVD and branch metadata are diagnostics.
+- **MaxSAT is exhaustive and bounded.** Exact for at most 20 variables, no optimality
+  certificate, `UNKNOWN` above the limit.
+- **Formal results are specification lemmas.** The Lean files in `formal/` are
+  `FORMALIZED_LEMMA`, not a refinement proof of the Python or C++ code.
+- **Research Paths E, F and G are not routable.** They ended `RESEARCH_ONLY` against
+  preregistered criteria (`research/v7/QUANTUM_SIMULATION_RESEARCH.md`).
 - **No cross-vendor GPU claim.** One AMD iGPU primitive dispatch was verified
   historically; current CI uses a software ICD.
 - **Cloud Build is not verified here.** `cloudbuild.yaml` exists, but no
@@ -1176,8 +1257,8 @@ CQ-HECS/
 
 | Document | Content |
 | :--- | :--- |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | binding architecture overview |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | component matrix and verification levels |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | the single authoritative architecture document |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | **historical** v2 snapshot, superseded by the file above |
 | [`docs/QASM_CONTRACT.md`](docs/QASM_CONTRACT.md) | parser grammar, error categories, exit codes |
 | [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md) | CLI, Python, and C ABI contracts |
 | [`docs/STUDIO.md`](docs/STUDIO.md) | local UI, HTTP API, security, and provenance |
@@ -1185,7 +1266,10 @@ CQ-HECS/
 | [`docs/EMBEDDING_GUIDE.md`](docs/EMBEDDING_GUIDE.md) | C ABI embedding in C++, Python, C#, Rust |
 | [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) | current and historical benchmarks |
 | [`docs/V2_IMPLEMENTATION_MATRIX.md`](docs/V2_IMPLEMENTATION_MATRIX.md) | implementation status with test anchors |
-| [`CHANGELOG.md`](CHANGELOG.md) · [`RELEASE_NOTES.md`](RELEASE_NOTES.md) | version history and release details |
+| [`docs/QUANTUM_GRAVITY_LAB.md`](docs/QUANTUM_GRAVITY_LAB.md) | Quantum Gravity research workbench (finite models, not a gravity measurement) |
+| [`MIGRATION_V7.md`](MIGRATION_V7.md) | caller-visible changes since the last release, with executed examples |
+| [`RELEASE_NOTES_DRAFT.md`](RELEASE_NOTES_DRAFT.md) | draft notes: implemented / experimental / measured / formally checked / not supported |
+| [`CHANGELOG.md`](CHANGELOG.md) · [`RELEASE_NOTES.md`](RELEASE_NOTES.md) | version history and the notes of the last published release |
 
 ---
 

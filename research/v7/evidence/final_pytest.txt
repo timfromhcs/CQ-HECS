@@ -71,7 +71,7 @@ self = <test_cli_powershell.TestCLIPowerShell testMethod=test_cli_version_is_can
         res = self.run_cmd(["version"])
         self.assertEqual(res.returncode, 0)
 >       self.assertIn(f"CQ-HECS {__version__}", res.stdout)
-E       AssertionError: 'CQ-HECS 4.0.0' not found in 'CQ-HECS 3.7.0\nEngine class: legacy_z8_phase_ledger (statevector_simulation=false)\nPowered by CQ-HECS (https://github.com/timfromhcs)\nAuthor: Tim (@timfromhcs) <timfromhcs@gmail.com>\n'
+E       AssertionError: 'CQ-HECS 4.0.0' not found in 'CQ-HECS 3.7.0\nEngine class: legacy_z8_phase_ledger (statevector_simulation=false)\nPowered by CQ-HECS (https://github.com/timfromhcs)\nAuthor: Tim (@timfromhcs) <redacted>\n'
 
 tests\test_cli_powershell.py:44: AssertionError
 =========================== short test summary info ===========================

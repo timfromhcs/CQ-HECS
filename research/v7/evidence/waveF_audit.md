@@ -1,0 +1,37 @@
+# Wave F adversarial audit (read-only, 2026-11-22)
+
+Scope: claims vs code/evidence, secrets/PII/paths, version consistency, Studio and MCP limits. Tree: `release/v7-stable` HEAD `f880d0a`, with an uncommitted `cqhecs/service.py` change that was not inspected. Nothing was fixed.
+
+Commands run: `python scripts/check_version.py` (OK, all surfaces 7.0.0); `git grep` for emails, absolute paths, key shapes, stale versions; reads of `cqhecs/studio/app.py` (guard, limits, bind), `cqhecs/mcp_server.py`, `README.md`, `RELEASE_NOTES.md`, `RELEASE_CANDIDATE_AUDIT.md`, `waveD_D5.md`, `waveE_E2.md`. `skip_budget.py --check` needs a junit file; NOT_RUN. No test suite, build or network call was run by this audit.
+
+## Findings
+
+| ID | Sev | Where | Finding | Reproduce |
+|---|---|---|---|---|
+| F-01 | P1 | README.md:915-916 vs RELEASE_CANDIDATE_AUDIT 21.1.2 | README says the 134 skips "are environmental... not failures". The audit records `skip_budget.py --check` FAILS (134 vs budget 105, 7 unbudgeted reasons, B-V7-11), and hosted Linux lanes have 4-5 failures. The README states a gate result that the audit says fails. | read both |
+| F-02 | P1 | README.md:915-926 | The "Current development tree" table gives only Windows numbers at `38e799b`. It omits that hosted CI at that SHA is red (B-V7-15, e.g. `test_qg_replay` manifest hash on Linux). Its "Not run" row lists "Linux and software-ICD native runs" and "GCC/Clang sanitizers" although the audit records hosted Linux lavapipe 26/26 and a CPU-only job passing. The README contradicts itself and the audit in both directions. | compare README:924 with audit 21.1.3/21.1.4 |
+| F-03 | P2 | README.md:79, docs/WEB_ENGINES.md:83 | "The Vercel production deployment is public and passes the delivery check 10/10" is a claim about a deployment of an older commit (`e7e5c1e`, 2026-11-02). It sits in the v5.0.0 summary but reads as current. Audit rows 21.2.8 and 21.2.9 are NOT_RUN. | read docs/WEB_ENGINES.md:83 |
+| F-04 | P2 | README.md:83 | "Previous release: v4.0.0", but tags `v4.1.0` and `v4.2.0` exist; the release ladder in the README skips them. | `git tag` |
+| F-05 | P2 | README.md:118-125 | Text claims the CakeML-verified `cake_lpr` and Lean ETH build. This is the historical v6 record; README:924 and RELEASE_NOTES:124 list `cake_lpr`, `drat-trim`, `lrat-check` as NOT_RUN for v7. Without a "historical v6" label next to the line, a reader can take it as a v7 claim. Wording is borderline: lines 124-125 correctly say "not peer-reviewed". | read README:112-126 |
+| F-06 | P2 | RELEASE_CANDIDATE_AUDIT 21.3.7 | The audit's own row FAILS: the wheel SBOM is the build venv (not the package closure), lists `autocommand` as LGPLv3, has mismatched versions (PK7-01), licences UNVERIFIED (PK7-02). Any statement of SBOM completeness in README/RELEASE_NOTES must be checked against it. This audit did not check wording. | audit row 21.3.7 |
+| F-07 | P2 | Personal data in tracked files | Author email `timfromhcs@gmail.com` is in LICENSE:178, SECURITY.md:15, llms-full.txt:4, src/main.cpp:695 (printed by the native CLI). It is the maintainer's own contact address, intentional for SECURITY.md, but it is compiled into the binary and the LLM docs. Open Quantum organisation name "Tim Stark" appears in README.md:57, AGENTS_V6.md:48, research/qg_2026/{BLOCKERS,EXECUTION_LOG,FINAL_REPORT,TEST_MATRIX}.md. Vercel team and project slugs (`hcsmediacorp`, `hcsmediagroup`, preview URLs) appear in docs/WEB_ENGINES.md:74,93,94, web/README.md:44, research/v5/BASELINE.md:44, waveE_E5.md:100. Owner decision needed; none are secrets. | `git grep` |
+| F-08 | P2 | MCP stdio, cqhecs/mcp_server.py:914 | `for line in sys.stdin` has no per-line byte cap, and MCP text arguments (QASM, DIMACS) have no `maxLength` in the schemas. The cap comes only from downstream parsers (`circuit_parsing._MAX_SOURCE_BYTES` = 16 MiB, `_MAX_LINE_BYTES` = 1 MiB). A single multi-GB line is fully read and `json.loads`-ed before any limit applies. A local stdio peer is a trusted peer, so the severity is limited. Numeric inputs (shots 20000, timeout, node budget, workers) are bounded, and in-flight calls are capped at 8. | pipe a very long line into `python -m cqhecs.mcp_server` (NOT_RUN) |
+| F-09 | P3 | cqhecs/studio/app.py:1217, cli.py:1541 | `--host 0.0.0.0` or `::` is accepted without a warning or refusal. Host allow-list and bearer token still apply, but the allow-list then holds only localhost names, so remote clients fail with `bad_host` (safe, but confusing). The 4xx path does not tell the user why. The docs claim "Local only" and the code never prints a warning for a non-loopback bind. | `cq-hecs studio --host 0.0.0.0` (NOT_RUN) |
+| F-10 | P3 | cqhecs/studio/app.py:1322-1329 | `_read_json` calls `int(Content-Length)` with no guard: a non-numeric header raises ValueError. Whether do_POST maps this to a 400 was not verified. MAX_BODY is 1 MB for POST, drains are bounded at 4 MB. Token comparison is `hmac.compare_digest`. | send `Content-Length: abc` (NOT_RUN) |
+| F-11 | P3 | research/v7/evidence/final_pytest.txt:61,74 | A tracked evidence file records failing assertions `'CQ-HECS 4.0.0' not found in 'CQ-HECS 3.7.0...'` with an author email. It is a historical log. Check it is not cited as current evidence (stale 3.7/4.0 strings). | read the file |
+| F-12 | P3 | README.md:32-37 vs CHANGELOG `[7.0.0]` | The README calls itself an unreleased development tree, and RELEASE_NOTES says "planned; no tag exists". At release time all of these must flip together: README banner, README:452 EXE text ("will be attached"), README:924, RELEASE_NOTES date, CHANGELOG "(unreleased candidate)". `check_version.py` does not cover these wordings. | grep "unreleased\|no tag" |
+| F-13 | P3 | working tree | `cqhecs/service.py` is modified and uncommitted (git status). The candidate SHA `38e799b` / HEAD `f880d0a` evidence does not describe that tree. | `git status` |
+
+## Checked clean
+
+- Secret scan (key shapes: `sk-`, `ghp_`, `AKIA`, `BEGIN ... PRIVATE KEY`, `api_key = "..."`): only test fixtures (`tests/test_packaging.py:144`, `tests/test_property_security_audit.py:31,33`) and `scripts/package_smoke.py:116` (a labelled non-secret test token).
+- Absolute local paths (`C:\Users`, `D:\QHCS`, `hcsme`, `/Users/`): no hits in tracked files.
+- No tracked `.env`, `.pem`, `.key`, `.vercel`, `node_modules`, `.exe` or `__pycache__`. `cqhecs.egg-info` exists in the working directory but is not tracked.
+- Version: `check_version.py` OK; `CQ_HECS_VERSION` 7.0.0; `web/package.json` 7.0.0; CITATION 7.0.0. Remaining 3.7/4.0 mentions in README are labelled historical.
+- Exactness wording: README:309 and the llms text say `exact=True` means no deliberate truncation, not symbolic exactness; Paths B and C state `numerical_error_bound=None`; Path D bound scoped to requested observables. Consistent with AGENTS section 0.1.
+- GPU wording: software ICD labelled conformance only; the physical claim is limited to one AMD iGPU on Windows; WebGPU on hardware marked partial. README says `RealHardwareBackend` is fail-closed and the package never ran a QPU job.
+- Studio: loopback bind default, Host and Origin allow-lists, per-launch bearer token with constant-time compare, JSON body cap 1 MB, bounded body drains with a deadline.
+
+## NOT_RUN by this audit
+
+Test suites, `skip_budget.py --check`, native/web builds, SBOM content, wheel/EXE contents, live Studio/MCP probes (F-08..F-10 are code-reading only), release asset list verification against `package.yml`, and wording of translated READMEs (DE/FR).

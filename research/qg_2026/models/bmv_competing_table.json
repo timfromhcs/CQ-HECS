@@ -1,0 +1,638 @@
+{
+  "caveats": [
+    "toy two-qubit state-preparation model: no mass, separation, field or graviton is simulated",
+    "a positive entanglement witness is premise-dependent (L-A3, L-A4); it does not by itself separate quantum from every classical-gravity model",
+    "the separable controls are specific channel constructions, not all classical-gravity theories",
+    "collapse/decoherence models (L-A5) are represented only by a declared dephasing channel"
+  ],
+  "rows": [
+    {
+      "caveats": [
+        "toy two-qubit state-preparation model: no mass, separation, field or graviton is simulated",
+        "a positive entanglement witness is premise-dependent (L-A3, L-A4); it does not by itself separate quantum from every classical-gravity model",
+        "the separable controls are specific channel constructions, not all classical-gravity theories",
+        "collapse/decoherence models (L-A5) are represented only by a declared dephasing channel"
+      ],
+      "dephasing": 0.25,
+      "distinguishing_correlators": [
+        "XX"
+      ],
+      "models": {
+        "classical_feedback": {
+          "concurrence": 9.960087060032108e-34,
+          "concurrence_cross_check": 0.0,
+          "correlators": {
+            "XX": 0.0,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.0,
+            "ZX": 0.0,
+            "ZY": 0.0,
+            "ZZ": 0.0
+          },
+          "entangled": false,
+          "fidelity_witness": -0.5,
+          "negativity": 0.0,
+          "note": "Z_A measured, B rotated conditionally (LOCC, separable)"
+        },
+        "decoherence": {
+          "concurrence": 0.0,
+          "concurrence_cross_check": 0.0,
+          "correlators": {
+            "XX": 0.25,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.0,
+            "ZX": 0.0,
+            "ZY": 0.0,
+            "ZZ": 0.0
+          },
+          "entangled": false,
+          "fidelity_witness": -0.4375,
+          "negativity": 0.0,
+          "note": "ZZ interaction then symmetric dephasing (declared channel, not a derived collapse model)"
+        },
+        "null_local_only": {
+          "concurrence": 5.512333152706878e-32,
+          "concurrence_cross_check": 0.0,
+          "correlators": {
+            "XX": 1.0,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.0,
+            "ZX": 0.0,
+            "ZY": 0.0,
+            "ZZ": 0.0
+          },
+          "entangled": false,
+          "fidelity_witness": 0.0,
+          "negativity": -5.551115123125783e-17,
+          "note": "theta = 0 control (separable)"
+        },
+        "quantum_zz": {
+          "concurrence": 5.512333152706878e-32,
+          "concurrence_cross_check": 0.0,
+          "correlators": {
+            "XX": 1.0,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.0,
+            "ZX": 0.0,
+            "ZY": 0.0,
+            "ZZ": 0.0
+          },
+          "entangled": false,
+          "fidelity_witness": 0.0,
+          "negativity": -5.551115123125783e-17,
+          "note": "coherent ZZ interaction (pure state)"
+        },
+        "shared_randomness": {
+          "concurrence": 5.512333152706878e-32,
+          "concurrence_cross_check": 0.0,
+          "correlators": {
+            "XX": 1.0,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.0,
+            "ZX": 0.0,
+            "ZY": 0.0,
+            "ZZ": 0.0
+          },
+          "entangled": false,
+          "fidelity_witness": 0.0,
+          "negativity": -5.551115123125783e-17,
+          "note": "shared classical sign selects a local rotation on both probes (separable)"
+        }
+      },
+      "quantum_zz_correlators": {
+        "XX": 1.0,
+        "XY": 0.0,
+        "XZ": 0.0,
+        "YX": 0.0,
+        "YY": 0.0,
+        "YZ": 0.0,
+        "ZX": 0.0,
+        "ZY": 0.0,
+        "ZZ": 0.0
+      },
+      "schema": "cqhecs.qg.bmv_competing.v1",
+      "surface": "MODEL_PREDICTION",
+      "theta": 0.0
+    },
+    {
+      "caveats": [
+        "toy two-qubit state-preparation model: no mass, separation, field or graviton is simulated",
+        "a positive entanglement witness is premise-dependent (L-A3, L-A4); it does not by itself separate quantum from every classical-gravity model",
+        "the separable controls are specific channel constructions, not all classical-gravity theories",
+        "collapse/decoherence models (L-A5) are represented only by a declared dephasing channel"
+      ],
+      "dephasing": 0.25,
+      "distinguishing_correlators": [
+        "XX",
+        "YY",
+        "YZ",
+        "ZY"
+      ],
+      "models": {
+        "classical_feedback": {
+          "concurrence": 3.0437137195663164e-18,
+          "concurrence_cross_check": 0.0,
+          "correlators": {
+            "XX": 0.0,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.0,
+            "ZX": 0.0,
+            "ZY": 0.3826834323650897,
+            "ZZ": 0.0
+          },
+          "entangled": false,
+          "fidelity_witness": -0.46193976625564315,
+          "negativity": 0.0,
+          "note": "Z_A measured, B rotated conditionally (LOCC, separable)"
+        },
+        "decoherence": {
+          "concurrence": 0.0,
+          "concurrence_cross_check": 0.0,
+          "correlators": {
+            "XX": 0.25,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.1913417161825449,
+            "ZX": 0.0,
+            "ZY": 0.1913417161825449,
+            "ZZ": 0.0
+          },
+          "entangled": false,
+          "fidelity_witness": -0.39943976625564315,
+          "negativity": 0.0,
+          "note": "ZZ interaction then symmetric dephasing (declared channel, not a derived collapse model)"
+        },
+        "null_local_only": {
+          "concurrence": 5.512333152706878e-32,
+          "concurrence_cross_check": 0.0,
+          "correlators": {
+            "XX": 1.0,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.0,
+            "ZX": 0.0,
+            "ZY": 0.0,
+            "ZZ": 0.0
+          },
+          "entangled": false,
+          "fidelity_witness": 2.220446049250313e-16,
+          "negativity": -5.551115123125783e-17,
+          "note": "theta = 0 control (separable)"
+        },
+        "quantum_zz": {
+          "concurrence": 0.38268343236508984,
+          "concurrence_cross_check": 0.3826834323650896,
+          "correlators": {
+            "XX": 1.0,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.3826834323650897,
+            "ZX": 0.0,
+            "ZY": 0.3826834323650897,
+            "ZZ": 0.0
+          },
+          "entangled": true,
+          "fidelity_witness": 0.03806023374435685,
+          "negativity": 0.1913417161825448,
+          "note": "coherent ZZ interaction (pure state)"
+        },
+        "shared_randomness": {
+          "concurrence": 7.429505900117344e-16,
+          "concurrence_cross_check": 9.992007221626409e-16,
+          "correlators": {
+            "XX": 0.8535533905932742,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.14644660940672627,
+            "YZ": 0.0,
+            "ZX": 0.0,
+            "ZY": 0.0,
+            "ZZ": 0.0
+          },
+          "entangled": false,
+          "fidelity_witness": -0.07177472331068746,
+          "negativity": 2.220446049250313e-16,
+          "note": "shared classical sign selects a local rotation on both probes (separable)"
+        }
+      },
+      "quantum_zz_correlators": {
+        "XX": 1.0,
+        "XY": 0.0,
+        "XZ": 0.0,
+        "YX": 0.0,
+        "YY": 0.0,
+        "YZ": 0.3826834323650897,
+        "ZX": 0.0,
+        "ZY": 0.3826834323650897,
+        "ZZ": 0.0
+      },
+      "schema": "cqhecs.qg.bmv_competing.v1",
+      "surface": "MODEL_PREDICTION",
+      "theta": 0.39269908169872414
+    },
+    {
+      "caveats": [
+        "toy two-qubit state-preparation model: no mass, separation, field or graviton is simulated",
+        "a positive entanglement witness is premise-dependent (L-A3, L-A4); it does not by itself separate quantum from every classical-gravity model",
+        "the separable controls are specific channel constructions, not all classical-gravity theories",
+        "collapse/decoherence models (L-A5) are represented only by a declared dephasing channel"
+      ],
+      "dephasing": 0.25,
+      "distinguishing_correlators": [
+        "XX",
+        "YY",
+        "YZ",
+        "ZY"
+      ],
+      "models": {
+        "classical_feedback": {
+          "concurrence": 0.0,
+          "concurrence_cross_check": 0.0,
+          "correlators": {
+            "XX": 0.0,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.0,
+            "ZX": 0.0,
+            "ZY": 0.7071067811865478,
+            "ZZ": 0.0
+          },
+          "entangled": false,
+          "fidelity_witness": -0.35355339059327384,
+          "negativity": 2.220446049250313e-16,
+          "note": "Z_A measured, B rotated conditionally (LOCC, separable)"
+        },
+        "decoherence": {
+          "concurrence": 0.0,
+          "concurrence_cross_check": 0.0,
+          "correlators": {
+            "XX": 0.2500000000000001,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.35355339059327384,
+            "ZX": 0.0,
+            "ZY": 0.35355339059327384,
+            "ZZ": 0.0
+          },
+          "entangled": false,
+          "fidelity_witness": -0.29105339059327373,
+          "negativity": 2.220446049250313e-16,
+          "note": "ZZ interaction then symmetric dephasing (declared channel, not a derived collapse model)"
+        },
+        "null_local_only": {
+          "concurrence": 5.512333152706878e-32,
+          "concurrence_cross_check": 0.0,
+          "correlators": {
+            "XX": 1.0,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.0,
+            "ZX": 0.0,
+            "ZY": 0.0,
+            "ZZ": 0.0
+          },
+          "entangled": false,
+          "fidelity_witness": 0.0,
+          "negativity": -5.551115123125783e-17,
+          "note": "theta = 0 control (separable)"
+        },
+        "quantum_zz": {
+          "concurrence": 0.7071067811865478,
+          "concurrence_cross_check": 0.7071067811865478,
+          "correlators": {
+            "XX": 1.0000000000000004,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.7071067811865478,
+            "ZX": 0.0,
+            "ZY": 0.7071067811865478,
+            "ZZ": 0.0
+          },
+          "entangled": true,
+          "fidelity_witness": 0.1464466094067267,
+          "negativity": 0.3535533905932742,
+          "note": "coherent ZZ interaction (pure state)"
+        },
+        "shared_randomness": {
+          "concurrence": 1.3145180184803168e-17,
+          "concurrence_cross_check": 3.0531133177191805e-16,
+          "correlators": {
+            "XX": 0.5,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.5,
+            "YZ": 0.0,
+            "ZX": 0.0,
+            "ZY": 0.0,
+            "ZZ": 2.220446049250313e-16
+          },
+          "entangled": false,
+          "fidelity_witness": -0.22855339059327384,
+          "negativity": 1.1102230246251565e-16,
+          "note": "shared classical sign selects a local rotation on both probes (separable)"
+        }
+      },
+      "quantum_zz_correlators": {
+        "XX": 1.0000000000000004,
+        "XY": 0.0,
+        "XZ": 0.0,
+        "YX": 0.0,
+        "YY": 0.0,
+        "YZ": 0.7071067811865478,
+        "ZX": 0.0,
+        "ZY": 0.7071067811865478,
+        "ZZ": 0.0
+      },
+      "schema": "cqhecs.qg.bmv_competing.v1",
+      "surface": "MODEL_PREDICTION",
+      "theta": 0.7853981633974483
+    },
+    {
+      "caveats": [
+        "toy two-qubit state-preparation model: no mass, separation, field or graviton is simulated",
+        "a positive entanglement witness is premise-dependent (L-A3, L-A4); it does not by itself separate quantum from every classical-gravity model",
+        "the separable controls are specific channel constructions, not all classical-gravity theories",
+        "collapse/decoherence models (L-A5) are represented only by a declared dephasing channel"
+      ],
+      "dephasing": 0.25,
+      "distinguishing_correlators": [
+        "XX",
+        "YY",
+        "YZ",
+        "ZY"
+      ],
+      "models": {
+        "classical_feedback": {
+          "concurrence": 0.0,
+          "concurrence_cross_check": 0.0,
+          "correlators": {
+            "XX": 0.0,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.0,
+            "ZX": 0.0,
+            "ZY": 0.923879532511287,
+            "ZZ": 0.0
+          },
+          "entangled": false,
+          "fidelity_witness": -0.1913417161825448,
+          "negativity": 1.1102230246251565e-16,
+          "note": "Z_A measured, B rotated conditionally (LOCC, separable)"
+        },
+        "decoherence": {
+          "concurrence": 0.08693976625564306,
+          "concurrence_cross_check": 0.08693976625564326,
+          "correlators": {
+            "XX": 0.2500000000000001,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.4619397662556435,
+            "ZX": 0.0,
+            "ZY": 0.4619397662556435,
+            "ZZ": 0.0
+          },
+          "entangled": true,
+          "fidelity_witness": -0.1288417161825447,
+          "negativity": 0.04346988312782174,
+          "note": "ZZ interaction then symmetric dephasing (declared channel, not a derived collapse model)"
+        },
+        "null_local_only": {
+          "concurrence": 5.512333152706878e-32,
+          "concurrence_cross_check": 0.0,
+          "correlators": {
+            "XX": 1.0,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.0,
+            "ZX": 0.0,
+            "ZY": 0.0,
+            "ZZ": 0.0
+          },
+          "entangled": false,
+          "fidelity_witness": 0.0,
+          "negativity": -5.551115123125783e-17,
+          "note": "theta = 0 control (separable)"
+        },
+        "quantum_zz": {
+          "concurrence": 0.923879532511287,
+          "concurrence_cross_check": 0.9238795325112871,
+          "correlators": {
+            "XX": 1.0000000000000002,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.923879532511287,
+            "ZX": 0.0,
+            "ZY": 0.923879532511287,
+            "ZZ": 0.0
+          },
+          "entangled": true,
+          "fidelity_witness": 0.3086582838174554,
+          "negativity": 0.4619397662556437,
+          "note": "coherent ZZ interaction (pure state)"
+        },
+        "shared_randomness": {
+          "concurrence": 1.5664243319943588e-16,
+          "concurrence_cross_check": 0.0,
+          "correlators": {
+            "XX": 0.14644660940672632,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.8535533905932737,
+            "YZ": 0.0,
+            "ZX": 0.0,
+            "ZY": 0.0,
+            "ZZ": 0.0
+          },
+          "entangled": false,
+          "fidelity_witness": -0.3315067591275002,
+          "negativity": -5.551115123125783e-17,
+          "note": "shared classical sign selects a local rotation on both probes (separable)"
+        }
+      },
+      "quantum_zz_correlators": {
+        "XX": 1.0000000000000002,
+        "XY": 0.0,
+        "XZ": 0.0,
+        "YX": 0.0,
+        "YY": 0.0,
+        "YZ": 0.923879532511287,
+        "ZX": 0.0,
+        "ZY": 0.923879532511287,
+        "ZZ": 0.0
+      },
+      "schema": "cqhecs.qg.bmv_competing.v1",
+      "surface": "MODEL_PREDICTION",
+      "theta": 1.1780972450961724
+    },
+    {
+      "caveats": [
+        "toy two-qubit state-preparation model: no mass, separation, field or graviton is simulated",
+        "a positive entanglement witness is premise-dependent (L-A3, L-A4); it does not by itself separate quantum from every classical-gravity model",
+        "the separable controls are specific channel constructions, not all classical-gravity theories",
+        "collapse/decoherence models (L-A5) are represented only by a declared dephasing channel"
+      ],
+      "dephasing": 0.25,
+      "distinguishing_correlators": [
+        "XX",
+        "YY",
+        "YZ",
+        "ZY"
+      ],
+      "models": {
+        "classical_feedback": {
+          "concurrence": 0.0,
+          "concurrence_cross_check": 0.0,
+          "correlators": {
+            "XX": 0.0,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.0,
+            "ZX": 0.0,
+            "ZY": 1.0000000000000002,
+            "ZZ": 0.0
+          },
+          "entangled": false,
+          "fidelity_witness": 0.0,
+          "negativity": 1.1102230246251565e-16,
+          "note": "Z_A measured, B rotated conditionally (LOCC, separable)"
+        },
+        "decoherence": {
+          "concurrence": 0.12499999999999988,
+          "concurrence_cross_check": 0.12500000000000003,
+          "correlators": {
+            "XX": 0.2500000000000001,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.5000000000000002,
+            "ZX": 0.0,
+            "ZY": 0.5000000000000002,
+            "ZZ": 0.0
+          },
+          "entangled": true,
+          "fidelity_witness": 0.06250000000000011,
+          "negativity": 0.06250000000000022,
+          "note": "ZZ interaction then symmetric dephasing (declared channel, not a derived collapse model)"
+        },
+        "null_local_only": {
+          "concurrence": 5.512333152706878e-32,
+          "concurrence_cross_check": 0.0,
+          "correlators": {
+            "XX": 1.0,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 0.0,
+            "ZX": 0.0,
+            "ZY": 0.0,
+            "ZZ": 0.0
+          },
+          "entangled": false,
+          "fidelity_witness": 0.0,
+          "negativity": -5.551115123125783e-17,
+          "note": "theta = 0 control (separable)"
+        },
+        "quantum_zz": {
+          "concurrence": 1.0,
+          "concurrence_cross_check": 1.0000000000000002,
+          "correlators": {
+            "XX": 1.0000000000000002,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 0.0,
+            "YZ": 1.0000000000000002,
+            "ZX": 0.0,
+            "ZY": 1.0000000000000002,
+            "ZZ": 0.0
+          },
+          "entangled": true,
+          "fidelity_witness": 0.5000000000000001,
+          "negativity": 0.5000000000000002,
+          "note": "coherent ZZ interaction (pure state)"
+        },
+        "shared_randomness": {
+          "concurrence": 0.0,
+          "concurrence_cross_check": 0.0,
+          "correlators": {
+            "XX": 0.0,
+            "XY": 0.0,
+            "XZ": 0.0,
+            "YX": 0.0,
+            "YY": 1.0,
+            "YZ": 0.0,
+            "ZX": 0.0,
+            "ZY": 0.0,
+            "ZZ": 0.0
+          },
+          "entangled": false,
+          "fidelity_witness": -0.25000000000000006,
+          "negativity": 0.0,
+          "note": "shared classical sign selects a local rotation on both probes (separable)"
+        }
+      },
+      "quantum_zz_correlators": {
+        "XX": 1.0000000000000002,
+        "XY": 0.0,
+        "XZ": 0.0,
+        "YX": 0.0,
+        "YY": 0.0,
+        "YZ": 1.0000000000000002,
+        "ZX": 0.0,
+        "ZY": 1.0000000000000002,
+        "ZZ": 0.0
+      },
+      "schema": "cqhecs.qg.bmv_competing.v1",
+      "surface": "MODEL_PREDICTION",
+      "theta": 1.5707963267948966
+    }
+  ],
+  "schema": "cqhecs.qg.bmv_competing.v1"
+}

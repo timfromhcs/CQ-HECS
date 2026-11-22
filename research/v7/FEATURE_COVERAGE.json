@@ -1,0 +1,167 @@
+{
+  "schema": "cqhecs.feature_coverage.v1",
+  "created": "2026-11-21",
+  "base_sha": "25e16e5",
+  "status_legend": [
+    "DONE",
+    "PARTIAL",
+    "NOT_APPLICABLE",
+    "UNAVAILABLE",
+    "TODO_VERIFY"
+  ],
+  "note": "First cut on branch agent/v6-rc (V7 section 16.1). Every cell names a route/command/tool/source and a status. TODO_VERIFY cells must be resolved (with evidence) before W13/W14 close; a blank cell blocks release. Unavailable/not-applicable rows carry a technical reason.",
+  "surfaces": [
+    "python_api",
+    "cli",
+    "mcp",
+    "studio",
+    "web",
+    "windows_exe",
+    "native_hardware"
+  ],
+  "capabilities": [
+    {
+      "area": "Circuit input and execution",
+      "python_api": "DONE cqhecs (router.run / backends) - tests/",
+      "cli": "DONE cq-hecs run / analyze / verify / expect; cq-hecs selftest",
+      "mcp": "DONE cqhecs_run, cqhecs_analyze, cqhecs_plan",
+      "studio": "DONE StudioState.simulate (POST /api/simulate)",
+      "web": "DONE composer + code lab, WASM f64 and WebGPU f32 (web/src/main.ts, web/src/gpu.ts). Shared corpus web/tests/fixtures/shared_conformance.json is read by tests/test_web_shared_conformance.py (Python/Qiskit), web/tests/shared_conformance.test.ts (Node) and web/e2e/conformance.spec.ts (page). WebGPU column is NOT_RUN where no adapter exists (declared range 12 qubits; docs/CONFORMANCE.md 2b)",
+      "windows_exe": "PARTIAL build_exe.ps1 smoke covers version, bell run, device-profile run; test_exe_smoke runs bell; NOT_RUN: no EXE is built or run in this worktree; scripts/build_exe.ps1 smoke and the opt-in tests/test_exe_smoke.py (CQ_HECS_EXE) run in W14",
+      "native_hardware": "DONE CPU-only C++ core (T6-03/W4-16); Vulkan path separate",
+      "parity_rule": "Browser engines are NOT Python Paths A-D; compare only on a declared common subset with stated tolerances."
+    },
+    {
+      "area": "Paths A-D and router",
+      "python_api": "DONE cqhecs.router EntanglementAdaptiveRouter; cqhecs.execution_plan",
+      "cli": "DONE cq-hecs analyze --explain (service.analysis_document) / plan / run --backend",
+      "mcp": "DONE cqhecs_plan (same plan dict and digest as Python, CLI and Studio)",
+      "studio": "DONE POST /api/plan (parity-tested in test_cross_surface_parity) plus an Execution plan panel in the Circuit lab (cqhecs/studio/static/app.js runPlan/renderPlan; selected path, rejected-candidate reasons, ESTIMATE-labelled resources, digests, typed refusal/error/empty states); tests/test_studio_plan_ui.py: static + real Chromium (axe critical/serious 0 at 1280 and 360 px, keyboard Enter); evidence waveD_D4.md",
+      "web": "NOT_APPLICABLE the browser runs its own statevector engines (engine kinds are only wasm and webgpu, web/src/protocol.ts) and states 'Not run here: the Python paths A-D' (prov.not; web/e2e/app.spec.ts Bell run); it never labels a run as a path A-D",
+      "windows_exe": "PARTIAL analyze/plan/qg plan are in the opt-in test_exe_smoke.py, not in the build_exe.ps1 smoke; NOT_RUN: no EXE is built or run in this worktree; scripts/build_exe.ps1 smoke and the opt-in tests/test_exe_smoke.py (CQ_HECS_EXE) run in W14",
+      "native_hardware": "PARTIAL Paths A/C have native pieces; not an end-to-end GPU simulator",
+      "parity_rule": "Shared circuit semantics where shared; distinct engine id/capabilities where not."
+    },
+    {
+      "area": "Research Paths E/F/G",
+      "python_api": "NOT_APPLICABLE research prototypes only (research/v7/prototypes/path_*.py); not in the cqhecs package, not in router PATH_CAPABILITIES (A-D); asserted by tests/test_feature_coverage.py",
+      "cli": "NOT_APPLICABLE research prototype only; not promoted, so no executable surface (router unchanged)",
+      "mcp": "NOT_APPLICABLE research prototype only; not promoted, so no executable surface (router unchanged)",
+      "studio": "NOT_APPLICABLE research prototype only; not promoted, so no executable surface (router unchanged)",
+      "web": "NOT_APPLICABLE research-only prototypes (W7), router unchanged and not promoted; no browser route or engine id exists for them (web/src/protocol.ts EngineKind = wasm | webgpu)",
+      "windows_exe": "NOT_APPLICABLE research prototype only; not promoted, so no executable surface (router unchanged)",
+      "native_hardware": "NOT_APPLICABLE research prototype only; not promoted, so no executable surface (router unchanged)",
+      "parity_rule": "A research-only path must never appear as a stable executable capability."
+    },
+    {
+      "area": "SAT",
+      "python_api": "DONE cqhecs.sat (scan/watched, certificates), cqhecs.unified, sat_external",
+      "cli": "DONE cq-hecs sat solve",
+      "mcp": "DONE cqhecs_sat_solve (dpll, cadical, omniwave engines; bounded timeout/waves/workers)",
+      "studio": "DONE SAT lab (/api/sat)",
+      "web": "DONE browser scope: TypeScript DPLL in a worker (web/src/sat.ts) with verified models, tree-resolution certificates and UNKNOWN on budget (web/e2e/app.spec.ts SAT lab, web/e2e/states.spec.ts timeout). CaDiCaL, OMNIWAVE and DRAT checking are UNAVAILABLE in the browser (no native solver or proof checker is shipped); the UI reports UNCERTIFIED where no certificate was checked",
+      "windows_exe": "PARTIAL build_exe.ps1 smoke solves pigeonhole_6_5 with the DPLL and OMNIWAVE engines; optional CaDiCaL (python-sat) is not part of the smoke; NOT_RUN: no EXE is built or run in this worktree; scripts/build_exe.ps1 smoke and the opt-in tests/test_exe_smoke.py (CQ_HECS_EXE) run in W14",
+      "native_hardware": "PARTIAL OMNIWAVE batched BCP kernels exist; CPU authoritative",
+      "parity_rule": "List supported engines and proof formats per surface; UNKNOWN is never UNSAT."
+    },
+    {
+      "area": "#SAT and MaxSAT",
+      "python_api": "DONE count_models (hcs.sat.count.v1), maxsat (<=20 vars)",
+      "cli": "DONE cq-hecs sat count / sat maxsat",
+      "mcp": "PARTIAL cqhecs_sat_count (hcs.sat.count.v1); MaxSAT is not an MCP tool",
+      "studio": "PARTIAL count via POST /api/sat/count; MaxSAT is not a Studio route",
+      "web": "DONE #SAT exact count as BigInt decimal string (web/tests/core.test.ts: brute-force agreement on 120 formulas, 3*2^198 on 200 variables, UNKNOWN with no count on budget; web/e2e/states.spec.ts timeout). Limits: 200 variables in the UI, budget in ms and nodes. MaxSAT: NOT_APPLICABLE in the browser (no MaxSAT control exists in web/index.html; asserted by tests/test_web_feature_coverage.py)",
+      "windows_exe": "PARTIAL sat count/maxsat are not in the build smoke; same Python code as the source tree; NOT_RUN: no EXE is built or run in this worktree; scripts/build_exe.ps1 smoke and the opt-in tests/test_exe_smoke.py (CQ_HECS_EXE) run in W14",
+      "native_hardware": "NOT_APPLICABLE counting runs in Python; no native or GPU counter exists",
+      "parity_rule": "No LIMIT/timeout reported as an exact count or optimum."
+    },
+    {
+      "area": "Noise and device profiles",
+      "python_api": "DONE hardware_bridge, calibration_import, noise_fit, calibration_v3, service.run_with_calibration (policy refuse|warn|ideal)",
+      "cli": "DONE cq-hecs profile list/show/migrate, devices, fit; cq-hecs run --calibration FILE --uncovered-gates (provenance label + freshness printed)",
+      "mcp": "DONE cqhecs_devices, cqhecs_hardware; cqhecs_run noise=calibration_v3 (+ calibration, uncovered_gates)",
+      "studio": "DONE Noise lab (/api/noise); POST /api/simulate noise=calibration_v3 returns calibration{provenance_label,freshness,gate_coverage}",
+      "web": "PARTIAL Noise lab with bundled measured profiles labelled M-FIT-2 post-hoc and custom values labelled 'not a measured device' (web/src/main.ts renderProvenance, web/tests/noise_predicate.test.ts, web/e2e/app.spec.ts). Remainder: calibration schema v3 and FIT/EVAL enforcement are Python/Studio features, NOT_APPLICABLE here (profiles are read-only bundled evidence); provider calibration fetch is UNAVAILABLE (a browser cannot hold credentials)",
+      "windows_exe": "PARTIAL devices and run --device are in the build smoke; --calibration is not; NOT_RUN: no EXE is built or run in this worktree; scripts/build_exe.ps1 smoke and the opt-in tests/test_exe_smoke.py (CQ_HECS_EXE) run in W14",
+      "native_hardware": "PARTIAL synthetic/measured profiles; no live provider this session",
+      "parity_rule": "Browser never embeds provider credentials."
+    },
+    {
+      "area": "QG BMV/SYK/Z2",
+      "python_api": "DONE cqhecs.quantum_gravity (BMV exact; SYK Trotter, Z2 gauge, plan envelope); cqhecs.service.qg_*",
+      "cli": "DONE cq-hecs qg catalog/preview/run-local/plan/compare/export/backends (plan: same dict+digest as MCP and Studio, test_qg_surface_parity)",
+      "mcp": "DONE cqhecs_qg_catalog/circuit_preview/run_local/plan/model_validate/compare/export; bounded schemas, -32602 on out-of-range",
+      "studio": "DONE /api/qg/v1 health, catalog, models, experiments, backends, evidence[/id], exports/id, experiments/validate|preview|run-local|plan|compare (tests/test_qg_surface_parity.py)",
+      "web": "PARTIAL #/qg Quantum Gravity Lab (web/src/qg.ts, web/src/qg_logic.ts): BMV-type two-qubit toy model run in the browser against an oracle (web/tests/fixtures/qg_oracle.json, web/tests/qg_logic.test.ts), circuit preview with SHA-256, plan designer with typed refusal, evidence ledger (web/e2e/qg.spec.ts). Remainder: SYK Trotter oracle and Z2 leakage are NOT_APPLICABLE as browser executors (recorded QPU evidence is displayed from web/src/qg_snapshot.json, not recomputed)",
+      "windows_exe": "PARTIAL lazy QG imports are not exercised by the build smoke; qg plan is in test_exe_smoke.py; NOT_RUN: no EXE is built or run in this worktree; scripts/build_exe.ps1 smoke and the opt-in tests/test_exe_smoke.py (CQ_HECS_EXE) run in W14",
+      "native_hardware": "DONE real-QPU evidence recorded historically (research/qg_2026)",
+      "parity_rule": "A toy model does not measure gravity; a QPU campaign is never started by page load or EXE startup."
+    },
+    {
+      "area": "QG QPU / hardware",
+      "python_api": "PARTIAL runner script only (scripts/run_qg_openquantum_campaign.py, single ledger); fail-closed boundary",
+      "cli": "NOT_APPLICABLE quote/submit live only in the runner script; cq-hecs qg backends reports UNAVAILABLE",
+      "mcp": "UNAVAILABLE cqhecs_qg_openquantum_discover|quote|submit|status|results exist as separate tools and always return a typed isError refusal (QG_PAID_PATH_UNAVAILABLE); nothing contacted or spent",
+      "studio": "UNAVAILABLE /api/qg/v1/openquantum/quote|submit|jobs/* are typed 403 (qg_paid_path_unavailable); recorded evidence shown read-only at /api/qg/v1/evidence",
+      "web": "UNAVAILABLE a browser cannot hold provider credentials and never submits a job: the designer returns a typed refusal and sends no request (web/e2e/qg.spec.ts experiment designer; web/src/qg_logic.ts submitRefusal)",
+      "windows_exe": "UNAVAILABLE unless authenticated+budgeted flow is designed",
+      "native_hardware": "DONE prior evidence display",
+      "parity_rule": "No provider tokens in browser bundle or packaged files."
+    },
+    {
+      "area": "Native CPU / Vulkan",
+      "python_api": "PARTIAL optional native binding (path_a); Python fallback",
+      "cli": "DONE cq-hecs doctor/backend report capability",
+      "mcp": "DONE cqhecs_doctor (same probes as cq-hecs doctor); plan estimates via cqhecs_plan",
+      "studio": "DONE GET /api/diagnostics (service.doctor_report: native binding, Vulkan loader; nothing run on a GPU)",
+      "web": "NOT_APPLICABLE the browser exposes WebGPU, not Vulkan or the C++ core; the engine probe reports the software engine it chose and why (web/e2e/forge.spec.ts engine probe, web/src/device.ts gpuBackend)",
+      "windows_exe": "PARTIAL CPU-only distribution assumed (no Vulkan loader bundled); doctor is not in the build smoke; NOT_RUN: no EXE is built or run in this worktree; scripts/build_exe.ps1 smoke and the opt-in tests/test_exe_smoke.py (CQ_HECS_EXE) run in W14",
+      "native_hardware": "PARTIAL CPU-only loader-free verified; Vulkan parity owed",
+      "parity_rule": "WebGPU, Vulkan and CPU native are distinct surfaces, not synonyms."
+    },
+    {
+      "area": "Formal Lean assurance",
+      "python_api": "PARTIAL specification-level Lean lemmas in formal/ (see FORMAL_ASSURANCE_PLAN.md); no refinement of the Python code",
+      "cli": "NOT_APPLICABLE formal artefacts are build-time proofs with no runtime surface; scope shown in docs only",
+      "mcp": "NOT_APPLICABLE formal artefacts are build-time proofs with no runtime surface; scope shown in docs only",
+      "studio": "NOT_APPLICABLE formal artefacts are build-time proofs with no runtime surface; scope shown in docs only",
+      "web": "NOT_APPLICABLE no Lean artifact or checker is shipped to the browser; the web app makes no formal-verification claim (docs/WEB_ENGINES.md 'What is not claimed')",
+      "windows_exe": "NOT_APPLICABLE formal artefacts are build-time proofs with no runtime surface; scope shown in docs only",
+      "native_hardware": "NOT_APPLICABLE formal artefacts are build-time proofs with no runtime surface; scope shown in docs only",
+      "parity_rule": "Formal spec does not imply implementation refinement; display exact level/scope when it exists."
+    },
+    {
+      "area": "Reproducibility / evidence",
+      "python_api": "DONE hcs.run.v2 (provenance.build/validate), run cards",
+      "cli": "DONE --format json + run card export",
+      "mcp": "DONE tool results carry digests",
+      "studio": "DONE /api/qg/v1/evidence[/id] read-only sha256 view and /api/qg/v1/exports/id bundle (bundle_sha256, plan digest); simulate returns run provenance",
+      "web": "DONE hcs.run.v2 run-card export with digests and error_scope (web/src/provenance.ts, web/tests/provenance.test.ts) and import with digest, schema and parser checks, 9 refusal codes, EN/DE/FR messages (web/src/runcard_import.ts, web/tests/runcard_import.test.ts, web/e2e/states.spec.ts round trip)",
+      "windows_exe": "PARTIAL run cards come from the same Python code; not checked from the EXE; NOT_RUN: no EXE is built or run in this worktree; scripts/build_exe.ps1 smoke and the opt-in tests/test_exe_smoke.py (CQ_HECS_EXE) run in W14",
+      "native_hardware": "PARTIAL native CTest logs and shader hashes exist; no run-card export from the native core",
+      "parity_rule": "Shared schema where semantics are shared; versioned migration otherwise."
+    },
+    {
+      "area": "Studio / MCP / API",
+      "python_api": "DONE cqhecs.studio (create_server/StudioState), cqhecs.mcp_server (handle/StdioServer), cqhecs.service",
+      "cli": "DONE cq-hecs studio / mcp",
+      "mcp": "DONE 21 tools (isError + -32602 W4-02; bounded inputs W3-15; QG paid tools typed refusals)",
+      "studio": "DONE loopback-only, bearer token (env/file per W4-06)",
+      "web": "NOT_APPLICABLE Studio and MCP are Python-side loopback services; the browser neither hosts nor calls them. The bridge URL field refuses every non-loopback address form (web/e2e/forge.spec.ts) and the footer links the repository where the docs live (web/index.html)",
+      "windows_exe": "PARTIAL studio health smoke is in build_exe.ps1 (extracted-folder start); MCP from the ZIP is not run; NOT_RUN: no EXE is built or run in this worktree; scripts/build_exe.ps1 smoke and the opt-in tests/test_exe_smoke.py (CQ_HECS_EXE) run in W14",
+      "native_hardware": "NOT_APPLICABLE the native core has no HTTP or MCP surface",
+      "parity_rule": "MCP stdio by default; Studio loopback security intact."
+    },
+    {
+      "area": "Learn / docs / accessibility",
+      "python_api": "NOT_APPLICABLE no end-user text or UI on this surface (help lives in the CLI and docs)",
+      "cli": "DONE --help + docs/",
+      "mcp": "NOT_APPLICABLE no end-user text or UI on this surface (help lives in the CLI and docs)",
+      "studio": "PARTIAL English-only: cqhecs/studio/static has no i18n; EN/DE/FR and axe coverage are the Web app only",
+      "web": "DONE EN/DE/FR parity gate (web/tests/i18n.test.ts), axe on every route (web/e2e/app.spec.ts, mobile.spec.ts, forge.spec.ts, qg.spec.ts), 16 visual baselines on win32 (web/e2e/visual.spec.ts; other platforms NOT_RUN), theme contrast AA (web/scripts/check_token_contrast.mjs)",
+      "windows_exe": "PARTIAL cq-hecs --help comes from the same argparse; docs/ are not bundled in the EXE; NOT_RUN: no EXE is built or run in this worktree; scripts/build_exe.ps1 smoke and the opt-in tests/test_exe_smoke.py (CQ_HECS_EXE) run in W14",
+      "native_hardware": "NOT_APPLICABLE no end-user text or UI on this surface (help lives in the CLI and docs)",
+      "parity_rule": "Keep EN/DE/FR claims and commands accurate."
+    }
+  ]
+}

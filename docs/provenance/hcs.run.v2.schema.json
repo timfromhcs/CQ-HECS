@@ -57,6 +57,11 @@
             "numerical": { "type": ["number", "null"], "minimum": 0 },
             "sampling": { "type": ["number", "null"], "minimum": 0 }
           }
+        },
+        "error_scope": {
+          "type": "object",
+          "description": "One plain-language reason per error kind (W4-10). A null error means 'not quantified'; this says why.",
+          "additionalProperties": { "type": "string" }
         }
       }
     },

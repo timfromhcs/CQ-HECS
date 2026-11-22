@@ -1,5 +1,11 @@
 # CQ-HECS Classical Four-Path Architecture
 
+> **This is the single authoritative architecture document.** `docs/ARCHITECTURE.md` is a
+> frozen v2 snapshot kept for old links and is marked historical. Sections 1-5 are the
+> long-standing four-path contract; sections 6 and 7 record what was added since. Every
+> status word below (implemented, experimental, measured, formally checked, not supported)
+> is tied to an evidence file; the evidence index is `research/v7/EVIDENCE_LEDGER.md` (maintained separately; the freeze-SHA test and build numbers are in `research/v7/evidence/waveE_E2.md`).
+
 ## 1. System Architecture Overview
 
 **CQ-HECS** is a strictly classical quantum emulation engine. It completely eliminates silent bond-dimension truncation ($\chi = 48$) and replaces heuristic approximations with a verified **Four-Path Classical Architecture**:
@@ -135,7 +141,7 @@ conflating them in a single `error_bound`:
 | Field | Meaning |
 | :--- | :--- |
 | `error_bound` | **Deliberate approximation** (truncated Pauli terms, any opt-in truncation). `0.0` means nothing was deliberately approximated. |
-| `numerical_error_bound` | **Floating-point roundoff**, measured where the backend can measure it (e.g. Path C's discarded singular-value mass). |
+| `numerical_error_bound` | **Floating-point roundoff**: `None` ("not derived", never `0`) unless a backend derives a propagated bound. Paths B and C derive none. Path C's discarded singular-value mass is a **diagnostic only** (`discarded_spectral_mass_diagnostic`), not this field (see section 7.2). |
 | `sampling_error_bound` | **Finite-shot sampling** error, a rigorous Hoeffding TV bound `sqrt(ln(2/delta)/(2*shots))`. |
 
 `total_error_bound` sums them. A result therefore never claims zero error while
@@ -229,3 +235,125 @@ operator Hermitian. For observable `O`, only `O`'s own truncations enter its
 bound `D_O`, so `|<O_exact> - <O_kept>| <= D_O`. An observable above the tolerance
 is unresolved and stops being propagated; others are unaffected. The bound covers
 deliberate truncation only (not float64 roundoff) and says nothing about counts.
+
+
+## 7. Surfaces, hardening and research added since v5 (7.0.0)
+
+Evidence for every item is in `research/v7/evidence/waveA_*.md` and `waveB_*.md`. A
+"NOT RUN" in those files means the item is not claimed here.
+
+### 7.1 One service layer, four surfaces
+
+`cqhecs/service.py` builds the `ExecutionPlan` for Python, `cq-hecs plan`, MCP
+`cqhecs_plan` and Studio `/api/plan`; `tests/test_cross_surface_parity.py` asserts the four
+documents are identical on a six-circuit corpus apart from an explicit envelope allow-list.
+The Studio API is described by `schemas/studio.openapi.json` (OpenAPI 3.1, generated, drift
+tested) and every route also answers at `/api/v1`. MCP negotiates `protocolVersion`
+(2025-06-18, 2025-03-26, 2024-11-05; legacy when absent), runs tool calls on worker threads
+and answers `notifications/cancelled` with a typed `CANCELLED` result (the compute is
+abandoned, not stopped). The Studio guard (per-launch bearer token, Host/Origin lists,
+JSON-only POST, bounded body drains) is implemented and tested. Details:
+`docs/API_REFERENCE.md` sections 5-8 and `docs/STUDIO.md`. Evidence: `waveA_A1.md`.
+
+### 7.2 Error stories for Paths B and C (numerics)
+
+No analytic float64 error propagation is derived for either path, and the result fields say
+so. Path B reports `error_bound` as the dropped branch weight only and now adds
+`born_norm_sum`, `renormalization_factor`, `renormalization_applied`,
+`discarded_branch_count` and `discarded_branch_weight_mass`; Path C adds SVD
+instrumentation (`max_discarded_singular_value`, `max_discarded_relative`, `svd_count`,
+`svd_steps_with_discard`) and a `numerical_error_bound_reason` string.
+`numerical_error_bound` stays `None` ("not derived", never zero). Gate-mapping, endianness,
+reduced-density-matrix and sampling checks against a dense Qiskit reference were TESTED on
+enumerated families; no n > 7 dense comparison for Path C was run. A measured comparison
+found a plain dense statevector faster than Path B on every case
+(`research/v7/evidence/PATHB_DOMINANCE.json`), so Path B is described as a low-T branch
+decomposition, not a stabilizer-rank advantage. See `research/v7/NUMERICS_B_C.md`.
+
+### 7.3 SAT additions
+
+* **Typed MaxSAT** (`hcs.sat.maxsat.v1`): `OPTIMAL` only after exhaustive enumeration and an
+  independent re-verification, otherwise `UNKNOWN` with no assignment; no optimality
+  certificate exists (`optimality_certificate: null`).
+* **Isolated CaDiCaL** (`solve_external_isolated`): the raw solve runs in a child process; the
+  parent re-verifies the model against the original CNF and the DRAT proof with
+  `cqhecs.drat`. A child crash without a result is `UNKNOWN`; a complete result followed by an
+  abnormal exit is re-verified and carries a warning. The native abort (`0xC0000409` after a
+  proof-logging solve) reproduced on Python 3.13 / Windows, not only 3.14, and is recorded,
+  not suppressed.
+* **Separator preflight**: the predicted table bound `2^(w+1)` is checked against the budget
+  before any table is allocated; exceeding it is `UNKNOWN`. Calibration: 31 rows, 0 violations
+  of observed <= predicted (`waveA_A4_separator_calibration.json`).
+* **DRAT tamper matrix** (`tests/test_drat_tamper.py`): deleting, truncating, reordering and
+  altering steps of a fixed CaDiCaL proof is rejected where the proof then no longer
+  refutes the formula (some deletions are redundant; 125 of 235 single deletions were
+  rejected). The trust label stays `DRAT_CHECKED`. LRAT replay is not supported by the
+  in-repository checker (NOT RUN).
+
+### 7.4 Calibration governance (schema v3)
+
+`cqhecs/calibration_v3.py`, schema `cqhecs.calibration/3.0`, wraps an unchanged
+`BackendProfile` with backend identity, timestamp, layout, gate basis, units, a provenance
+label (`synthetic | measured | derived | post_hoc | unknown`) and a freshness window
+(`fresh | stale | unknown`, never defaulted to fresh). Gates without a calibrated channel are
+governed by a `refuse | warn | ideal` policy and are always reported. Channel and readout
+checks (Kraus completeness, Choi Hermiticity and positivity, stochastic readout) are exposed
+as one report. FIT/EVAL separation is enforced by tests on the committed `r-io-7` counts.
+Not done: transpilation into the calibrated basis, layout legality against a coupling map,
+CLI/Studio wiring, a VALIDATION split. A v3 record describes a model input; it is not
+evidence that the model predicts a device. Evidence: `waveB_B4.md`,
+`research/v7/NOISE_QEC_RESEARCH.md`.
+
+### 7.5 Native layer
+
+Both native C ABIs carry an ABI version (1.1). Every entry point is exception-fenced and
+validates its arguments; qubit indices, non-finite angles, clause databases and sizes are
+checked on the host before any device work; `VkResult` is checked everywhere with a
+fault-injection seam (`include/cq_hecs/vulkan/vk_fault.hpp`), device loss is latched and
+reported distinctly, and the OMNIWAVE BCP kernel has a CPU-versus-Vulkan differential test.
+A CPU-only build (`-DCQ_ENABLE_VULKAN=OFF`) and a sanitizer lane exist. Found and fixed
+(each with a regression test): a silent wrong 16-bit answer for non-Clifford gates on a wide
+simulator, a SAT timeout surfacing as an UNSAT-shaped code, and a C++ exception crossing the C
+boundary. Measured on Windows/MSVC with one AMD iGPU only; there is no Linux, GCC, Clang or
+software-ICD result in the evidence (NOT RUN). This is a correctness result for native
+primitives, not an end-to-end GPU simulator. Evidence: `waveA_A2.md`.
+
+### 7.6 Web
+
+The browser engines remain an independent implementation. Added: a WebGPU device-loss race
+with a labelled fallback to the WASM core, a keyboard and touch circuit composer, mobile
+(360/390 px) end-to-end projects, scroll-region and contrast fixes, XSS, low-memory and
+memory-API-absent tests, and one shared noise predicate that drives the simulator, the planner
+and the run card. Evidence: `waveA_A3.md` (91 unit tests and 63 Playwright tests at that
+point, 105 unit tests after the Quantum Gravity Lab; WebGPU hardware not run).
+
+### 7.7 Quantum Gravity Lab (finite models, not nature)
+
+`cqhecs/quantum_gravity/` holds declared finite models (BMV effective phase and competing
+state-preparation predictions with a Wootters oracle, small-N SYK with a Trotter and mirror
+compiler checked against a dense `expm` oracle, a Z2 gauge toy with Gauss-law leakage), an
+`ExecutionPlan` wrapper that never plans a QPU job, and a read-only offline replay of the
+recorded campaign. The web app (`#/qg`) and Studio (tab 08) expose it, and the QG plan envelope
+is one document on Python, `cq-hecs qg plan`, MCP `cqhecs_qg_plan` and Studio
+(`tests/test_qg_surface_parity.py`). The Open Quantum routes and MCP tools only return a typed
+`QG_PAID_PATH_UNAVAILABLE` refusal; no surface can submit a job. A physical `theta` mapping is a typed refusal (`QG_NO_DIMENSIONAL_MODEL`). Nothing here
+measures gravity. See `docs/QUANTUM_GRAVITY_LAB.md`; evidence: `waveB_B2.md`, `waveB_B3.md`.
+
+### 7.8 Formal specification lemmas (Lean)
+
+`formal/` builds with Lean 4.33.1 and a pinned Mathlib: the Path D truncation bound, Pauli
+multiplication and commutation, single-qubit sign rules for the Path A gate set, and the Path A
+tableau symplectic invariant (bit part). Axioms: `propext`, `Classical.choice`, `Quot.sound`
+only. Status for each is `FORMALIZED_LEMMA`: a specification statement, **not** a refinement
+proof of the Python or C++ code, and the sign column of CX/CZ/SWAP, measurement and non-Clifford
+conjugation are not formalized. No component is `FORMALLY_VERIFIED`. Evidence: `waveA_A5.md`,
+`formal/README.md`.
+
+### 7.9 Research Paths E, F and G (not routed)
+
+Three prototypes (2D contraction order, MPS quantum trajectories, matrix product evolution)
+live under `research/v7/prototypes/` and are not imported by `cqhecs`. Preregistered held-out
+benchmarks gave `RESEARCH_ONLY` for all three, including recorded negative results (Path F
+interval under-coverage and no speedup for n <= 6; Path G loses to the standard MPS at equal
+bond dimension on the tested regime). A test asserts the router still knows only A-D. See
+`research/v7/QUANTUM_SIMULATION_RESEARCH.md`.

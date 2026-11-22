@@ -175,6 +175,17 @@ def clifford_rotation_kind(theta: float) -> Optional[str]:
     return {0: "id", 1: "s", 2: "z", 3: "sdg"}[nearest % 4]
 
 
+def repeated_operands(qubits: Iterable[int]) -> Tuple[int, ...]:
+    """Qubit indices that occur more than once in one gate's operand list."""
+    seen = set()
+    dup = []
+    for q in qubits:
+        if q in seen and q not in dup:
+            dup.append(q)
+        seen.add(q)
+    return tuple(dup)
+
+
 def signature_errors(
     name: str,
     qubits: Iterable[int],
@@ -199,6 +210,12 @@ def signature_errors(
     if len(q) != spec.arity:
         errors.append(
             f"gate {name!r} expects {spec.arity} qubit(s), got {len(q)}"
+        )
+    repeated = repeated_operands(q)
+    if repeated:
+        errors.append(
+            f"gate {name!r} repeats qubit operand(s) {list(repeated)}; "
+            "every operand of a gate must be a distinct qubit"
         )
     if not (spec.min_params <= len(p) <= spec.max_params):
         if spec.min_params == spec.max_params:

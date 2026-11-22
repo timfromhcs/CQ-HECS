@@ -159,6 +159,25 @@ def test_strict_json_validation(served):
     assert call(b, "POST", "/pair", raw=b"x" * 5000)[0] == 413
 
 
+def test_oversized_body_is_consumed_before_the_413(served):
+    """B-008: a rejected oversized POST must consume the declared body before replying.
+
+    Replying (and then closing) while the request body is still unread makes the peer see a TCP
+    RST; the client then loses the response (ConnectionAborted [WinError 10053]). With the body
+    drained first, the server is still reading after the client has sent only part of the declared
+    body, so no reply arrives yet. Before the fix the 413 was written immediately.
+    """
+    import socket
+
+    b, _ = served()
+    head = (b"POST /pair HTTP/1.1\r\nHost: bridge\r\nOrigin: " + ORIGIN.encode()
+            + b"\r\nContent-Type: application/json\r\nContent-Length: 5000\r\n\r\n")
+    with socket.create_connection(("127.0.0.1", b.port), timeout=0.75) as s:
+        s.sendall(head + b"x" * 100)          # declare 5000, send only 100
+        with pytest.raises(socket.timeout):   # the server is still draining, not replying
+            s.recv(4096)
+
+
 def test_restore_preview_is_preview_only(served):
     b, _ = served()
     tok = pair(b)

@@ -14,7 +14,7 @@ CQ-HECS operates as a classical quantum circuit simulation engine and algebraic 
 ### Core Functional Modules
 
 #### 1. VulkanComputeScheduler & Dynamic Pipeline
-Manages queue submissions, memory barriers, and shader dispatch for a Vulkan 1.3 device. Embedded SPIR-V shaders execute tensor contractions and ring operations natively. The device is selected at runtime; no physical GPU execution has been verified in the current release cycle (CI uses software Vulkan).
+Manages queue submissions, memory barriers, and shader dispatch for a Vulkan 1.3 device. Embedded SPIR-V shaders execute tensor contractions and ring operations natively. The device is selected at runtime. Primitive dispatch and a CPU-versus-Vulkan BCP differential ran on one AMD iGPU (research/v7/evidence/waveA_A2.md); software Vulkan covers CI. This is not an end-to-end GPU circuit simulator.
 
 #### 2. ARX Modular Decomposition (Algebraic SAT Testbench)
 Decomposes 64-bit addition into linear and carry terms for algebraic step verification:
@@ -23,7 +23,8 @@ Decomposes 64-bit addition into linear and carry terms for algebraic step verifi
 - (A + B) mod 2^64 = Sum(A, B) + CarryShadow(A, B) mod 2^64
 Serves as an algebraic SAT verification testbench for reduced rounds of standard primitives (ChaCha20: 20 rounds specification, SHA-256: 64 steps specification, BLAKE2b: 12 rounds specification). It does not claim full cryptographic preimage extraction.
 
-#### 3. Exact Giles-Selinger Ring Z[1/sqrt(2), i]
+#### 3. Exact Giles-Selinger Ring Z[1/sqrt(2), i] (native C++ research component)
+Scope: this ring lives in the native C++ headers (`include/cq/exact_cyclotomic.hpp`, `include/cqhecs/algebra/ring.hpp`). The Python simulation paths A-D evaluate in float64 (Path A uses exact GF(2) tableau updates), so Python results are not symbolically exact.
 Bit-exact arithmetic over the dyadic cyclotomic ring for Clifford+T quantum gates:
 - Element form: (a + b*sqrt(2) + c*i + d*i*sqrt(2)) / (sqrt(2)^k), where a, b, c, d in Z, k in N.
 - Eliminates floating-point cancellation drift: constructive ((k1 - k2) == 0 mod 8) and destructive ((k1 - k2) == 4 mod 8) interference are evaluated with exact integer arithmetic.
@@ -39,12 +40,16 @@ DPLL solver for CNF satisfiability. Computes 64-bit Murmur3 state signatures and
   has not been certified against a physical GPU's VRAM accounting (no physical
   GPU execution verified in this release cycle).
 - Volume-Law states (exponential entropy S ~ L/2): When the memory ceiling is reached, execution refuses uncertified truncation and escalates to Path D or flags unresolved=True.
-- Counts from Path C stop at a documented 20-qubit dense-sampling limit; wider
-  circuits report no counts rather than a placeholder.
+- Dense statevector conversion is capped at 20 qubits. MPS-native sampling is allowed up to a
+  500-qubit routing ceiling, bounded by the RAM and shots-times-qubits budgets; above it the
+  circuit is reported without counts rather than with a placeholder.
+- The relative rank floor (1e-13) is a roundoff statement, not a certified bound:
+  `numerical_error_bound` is None and the discarded mass is a diagnostic only.
 
 #### 6. Heisenberg Sparse-Pauli-Dynamics (Path D)
 Evolves target observables backwards under Heisenberg dynamics: O(t) = U^dagger O U = sum_P c_P P.
-- Controlled pruning of terms below coefficient threshold: Delta_trunc = sum_{P in D} |c_P|.
+- Controlled pruning of terms below coefficient threshold: Delta_trunc = sum_{P in D} |c_P|, tracked per requested observable (Z, ZZ and X/Y/Z Pauli strings).
+- The bound covers expectation values only; it is not a bound on counts.
 - Certified bound: |<psi| O_exact |psi> - <psi| O_approx |psi>| <= Delta_trunc.
 - If Delta_trunc > epsilon_tolerance, the result is marked unresolved=True without guessing.
 
@@ -65,7 +70,7 @@ typedef struct {
 } cq_result_t;
 
 typedef struct {
-    int      satisfiable;      // 1 = SAT, 0 = UNSAT
+    int      satisfiable;      // 1 = SAT, 0 = UNSAT, -1 = timeout/error (no verdict)
     uint32_t num_vars;
     uint32_t num_clauses;
     uint32_t decisions;
@@ -94,7 +99,7 @@ CQ_API double cq_get_active_vram_mb(cq_context_t* ctx);
 
 # SAT Constraint Solving
 ./build/bin/cq_hecs sat benchmarks/sat/pigeonhole_6_5.cnf --json
-# Exit codes: 0 = SAT, 10 = UNSAT, 1 = Error
+# Exit codes: 0 = SAT, 10 = UNSAT, 3 = time budget exhausted (no verdict), 1 = Error
 
 # ARX Constraint-Analyse auf Standardspezifikationen
 ./build/bin/cq_hecs arx blake2b --rounds 12 --json
@@ -118,7 +123,26 @@ CQ_API double cq_get_active_vram_mb(cq_context_t* ctx);
 | Capability | Scope & Verification | Known Boundary / Non-Goal |
 | :--- | :--- | :--- |
 | Clifford Simulation | Exact O(N^2) Stabilizer Tableau | Non-universal without T-gates |
-| Stabilizer Rank | Exact decomposition for T <= 14 | Exponential scaling O(2^{alpha T}) |
+| Low-T branch sum (Path B) | Algebraically exact expansion, float64 evaluation, T <= 14; a plain dense statevector was faster on every measured case (research/v7/evidence/PATHB_DOMINANCE.json) | Exponential scaling O(2^{alpha T}); not a stabilizer-rank advantage |
 | Vulkan MPS | Exact Area-Law states (GHZ chi=2 < 5MB) | Volume-Law states escalate or halt |
 | Sparse-Pauli (Path D) | Certified error bound Delta <= sum \|c_P\| | Fails gracefully if bound > tolerance |
 | ARX SAT Analysis | Reduced-round algebraic testbench | No full-cipher cryptographic preimage break |
+
+---
+
+## 5. Python, CLI, MCP and Studio contracts (development tree, 7.0.0 draft)
+
+```bash
+cq-hecs --format json plan preset:bell                # cqhecs.execution_plan/1, no simulator state allocated
+cq-hecs --format json run name:bell --backend C --shots 100 --seed 1
+cq-hecs --format json sat maxsat --cnf $'p cnf 2 2\n1 0\n-1 0\n' --weights 1,2   # hcs.sat.maxsat.v1
+cq-hecs --format json qg run-local --theta 0.5        # local, CLASSICAL_REFERENCE, no credentials
+cq-hecs mcp                                           # stdio JSON-RPC
+cq-hecs studio                                        # loopback UI; prints a URL carrying a per-launch token
+```
+
+- Multi-line DIMACS in a POSIX shell needs `$'...\n...'`; a double-quoted backslash-n is rejected by the parser.
+- `SimulationResult` separates `error_bound`, `numerical_error_bound` and `sampling_error_bound`. `None` means "not derived", never zero.
+- `SimulationResult.uncovered_gates` lists gates simulated without a calibrated noise channel; `FakeHardwareBackend(uncovered_gate_policy="warn"|"refuse"|"ideal")`.
+- Native ABI 1.1 (`cq_abi_version`, `cq_check_abi`): `cq_solve_sat` returns 3 on timeout; `cq_create_context` returns NULL for absurd sizes; `cq_omniwave_bcp_eval` reports device loss (-5) and failed readback (-6).
+- Caller-visible changes with executed examples: MIGRATION_V7.md. Status of each item (implemented, experimental, measured, formally checked, not supported, not run): RELEASE_NOTES_DRAFT.md.

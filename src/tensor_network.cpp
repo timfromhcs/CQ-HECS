@@ -37,12 +37,16 @@ void VRTS300Engine::sync_to_gpu() {
 
     size_t state_bytes = Lattice3D::TOTAL_QUBITS * 2 * sizeof(ComplexFixed);
     if (!m_gpu_state_buffer.is_valid()) {
-        m_gpu_state_buffer.allocate(m_vulkan->get_device(),
-                                    m_vulkan->get_physical_device(),
-                                    state_bytes,
-                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                    m_vulkan->get_memory_manager());
+        // A failed allocation leaves the CPU copy authoritative (not "active on GPU").
+        if (!m_gpu_state_buffer.allocate(m_vulkan->get_device(),
+                                         m_vulkan->get_physical_device(),
+                                         state_bytes,
+                                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                         m_vulkan->get_memory_manager())) {
+            m_gpu_state_active = false;
+            return;
+        }
     }
 
     std::vector<ComplexFixed> flat_amps(Lattice3D::TOTAL_QUBITS * 2);
@@ -50,8 +54,7 @@ void VRTS300Engine::sync_to_gpu() {
         flat_amps[i * 2 + 0] = m_nodes[i].state[0];
         flat_amps[i * 2 + 1] = m_nodes[i].state[1];
     }
-    m_gpu_state_buffer.copy_to_buffer(flat_amps.data(), state_bytes);
-    m_gpu_state_active = true;
+    m_gpu_state_active = m_gpu_state_buffer.copy_to_buffer(flat_amps.data(), state_bytes);
 }
 
 void VRTS300Engine::sync_from_gpu() {
@@ -59,7 +62,10 @@ void VRTS300Engine::sync_from_gpu() {
 
     size_t state_bytes = Lattice3D::TOTAL_QUBITS * 2 * sizeof(ComplexFixed);
     std::vector<ComplexFixed> flat_amps(Lattice3D::TOTAL_QUBITS * 2);
-    m_gpu_state_buffer.copy_from_buffer(flat_amps.data(), state_bytes);
+    if (!m_gpu_state_buffer.copy_from_buffer(flat_amps.data(), state_bytes)) {
+        // Never overwrite the CPU state with an unread (uninitialised) buffer.
+        throw std::runtime_error("VRTS300Engine: GPU state readback failed");
+    }
 
     for (uint32_t i = 0; i < Lattice3D::TOTAL_QUBITS; ++i) {
         m_nodes[i].state[0] = flat_amps[i * 2 + 0];

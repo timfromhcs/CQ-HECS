@@ -52,6 +52,9 @@ jobs:
       - name: Audit for silent truncation
         run: python scripts/verify_no_silent_truncation.py
 
+      - name: QG documentation consistency
+        run: python scripts/qg_doc_consistency.py
+
       - name: Build wheel and sdist
         run: |
           python -m build
@@ -140,7 +143,12 @@ jobs:
           CQ_REQUIRE_VULKAN: "1"
         run: |
           vulkaninfo --summary
-          ctest --test-dir build -R '^test_vulkan_compute_contract$' -V
+          # W4-17 / T6-04: dispatch contract, VkResult fault injection (OOM,
+          # device loss, leak-free recovery) and the CPU-vs-Vulkan BCP
+          # differential. CQ_REQUIRE_VULKAN turns a missing device into a FAILURE,
+          # never a silent skip. Software-ICD results prove conformance, not speed.
+          ctest --test-dir build \
+            -R '^(test_vulkan_compute_contract|test_vulkan_fault_device|test_vulkan_bcp_differential)$' -V
 
       - name: Full Python suite with branch coverage
         env:
@@ -153,6 +161,11 @@ jobs:
             -m pytest tests/ -q --junitxml=test-results/pytest.xml
           python -m coverage report -m --fail-under=70
           python -m coverage xml -o test-results/coverage.xml
+
+      - name: Skip-budget report (records this lane's skip profile)
+        # The enforced --check uses a lane-specific budget; each lane records its own
+        # profile here (uploaded as an artifact) so it can be committed and enforced.
+        run: python scripts/skip_budget.py --junitxml test-results/pytest.xml --record --budget test-results/skip-budget-linux.json
 
       - name: Source-level mutation gate
         env:
@@ -173,6 +186,42 @@ jobs:
             test-results/
             .coverage
           if-no-files-found: warn
+
+  linux-native-cpu-only:
+    name: Linux C++20 CPU-only (no Vulkan SDK installed)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+
+      - name: Install toolchain (deliberately WITHOUT libvulkan-dev / glslang)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++-12
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 100
+          if dpkg -s libvulkan-dev >/dev/null 2>&1; then
+            echo "libvulkan-dev present on runner image; removing to prove independence"
+            sudo apt-get remove -y libvulkan-dev
+          fi
+
+      - name: Configure CPU-only
+        run: cmake -B build-cpu -G Ninja -DCMAKE_BUILD_TYPE=Release -DCQ_ENABLE_VULKAN=OFF
+
+      - name: Build and test CPU-only
+        run: |
+          cmake --build build-cpu --parallel "$(nproc)"
+          ctest --test-dir build-cpu --output-on-failure -j"$(nproc)"
+
+      - name: No binary links the Vulkan loader
+        run: |
+          pip install pytest
+          python -m pytest tests/test_native_cpu_only.py -q
 
   windows-native:
     name: Windows C++20, Vulkan & full Python suite
@@ -244,6 +293,9 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path test-results | Out-Null
           python -m pytest tests/ -q --durations=25 -p no:cacheprovider --junitxml=test-results/pytest.xml
+
+      - name: Skip-budget report (records this lane's skip profile)
+        run: python scripts/skip_budget.py --junitxml test-results/pytest.xml --record --budget test-results/skip-budget-windows.json
 
       - name: Source-level mutation gate
         env:
@@ -352,13 +404,17 @@ jobs:
           print(f"sanitizer flags verified for {len(required)} objects")
           PY
 
-      - name: Run parser, solver and hardening tests under sanitizers
+      - name: Run parser, solver, C-ABI and Vulkan fault tests under sanitizers
+        # W4-19. Covers the C-ABI hardening contract (test_c_abi_core), the VkResult
+        # fault-injection suite and the CPU-vs-Vulkan BCP differential (lavapipe
+        # software ICD; CQ_REQUIRE_VULKAN makes a missing device a failure).
         env:
           ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+          CQ_REQUIRE_VULKAN: "1"
         run: |
           ctest --test-dir build-asan --output-on-failure \
-            -R "^(test_qasm_contract|cq_hecs_cpp_hardening|test_constraint_solver|test_exact_algebra)$"
+            -R "^(test_qasm_contract|cq_hecs_cpp_hardening|test_constraint_solver|test_exact_algebra|test_c_abi_core|test_vulkan_fault_init|test_vulkan_fault_device|test_vulkan_bcp_validation|test_vulkan_bcp_differential)$"
 
       - name: Upload sanitizer build log on failure
         if: failure()
