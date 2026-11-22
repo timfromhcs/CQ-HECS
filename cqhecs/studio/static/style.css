@@ -264,3 +264,10 @@ pre { background: rgba(8, 12, 23, .7); border: 1px solid var(--line); border-rad
 #qg-studio label { display: grid; gap: 4px; margin: 8px 0; color: var(--muted); font-size: 13px; }
 #qg-studio input[type=number] { max-width: 100%; min-height: 36px; }
 @media (prefers-reduced-motion: reduce) { #qg-studio * { transition: none !important; animation: none !important; } }
+
+/* Execution plan panel */
+#plan-panel { margin-top: 16px; }
+#plan-output { overflow-wrap: anywhere; }
+#plan-output h4 { margin: 14px 0 6px; }
+#plan-output .plan-message { border: 1px solid rgba(255,255,255,.15); border-radius: 10px; padding: 10px 12px; }
+#plan-output:focus-visible, #plan-run:focus-visible { outline: 2px solid #55d7ff; outline-offset: 2px; }

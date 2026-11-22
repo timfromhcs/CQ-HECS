@@ -8,7 +8,7 @@ close; an empty cell blocks release.** This is a first cut; the integrator maint
 | Capability | Python/API | CLI | MCP | Studio | Web | Windows EXE | Native/HW |
 |---|---|---|---|---|---|---|---|
 | Circuit input + execution | `cqhecs.router.run`/backends | `run`/`analyze`/`verify`/`expect`/`selftest` | `cqhecs_run`/`_analyze`/`_plan` | `StudioState.simulate` | DONE composer/code lab, WASM f64 + WebGPU f32; shared corpus (WebGPU NOT_RUN without adapter) | TODO_VERIFY (build_exe onedir) | CPU-only core (W4-16) |
-| Paths A–D and router | `router`, `execution_plan` | `analyze`, `run --path` | `cqhecs_plan` | TODO_VERIFY plan panel | NOT_APPLICABLE own engines, never labelled A–D | TODO_VERIFY | PARTIAL (A/C native) |
+| Paths A–D and router | `router`, `execution_plan` | `analyze`, `run --path` | `cqhecs_plan` | DONE plan panel (Circuit lab, test_studio_plan_ui.py) | NOT_APPLICABLE own engines, never labelled A–D | TODO_VERIFY | PARTIAL (A/C native) |
 | Research Paths E/F/G | not shipped | N/A | N/A | N/A | NOT_APPLICABLE not promoted | N/A | N/A |
 | SAT | `sat`, `unified`, `sat_external` | `sat solve` | `cqhecs_sat_solve` | SAT lab | DONE browser DPLL + certificates; CaDiCaL/OMNIWAVE/DRAT UNAVAILABLE | TODO_VERIFY | PARTIAL (OMNIWAVE BCP) |
 | #SAT / MaxSAT | `count_models` (`hcs.sat.count.v1`), `maxsat` | `sat count`/`sat maxsat` | `cqhecs_sat_count` | count via `/api/sat` | DONE #SAT BigInt exact; MaxSAT NOT_APPLICABLE | TODO_VERIFY | N/A |
@@ -52,8 +52,10 @@ fails on an empty cell, an unknown status, or any `TODO_VERIFY` outside the Web 
   `NOT_RUN`. No EXE was built or run in this worktree; W14 closes these. Gaps named per row: the
   `build_exe.ps1` smoke has no analyze/plan/qg/doctor/calibration step (they are now in the opt-in
   `tests/test_exe_smoke.py`).
-- **Studio plan panel:** `PARTIAL`. The API (`/api/plan`, `/api/qg/v1/experiments/plan`) is done and
-  parity-tested; the Studio UI has no plan panel (needs a UI change outside this task's area).
+- **Studio plan panel:** `DONE`. Circuit lab `Plan circuit` calls `POST /api/plan` and renders the
+  selected path, rejected-candidate reasons, ESTIMATE-labelled resources, digests and typed
+  refusal/error/empty states. Evidence: `tests/test_studio_plan_ui.py` (6 tests incl. real Chromium,
+  axe critical/serious 0 at 1280 and 360 px) and `evidence/waveD_D4.md`. Still English only.
 - **Studio native diagnostics:** `DONE` (`GET /api/diagnostics`); MCP gained `cqhecs_doctor`.
 - **Research Paths E/F/G (Python):** `NOT_APPLICABLE`: prototypes only, asserted absent from the package
   and the router.

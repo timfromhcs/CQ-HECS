@@ -220,6 +220,146 @@ async function runCircuit() {
   }
 }
 
+/* -------------------------------------------------------------------- plan */
+// ExecutionPlan panel: POST /api/plan (dry run, same document as CLI/MCP/Python). Every value is set with
+// textContent; memory and work figures are labelled ESTIMATE; a refusal is shown as a refusal.
+
+function planTable(headers, rows, label) {
+  const wrap = el("div", "table-wrap");
+  wrap.tabIndex = 0;
+  wrap.setAttribute("role", "region");
+  wrap.setAttribute("aria-label", label);
+  const table = el("table");
+  const head = el("tr");
+  headers.forEach((h) => { const th = el("th", "", h); th.scope = "col"; head.append(th); });
+  const thead = el("thead");
+  thead.append(head);
+  const body = el("tbody");
+  rows.forEach((cells) => {
+    const tr = el("tr");
+    cells.forEach((c) => tr.append(el("td", "", c === null || c === undefined || c === "" ? "none" : String(c))));
+    body.append(tr);
+  });
+  table.append(thead, body);
+  wrap.append(table);
+  return wrap;
+}
+
+function renderPlanMessage(title, text) {
+  const box = el("div", "plan-message");
+  box.setAttribute("role", "alert");
+  box.append(el("h4", "", title), el("p", "hint", text));
+  $("#plan-output").replaceChildren(box);
+}
+
+function renderPlan(payload) {
+  const plan = payload && payload.plan;
+  const tag = $("#plan-state");
+  if (!plan || typeof plan !== "object") {
+    tag.textContent = "error";
+    tag.className = "tag bad";
+    renderPlanMessage("Malformed response", "The server returned no plan document. Nothing is substituted.");
+    return;
+  }
+  const refused = !!plan.refusal;
+  tag.textContent = refused ? "refused" : plan.would_execute ? "plan ready" : "not executable";
+  tag.className = `tag ${refused ? "bad" : plan.would_execute ? "ok" : "warn"}`;
+  const kids = [];
+  if (refused) {
+    const box = el("div", "plan-message");
+    box.setAttribute("role", "alert");
+    box.append(el("h4", "", `Refusal: ${plan.refusal.code}`), el("p", "hint", plan.refusal.message));
+    kids.push(box);
+  }
+  const metrics = el("div", "metrics");
+  metrics.append(
+    metric("selected path", plan.selected_path || "none", plan.selected_path ? "ok" : "warn"),
+    metric("forced path", plan.forced_path || "auto"),
+    metric("would execute", String(!!plan.would_execute)),
+    metric("qubits", plan.num_qubits),
+    metric("gates", plan.num_gates),
+    metric("depth", plan.circuit_depth),
+    metric("non-Clifford", plan.non_clifford_count),
+    metric("estimate quality", plan.estimate_quality || "unknown"),
+  );
+  kids.push(metrics);
+  if (plan.selection_reason) kids.push(el("p", "hint", `Why: ${plan.selection_reason}`));
+  const candidates = Array.isArray(plan.candidate_paths) ? plan.candidate_paths : [];
+  kids.push(el("h4", "", "Candidate paths and why each was or was not chosen"));
+  kids.push(planTable(
+    ["Path", "Capable", "Chosen", "Why not / blockers", "Peak memory (ESTIMATE, bytes)", "Work (ESTIMATE, units)"],
+    candidates.map((c) => [
+      c.path,
+      c.capable ? "yes" : "no",
+      c.chosen ? "yes" : "no",
+      [...(c.capability_blockers || []), ...(c.policy_notes || [])].join("; "),
+      c.estimated_peak_memory_bytes,
+      c.estimated_work_units,
+    ]),
+    "Candidate paths",
+  ));
+  kids.push(el("h4", "", "Resource estimates (ESTIMATE)"));
+  kids.push(planTable(
+    ["Quantity", "Value", "Label"],
+    [
+      ["peak memory, selected path (bytes)", plan.estimated_peak_memory_bytes, "ESTIMATE"],
+      ["work units, selected path", plan.estimated_work_units, "ESTIMATE"],
+    ],
+    "Resource estimates",
+  ));
+  const estimateNote = plan.estimate_inputs && plan.estimate_inputs.note;
+  if (estimateNote) kids.push(el("p", "hint", estimateNote));
+  const hard = Array.isArray(plan.known_hard_limits) ? plan.known_hard_limits : [];
+  if (hard.length) {
+    kids.push(el("h4", "", "Known hard limits"));
+    kids.push(planTable(["Path", "Limit", "Value"], hard.map((h) => [h.path, h.limit, h.value]), "Known hard limits"));
+  }
+  const unsupported = Array.isArray(plan.unsupported_operations) ? plan.unsupported_operations : [];
+  if (unsupported.length) {
+    kids.push(el("h4", "", "Unsupported operations"));
+    const ul = el("ul");
+    unsupported.forEach((u) => ul.append(el("li", "", typeof u === "string" ? u : JSON.stringify(u))));
+    kids.push(ul);
+  }
+  kids.push(el("h4", "", "Digests"));
+  kids.push(planTable(
+    ["Field", "SHA-256"],
+    [["input digest", plan.input_digest], ["normalized circuit digest", plan.normalized_circuit_digest], ["plan digest", plan.plan_digest]],
+    "Plan digests",
+  ));
+  kids.push(el("p", "hint", `Schema ${plan.schema_version}; result contract ${plan.required_result_contract || "none"}. A plan is a recommendation, not a result.`));
+  $("#plan-output").replaceChildren(...kids);
+}
+
+async function runPlan() {
+  const button = $("#plan-run");
+  const tag = $("#plan-state");
+  const source = $("#qasm").value.trim();
+  if (!source) {
+    tag.textContent = "empty";
+    tag.className = "tag warn";
+    renderPlanMessage("Empty circuit", "Enter OpenQASM 2.0 source or choose a preset before planning.");
+    return;
+  }
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  button.textContent = "Planning...";
+  try {
+    renderPlan(await api("/api/plan", {
+      method: "POST",
+      body: JSON.stringify({ source, path: $("#path").value }),
+    }));
+  } catch (error) {
+    tag.textContent = "error";
+    tag.className = "tag bad";
+    renderPlanMessage("Plan failed", String(error.message || error));
+  } finally {
+    button.disabled = false;
+    button.removeAttribute("aria-busy");
+    button.textContent = "Plan circuit";
+  }
+}
+
 function renderCircuit(payload) {
   const result = payload.result;
   const stateTag = $("#circuit-state");
@@ -929,6 +1069,7 @@ async function init() {
 $$("#nav button").forEach((btn) => btn.addEventListener("click", () => setView(btn.dataset.view)));
 $$("[data-go]").forEach((btn) => btn.addEventListener("click", () => setView(btn.dataset.go)));
 $("#run-circuit").addEventListener("click", runCircuit);
+$("#plan-run").addEventListener("click", runPlan);
 $("#preset").addEventListener("change", (event) => loadPreset(event.target.value).catch((error) => toast(error.message)));
 $("#job-select").addEventListener("change", inspectJob);
 $("#apply-override").addEventListener("click", () =>

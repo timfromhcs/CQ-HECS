@@ -115,6 +115,14 @@
           <details id="circuit-json"><summary>Raw result JSON</summary><pre></pre></details>
         </div>
       </div>
+      <div class="panel" id="plan-panel" aria-labelledby="plan-heading">
+        <div class="panel-head"><h3 id="plan-heading">Execution plan (dry run)</h3><span class="tag" id="plan-state">idle</span></div>
+        <p class="hint">Plans the circuit above with the selected path. Nothing is simulated and no state is allocated. Memory and work figures are heuristic ESTIMATES, not guarantees.</p>
+        <button class="primary" id="plan-run" type="button">Plan circuit</button>
+        <div id="plan-output" role="region" aria-live="polite" aria-label="Execution plan result" tabindex="0">
+          <p class="empty">No plan yet. Plan the circuit to see the selected path and why other paths were not chosen.</p>
+        </div>
+      </div>
     </section>
 
     <section class="view" id="view-noise">

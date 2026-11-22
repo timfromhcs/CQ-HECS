@@ -43,6 +43,19 @@ Noise runs use the exact density matrix and are limited to 10 qubits. Above
 that the server returns a typed `noise_width_limit` refusal; it does not
 approximate.
 
+**Execution plan panel.** Below the result, `Plan circuit` sends the editor source and the selected
+path to `POST /api/plan` (same bearer-token flow as every other call) and shows the dry-run
+`cqhecs.execution_plan/1` document: selected path and the reason, a table of every candidate path
+with capability blockers and policy notes (why each rejected path was not chosen), peak-memory and
+work figures labelled `ESTIMATE` (heuristic, not guarantees), known hard limits, unsupported
+operations, and the input, normalized-circuit and plan SHA-256 digests. Nothing is simulated.
+Typed states: `idle` (empty message), `empty` (no source), `refused` (a forced path that cannot run
+the circuit shows its refusal code, for example `FORCED_PATH_UNSUPPORTED`; it is never rerouted),
+`error` (server-side invalid circuit), `plan ready`. Values are set with `textContent` only; the
+button and result region are keyboard reachable. Test: `tests/test_studio_plan_ui.py` (static checks
+plus a real headless Chromium run with axe at 1280 and 360 px; skipped as NOT_RUN when Node and
+`web/node_modules` are absent).
+
 ### Noise lab
 
 Shows the fitted per-qubit parameters, the FIT residual, the held-out ΔTV for
@@ -96,7 +109,8 @@ gauge toy) through the separately versioned `/api/qg/v1/*` routes. Every run is 
 model on an exact classical reference; the tab never contacts a provider, never spends
 credits and does not measure gravity. `Run` stays disabled until the assumptions are
 confirmed; typed refusals are shown, not hidden. The Studio tab is English only (the Studio
-has no i18n); the web app version is EN/DE/FR. Details:
+has no i18n); the web app version is EN/DE/FR. The tab list follows the WAI-ARIA tabs pattern (roving tabindex; Left/Right/Home/End
+move focus and selection); `tests/studio_ui_e2e.mjs` asserts it in a real browser. Details:
 [`QUANTUM_GRAVITY_LAB.md`](QUANTUM_GRAVITY_LAB.md). Evidence: `research/v7/evidence/waveB_B3.md`.
 
 ### Evidence

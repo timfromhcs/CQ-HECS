@@ -36,7 +36,7 @@
       "python_api": "DONE cqhecs.router EntanglementAdaptiveRouter; cqhecs.execution_plan",
       "cli": "DONE cq-hecs analyze --explain (service.analysis_document) / plan / run --backend",
       "mcp": "DONE cqhecs_plan (same plan dict and digest as Python, CLI and Studio)",
-      "studio": "PARTIAL API DONE: POST /api/plan (service plan, parity-tested in test_cross_surface_parity) and POST /api/qg/v1/experiments/plan; no plan panel in cqhecs/studio/static (no caller of /api/plan), UI owner to add",
+      "studio": "DONE POST /api/plan (parity-tested in test_cross_surface_parity) plus an Execution plan panel in the Circuit lab (cqhecs/studio/static/app.js runPlan/renderPlan; selected path, rejected-candidate reasons, ESTIMATE-labelled resources, digests, typed refusal/error/empty states); tests/test_studio_plan_ui.py: static + real Chromium (axe critical/serious 0 at 1280 and 360 px, keyboard Enter); evidence waveD_D4.md",
       "web": "NOT_APPLICABLE the browser runs its own statevector engines (engine kinds are only wasm and webgpu, web/src/protocol.ts) and states 'Not run here: the Python paths A-D' (prov.not; web/e2e/app.spec.ts Bell run); it never labels a run as a path A-D",
       "windows_exe": "PARTIAL analyze/plan/qg plan are in the opt-in test_exe_smoke.py, not in the build_exe.ps1 smoke; NOT_RUN: no EXE is built or run in this worktree; scripts/build_exe.ps1 smoke and the opt-in tests/test_exe_smoke.py (CQ_HECS_EXE) run in W14",
       "native_hardware": "PARTIAL Paths A/C have native pieces; not an end-to-end GPU simulator",
