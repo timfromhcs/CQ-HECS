@@ -200,24 +200,13 @@ class Refusals(unittest.TestCase):
 
     def test_inputs_that_every_surface_must_refuse(self):
         for entry in CORPUS["refusals"]:
-            if "known_divergence" in entry:
-                continue
             with self.subTest(case=entry["name"]):
                 self.assertTrue(self._refuses(entry["qasm"]))
 
-    @unittest.expectedFailure
     def test_repeated_operand_is_refused_C1_FIND_01(self):
-        """Open defect outside the web area: cqhecs accepts `cx q[0],q[0]`.
-
-        Marked expectedFailure so that fixing the parser turns this into an unexpected success
-        and forces the corpus entry (`known_divergence`) to be removed.
-        """
+        """C1-FIND-01 fixed: cqhecs refuses `cx q[0],q[0]` like Qiskit and the browser."""
         entry = next(e for e in CORPUS["refusals"] if e["name"] == "refuse-repeated-operand")
         self.assertTrue(self._refuses(entry["qasm"]))
-
-    def test_the_divergence_is_recorded_in_the_corpus(self):
-        entry = next(e for e in CORPUS["refusals"] if e["name"] == "refuse-repeated-operand")
-        self.assertIn("C1-FIND-01", entry["known_divergence"])
 
 
 if __name__ == "__main__":

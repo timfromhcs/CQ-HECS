@@ -149,10 +149,6 @@ def test_angle_expressions_are_a_finite_float_or_a_value_error(text):
     assert isinstance(value, float) and value == value and abs(value) != float("inf")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SEC-M2: python_bridge.qasm_engine evaluates QASM parameter text with eval() and builtins=None, which is escapable",
-)
 def test_legacy_bridge_parameter_text_cannot_call_into_the_os_module():
     import os
 
@@ -162,4 +158,23 @@ def test_legacy_bridge_parameter_text_cannot_call_into_the_os_module():
         "[c for c in ().__class__.__base__.__subclasses__() if c.__name__=='_wrap_close']"
         "[0].__init__.__globals__['cpu_count']()"
     )
-    assert QASMParser._eval_param_expr(payload) != float(os.cpu_count())
+    with pytest.raises(ValueError):
+        QASMParser._eval_param_expr(payload)
+    assert os.cpu_count()  # payload was never executed
+
+
+@pytest.mark.parametrize(
+    "expr", ["pi", "pi/2", "-pi/4", "3*pi/8", "0.785", "1e-3", "(pi+1)/2", "pi*pi", "2*3/4", "1-2-3"]
+)
+def test_legacy_bridge_keeps_numeric_behaviour_for_legal_angles(expr):
+    from python_bridge.qasm_engine import QASMParser
+
+    assert QASMParser._eval_param_expr(expr) == parse_angle_expression(expr)
+
+
+@pytest.mark.parametrize("expr", ["", "sqrt(2)", "math.pi", "1/0", "pi pi", "__import__('os')"])
+def test_legacy_bridge_refuses_non_grammar_angles_instead_of_returning_zero(expr):
+    from python_bridge.qasm_engine import QASMParser
+
+    with pytest.raises(ValueError):
+        QASMParser._eval_param_expr(expr)

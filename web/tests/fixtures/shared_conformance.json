@@ -3551,10 +3551,10 @@
       "why": "control equals target",
       "expected": "REFUSED",
       "python": {
-        "status": "SUPPORTED",
-        "state": "EXACT"
-      },
-      "known_divergence": "C1-FIND-01: Python router accepts 'cx q[0],q[0]' on paths A/B/C and returns EXACT counts; Qiskit and the browser refuse it. Open defect in cqhecs/ (outside the web area)."
+        "status": "REFUSED",
+        "error_type": "QASMParseError",
+        "reason": "line 4: [repeated_operand] gate 'cx' repeats qubit operand(s) [0]; every operand of a gate must be a distinct qubit"
+      }
     },
     {
       "name": "refuse-no-register",

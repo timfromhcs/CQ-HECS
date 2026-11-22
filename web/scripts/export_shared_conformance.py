@@ -122,10 +122,7 @@ def case_specs() -> List[Dict[str, Any]]:
     ]
 
 
-DIVERGENCES = {
-    "refuse-repeated-operand": "C1-FIND-01: Python router accepts 'cx q[0],q[0]' on paths A/B/C and returns EXACT counts; "
-    "Qiskit and the browser refuse it. Open defect in cqhecs/ (outside the web area).",
-}
+DIVERGENCES: Dict[str, str] = {}  # C1-FIND-01 fixed in Wave D1: repeated operands are refused everywhere
 
 
 def refusal_specs() -> List[Dict[str, Any]]:
