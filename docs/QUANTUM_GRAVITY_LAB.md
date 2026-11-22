@@ -128,3 +128,25 @@ $env:OPENQUANTUM_CLIENT_SECRET = "..."   # never commit, never paste into a prom
 python -m pytest tests/test_quantum_gravity_bmv.py tests/test_quantum_gravity_syk.py \
                  tests/test_quantum_gravity_contracts.py tests/test_quantum_gravity_campaign.py -q
 ```
+
+## Wave B2 additions (model audit, Trotter oracle, leakage, plan parity, replay)
+
+All values below are finite-model quantities. None measures gravity, a wormhole or a graviton.
+
+| Module | Purpose | Tests |
+|---|---|---|
+| `cqhecs.quantum_gravity.bmv_competing` | branch-phase parameterisation, competing state-preparation predictions, separable null controls, Wootters oracle, fidelity witness; refuses a physical `theta` mapping | `tests/test_qg_bmv_competing.py` |
+| `cqhecs.quantum_gravity.syk_trotter` | SYK Pauli terms, Trotter QASM compiler, mirror circuit, dense `expm` oracle, closed-form first-order commutator bound table | `tests/test_qg_syk_trotter.py` |
+| `cqhecs.quantum_gravity.gauge` (leakage) | Gauss-law constraint leakage `1 - Tr[P_phys rho]`, per-vertex violation profile, gauge-breaking and gauge-preserving perturbation controls | `tests/test_qg_gauge_leakage.py` |
+| `cqhecs.quantum_gravity.plan` | QG experiments get the generic `cqhecs.execution_plan/1` plan unchanged, plus engine, precision, surface and provenance; never plans a QPU job | `tests/test_qg_execution_plan.py` |
+| `cqhecs.quantum_gravity.replay` | read-only offline replay of `research/qg_2026/processed/*` from raw counts and frozen QASM; SHA-256 manifest check | `tests/test_qg_replay.py` |
+
+Notes: `research/qg_2026/BMV_MODEL_NOTES.md`; frozen tables under `research/qg_2026/models/`.
+
+Plan parity scope: the Python module is done. CLI, MCP and Studio exposure of the QG plan envelope
+is not wired in this wave (those files belong to other owners); see the wave B2 evidence file.
+
+```
+python -m pytest tests/test_qg_bmv_competing.py tests/test_qg_syk_trotter.py tests/test_qg_gauge_leakage.py \
+                 tests/test_qg_execution_plan.py tests/test_qg_replay.py -q
+```

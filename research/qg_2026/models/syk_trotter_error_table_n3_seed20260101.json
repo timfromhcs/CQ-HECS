@@ -1,0 +1,74 @@
+{
+  "limitations": [
+    "finite-N model; no spacetime, wormhole or gravity claim",
+    "the bound is a first-order commutator bound; it excludes device noise and shot error",
+    "dense route limited to <= 8 qubits"
+  ],
+  "model_id": "qg.syk.q4.v1",
+  "model_version": "1.0.0",
+  "num_qubits": 3,
+  "num_terms": 15,
+  "order": 1,
+  "rows": [
+    {
+      "bound": 6.714089598223481,
+      "bound_holds": true,
+      "measured_spectral_error": 1.5257949688818593,
+      "p_zero_exact": 0.428017023802971,
+      "p_zero_trotter": 0.23258429030050007,
+      "state_error": 0.7863431309111306,
+      "steps": 1
+    },
+    {
+      "bound": 3.3570447991117405,
+      "bound_holds": true,
+      "measured_spectral_error": 0.8561948595189368,
+      "p_zero_exact": 0.428017023802971,
+      "p_zero_trotter": 0.33352817506181376,
+      "state_error": 0.5643478880526143,
+      "steps": 2
+    },
+    {
+      "bound": 1.6785223995558702,
+      "bound_holds": true,
+      "measured_spectral_error": 0.43897426134466005,
+      "p_zero_exact": 0.428017023802971,
+      "p_zero_trotter": 0.40006851330690674,
+      "state_error": 0.3081069062229709,
+      "steps": 4
+    },
+    {
+      "bound": 0.8392611997779351,
+      "bound_holds": true,
+      "measured_spectral_error": 0.22015799811787137,
+      "p_zero_exact": 0.428017023802971,
+      "p_zero_trotter": 0.42004478270883433,
+      "state_error": 0.15846335923063573,
+      "steps": 8
+    },
+    {
+      "bound": 0.41963059988896756,
+      "bound_holds": true,
+      "measured_spectral_error": 0.10998398826971136,
+      "p_zero_exact": 0.428017023802971,
+      "p_zero_trotter": 0.4255933358663047,
+      "state_error": 0.08007397827542068,
+      "steps": 16
+    },
+    {
+      "bound": 0.20981529994448378,
+      "bound_holds": true,
+      "measured_spectral_error": 0.05493566040473663,
+      "p_zero_exact": 0.428017023802971,
+      "p_zero_trotter": 0.42719850992935454,
+      "state_error": 0.040215184104638174,
+      "steps": 32
+    }
+  ],
+  "scale": 0.4,
+  "schema": "cqhecs.qg.syk_trotter.v1",
+  "seed": 20260101,
+  "surface": "CLASSICAL_REFERENCE",
+  "t": 1.0,
+  "uncertainty_class": "trotter_error"
+}
