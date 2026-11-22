@@ -322,7 +322,7 @@ def test_inspect_flags_this_machines_path_even_in_a_binary(tmp_path):
 def test_inspect_bundle_dir_ignores_upstream_paths_in_third_party_files_only(tmp_path):
     root = tmp_path / "cq-hecs"
     (root / "_internal" / "numpy-2.dist-info").mkdir(parents=True)
-    (root / "_internal" / "numpy-2.dist-info" / "DELVEWHEEL").write_text(r"built in C:\Users\runneradmin\x")
+    (root / "_internal" / "numpy-2.dist-info" / "DELVEWHEEL").write_text(r"built in C:\Users\upstream-wheel-builder\x")  # not this machine: a CI runner's own home would trip the build-machine marker check
     (root / "_internal" / "cqhecs").mkdir()
     (root / "_internal" / "cqhecs" / "ok.txt").write_text("fine")
     assert inspect_mod.inspect(root)["status"] == "PASS"
