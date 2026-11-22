@@ -266,11 +266,29 @@ def build() -> Dict[str, Any]:
     }
 
 
+FLOAT_DECIMALS = 12
+
+
+def _quantize(obj: Any) -> Any:
+    """Round every float to FLOAT_DECIMALS so regeneration is byte-identical across BLAS/CPU builds.
+
+    The last 1-2 ulps of a float64 probability differ between platforms (observed: ...97 vs ...96 on
+    Linux). Consumers compare with tolerances far above 1e-12, so no semantic information is lost.
+    """
+    if isinstance(obj, float):
+        return round(obj, FLOAT_DECIMALS) + 0.0
+    if isinstance(obj, dict):
+        return {k: _quantize(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_quantize(v) for v in obj]
+    return obj
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="fail when the committed fixture differs")
     args = parser.parse_args(argv)
-    text = json.dumps(build(), indent=2) + "\n"
+    text = json.dumps(_quantize(build()), indent=2) + "\n"
     if args.check:
         current = OUTPUT.read_text(encoding="utf-8") if OUTPUT.exists() else ""
         if current.replace("\r\n", "\n") != text:

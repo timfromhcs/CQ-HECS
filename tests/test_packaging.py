@@ -12,6 +12,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 import re
 import sys
 import tarfile
@@ -295,6 +296,10 @@ def test_port_is_free_after_a_stopped_server_leaves_time_wait_but_not_while_list
 
     smoke = _load("package_smoke")
     srv = socket.socket()
+    if os.name != "nt":
+        # Like http.server (allow_reuse_address): on Linux the TIME_WAIT sockets inherit the creating
+        # listener's SO_REUSEADDR, which is what lets the fresh bind in port_is_free succeed.
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     srv.bind(("127.0.0.1", 0))
     srv.listen(1)
     port = srv.getsockname()[1]

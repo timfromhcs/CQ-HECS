@@ -32,6 +32,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("zip", type=Path)
     ap.add_argument("--kind", choices=("cpu", "vulkan"), required=True)
+    ap.add_argument("--allow-typed-refusal", action="store_true",
+                    help="on a host without a Vulkan device, accept the CLI's typed vulkan_unavailable refusal "
+                         "(exit 3, CPU reference available) as REFUSED_OK instead of a failure; it is never a PASS")
     a = ap.parse_args(argv)
     checks: List[Dict[str, Any]] = []
 
@@ -85,8 +88,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     ok = p.returncode == 0 and out.get("success") is True and out.get("non_parity") == 0
                 except Exception as exc:  # noqa: BLE001
                     out, ok = f"{type(exc).__name__}: {p.stdout[-200:]}", False
-                rec("cli_ghz", "PASS" if ok else "FAIL", out)
-    summary = {s: sum(c["status"] == s for c in checks) for s in ("PASS", "FAIL")}
+                refused = (not ok and a.allow_typed_refusal and p.returncode == 3 and isinstance(out, dict)
+                           and out.get("status") == "refused" and out.get("code") == "vulkan_unavailable"
+                           and out.get("cpu_reference_available") is True)
+                rec("cli_ghz", "PASS" if ok else ("REFUSED_OK" if refused else "FAIL"), out)
+    summary = {s: sum(c["status"] == s for c in checks) for s in ("PASS", "REFUSED_OK", "FAIL")}
     print(json.dumps({"zip": a.zip.name, "kind": a.kind, "checks": checks, "summary": summary}, indent=2))
     return 1 if summary["FAIL"] else 0
 

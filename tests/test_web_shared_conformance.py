@@ -59,7 +59,7 @@ class FixtureIntegrity(unittest.TestCase):
         def without_oracle_version(text: str) -> str:
             return re.sub(r'"oracle": "Qiskit \d+(?:\.\d+)*', '"oracle": "Qiskit <version>', text)
 
-        fresh = json.dumps(GEN.build(), indent=2) + "\n"
+        fresh = json.dumps(GEN._quantize(GEN.build()), indent=2) + "\n"
         committed = FIXTURE.read_text(encoding="utf-8").replace("\r\n", "\n")
         self.assertEqual(
             without_oracle_version(committed),
