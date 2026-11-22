@@ -34,7 +34,8 @@ A green build is `FORMALIZED_LEMMA` for the named lemma only. Comparator/nanoda 
 | L-STAB-01 sign rules (`h_conj`, `s_conj`, `x_conj`, `y_conj`, `z_conj`; Hermitian letters, 2x2 matrices) | `CQHECS/Pauli.lean` | **FORMALIZED_LEMMA** — same |
 | L-STAB-01 symplectic invariant (`omega_hGate/sGate/cxGate/czGate/swapGate`, `omega_run`, `tableau_invariant`) | `CQHECS/Stabilizer.lean` | **FORMALIZED_LEMMA** — same; bit part only |
 | CX/CZ/SWAP sign column, measurement/`row_sum`, non-Clifford `U†PU` | — | NOT formalized (Python oracle tests only) |
-| L-SEP-01, L-SAT-01, L-RESULT-01 | — | backlog |
+| L-RESULT-01 (state derivation `deriveState`; an `UNRESOLVED`/`FAILED` result exposes no certified error figure `totalBound`; pure specification of `cqhecs/result.py`) | `CQHECS/Result.lean` | **FORMALIZED_LEMMA** — `lake build` green (8711 jobs); `#print axioms` ⊆ `[propext, Classical.choice, Quot.sound]` (the Bool-only lemmas use `propext` alone). Pinned to the Python class by `tests/test_formal_result_contract.py` (exhaustive flag-space comparison); this is not a refinement proof |
+| L-SEP-01, L-SAT-01 | — | backlog |
 
 `FORMALIZED_LEMMA` means the named specification statement builds with only the standard axioms; it
 is **not** a refinement proof of the Python/C++ implementation (V7 §7.4). Exact commands and output:

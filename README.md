@@ -287,7 +287,7 @@ That rule is enforced in code, not only in documentation:
 | **Public surfaces** | `cq-hecs` CLI, `cq-hecs studio`, Qiskit `BackendV2`, Python API, C ABI, SAT engine |
 | **Simulation paths** | A: stabilizer tableau · B: stabilizer rank · C: untruncated MPS · D: sparse Pauli |
 | **Noise** | Typed profiles, Kraus channels, exact float64 density matrix up to 10 qubits |
-| **Verification** | see [Verification](#verification): last full Python run 2896 passed / 109 skipped (Windows, `6fe4f01`), 64/64 mutants (earlier baseline), 12-check selftest, 21/21 independent oracle |
+| **Verification** | see [Verification](#verification): last full Python run 2896 passed / 109 skipped (Windows, `6fe4f01`), 95/95 mutants (snapshot run, W15; re-run in place at freeze), 12-check selftest, 21/21 independent oracle |
 | **Platforms** | Linux x64, Windows 10/11; Python 3.11–3.14 |
 | **License** | Apache-2.0 |
 
@@ -711,9 +711,20 @@ python -m build
 # dist/cqhecs-5.0.0.tar.gz
 ```
 
-Published wheels, sdists, SHA-256 checksums, and the SPDX SBOM are attached to
+A release attaches exactly these assets (all built by `.github/workflows/package.yml`
+from the tagged commit, none rebuilt at publish time) to
 [GitHub Releases](https://github.com/timfromhcs/CQ-HECS/releases); the latest
-published release is the one marked "Latest" there.
+published release is the one marked "Latest" there:
+
+- `cqhecs-<version>-py3-none-any.whl` and `cqhecs-<version>.tar.gz` (wheel, sdist);
+- `cqhecs-<version>-windows-x64.zip` (PyInstaller onedir folder with `cq-hecs.exe`);
+- `cq-hecs-cpu-<version>-windows-x64.zip` (CPU-only native C-ABI library) and
+  `cq-hecs-vulkan-<version>-windows-x64.zip` (Vulkan native build; without a usable
+  Vulkan device `cq_hecs.exe vrts|ghz|echo|maxcut` refuses with exit code 3 unless
+  `--cpu-reference` is passed, which labels the output as a CPU run);
+- `cqhecs-<version>-wheel.cdx.json` and `cqhecs-<version>-windows-x64.cdx.json`
+  (CycloneDX SBOMs);
+- `SHA256SUMS` (`sha256sum` format over exactly the files above).
 
 ---
 
@@ -902,7 +913,7 @@ not projections. A green run on an older commit is not evidence for a later comm
 | :--- | :--- | :--- |
 | Python suite, Windows / Python 3.13, commit `6fe4f01` | **2896 passed**, **109 skipped**, 1 deselected | `research/v7/evidence/waveA_A5.md` |
 | Skip budget | 4 skips are an interpreter difference (`qiskit-ibm-runtime` missing); the same tests pass under Python 3.14 | `research/v7/BASELINE_V7.md` addendum |
-| Mutation suite (earlier baseline) | 64/64 killed | `research/v7/BASELINE_V7.md` |
+| Mutation suite (snapshot run, W15; re-run in place at freeze) | 95/95 killed | `research/v7/BASELINE_V7.md` |
 | Native CTest, Vulkan ON, one AMD iGPU, MSVC | 26/26 | `research/v7/evidence/waveA_A2.md` |
 | Native CTest, CPU-only build | 15/15 | `research/v7/evidence/waveA_A2.md` |
 | Web unit tests / Playwright | 105 passed / 63 + 14 passed (QG screens) | `waveA_A3.md`, `waveB_B3.md` |

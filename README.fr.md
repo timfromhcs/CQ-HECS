@@ -144,7 +144,7 @@ Deux tableaux séparés, pour qu'aucun chiffre ne soit attribué au mauvais comm
 | Contrôle | Résultat | Preuve |
 |---|---|---|
 | Suite Python, Windows / Python 3.13, commit `6fe4f01` | 2896 réussis, 109 ignorés | `research/v7/evidence/waveA_A5.md` |
-| Tests de mutation (état antérieur) | 64/64 tués | `research/v7/BASELINE_V7.md` |
+| Tests de mutation (exécution sur instantané, W15 ; à relancer au gel) | 95/95 tués | `research/v7/BASELINE_V7.md` |
 | CTest natif (Vulkan actif / CPU seul) | 26/26 / 15/15 | `research/v7/evidence/waveA_A2.md` |
 | Non exécuté | sanitizers GCC/Clang, Linux, WebGPU sur matériel, `drat-trim`, `cake_lpr` | `RELEASE_NOTES_DRAFT.md` |
 

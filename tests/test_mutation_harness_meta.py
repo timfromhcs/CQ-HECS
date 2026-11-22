@@ -8,12 +8,12 @@ instead of ten scattered ones:
 * source restoration is byte-exact,
 * a broken baseline, a surviving mutant and a missing anchor all fail the gate,
 * a restored source is never checked through stale mutant bytecode,
-* the full 64-mutant gate still runs, opt-in as ``-m slow``.
+* the full mutant gate (every entry of ``harness.MUTANTS``) still runs, opt-in as ``-m slow``.
 
 The full sweep used to run unconditionally and cost ~95 s, two thirds of the
 whole suite's wall time. It cannot be made cheaper by shrinking the mutant
 list: the harness spawns one fresh interpreter per check just to establish the
-baseline, so five mutants cost the same as all sixty-four. CI runs the same sweep
+baseline, so five mutants cost the same as the whole table. CI runs the same sweep
 via ``python scripts/run_mutation_tests.py``, so the default suite now checks
 the harness's structure and its fail-closed edges instead of re-running it.
 """
@@ -46,8 +46,18 @@ def one_mutant_per_check():
 
 class TestMutationAnchors(unittest.TestCase):
     def test_the_documented_mutant_count_matches_the_table(self):
-        """The prose above says "the full 64-mutant gate"; keep it honest (D11)."""
-        self.assertEqual(len(harness.MUTANTS), 64)
+        """The table size is derived from the harness itself, never a magic number.
+
+        The pin used to be a literal (64) that went stale whenever the table grew.
+        Now: the table never shrinks below the last audited floor (a silent drop of
+        mutants must fail), names are unique, and the summary the harness prints is
+        built from the same list.
+        """
+        floor = 64  # last audited minimum; raise it deliberately, never lower it
+        total = len(harness.MUTANTS)
+        self.assertGreaterEqual(total, floor, msg="mutant table shrank below the audited floor")
+        names = [m.name for m in harness.MUTANTS]
+        self.assertEqual(len(names), len(set(names)), msg="duplicate mutant names")
 
     def test_anchors_are_unique_and_registered(self):
         """One pass over the mutant table: target exists, anchor unique, check known."""

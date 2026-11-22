@@ -48,3 +48,17 @@ A green `lake build` plus this audit is `FORMALIZED_LEMMA` for the named lemma o
 #print axioms CQHECS.omega_xRow_zRow
 
 #print axioms CQHECS.tableau_invariant
+
+#print axioms CQHECS.ResultContract.unresolved_derives_unresolved
+
+#print axioms CQHECS.ResultContract.failed_wins
+
+#print axioms CQHECS.ResultContract.unresolved_never_certified_or_exact
+
+#print axioms CQHECS.ResultContract.exact_requires
+
+#print axioms CQHECS.ResultContract.unresolved_has_no_certified_value
+
+#print axioms CQHECS.ResultContract.unresolved_flags_expose_no_value
+
+#print axioms CQHECS.ResultContract.value_only_for_exact_or_certified

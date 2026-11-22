@@ -145,7 +145,7 @@ Zwei getrennte Tabellen, damit keine Zahl dem falschen Commit zugeschrieben wird
 | Prüfung | Ergebnis | Beleg |
 |---|---|---|
 | Python-Suite, Windows / Python 3.13, Commit `6fe4f01` | 2896 bestanden, 109 übersprungen | `research/v7/evidence/waveA_A5.md` |
-| Mutationstests (früherer Stand) | 64/64 getötet | `research/v7/BASELINE_V7.md` |
+| Mutationstests (Snapshot-Lauf, W15; beim Freeze erneut) | 95/95 getötet | `research/v7/BASELINE_V7.md` |
 | CTest nativ (Vulkan an / nur CPU) | 26/26 / 15/15 | `research/v7/evidence/waveA_A2.md` |
 | Nicht ausgeführt | GCC/Clang-Sanitizer, Linux, WebGPU auf Hardware, `drat-trim`, `cake_lpr` | `RELEASE_NOTES_DRAFT.md` |
 
