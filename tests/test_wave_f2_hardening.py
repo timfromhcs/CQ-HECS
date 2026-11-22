@@ -1,7 +1,6 @@
 """Wave F2 hardening regressions: F-08 (MCP size caps), F-09 (non-loopback warning), F-10 (Content-Length)."""
 from __future__ import annotations
 
-import http.client
 import io
 import json
 import socket
