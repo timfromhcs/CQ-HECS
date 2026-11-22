@@ -1,0 +1,47 @@
+{
+  "schema": "cqhecs.w7.preregistration/1",
+  "written_before_benchmark": true,
+  "note": "Thresholds and outcome rules for Paths E/F/G. Written before bench_efg.py was first run; any later edit must be recorded in QUANTUM_SIMULATION_RESEARCH.md as an amendment, never silently. Outcome vocabulary: PROMOTE_OPT_IN | RESEARCH_ONLY. Default is RESEARCH_ONLY; PROMOTE_OPT_IN requires EVERY criterion of the path to be met.",
+  "seeds": {"development": [0, 1, 2, 3, 4], "held_out": [100, 101, 102, 103, 104, 105, 106, 107, 108, 109],
+            "rule": "Thresholds are evaluated on held-out seeds only. Development seeds are used for debugging and may not be used for a claim."},
+  "E": {
+    "hard_correctness": {
+      "E-H1": "amplitude <x|C|0> and Z-string expectation agree with the dense oracle to abs error <= 1e-10 for every strategy on every tiny case (n <= 12)",
+      "E-H2": "amplitudes also agree with Qiskit Statevector to <= 1e-10 on >= 20 cases (independent engine)"
+    },
+    "workload_families": ["grid_3x4_depth4_amplitude", "grid_4x4_depth3_amplitude", "grid_3x4_depth6_zz_observable"],
+    "criteria": {
+      "E-1": "on >= 2 of the 3 families, best geometry-aware strategy (geometry_sweep or greedy) has largest intermediate tensor log2-elements at least 2 bits below the time-ordered sequential baseline, median over held-out seeds",
+      "E-2": "on the same families, total contraction FLOPs (2^legs-union summed) at least 4x lower than sequential baseline, median over held-out seeds",
+      "E-3": "on no family is the selected strategy more than 1 bit worse than sequential baseline in largest tensor",
+      "E-4": "report (not gate) Path C max bond chi on the same circuits",
+      "E-5": "sampling convergence (TV vs bond/cut dimension) demonstrated. The prototype does not implement sampling; E-5 is therefore NOT_IMPLEMENTED and the maximum outcome for Path E in W7 is RESEARCH_ONLY."
+    }
+  },
+  "F": {
+    "hard_correctness": {
+      "F-H1": "with chi_max=None and Kraus unraveling, N->infinity limit is the density-matrix result: verified by exact enumeration identity sum_k K_k^dag K_k = I per channel and by statistical agreement below",
+      "F-H2": "noiseless trajectory run equals the dense statevector to <= 1e-10"
+    },
+    "workloads": ["w3_depol_ghz", "w4_ampdamp_ladder", "w5_mixed_2q_depol", "w6_mixed_randomized"],
+    "criteria": {
+      "F-1": "empirical coverage of the simultaneous normal-approximation CI (alpha=0.05, Bonferroni over 2^n outcomes) >= 0.90 over R=60 repetitions with N=400 on each workload, held-out seeds",
+      "F-2": "log-log slope of mean TV vs N on the ladder N in {25,50,100,200,400,800,1600} lies in [-0.65, -0.35] (Monte-Carlo 1/sqrt(N) = -0.5)",
+      "F-3": "with chi_max=None accumulated discarded weight <= 1e-12 on every trajectory (error separation: truncation error is zero; reported statistical error is purely stochastic)",
+      "F-4": "ADVANTAGE: on at least one workload with n <= 6, total trajectory wall time to reach TV<=0.02 (smallest N on the ladder that does so, held-out median) is lower than the density-matrix backend wall time for the same circuit. For n <= 6 the exact density matrix is cheap, so this is expected to FAIL; the failure is the recorded result.",
+      "F-5": "informational: variance ratio rotated/kraus unraveling; no effect on outcome"
+    }
+  },
+  "G": {
+    "hard_correctness": {
+      "G-H1": "with no truncation, MPE state equals dense statevector of the same circuit up to infidelity <= 1e-10 on all tiny cases",
+      "G-H2": "Trotterised circuit vs exact expm(-iHt) error is reported separately (Trotter error) from MPE truncation error and floating-point error"
+    },
+    "families": ["tfim_n6_trotter", "random_2q_n6_brickwork"],
+    "criteria": {
+      "G-1": "over (family, depth, chi) cells in which truncation is active for either method and the MPS baseline infidelity > 1e-12, MPE infidelity <= 0.5 x MPS infidelity in >= 50 percent of cells, in BOTH families (held-out seeds)",
+      "G-2": "product initial state only; post-selection and highly entangled initial states are NOT implemented, so the paper's advantage regime (post-selection) is untested; a G-1 failure is recorded as a loss on the tested regime, not a refutation of the paper"
+    }
+  },
+  "router": "Default router is unchanged. A test asserts VALID_PATHS == (A,B,C,D), that no plan candidate or executed path is E/F/G, and that no cqhecs module imports research prototypes."
+}
