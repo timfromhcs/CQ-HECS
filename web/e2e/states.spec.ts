@@ -140,7 +140,8 @@ test.describe("run card export and import", () => {
 
   async function importText(page: Page, name: string, text: string) {
     mkdirSync("e2e-results/imports", { recursive: true });
-    const path = `e2e-results/imports/${name}`;
+    // One file per parallel worker: tests that share a path race when run with --repeat-each / workers.
+    const path = `e2e-results/imports/w${test.info().parallelIndex}-${name}`;
     writeFileSync(path, text);
     await page.setInputFiles("#res-import-file", path);
   }

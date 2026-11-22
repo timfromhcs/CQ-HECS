@@ -14,9 +14,10 @@ and counts a different total; the freeze breakdown belongs to `waveE_E5.md`).
 {
   "schema": "hcs.freeze_numbers.v1",
   "freeze_sha": "38e799b",
-  "python": {"passed": 4269, "skipped": 134, "failed": 0},
+  "python": {"passed": 4314, "skipped": 133, "failed": 0},
   "mutation": {"killed": 95, "total": 95, "scope": "in place at the freeze SHA"},
   "web_unit": {"passed": 167, "total": 167},
+  "refreshed": "python, web_unit, ctest_cpu, ctest_vulkan re-measured at HEAD f880d0a (wave F) - raw output in waveF_*.txt; mutation and playwright remain freeze-SHA 38e799b figures (NOT re-run)",
   "playwright": {"passed": 128, "skipped": 1, "skipped_reason": "WebGPU adapter absent (NOT_RUN)"},
   "studio_plan_ui": 6,
   "ctest_vulkan": {"passed": 26, "total": 26},

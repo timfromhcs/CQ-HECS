@@ -145,7 +145,7 @@ Zwei getrennte Tabellen, damit keine Zahl dem falschen Commit zugeschrieben wird
 
 | Prüfung | Ergebnis | Beleg |
 |---|---|---|
-| Python-Suite, Windows, Freeze-SHA `38e799b` | 4269 bestanden, 134 übersprungen, 0 fehlgeschlagen | `research/v7/evidence/waveE_E2.md` (Integrator-Protokoll) |
+| Python-Suite, Windows, erneut gelaufen auf `f880d0a` + Wave-F-Arbeitsbaum | 4314 bestanden, 133 übersprungen, 0 fehlgeschlagen | `research/v7/evidence/waveE_E2.md` (Integrator-Protokoll) |
 | Übersprungene Tests | umgebungsbedingt (natives Build-Verzeichnis nicht gesetzt, optionale Extras fehlen), keine Fehlschläge | `research/v7/SKIP_BUDGET.json` |
 | Mutationstests, beim Freeze vor Ort | 95/95 getötet | `research/v7/evidence/waveE_E2.md` |
 | CTest nativ (Vulkan an / nur CPU) | 26/26 / 15/15 | `research/v7/evidence/waveE_E2.md`, `waveA_A2.md` |

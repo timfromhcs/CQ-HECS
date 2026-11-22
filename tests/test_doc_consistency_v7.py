@@ -235,6 +235,85 @@ def test_readme_numbers_equal_the_freeze_evidence_file():
         assert not missing, f"{name} does not state the freeze-SHA numbers {missing}"
 
 
+# --- raw, freshly produced evidence (non-circular) --------------------------------------
+# The freeze-number JSON block above is itself typed by a human from the same run the READMEs
+# were copied from, so comparing README == block alone proves nothing. These tests parse the
+# RAW tool output captured in research/v7/evidence/waveF_* (pytest summary, node:test TAP,
+# ctest summaries, skip_budget JSON) and require the block and the READMEs to agree with it.
+
+EVIDENCE = REPO / "research" / "v7" / "evidence"
+
+
+def _raw(name: str) -> str:
+    path = EVIDENCE / name
+    assert path.is_file(), f"missing raw evidence file research/v7/evidence/{name}"
+    return path.read_text(encoding="utf-8-sig", errors="replace").replace("\r\n", "\n")
+
+
+def raw_pytest() -> dict:
+    line = [l for l in _raw("waveF_pytest_tail.txt").splitlines() if re.search(r"\d+ passed", l)][-1]
+    counts = {k: int(v) for v, k in re.findall(r"(\d+) (passed|failed|skipped|error|errors|deselected|xfailed|xpassed)", line)}
+    return {"passed": counts.get("passed", 0), "skipped": counts.get("skipped", 0),
+            "failed": counts.get("failed", 0) + counts.get("error", 0) + counts.get("errors", 0)}
+
+
+def raw_web_unit() -> dict:
+    text = _raw("waveF_web_unit_tail.txt")
+    return {"passed": int(re.search(r"^# pass (\d+)", text, re.M).group(1)),
+            "total": int(re.search(r"^# tests (\d+)", text, re.M).group(1)),
+            "failed": int(re.search(r"^# fail (\d+)", text, re.M).group(1))}
+
+
+def raw_ctest(name: str) -> dict:
+    text = _raw(name)
+    m = re.search(r"(\d+)% tests passed(?:, (\d+) tests failed)? out of (\d+)", text)
+    assert m, f"{name} has no ctest summary line"
+    total = int(m.group(3))
+    failed = len(re.findall(r"\*\*\*(?:Failed|Exception|Timeout|Not Run)", text)) + int(m.group(2) or 0)
+    return {"passed": total - failed, "total": total}
+
+
+def test_fresh_raw_evidence_has_no_failures():
+    py = raw_pytest()
+    assert py["failed"] == 0, py
+    web = raw_web_unit()
+    assert web["failed"] == 0 and web["passed"] == web["total"], web
+    for name in ("waveF_ctest_cpu.txt", "waveF_ctest_vulkan.txt"):
+        c = raw_ctest(name)
+        assert c["passed"] == c["total"] > 0, (name, c)
+
+
+def test_freeze_block_equals_the_raw_tool_output():
+    n = freeze_numbers()
+    py = raw_pytest()
+    assert (n["python"]["passed"], n["python"]["skipped"], n["python"]["failed"]) == (py["passed"], py["skipped"], py["failed"])
+    web = raw_web_unit()
+    assert (n["web_unit"]["passed"], n["web_unit"]["total"]) == (web["passed"], web["total"])
+    cpu, vk = raw_ctest("waveF_ctest_cpu.txt"), raw_ctest("waveF_ctest_vulkan.txt")
+    assert (n["ctest_cpu"]["passed"], n["ctest_cpu"]["total"]) == (cpu["passed"], cpu["total"])
+    assert (n["ctest_vulkan"]["passed"], n["ctest_vulkan"]["total"]) == (vk["passed"], vk["total"])
+
+
+def test_readmes_state_the_raw_tool_output_numbers():
+    py, web = raw_pytest(), raw_web_unit()
+    cpu, vk = raw_ctest("waveF_ctest_cpu.txt"), raw_ctest("waveF_ctest_vulkan.txt")
+    for name in LANGUAGE_READMES:
+        text = read(name)
+        for token in (f"{py['passed']}", f"{py['skipped']}", f"{web['passed']}/{web['total']}",
+                      f"{vk['passed']}/{vk['total']}", f"{cpu['passed']}/{cpu['total']}"):
+            assert token in text, f"{name} does not state fresh-evidence number {token}"
+
+
+def test_fresh_skip_reasons_are_within_the_default_environment_budget():
+    import skip_budget
+
+    fresh = json.loads(_raw("waveF_skip_reasons.json"))
+    assert fresh["total"] == raw_pytest()["skipped"], "skip JSON and pytest summary disagree"
+    budget_doc = json.loads((REPO / "research" / "v7" / "SKIP_BUDGET.json").read_text(encoding="utf-8"))
+    problems = skip_budget.compare(skip_budget.select_budget(budget_doc, None), fresh["reasons"])
+    assert not problems, problems
+
+
 def test_superseded_suite_numbers_are_gone_from_the_current_tables():
     # 2896/109 (commit 6fe4f01) and 105 web unit tests were the pre-freeze numbers.
     for name in LANGUAGE_READMES + ("RELEASE_NOTES_DRAFT.md",):

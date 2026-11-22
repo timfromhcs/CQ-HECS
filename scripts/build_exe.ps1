@@ -35,8 +35,14 @@ $WorkDir = (Resolve-Path $WorkDir).Path
 
 # qiskit-aer is optional (only `cq-hecs verify` uses it): bundle it only if present.
 $AerArgs = @()
-& $Python -c "import qiskit_aer" 2>$null
-if ($LASTEXITCODE -eq 0) {
+# Windows PowerShell 5.1 turns native stderr into a terminating error under
+# $ErrorActionPreference = "Stop" even with 2>$null, so relax it for this probe only.
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+& $Python -c "import qiskit_aer" 2>&1 | Out-Null
+$aerProbe = $LASTEXITCODE
+$ErrorActionPreference = $prevEap
+if ($aerProbe -eq 0) {
   $AerArgs = @("--collect-submodules", "qiskit_aer", "--collect-data", "qiskit_aer")
 } else {
   Write-Host "qiskit_aer not installed: building without it (cq-hecs verify will report it missing)"

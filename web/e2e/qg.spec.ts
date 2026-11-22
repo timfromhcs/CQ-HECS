@@ -111,7 +111,12 @@ test("circuit preview shows exact QASM and the SHA-256 the Python reference comp
 
 test("experiment designer: validation, plan with no credit estimate, typed refusal, no request sent", async ({ page }) => {
   const posts: string[] = [];
-  page.on("request", (r) => { if (r.method() !== "GET") posts.push(`${r.method()} ${r.url()}`); });
+  // Only state-changing requests count. HEAD is read-only, and the Vercel preview toolbar
+  // (vercel.live) posts its own login validation on preview deployments; neither is the app.
+  page.on("request", (r) => {
+    if (["GET", "HEAD"].includes(r.method()) || new URL(r.url()).hostname === "vercel.live") return;
+    posts.push(`${r.method()} ${r.url()}`);
+  });
   await open(page);
   await tab(page, "design").click();
   await expect(page.locator("#qg-panel")).toContainText("UNAVAILABLE");

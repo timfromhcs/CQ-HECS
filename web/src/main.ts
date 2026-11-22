@@ -395,16 +395,19 @@ function setupNoise() {
 
 // ------------------------------------------------------------------ code
 
+// Debounce handle for the typing-triggered re-estimate. runCurrent cancels it: a pending
+// estimate firing after Run would hide the run's own error message (updateEstimate clears it).
+let estimateTimer = 0;
+
 async function ensureEditor() {
   if (editor) return;
   const host = $("#editor");
   const { createEditor } = await import("./editor");
   host.replaceChildren();
-  let pending = 0;
   // Re-estimate (limits, memory, runtime) as the user types, debounced.
   editor = createEditor(host, drafts[codeLang], codeLang, runCurrent, () => {
-    clearTimeout(pending);
-    pending = window.setTimeout(updateEstimate, 250);
+    clearTimeout(estimateTimer);
+    estimateTimer = window.setTimeout(updateEstimate, 250);
   });
   updateEstimate();
 }
@@ -575,6 +578,7 @@ function runOnce(c: Circuit, ops: ReturnType<typeof compile>, shots: number, eng
 
 async function runCurrent() {
   if (!$("#stop").hidden) return;
+  clearTimeout(estimateTimer);
   let p: ReturnType<typeof plan>;
   try { p = plan(); } catch (e) { showCodeError(e); return; }
   if (!p.est.safe) { $("#estimate").textContent = `⚠ ${t("run.refused", { reason: estimateReason(p) })}`; return; }

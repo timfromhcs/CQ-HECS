@@ -3,7 +3,9 @@
 Operational procedure for cutting, verifying and (if needed) withdrawing a CQ-HECS release. It describes
 what `.github/workflows/release.yml` does and what the maintainer must do around it. The workflow
 definitions have NOT been executed as a whole yet; treat every step below as unproven until a real
-release has run it.
+release has run it. What HAS been done: `actionlint` 1.7.7 is clean on `release.yml` and `package.yml`,
+every pinned action SHA was resolved against its tag, and the shell/Python steps were replayed locally
+against fake inputs (see `research/v7/evidence/waveF_release.md`). A dry run on GitHub is still pending.
 
 Invariant to preserve: **tag == tested SHA**. The release is built from, and the tag must point to, the
 exact commit whose CI (`ci.yml`) and packaging (`package.yml`) were green.
@@ -29,6 +31,12 @@ git push origin "$TESTED":main                            # fast-forward only; n
 
 The push is rejected by Git if it is not a fast-forward. Because the pushed SHA is the tested SHA, the
 `release.yml` run that follows (main push, tag does not exist yet) releases exactly that commit.
+Before pushing, confirm that `ci.yml` is green for `$TESTED` in a run whose event is `push` (the push of
+the branch itself): `gh run list --workflow ci.yml --commit "$TESTED" --json event,conclusion,status`.
+A `pull_request` run does NOT count for the release gate because it tests the PR merge ref.
+Pushing to `main` has two effects that start at the same time and are independent of each other:
+Vercel deploys the web app to production, and `release.yml` starts. If `release.yml` later fails, the
+web app is already live; roll it back as in section 5 if needed.
 Do not use `--force` or `--force-with-lease`. Pushing to `main` deploys production: do it only when
 the release is approved.
 
@@ -46,19 +54,27 @@ true and the release report must say so.
 1. `resolve-tag`: for a `v*` tag push AND a main push, the released commit must be an ancestor of
    `origin/main` (`git merge-base --is-ancestor`). A tag on a side branch fails with a clear error.
    On a main push the tag `v<scripts/version.py>` is created only if it does not exist yet.
-2. `verify-required-ci`: a green `ci.yml` run for the released SHA (waits up to 70 minutes).
+2. `verify-required-ci`: a green `ci.yml` run of event `push` or `workflow_dispatch` for the released SHA
+   (waits up to 70 minutes). Any `failure`, `timed_out` or `startup_failure` run for that SHA fails the
+   gate even if another run is green. Cancelled runs are ignored; if no success ever appears the gate
+   times out and fails (fail closed).
 3. `package` (`package.yml`): wheel, sdist, EXE zip, native zips, SBOMs, built once from this commit.
 4. `release` job, in order:
+   0. `resolve-tag` already refused a tag push whose name is not `v<scripts/version.py>`;
    1. refuses if a PUBLISHED release for the tag already exists (releases are immutable);
    2. checks the tag equals `v<version>`, selects exactly the eight assets, checks byte identity with
       `package.yml`'s manifest, writes and verifies `SHA256SUMS`;
    3. checks build identity: each zip root contains `BUILD-INFO.json` with the release SHA and
       version; both SBOMs carry `cqhecs:source-revision` equal to the release SHA; the wheel SBOM lists
       no venv tooling;
-   4. creates the release as a DRAFT and uploads all assets;
+   4. creates the release as a DRAFT and uploads all assets (`softprops/action-gh-release`, pinned;
+      `fail_on_unmatched_files: true`, `overwrite_files: true`; its `id` output is the draft's release id);
    5. downloads the uploaded assets back from the draft and verifies them against the uploaded
-      `SHA256SUMS` (set of names, upload state, size, `make_manifest.py --verify`);
-   6. only then promotes the draft (`draft=false`) and checks that the tag resolves to the tested SHA.
+      `SHA256SUMS` (it is still a draft, its tag name, exact set of asset names, upload state, size,
+      byte equality of `SHA256SUMS`, `make_manifest.py --verify`);
+   6. only then promotes the draft (`draft=false`, together with `target_commitish=<tested SHA>` so a
+      reused draft cannot create the tag on an older commit) and checks that the tag resolves to the
+      tested SHA.
 
 A failure in steps 1 to 5 leaves nothing public. A failure in step 6 leaves a published release that must
 be yanked (section 5).
@@ -69,6 +85,10 @@ be yanked (section 5).
   (for main-push releases). Re-run the failed workflow run ("Re-run failed jobs" or "Re-run all
   jobs"). The release job reuses the draft by tag name and overwrites assets with the same names.
   Stale drafts can be deleted in the GitHub Releases page ("Delete draft") with no effect on `main`.
+  A draft that still carries assets from an older attempt under different names makes step 5 fail with
+  "uploaded asset set differs ... extra=[...]"; delete that draft and re-run. Tags created through the
+  Releases API with `GITHUB_TOKEN` do not start another workflow run, so publishing does not retrigger
+  `release.yml`.
 * Failure in verification (step 5): the draft stays. Do not publish it by hand. Find the cause in the
   job log, fix it, re-run. A mismatch between `SHA256SUMS` and the uploaded bytes is a hard error.
 * Failure after promotion: the release is public. Follow section 5; do not edit published assets.

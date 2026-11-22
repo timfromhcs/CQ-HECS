@@ -65,7 +65,7 @@ Finite, machine-specific numbers. None is an asymptotic or universal claim.
 
 | Measurement | Value | Evidence |
 | :--- | :--- | :--- |
-| Full Python suite, Windows, freeze SHA `38e799b` | 4269 passed, 134 skipped, 0 failed | `waveE_E2.md` (integrator record) |
+| Full Python suite, Windows, re-run at `f880d0a` + wave F working tree | 4314 passed, 133 skipped, 0 failed | `waveE_E2.md` (integrator record) |
 | Skip budget | skips are environmental (native build directory not set, optional extras absent), not failures | `SKIP_BUDGET.json` |
 | Mutation suite, in place at the freeze | 95/95 killed (an earlier pre-Wave-A baseline was 64/64) | `waveE_E2.md`, `BASELINE_V7.md` |
 | Native CTest, Vulkan ON, one AMD Radeon iGPU, MSVC | 26/26 | `waveE_E2.md`, `waveA_A2.md` |

@@ -144,7 +144,7 @@ Deux tableaux séparés, pour qu'aucun chiffre ne soit attribué au mauvais comm
 
 | Contrôle | Résultat | Preuve |
 |---|---|---|
-| Suite Python, Windows, SHA de gel `38e799b` | 4269 réussis, 134 ignorés, 0 échec | `research/v7/evidence/waveE_E2.md` (relevé de l'intégrateur) |
+| Suite Python, Windows, relancée sur `f880d0a` + arbre de travail wave F | 4314 réussis, 133 ignorés, 0 échec | `research/v7/evidence/waveE_E2.md` (relevé de l'intégrateur) |
 | Tests ignorés | dus à l'environnement (répertoire de build natif non défini, extras optionnels absents), pas des échecs | `research/v7/SKIP_BUDGET.json` |
 | Tests de mutation, sur place au gel | 95/95 tués | `research/v7/evidence/waveE_E2.md` |
 | CTest natif (Vulkan actif / CPU seul) | 26/26 / 15/15 | `research/v7/evidence/waveE_E2.md`, `waveA_A2.md` |

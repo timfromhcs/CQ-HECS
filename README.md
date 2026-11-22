@@ -287,7 +287,7 @@ That rule is enforced in code, not only in documentation:
 | **Public surfaces** | `cq-hecs` CLI, `cq-hecs studio`, Qiskit `BackendV2`, Python API, C ABI, SAT engine |
 | **Simulation paths** | A: stabilizer tableau · B: stabilizer rank · C: untruncated MPS · D: sparse Pauli |
 | **Noise** | Typed profiles, Kraus channels, exact float64 density matrix up to 10 qubits |
-| **Verification** | see [Verification](#verification): freeze-SHA `38e799b`: Python 4269 passed / 134 skipped / 0 failed, 95/95 mutants, web unit 167/167, Playwright 128 passed / 1 skipped (WebGPU NOT_RUN), CTest 26/26 (Vulkan) and 15/15 (CPU); the 12-check selftest and the 21/21 independent oracle are historical (v3.x) |
+| **Verification** | see [Verification](#verification): freeze-SHA `38e799b` (Python, web unit and CTest counts re-run at `f880d0a` + wave F tree): Python 4314 passed / 133 skipped / 0 failed, 95/95 mutants, web unit 167/167, Playwright 128 passed / 1 skipped (WebGPU NOT_RUN), CTest 26/26 (Vulkan) and 15/15 (CPU); the 12-check selftest and the 21/21 independent oracle are historical (v3.x) |
 | **Platforms** | Linux x64, Windows 10/11; Python 3.11–3.14 |
 | **License** | Apache-2.0 |
 
@@ -912,7 +912,7 @@ not projections. A green run on an older commit is not evidence for a later comm
 
 | Gate | Result | Evidence |
 | :--- | :--- | :--- |
-| Python suite, Windows, freeze SHA `38e799b` | **4269 passed**, **134 skipped**, 0 failed | `research/v7/evidence/waveE_E2.md` (integrator record) |
+| Python suite, Windows, re-run at `f880d0a` + wave F working tree | **4314 passed**, **133 skipped**, 0 failed | `research/v7/evidence/waveF_pytest_tail.txt`, `waveF_tests.md` |
 | Skip budget | skips are environmental (native build directory not set, optional extras absent), not failures | `research/v7/SKIP_BUDGET.json` |
 | Mutation suite, in place at the freeze | 95/95 killed | `research/v7/evidence/waveE_E2.md` |
 | Native CTest, Vulkan ON, one AMD iGPU, MSVC | 26/26 | `research/v7/evidence/waveE_E2.md`, `waveA_A2.md` |
