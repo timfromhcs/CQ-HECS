@@ -11,6 +11,13 @@ silently disabled or environment-dropped test cannot hide.
 
 The budget lives in research/v7/SKIP_BUDGET.json. Counts may only change with an
 explicit `--record` and a reason in the commit message; fewer skips are always allowed.
+
+Environments. A skipped test is environmental, so the budget may carry per-environment
+ceilings (budget key "environments", each with its own "reasons" and a "description" and
+per-reason "justifications"). `--environment NAME` selects one; without it the top-level
+"reasons" apply (the default environment: no native build, no optional extras). A reason
+that is absent from an environment's budget is NOT budgeted there: it fails the gate, which
+is how the "with native build" environment proves that native-dependent tests really ran.
 """
 from __future__ import annotations
 
@@ -57,12 +64,24 @@ def compare(budget: Dict[str, int], counts: Dict[str, int]) -> List[str]:
     return problems
 
 
+def select_budget(budget_doc: dict, environment: str | None) -> Dict[str, int]:
+    """The per-reason ceilings for `environment` (None -> the top-level default)."""
+    if not environment:
+        return budget_doc.get("reasons", {})
+    environments = budget_doc.get("environments", {})
+    if environment not in environments:
+        raise SystemExit(f"unknown budget environment {environment!r}; known: {sorted(environments)}")
+    return environments[environment].get("reasons", {})
+
+
 def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--junitxml", required=True, help="JUnit XML report to parse")
     parser.add_argument("--budget", default=str(DEFAULT_BUDGET))
     parser.add_argument("--record", action="store_true", help="write the current counts as the budget")
     parser.add_argument("--check", action="store_true", help="fail on unbudgeted or grown skips")
+    parser.add_argument("--environment", default=None,
+                        help="budget environment to check/record (default: the top-level reasons)")
     args = parser.parse_args(argv)
 
     counts = parse_junit(Path(args.junitxml))
@@ -80,13 +99,14 @@ def main(argv: List[str] | None = None) -> int:
 
     if args.check:
         budget_doc = json.loads(budget_path.read_text(encoding="utf-8"))
-        problems = compare(budget_doc.get("reasons", {}), counts)
+        problems = compare(select_budget(budget_doc, args.environment), counts)
         if problems:
             print("Skip budget FAILED:", file=sys.stderr)
             for problem in problems:
                 print(f"  - {problem}", file=sys.stderr)
             return 1
-        print(f"Skip budget OK: {total} skipped tests, no new or grown reason")
+        print(f"Skip budget OK: {total} skipped tests, no new or grown reason"
+              + (f" (environment {args.environment})" if args.environment else ""))
         return 0
 
     print(json.dumps({"schema": SCHEMA, "total": total, "reasons": counts}, indent=2, sort_keys=True))

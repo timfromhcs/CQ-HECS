@@ -1,17 +1,74 @@
 {
+  "environments": {
+    "default": {
+      "description": "Freeze environment as measured 2026-11-22: Python 3.13, no CQ_HECS_BUILD_DIR, no PYTHONPATH to the native extension, no optional extras, no web/node_modules. Same as the top-level 'reasons'.",
+      "reasons": {
+        "CQ_HECS_EXE not set": 6,
+        "Native C-ABI library not found. Build the native component first: cmake -B build -DCMAKE_BUILD_TESTS=ON && cmake --build build --config Release": 6,
+        "Native executable not found. Build the native component first: cmake -B build -DCMAKE_BUILD_TESTS=ON && cmake --build build --config Release": 46,
+        "Vulkan OMNIWAVE kernel unavailable": 15,
+        "Vulkan OMNIWAVE kernel unavailable: native library with cq_omniwave_bcp_eval not found": 25,
+        "collection skipped": 2,
+        "cq_hecs executable not found (Vulkan build; set CQ_HECS_BUILD_DIR)": 7,
+        "native _cq_hecs_core is not built; the legacy VulkanQpuBackend provider requires it (build the native component to run this)": 3,
+        "native _cqhecs_core not available": 1,
+        "native library cq_hecs.dll not found (set CQ_HECS_BUILD_DIR)": 4,
+        "native library cq_hecs_core.dll not found (set CQ_HECS_BUILD_DIR)": 9,
+        "node or web/node_modules (Playwright, axe) not installed: NOT_RUN": 1,
+        "optional": 1,
+        "python-sat (optional extra) not installed": 1,
+        "qiskit-ibm-runtime not installed (needed for Aer's from_backend oracle)": 4,
+        "set CQ_CAKE_LPR to a cake_lpr binary": 1,
+        "set CQ_DRAT_TRIM to a drat-trim executable": 1,
+        "set CQ_LRAT_CHECK to an lrat-check binary": 1
+      },
+      "total": 134
+    },
+    "with_native": {
+      "description": "Python 3.14 (matches the cp314 native extension) + native Vulkan build (cmake -G 'Visual Studio 17 2022' -A x64 -DCQ_ENABLE_VULKAN=ON, Release) exported as CQ_HECS_BUILD_DIR and on PYTHONPATH, qiskit-ibm-runtime and web/node_modules present, CQ_HECS_EXE unset, no external proof checkers, no python-sat. Native-dependent reasons are intentionally ABSENT (budget 0): any native skip fails the gate.",
+      "reasons": {
+        "CQ_HECS_EXE not set": 6,
+        "collection skipped": 2,
+        "optional": 1,
+        "python-sat (optional extra) not installed": 1,
+        "set CQ_CAKE_LPR to a cake_lpr binary": 1,
+        "set CQ_DRAT_TRIM to a drat-trim executable": 1,
+        "set CQ_LRAT_CHECK to an lrat-check binary": 1
+      },
+      "total": 13
+    }
+  },
+  "justifications": {
+    "CQ_HECS_EXE not set": "Opt-in smoke test of the PyInstaller onedir exe (scripts/build_exe.ps1 -> dist/cq-hecs/cq-hecs.exe). NOT_RUN in both environments until the exe lane is built; the native cq_hecs.exe is a different program and must NOT be used for CQ_HECS_EXE.",
+    "collection skipped": "tests/test_sat_certificates.py and tests/test_sat_external.py importorskip pysat (python-sat optional extra); known Windows/Py3.14 external abort, see AGENTS_V7 / GEMINI_HANDOFF.",
+    "native (all 9 reasons)": "Environmental: no native build dir was exported (CQ_HECS_BUILD_DIR) in the default environment. These 116 skips are budgeted ONLY in the default environment; in 'with_native' they must be 0 (verified, see evidence/waveE_E5.md: 691 passed, 0 skipped).",
+    "node or web/node_modules ...": "Default (freeze, py3.13) environment had no web/node_modules; Studio plan UI test is NOT_RUN there. Present (and passing) in the with_native environment run.",
+    "optional": "tests/test_schema_contracts.py openapi validator extra not installed.",
+    "python-sat (optional extra) not installed": "Same optional extra as above (tests/test_sat_external_isolated.py).",
+    "qiskit-ibm-runtime not installed": "Default (freeze, py3.13) interpreter lacks the extra; the 4 Aer from_backend oracle tests passed under the py3.14 interpreter that has it.",
+    "set CQ_CAKE_LPR / CQ_DRAT_TRIM / CQ_LRAT_CHECK": "Optional external proof checkers (cake_lpr, drat-trim, lrat-check) are not installed; the corresponding trust levels stay NOT_RUN, never PASS."
+  },
+  "notes": "The total is not a single number to raise: each reason is budgeted per environment. Reconciled in research/v7/evidence/waveE_E5.md (supersedes the 105 recorded earlier, which predated the native/CLI-hardening test files).",
   "reasons": {
-    "CQ_HECS_EXE not set": 4,
+    "CQ_HECS_EXE not set": 6,
     "Native C-ABI library not found. Build the native component first: cmake -B build -DCMAKE_BUILD_TESTS=ON && cmake --build build --config Release": 6,
     "Native executable not found. Build the native component first: cmake -B build -DCMAKE_BUILD_TESTS=ON && cmake --build build --config Release": 46,
     "Vulkan OMNIWAVE kernel unavailable": 15,
     "Vulkan OMNIWAVE kernel unavailable: native library with cq_omniwave_bcp_eval not found": 25,
     "collection skipped": 2,
+    "cq_hecs executable not found (Vulkan build; set CQ_HECS_BUILD_DIR)": 7,
     "native _cq_hecs_core is not built; the legacy VulkanQpuBackend provider requires it (build the native component to run this)": 3,
     "native _cqhecs_core not available": 1,
+    "native library cq_hecs.dll not found (set CQ_HECS_BUILD_DIR)": 4,
+    "native library cq_hecs_core.dll not found (set CQ_HECS_BUILD_DIR)": 9,
+    "node or web/node_modules (Playwright, axe) not installed: NOT_RUN": 1,
+    "optional": 1,
+    "python-sat (optional extra) not installed": 1,
+    "qiskit-ibm-runtime not installed (needed for Aer's from_backend oracle)": 4,
     "set CQ_CAKE_LPR to a cake_lpr binary": 1,
     "set CQ_DRAT_TRIM to a drat-trim executable": 1,
     "set CQ_LRAT_CHECK to an lrat-check binary": 1
   },
   "schema": "hcs.skip_budget.v1",
-  "total": 105
+  "total": 134
 }

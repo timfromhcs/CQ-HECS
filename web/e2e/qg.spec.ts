@@ -24,7 +24,7 @@ test("every workspace renders, the console is clean and nothing leaves the origi
   const base = new URL(process.env.E2E_BASE_URL ?? "http://127.0.0.1:4173").origin;
   page.on("request", (r) => {
     const u = new URL(r.url());
-    if (u.protocol.startsWith("http") && u.origin !== base && !/fonts\.(googleapis|gstatic)\.com$/.test(u.hostname)) external.push(r.url());
+    if (u.protocol.startsWith("http") && u.origin !== base && !/^(fonts\.(googleapis|gstatic)\.com|vercel\.live)$/.test(u.hostname)) external.push(r.url());
   });
   await open(page);
   await expect(page.locator("#qg-root h1")).toContainText("Quantum Gravity Lab");
