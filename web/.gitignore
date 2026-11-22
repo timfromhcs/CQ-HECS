@@ -7,3 +7,4 @@ tests/*.bundle.mjs
 !tests/core.test.ts
 e2e-results/
 playwright-report/
+test-results/

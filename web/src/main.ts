@@ -11,6 +11,7 @@ import { pigeonhole, random3Sat, toDimacs, type SweepPoint } from "./sat";
 import type { EngineInfo, EngineKind, Noise, RunResult, WorkerRequest, WorkerResponse } from "./protocol";
 import type { CodeEditor } from "./editor";
 import { buildRunCard } from "./provenance";
+import { parseRunCard } from "./runcard_import";
 import { hasGateNoise, webgpuRefusal } from "./noise_predicate";
 import { fallbackLimit } from "./fallback";
 import { trajectoryCount } from "./simulate";
@@ -40,22 +41,39 @@ const drafts: Record<"qasm" | "js", string> = {
 
 // ------------------------------------------------------------------ worker
 
+/** Workers that have already reported an `error` event (script failed to load, uncaught throw). */
+const failedWorkers = new WeakMap<Worker, string>();
+
 function startWorker(): Worker {
-  return new Worker(new URL("./engine.worker.ts", import.meta.url), { type: "module" });
+  const w = new Worker(new URL("./engine.worker.ts", import.meta.url), { type: "module" });
+  // The event can fire before anyone is waiting on this worker (a script that fails to load
+  // does so during boot), so the failure is remembered instead of being missed.
+  w.addEventListener("error", (e) => failedWorkers.set(w, (e as ErrorEvent).message || t("err.worker")));
+  return w;
 }
 
 function ask<T extends WorkerResponse["type"]>(msg: WorkerRequest, type: T, id?: number): Promise<Extract<WorkerResponse, { type: T }> | { type: "error"; message: string }> {
   return new Promise((resolve) => {
+    const current = worker;
+    const earlier = failedWorkers.get(current);
+    if (earlier !== undefined) { resolve({ type: "error", message: earlier }); return; }
     const handler = (e: MessageEvent<WorkerResponse>) => {
       const m = e.data;
       const sameId = id === undefined || !("id" in m) || (m as { id?: number }).id === id;
       if ((m.type === type || (m.type === "error" && id !== undefined)) && sameId) {
-        worker.removeEventListener("message", handler);
+        current.removeEventListener("message", handler);
+        current.removeEventListener("error", crashed);
         resolve(m as Extract<WorkerResponse, { type: T }>);
       }
     };
-    worker.addEventListener("message", handler);
-    worker.postMessage(msg);
+    const crashed = (e: Event) => {
+      current.removeEventListener("message", handler);
+      current.removeEventListener("error", crashed);
+      resolve({ type: "error", message: (e as ErrorEvent).message || t("err.worker") });
+    };
+    current.addEventListener("message", handler);
+    current.addEventListener("error", crashed);
+    current.postMessage(msg);
   });
 }
 
@@ -523,15 +541,31 @@ function stopRun() {
 function runOnce(c: Circuit, ops: ReturnType<typeof compile>, shots: number, engine: EngineKind, noise: Noise, onProgress?: (f: number, label: string) => void, seed = (Math.random() * 2 ** 31) | 0): Promise<RunResult> {
   const id = ++reqId;
   return new Promise((resolve, reject) => {
+    const current = worker;
+    if (failedWorkers.has(current)) { current.terminate(); worker = startWorker(); ask({ type: "init" }, "init"); reject(new Error(t("err.worker"))); return; }
+    const cleanup = () => {
+      current.removeEventListener("message", onMsg);
+      current.removeEventListener("error", onCrash);
+      current.removeEventListener("messageerror", onCrash);
+    };
+    // A worker that dies (out of memory, uncaught exception, script failure) never answers.
+    // Without this the page would stay "busy" forever: settle the run, restart the worker.
+    const onCrash = () => {
+      cleanup();
+      if (worker === current) { current.terminate(); worker = startWorker(); ask({ type: "init" }, "init"); }
+      reject(new Error(t("err.worker")));
+    };
     const onMsg = (e: MessageEvent<WorkerResponse>) => {
       const m = e.data;
       if (m.type === "progress" && m.id === id) onProgress?.(m.fraction, m.label);
       else if ((m.type === "result" && m.result.id === id) || (m.type === "error" && m.id === id)) {
-        worker.removeEventListener("message", onMsg);
+        cleanup();
         if (m.type === "result") resolve(m.result); else reject(new Error(m.message));
       }
     };
     worker.addEventListener("message", onMsg);
+    worker.addEventListener("error", onCrash);
+    worker.addEventListener("messageerror", onCrash);
     worker.postMessage({
       type: "run", id, numQubits: c.numQubits, numClbits: c.numClbits, ops, shots,
       seed, engine, noise,
@@ -641,8 +675,39 @@ async function exportResult() {
   URL.revokeObjectURL(a.href);
 }
 
+async function importRunCard(file: File) {
+  const status = $("#import-status");
+  status.hidden = false;
+  status.classList.remove("bad");
+  const r = await parseRunCard(await file.text());
+  if (!r.ok) {
+    status.classList.add("bad");
+    status.textContent = t("import.fail", { code: r.code, message: t(`import.${r.code}`) });
+    return;
+  }
+  drafts.qasm = r.qasm;
+  const circuit = parseQasm(r.qasm);
+  if (circuit.numQubits <= 24) {
+    composer.load(circuit);
+    $<HTMLInputElement>("#qubits").value = String(circuit.numQubits);
+  }
+  $<HTMLInputElement>("#shots").value = String(r.shots);
+  const gpu = document.querySelector<HTMLOptionElement>('#engine option[value="webgpu"]');
+  $<HTMLSelectElement>("#engine").value = r.engine === "webgpu" && gpu && !gpu.disabled ? "webgpu" : "wasm";
+  editor?.set(r.qasm, "qasm");
+  status.textContent = t("import.ok", { shots: r.shots, seed: r.seed, digest: r.digest.slice(0, 12) });
+  updateEstimate();
+}
+
 function setupRun() {
   $("#res-export").addEventListener("click", exportResult);
+  const importInput = $<HTMLInputElement>("#res-import-file");
+  $("#res-import").addEventListener("click", () => importInput.click());
+  importInput.addEventListener("change", async () => {
+    const file = importInput.files?.[0];
+    importInput.value = "";
+    if (file) await importRunCard(file);
+  });
   $("#run").addEventListener("click", runCurrent);
   $("#stop").addEventListener("click", stopRun);
   $<HTMLInputElement>("#shots").addEventListener("input", updateEstimate);

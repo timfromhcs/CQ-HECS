@@ -24,3 +24,12 @@ The kernel is **a SHA-256 compression microbenchmark**, not an SHA-256d mining k
 
 Reported unit: SHA-256 compressions/s (1 block, standard IV, 64 rounds). ASIC GH/s is a different unit and is never plotted on the same axis
 without a documented conversion. One run on one machine is an observation, not a result (see `research/sha_forge/HYPOTHESES.md` H-WGPU-02).
+
+## Quantum circuit engine (W13 addendum)
+
+The sections above describe the SHA forge. The circuit lab has its own WebGPU f32 state-vector engine
+(`web/src/gpu.ts`). Its conformance against the f64 core and Qiskit is defined by the shared corpus
+(`docs/CONFORMANCE.md` section 2b): declared range 12 qubits, max probability difference `<= 5e-6`. On a
+machine with no adapter (including the Chromium used in CI and in the development environment) that column
+is **NOT_RUN**; `web/e2e/conformance.spec.ts` writes the status and any measured deviation to
+`web/e2e-results/webgpu_conformance.json`.

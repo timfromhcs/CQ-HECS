@@ -10,6 +10,8 @@ export default defineConfig({
   retries: 0,
   reporter: [["list"]],
   outputDir: "e2e-results",
+  // Pixel baselines are per platform (font rasteriser); see e2e/visual.spec.ts.
+  snapshotPathTemplate: "{testDir}/__snapshots__/{testFileName}/{arg}-{platform}{ext}",
   use: {
     baseURL: external ?? "http://127.0.0.1:4173",
     trace: "retain-on-failure",

@@ -42,6 +42,9 @@ and `web/tests/conformance.test.ts` replays it through the WebAssembly core.
 - One test deliberately breaks a matrix entry and asserts the comparison fails, so the
   corpus cannot pass vacuously.
 
+A third, shared corpus (`web/tests/fixtures/shared_conformance.json`, 21 circuits plus refusals, read
+by Python, the Node test and the real page) is documented in `docs/CONFORMANCE.md` section 2b.
+
 Regenerate after changing the corpus:
 
 ```bash
@@ -163,6 +166,65 @@ Firefox are not run.
 The main-page output sinks (SAT result, code error, share link, `lang` and route in the URL)
 have a hostile-text test in `e2e/app.spec.ts`: no handler attributes, injected images,
 dialogs or `window` side effects may appear.
+
+## Run states and worker failure (W13)
+
+Every state the run panel can be in has an end-to-end test (`web/e2e/states.spec.ts`):
+
+| State | What the user sees | Test |
+|---|---|---|
+| empty | "No run yet" guidance; no details, no stale numbers | `empty: no run yet ...` |
+| empty input | refusal message ("no qreg declared"); nothing runs | `empty input ...` |
+| busy | Run disabled, Stop and progress shown | `busy: ...` |
+| cancelled | "cancelled" chip, fresh worker, next run works | `busy` and `app.spec.ts` worker cancellation |
+| failed | the error text; Run stays usable; no result | `failed: an unknown gate ...` |
+| unsupported | refusal for an unknown gate, classical `if`, over the safe qubit limit, WebGPU absent | `unsupported ...`, `app.spec.ts` safe limits |
+| timeout | SAT budget exceeded gives `UNKNOWN`, "Not decided", and no count is claimed | `timeout: ...` |
+| worker failure at boot | the page reports it; it does not wait forever | `worker failure at boot` |
+| worker failure during a run | the run settles with "engine worker stopped unexpectedly", the worker restarts, the next run works | `worker failure during a run` |
+
+The worker `error` event is remembered per worker (`failedWorkers` in `src/main.ts`) because a
+script that cannot load fails before anything is waiting on it. The mid-run test simulates the
+crash by dispatching the same `ErrorEvent` a dying worker produces; the page-side recovery is what
+is tested, not the browser's crash reporting.
+
+## Run-card import (W13)
+
+`#/lab` and `#/code` have *Import run card (JSON)* next to the results. `src/runcard_import.ts`
+checks, in order: size (2 MiB), JSON object, schema `hcs.run.v2`, a circuit payload, the SHA-256
+digest of the payload against the card's digest, that this page's parser accepts the QASM, shots
+(integer, 1 to 1,000,000), seed (non-negative integer) and the requested engine. Any failure is
+a coded refusal (`digest_mismatch`, `wrong_schema`, ...) shown in the page language; nothing is
+applied. On success the circuit, shot count and engine are loaded and the page says the stored
+result numbers are **not** shown as if computed here: press Run to recompute. Tests:
+`tests/runcard_import.test.ts` (round trip through the exporter, 11 mutations, hostile text) and
+`e2e/states.spec.ts`.
+
+## Visual regression
+
+`e2e/visual.spec.ts` snapshots `lab`, `code`, `sat` and `guide` in light and dark at 360 px and
+1280 px (16 images). Baselines are per platform
+(`e2e/__snapshots__/visual.spec.ts/<name>-<platform>.png`; only `win32` is committed). On a
+platform without baselines the tests are reported **skipped (NOT_RUN)**, not failed and not
+passed. Refresh with `UPDATE_VISUAL=1 npx playwright test e2e/visual.spec.ts --update-snapshots`.
+Device-dependent text is masked and external fonts are blocked.
+
+## Browser matrix
+
+Chromium is the only browser installed in the development environment and in CI (desktop and
+the two Pixel 7 phone projects are Chromium emulation). WebKit and Firefox are **NOT_RUN**: the
+suite is written with the standard Playwright API and the config can add them, but no result
+from them is claimed.
+
+## Memory and size limits (summary)
+
+- Exact (WASM f64) qubit limit: `floor(log2(budget / 16 B))` with `budget = min(RAM x 0.25, 2 GiB)`,
+  capped at 27 qubits (the wasm32 heap); 22 qubits at 0.25 GiB reported RAM; RAM unknown assumes
+  2 GiB on mobile and 4 GiB on desktop. The limit is confirmed by a real allocation at boot.
+- WebGPU limit: `min(adapter buffer limits, floor(log2(budget / 8 B)))`, f32; the corpus declares
+  conformance only up to 12 qubits.
+- A run estimated above 90 s is refused before it starts.
+- Bundle budget (gzip level 9, enforced by `npm run build`): JS 270 KB, WebAssembly 18 KB, CSS 8 KB.
 
 ## What is not claimed
 
