@@ -1,4 +1,91 @@
-# Packaging audit (W14 / T6-07, agent C2, 2026-11-22)
+# Packaging audit
+
+This file has two parts. Part 1 is the current record for the 7.0.0 release candidate (`38e799b`, written by E3 on
+2026-11-22). Part 2 is the original C2 record of a 5.0.0 dirty-tree build, kept unchanged as history; its hashes,
+version and "dirty tree" statements do **not** describe the candidate.
+
+# Part 1: candidate `38e799b` (7.0.0)
+
+## Provenance
+
+* Source commit: `38e799b3650e74a47d3a72184da50b5a85d5bb8b`, branch `release/v7-stable`, PR #55. The integrator
+  built the artifacts from that commit (`evidence/waveE_E2.md`: `artifacts_built_from` `38e799b`). E3 did not
+  rebuild anything; E3 re-hashed the files and read the reports (below).
+* The artifacts are **not published**: no `v7.0.0` tag or release exists. The working tree at the time of writing
+  carries uncommitted Wave E edits (workflow, SBOM script, archive script, docs), so these files are not artifacts
+  of whatever the final freeze SHA will be. **They will be rebuilt at the final freeze SHA and every hash below
+  will change** (the zip layer is deterministic, native binaries reproduce on MSVC per D3, but the sources
+  differ).
+* Build interpreter for the EXE folder: CPython 3.11 (SBOM component `CPython runtime 3.11`). Other facts of the
+  build machine are those of the Windows 11 / MSVC 19.44 / Vulkan SDK 1.4.357 / AMD iGPU host in `TEST_MATRIX.md`.
+
+## Artifacts and hashes
+
+Verified by E3 with `sha256sum` against both the individual files and the `SHA256SUMS` in the same folder
+(scratchpad `b7/pkg`, not in the repository): all five match the integrator's figures.
+
+| Artifact | Bytes | SHA-256 |
+|---|---:|---|
+| `cqhecs-7.0.0-py3-none-any.whl` | 470 897 | `a65d66ce9983307904463e2eb051040706c7ba0231c18ea4d106d6d707ab4f78` |
+| `cqhecs-7.0.0.tar.gz` | 777 556 | `0a6220b56d8c35c7d75a5be951516ca9b8ccbb92e911af18c85c3beda7a3e656` |
+| `cqhecs-7.0.0-windows-x64.zip` (onedir EXE folder) | 76 514 929 | `b088ec5239ec42e6814d957c16db50ffc806da106d96f88604f776585205f490` |
+| `cq-hecs-cpu-7.0.0-windows-x64.zip` | 67 204 | `7a98816b7375332045499cb56243ef92793a2a207005519de8a86632e0272d70` |
+| `cq-hecs-vulkan-7.0.0-windows-x64.zip` | 345 372 | `76b3b085a892ebe1645bd545b1c871fd78c7edf786d8c3cd3eb02a5b3c0c34d8` |
+
+Also produced: two CycloneDX 1.5 SBOMs, two licence inventories, `inspect*.json`, three smoke reports, and a
+`SHA256SUMS`. The `SHA256SUMS` file lists the five artifacts above plus the two SBOMs, two licence inventories and
+`inspect-zips.json` (10 lines). E3 re-hashed the five artifact lines and they match; the five JSON lines were not re-hashed.
+
+## What was checked, with the results E3 read
+
+| Check | Report | Result |
+|---|---|---|
+| Wheel and sdist content inspection | `inspect.json` | wheel 102 members PASS, sdist 262 members PASS, no findings |
+| Folder and native zip inspection | `inspect-zips.json` | EXE folder 263 members, cpu zip 12, vulkan zip 15: all PASS, no findings |
+| Wheel in a clean venv, run from outside the repo, not elevated | `smoke-wheel.json` | 15 PASS |
+| Onedir folder copied to a temp directory, not elevated | `smoke-onedir.json` | 14 PASS, 1 SKIPPED (`import_location`, meaningless for a frozen app) |
+| The released zip extracted elsewhere, not elevated | `smoke-exe-indep.json` | 14 PASS, 1 SKIPPED (same) |
+| SBOM format | `*.cdx.json` | CycloneDX 1.5; EXE SBOM 13 components, wheel SBOM 23 (see below) |
+
+`studio_port_conflict` passes in all three reports (it was PARTIAL in the 5.0.0 record: P-01 is fixed).
+
+## Findings for this candidate
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| PK7-01 | P2 | The wheel SBOM is the build venv, not the dependency closure: 23 components including `setuptools` 79.0.1 and its vendored `autocommand` 2.2.2 declared `LGPLv3`, `wheel`, `qiskit` 2.6.2, `scipy` 1.17.1 (EXE SBOM: 2.5.1, 1.16.3). The file must not be published as built. | OPEN at the commit; an uncommitted `--closure-of` change is in the tree and unverified (SECURITY_AUDIT SEC-P2-2) |
+| PK7-02 | P2 | The EXE SBOM is accurate for 13 components but marks `CPython runtime 3.11` as `UNVERIFIED`, lists `python-dateutil` under a free-text `Dual License`, and omits VC++ runtime DLLs and the vendored libraries in scipy and qiskit-aer | OPEN (SEC-P2-3, LICENCE_REGISTER) |
+| PK7-03 | P1 for publication | `release.yml` pastes `RELEASE_NOTES.md` (still the 4.0.0 notes) into the release body | OPEN (B-V7-12) |
+| PK7-04 | P1 for a release decision | `package.yml` ran once on the PR at `38e799b` (run 44994613449): Windows onedir PASS; wheel clean-venv smoke FAIL (`studio_health_and_stop`, `Address already in use` on Linux); native MSVC FAIL (`Visual Studio 17 2022` not found on the runner); manifest SKIPPED. `release.yml` and `nightly.yml` have not run; the reusable-workflow call and the artifact merge are therefore unproven. Release asset policy is linted only (16 tests) | OPEN (B-V7-09, B-V7-15) |
+| PK7-05 | P2 | Clean-machine installation is NOT_RUN: everything ran on the build host (Python, Vulkan SDK, MSVC installed) as a non-administrator | OPEN (B-V7-05) |
+| PK7-06 | P2 | The SBOM `typing_extensions` is 4.12.2 while `constraints/ci-py311.txt` pins 4.15.0: the local build did not honour that constraint for this package, so the local artifacts are not an exact image of the CI lane | OPEN, noted; the hosted `package.yml` run is the reference |
+| PK7-07 | P3 | Not exercised: Vulkan loader absent on the frozen app (the loader cannot be removed from this host), Python 3.11-3.13 installs of the wheel, Linux and macOS, code signing, an installer, upgrade over a previous version, a vulnerability scan of bundled packages (the SBOM is an inventory only) | NOT_RUN |
+
+## Status of the 5.0.0 findings (Part 2) at the candidate
+
+| ID | Part-2 finding | Status at `38e799b` | Evidence |
+|---|---|---|---|
+| P-01 | Studio on an occupied port printed a raw `PermissionError` | FIXED (`StudioPortError`, exit 4) | `waveD_D2.md`; `studio_port_conflict` PASS in the three smoke reports |
+| P-02 | `build_exe.ps1` polled `/api/health` without a token | FIXED in C2 | `waveC_C2.md` |
+| P-03 | Native `cq_hecs.exe vrts` without a Vulkan ICD printed `VERIFIED`, exit 0 | FIXED for `vrts`, `ghz`, `echo`, `maxcut` (typed refusal, exit 3); `qasm`, `stress`, `test` unchanged | `waveD_D3.md`; B-V7-08 |
+| P-04 | PyInstaller from a general interpreter pulls unrelated packages | MITIGATED (clean venv; the EXE SBOM has 13 components) | `waveC_C2.md` |
+| P-05 | Third-party licence files missing from the bundle | FIXED (`licences/`, `THIRD_PARTY_NOTICES.txt`) | `waveC_C2.md` |
+| P-06 | Native binaries not bit-reproducible | FIXED for `cq_hecs.exe` and `cq_hecs_core.dll` on MSVC (`/Brepro`), one machine; other targets and the CPU-only lane not shown | `waveD_D3.md` |
+| P-07 | README named a zip that `release.yml` did not upload | FIXED by policy: `release.yml` consumes the `package.yml` assets; unproven until a hosted run | `waveD_D3.md`; B-V7-09 |
+| P-08 | Legacy `package_release.ps1` | RESOLVED as legacy (refuses to run without `-Legacy`) | `waveD_D3.md` |
+| P-09 | Bootloader licence and unverified runtime components | recorded | `LICENCE_REGISTER.md` |
+
+## Honest naming (unchanged)
+
+The Windows application is a folder (PyInstaller onedir) shipped as a zip, not a single-file executable and not an
+installer. `cq-hecs-cpu` is a CPU-only library (`cq_hecs_core.dll`). `cq-hecs-vulkan` is the native Vulkan CLI and
+libraries; it is not the Python simulator and says nothing about Paths A to D.
+
+---
+
+# Part 2: history, the C2 record of the 5.0.0 dirty-tree build (superseded, unchanged)
+
+# Packaging audit (W14 / T6-07, agent C2, 2026-11-22), history
 
 Scope: build every distributable from the current tree, inspect it, smoke it from a temporary directory
 outside the repository, and record what is and is not established. Nothing was published, tagged,

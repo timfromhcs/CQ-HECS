@@ -83,3 +83,27 @@ suite doing its job across waves.
 | W4 (Lean) | `formal/` build after the interrupted session | `lake exe cache get` exit 0 (319 s); `lake build` exit 0, 8708 jobs (Mathlib rebuilt from source despite the cache; the first piped attempt stalled and was re-run with plain redirection) |
 | W4 (Lean) | `formal/CQHECS/Bound.lean` + `scripts/PrintAxioms.lean` | L-BOUND-01 and L-BOUND-01b (Path D form) build; `#print axioms` → `[propext, Classical.choice, Quot.sound]`; `evidence/LEAN_BUILD.md` |
 | W3-11 | python-sat child-process isolation | still NOT RUN (python-sat not installed; B-007) |
+
+
+## Waves A to E (2026-11-21 to 2026-11-22), record at the freeze (E3)
+
+Append-only; earlier entries are unchanged. Dates are the commit dates; times are Europe/Berlin.
+
+| Step | Commit | Item | Result |
+|---|---|---|---|
+| Wave A | `438c8c4`, `5f12cb5`, `65cacd8`, `b610224`, `2049073` | MCP cancel and negotiation, service layer, OpenAPI; native fault injection and C ABI hardening; WebGPU-loss fallback; python-sat isolation and separator preflight; Lean Path A and Pauli lemmas | targeted passes in `waveA_A1..A5.md`; full suite 2896 passed / 109 skipped on `6fe4f01`; baseline delta explained in `BASELINE_V7.md` |
+| Wave B | `508334b`, `bf85277`, `48f5882`, `9b094c4`, `ace3c1a` | Path B/C error-story metadata; QG models and replay; QG UI; calibration v3; Paths E/F/G prototypes | `RESEARCH_ONLY` for E/F/G; nothing promoted; router unchanged |
+| Wave C | `d56c5cc`, `f4dc089`, `133ae64`, `440e367`, `51969fd` | web conformance and states; packaging and SBOM; QG plan on four surfaces; docs rewrite; fuzz/property/security | see `waveC_C1..C5.md` |
+| Wave D | `c655e92`, `c631cf8`, `f912160`, `6260495`, `c098971` | repeated-operand refusal and `eval` removal; DIMACS cap and typed errors; Vulkan refusal and reproducible binaries; Studio plan panel; Lean L-RESULT-01 | see `waveD_D1..D5.md` |
+| Freeze | `38e799b` (2026-11-22 07:38) | version bump to 7.0.0 (D-009), migration notes, changelog | `check_version.py`: 7.0.0 on every surface |
+| Freeze runs | after `38e799b` | Python 4269 passed / 134 skipped / 0 failed (07:54); mutation 95/95 in place (07:42); `lake build` exit 0 (08:20 UTC); artifacts built, five hashes | integrator-recorded; E3 read the logs |
+| E3 | uncommitted | `check_version.py` PASS; truncation audit PASS; QG consistency OK; 81 doc/language tests PASS; 181 security/fuzz tests PASS; `flake8 --select=E9,F` 0; `npm test` 167/167; `security_audit.py --history` 0 findings, 343 commits, 41 action uses; skip-budget check on the freeze junit FAILS; one `npm run build` attempt ended with an esbuild "The service was stopped" error (not diagnosed) | see `evidence/waveE_E3.md` |
+| E3 | uncommitted | five artifact hashes re-verified; wheel SBOM found to list the build venv (setuptools-vendored `autocommand` as `LGPLv3`) | B-V7 and SEC-P2 entries |
+
+Repair-cycle accounting (AGENTS.md 2.4): no root cause in this record has used more than three cycles. B2 used two
+for the BMV tests; D1 left one cross-owner follow-up (regenerate the web fixture); E3 verified it is closed:
+`python web/scripts/export_shared_conformance.py --check` says the fixture is current and
+`tests/test_web_shared_conformance.py` plus `tests/test_feature_coverage.py` give 199 passed.
+
+Not done and not claimed: any push, PR update, merge, tag, release, deployment, QPU job, credential use or spend.
+Remote state: PR #55 hosted CI on `38e799b` exists and is red (`waveE_E3.md`, `TEST_MATRIX.md` V7.E, B-V7-15); preview content and production are not verified.

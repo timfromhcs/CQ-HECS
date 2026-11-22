@@ -71,3 +71,33 @@ The full suite on `release/v7-stable` (HEAD `6fe4f01`) was re-run once with `-rs
   gate under the 3.14 interpreter (or installing `qiskit-ibm-runtime` into the 3.13 env), not by
   adding the reason to `SKIP_BUDGET.json`. `SKIP_BUDGET.json` was left unchanged.
 
+
+## Addendum (E3, 2026-11-22): why the README says 95/95 and this file says 64/64
+
+This file is a baseline: it records the state the V7 work **started** from on `agent/v6-rc` (base `25e16e5`,
+version 5.0.0). It is history and is not rewritten. The numbers in the README verification table describe a later
+commit and are not in conflict with it. Side by side:
+
+| Quantity | This baseline (`agent/v6-rc`, 5.0.0) | Freeze record (`38e799b`, 7.0.0, integrator-recorded) | Why it differs |
+|---|---|---|---|
+| Mutation score | 64/64 killed | 95/95 killed, run in place (`mutation_freeze.txt`, last lines read by E3) | C5 added 31 behavioural mutants for the Wave A/B surfaces (service, MCP, Studio guard, calibration v3, MaxSAT, separator preflight, DIMACS/QASM limits). The meta test pins a floor (`>= 64`), not a literal, since D5. The harness never lost a mutant. |
+| Python suite | 2899 passed, 105 skipped, 1 deselected | 4269 passed, 134 skipped, 1 deselected, 0 failed (`freeze_pytest.txt`, Python 3.13.13) | the collected count grew from 3,004 to 4,402 selected plus deselected (about 1,400 tests added by Waves A to D); skips rose by 29 (environmental, see below) |
+| Web unit tests | 77/77 | 167/167 (E3 re-ran `npm test`: 167 pass) | conformance corpus, run-card import, states, QG logic |
+| Playwright | 42/42 | 128 passed, 1 skipped (WebGPU, no adapter) | three projects (chromium, mobile-360, mobile-390), visual and state specs |
+| Native | not recorded here (CPU-only pytest 4/4) | CTest 26/26 (Vulkan), 15/15 (CPU-only) | native hardening wave |
+
+The README (EN, DE, FR) quotes the freeze column and labels it "freeze SHA `38e799b`", with the older figures in a
+separate, labelled "Historical lane" table. Nobody should read 64/64 here as the current score, nor 95/95 as the
+5.0.0 baseline.
+
+Two cautions that belong with the addendum:
+
+- The skip budget does not hold at the freeze. `skip_budget.py --check` against the freeze junit file FAILS (134
+  skips against a budget of 105; seven unbudgeted reasons, `CQ_HECS_EXE not set` 6 against 4). The earlier A5
+  addendum above explained 4 skips (`qiskit-ibm-runtime` absent on Python 3.13.13); the other new reasons are the
+  native build directory not exported and the optional extras absent. Recorded as `B-V7-11` in `BLOCKERS.md`; the
+  budget file was not widened.
+- The README's "freeze SHA `38e799b`" is correct only while the release candidate is `38e799b`. After any further
+  commit the SHA, the three READMEs, `waveE_E2.md` and `tests/test_doc_consistency_v7.py` must change together.
+
+Final candidate SHA: `UNKNOWN` until the integrator freezes it (`RELEASE_CANDIDATE_AUDIT.md`).

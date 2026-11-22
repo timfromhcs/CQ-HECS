@@ -86,3 +86,73 @@ into the folder (`licences/`, `THIRD_PARTY_NOTICES.txt`).
 | CPython 3.14.6 runtime, Microsoft Visual C++ runtime DLLs (in the onedir folder) | not opened | UNVERIFIED | Bundled / required at run time | Listed as `UNVERIFIED` components in the SBOM; open before a release. |
 | `cq-hecs-cpu` / `cq-hecs-vulkan` native zips | in-repo sources | Apache-2.0 (project) | Shipped | No third-party library is vendored; they need the MSVC 2015-2022 x64 runtime installed on the target. |
 | `build` 1.5.0, `cyclonedx-python-lib` 11.12.0 | installed metadata | MIT, Apache-2.0 | Packaging tools (not shipped) | `cyclonedx-python-lib` was used only to validate the SBOMs against the CycloneDX 1.5 JSON schema. |
+
+
+## Reconciliation for the 7.0.0 candidate build (E3, 2026-11-22)
+
+Why this section exists. The "Packaging toolchain and frozen bundle" table above records the C2 build of the
+**5.0.0 dirty tree** on CPython 3.14.6 in an unconstrained venv. Every version in it (numpy 2.5.5, qiskit 2.6.2,
+qiskit-aer 0.18.4, scipy 1.18.1, stevedore 5.10.0, python-dateutil 4.0.0, typing_extensions 4.16.0, tzdata
+2026.6) was read from that venv's `dist-info` folders, so none is invented, but none is the version set of the
+candidate build. That table is kept as history and is **superseded for the release** by this section.
+
+Source: the CycloneDX 1.5 SBOMs of the `38e799b` artifacts, produced by the integrator's build
+(`cqhecs-7.0.0-windows-x64.cdx.json` for the EXE folder, `cqhecs-7.0.0-wheel.cdx.json` for the wheel), opened by
+E3 on 2026-11-22 from the session scratchpad (they are not in the repository), cross-read with
+`constraints/ci-py311.txt` and `package.yml`. The licence strings are the SBOM's own, taken from each
+distribution's `METADATA` in the build venv. Hashes of the artifacts: `PACKAGING_AUDIT.md`. These SBOMs will be
+regenerated at the final freeze SHA; any difference is a defect in this table.
+
+### Windows onedir EXE folder (`cqhecs-7.0.0-windows-x64.cdx.json`, 13 components)
+
+| Component | Version in the SBOM | Licence string in the SBOM | Status |
+|---|---|---|---|
+| CPython runtime | 3.11 | UNVERIFIED | UNVERIFIED (PSF-2.0 expected; not claimed) |
+| numpy | 2.4.6 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | matches `ci-py311.txt`; licence opened at other numpy versions in C2 |
+| scipy | 1.16.3 | `BSD License` (Trove classifier only) | matches `ci-py311.txt`; no SPDX id; vendored native libraries in `scipy.libs` not inventoried |
+| qiskit | 2.5.1 | Apache-2.0 | matches `ci-py311.txt` |
+| qiskit-aer | 0.17.2 | `Apache 2.0` (free text) | matches `ci-py311.txt`; vendored native libraries in `qiskit_aer.libs` not inventoried |
+| rustworkx | 0.18.1 | Apache-2.0 | matches `ci-py311.txt` |
+| dill | 0.4.1 | BSD-3-Clause | matches `ci-py311.txt` |
+| stevedore | 5.9.0 | Apache-2.0 | matches `ci-py311.txt` |
+| psutil | 7.2.2 | BSD-3-Clause | matches `ci-py311.txt` |
+| python-dateutil | 2.9.0.post0 | `Dual License` (free text, no SPDX id) | matches `ci-py311.txt`; text not opened, so the actual licences are UNVERIFIED |
+| six | 1.17.0 | MIT | not in `ci-py311.txt` (a transitive dependency of python-dateutil); new compared with the C2 table |
+| typing_extensions | 4.12.2 | Python Software Foundation License | **differs from `ci-py311.txt` (4.15.0)**: the local build did not take that pin; PSF-2.0 by the declared name |
+| PyInstaller bootloader | 6.22.3 | GPL-2.0-or-later WITH Bootloader-exception | OPENED in C2 at the same version (exception text read); `COPYING.txt` copied to `licences/` |
+
+Not in the candidate EXE SBOM although the C2 table listed it: `tzdata`. The VC++ runtime DLLs the folder may
+contain are not listed as a component at all (the C2 SBOM listed them as `UNVERIFIED`; this one does not).
+
+### Wheel SBOM (`cqhecs-7.0.0-wheel.cdx.json`, 23 components): inaccurate
+
+The wheel SBOM lists the **build venv**, not the runtime dependency closure of `cqhecs`: it contains `setuptools`
+79.0.1 (`UNVERIFIED`) together with the packages setuptools vendors (`autocommand` 2.2.2, `backports.tarfile`,
+`importlib_metadata`, `inflect`, `jaraco.*`, `more-itertools`, `packaging`, `platformdirs`, `tomli`, `typeguard`,
+`zipp`), `wheel`, and runtime-looking packages at versions different from the EXE SBOM (`qiskit` 2.6.2 and
+`scipy` 1.17.1 here, against 2.5.1 and 1.16.3 in the EXE SBOM). The consequences:
+
+- **`autocommand` 2.2.2 is listed as `LGPLv3`.** It is vendored inside setuptools, a build tool, and is not a
+  dependency of `cqhecs` or part of the wheel. Read as a dependency list, the wheel SBOM would claim an LGPL-3.0
+  component that does not ship, so the file as built must not be published. This is SEC-P2-2 in `SECURITY_AUDIT.md`.
+- The versions of numpy, qiskit, scipy and stevedore in that file describe a different environment from the one
+  the EXE was frozen from.
+
+An uncommitted edit adds `--closure-of cqhecs` to `scripts/sbom_cyclonedx.py` for exactly this purpose. E3 has not
+run it; the freeze rebuild must show a wheel SBOM with numpy, qiskit, scipy (via qiskit), rustworkx, stevedore,
+dill, python-dateutil, six, typing_extensions, psutil only as applicable, and no setuptools-vendored entries.
+
+### Corrections to this register made by the reconciliation
+
+- `python-dateutil 4.0.0` and `typing_extensions 4.16.0` in the C2 table are 3.14-venv versions; the candidate has
+  2.9.0.post0 and 4.12.2.
+- The CPython runtime is 3.11 in the candidate (the C2 table said 3.14.6).
+- Main-table versions (numpy 2.5.0, qiskit 2.6.1, aer 0.18.2, and so on) are those of the Python 3.13 audit host,
+  not of any shipped artifact; they back the licence statement for the distribution, not a version claim.
+
+### Still open (SEC-P2-3)
+
+CPython and VC++ runtime licences; vendored native libraries in scipy and qiskit-aer; the actual text behind
+python-dateutil's `Dual License`; python-sat, qiskit-ibm-runtime, sympy and nanobind (CI and dev only, not
+shipped); every external solver, checker, comparator and dataset row marked `UNVERIFIED` above. No `UNVERIFIED`
+dataset ships with the artifacts.

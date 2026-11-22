@@ -15,21 +15,22 @@ class, leniency or hardening gap with no direct compromise; INFO = observation.
 
 No HIGH finding. No credential, token or private key was found in the tree or the branch history.
 
-Findings inside the C5 owned area were fixed or are pinned by a test. Findings in production code are
-**reported to the integrator, not fixed here** (other agents own those files). Each is pinned by a
-`xfail(strict=True)` test that fails the day the defect is fixed, which is the cue to delete the marker.
+Status column as of the freeze (E3, 2026-11-22): the production-code findings reported by C5 were fixed in Wave D
+(commits `c655e92`, `c631cf8`) and their strict `xfail` markers were removed, so the tests are now plain passing
+tests. The original C5 wording, kept for history: findings in production code were reported to the integrator and
+pinned by `xfail(strict=True)` tests.
 
 | ID | Sev | Where | Status |
 |---|---|---|---|
-| SEC-M1 | MEDIUM | `cqhecs/sat.py` `parse_dimacs`, solver allocation | OPEN, reported |
-| SEC-M2 | MEDIUM | `python_bridge/qasm_engine.py:164` `eval` | OPEN, reported |
-| SEC-L1 | LOW | `cqhecs/studio/app.py` request typing | OPEN, reported |
-| SEC-L2 | LOW | `cqhecs/studio/app.py` `_read_json` | OPEN, reported |
-| SEC-L3 | LOW | `cqhecs/mcp_server.py` `handle` | OPEN, reported |
-| SEC-L4 | LOW | `cqhecs/sat.py` `parse_dimacs` | OPEN, reported |
-| SEC-L5 | LOW | `cqhecs/sat.py` `count_models` | OPEN, reported |
+| SEC-M1 | MEDIUM | `cqhecs/sat.py` `parse_dimacs`, solver allocation | FIXED (`c631cf8`, `MAX_DIMACS_VARS = 1,000,000`; `evidence/waveD_D2.md`) |
+| SEC-M2 | MEDIUM | `python_bridge/qasm_engine.py:164` `eval` | FIXED (`c655e92`, shared `parse_angle_expression`; `evidence/waveD_D1.md`) |
+| SEC-L1 | LOW | `cqhecs/studio/app.py` request typing | FIXED (`c631cf8`; `evidence/waveD_D2.md`) |
+| SEC-L2 | LOW | `cqhecs/studio/app.py` `_read_json` | FIXED (`c631cf8`; `evidence/waveD_D2.md`) |
+| SEC-L3 | LOW | `cqhecs/mcp_server.py` `handle` | FIXED (`c631cf8`; `evidence/waveD_D2.md`) |
+| SEC-L4 | LOW | `cqhecs/sat.py` `parse_dimacs` | FIXED (`c631cf8`; `evidence/waveD_D2.md`) |
+| SEC-L5 | LOW | `cqhecs/sat.py` `count_models` | FIXED (`c631cf8`, `int_to_decimal_string`; `evidence/waveD_D2.md`) |
 | SEC-L6 | LOW | dev environment `pip` | INFO for the repo, host-side |
-| SEC-I1 | INFO | Studio responses lack CSP / frame-ancestors | OPEN, reported |
+| SEC-I1 | INFO | Studio responses lack CSP / frame-ancestors | OPEN (no `Content-Security-Policy` in `cqhecs/studio/app.py` at `38e799b`; accepted INFO) |
 | SEC-I2 | INFO | MCP `id` of any JSON type is echoed | no action |
 
 ### SEC-M1 (MEDIUM): a DIMACS header can demand unbounded memory
@@ -129,7 +130,7 @@ allow-lists already block cross-site API use (see section 3).
   API keys, JWTs, Hugging Face and npm tokens, assigned `api_key`/`secret`/`password` literals of 24+
   characters, credentials in URLs. Documentation placeholders are skipped by name.
 - Result: 0 hits in every tracked file (1,900+ files, binaries skipped) and 0 hits in the lines added by any of the
-  332 commits reachable from `HEAD` (`--history`). Positive controls (planted keys of each pattern) are
+  343 commits reachable from `HEAD` at `38e799b` (`--history`, re-run 2026-11-22; it was 332 at the first C5 run). Positive controls (planted keys of each pattern) are
   asserted in `tests/test_property_security_audit.py`, so a silent scanner would fail that test.
 - Limits: pattern-based; high-entropy strings with no known prefix, secrets split across lines, encoded or
   compressed content and untracked or ignored files are not covered. Other branches and stashes were not scanned.
@@ -172,7 +173,7 @@ Scope limit: `subprocess` calls without `shell=True` are not flagged and were no
 
 ## 5. GitHub Actions audit
 
-`scan_actions` over `.github/workflows/{ci,nightly,release}.yml`: 26 `uses:` entries, **all 26 pinned to a
+`scan_actions` over `.github/workflows/{ci,nightly,package,release}.yml`: 41 pinned action uses (26 at the first C5 run on three workflows; `package.yml` was added since), **all 41 pinned to a
 40-hex commit SHA** with a version comment; 0 unpinned. Every workflow has an explicit top-level
 `permissions: contents: read`; `release.yml` raises permissions per job (`contents: write` only on the
 publishing job, `actions: read` on the CI verification job). No `pull_request_target`, no `github.event`
@@ -239,3 +240,47 @@ SEC-M1 (DIMACS var cap, MAX_DIMACS_VARS=1,000,000), SEC-M2 (python_bridge eval r
 (evidence: research/v7/evidence/waveD_D1.md, waveD_D2.md); the strict xfail tests are now plain passing tests.
 Positive-control vectors in tests are allow-listed explicitly in scripts/security_audit.py SECRET_ALLOW (each with a reason).
 Not examined: web/src/main.ts `new Function` (user-authored JS builder, by design) and cqhecs/service.py dynamic `__import__`.
+
+
+## Freeze update (E3, 2026-11-22, candidate `38e799b`)
+
+Re-run: `python scripts/security_audit.py --history` returned `secrets_tree` 0, `secrets_history` 0,
+`history_commits_scanned` 343, `code` 0, `studio_mcp_contract` 0, `findings_total` 0, `actions_unpinned` 0,
+`actions_other` 0, `actions_inventory` 41 (four workflows: `ci.yml`, `nightly.yml`, `package.yml`, `release.yml`).
+Targeted tests re-run on the working tree (HEAD plus Wave E edits): `test_property_security_audit.py`,
+`test_fuzz_requests.py`, `test_fuzz_dimacs_parser.py`, `test_fuzz_qasm_parser.py`, `test_resource_limits.py`:
+**181 passed**, no `xfail` remaining (the 14 strict xfails of the first C5 run were converted to passing tests in
+Waves D1/D2). The scanner is pattern-based; `gitleaks`, `trufflehog`, `cargo audit` and a manifest-level `pip-audit`
+remain NOT_RUN. Note on section 7: the mutation count pin that the original text says "still says 64" was fixed in
+D5 (`tests/test_mutation_harness_meta.py` now asserts a floor of 64, not a literal); the harness has 95 mutants and
+the freeze run in place was 95/95 (`evidence/waveE_E2.md`, integrator-recorded).
+
+### Status of every finding at the freeze
+
+| ID | Sev | Status | Evidence |
+|---|---|---|---|
+| SEC-M1, SEC-M2 | MEDIUM | FIXED | `c631cf8`, `c655e92`; 181 tests above |
+| SEC-L1 to SEC-L5 | LOW | FIXED | `c631cf8` |
+| P-01 (Studio on an occupied port) | medium | FIXED (`StudioPortError`, exit 4, `allow_reuse_address` off on Windows) | `evidence/waveD_D2.md` |
+| SEC-L6 | LOW, host-side | INFO: `pip` on the audit host; not a project dependency | section 6 |
+| SEC-I1 | INFO | OPEN, accepted: no CSP or `frame-ancestors` on Studio pages | section 1 |
+| SEC-I2 | INFO | no action | section 1 |
+
+### P2 findings from the independent freeze audit (not in the C5 list)
+
+These were found by the freeze audit after the C5 work. E3 verified the state of each at the committed `38e799b`
+by reading the files; none is fixed in a commit yet.
+
+| ID | Sev | Finding | State at `38e799b` | Evidence of the fix in progress |
+|---|---|---|---|---|
+| SEC-P2-1 | P2 | `release.yml` can create a release from a `v*` tag on a commit that is not on `main` (no ancestry check; a tag on a side branch or a force-moved tag passes if CI for that SHA is green) | OPEN at the commit: `git show HEAD:.github/workflows/release.yml` has no `merge-base --is-ancestor` | the working tree has an uncommitted "Release guard" step against `origin/main`; unverified, never run on a hosted runner (B-V7-13) |
+| SEC-P2-2 | P2 | The wheel SBOM lists non-dependency entries (build-venv tooling such as setuptools and its vendored packages, wheel, pip) because it enumerates every distribution in the venv rather than the runtime closure; a consumer would read tooling as shipped dependencies. Observed by E3 in the `38e799b` `cqhecs-7.0.0-wheel.cdx.json`: 23 components, including `setuptools` 79.0.1 and its vendored `autocommand` 2.2.2 declared `LGPLv3`, and `qiskit` 2.6.2 / `scipy` 1.17.1 that differ from the EXE SBOM (2.5.1 / 1.16.3) | OPEN at the commit: no `--closure-of` option, no assertion in `release.yml` | the working tree adds `--closure-of cqhecs`, a `cqhecs:source-revision` property and a release-time assertion (uncommitted; not run by E3) |
+| SEC-P2-3 | P2 | Licences of shipped or CI-run components are `UNVERIFIED`: CPython runtime and Microsoft VC++ runtime DLLs in the EXE folder, python-sat, nanobind, qiskit-ibm-runtime, CaDiCaL, Kissat, drat-trim, cake_lpr, Lean/Mathlib; scipy and qiskit-aer ship vendored native libraries that are not individually inventoried | OPEN | `LICENCE_REGISTER.md` (rows `UNVERIFIED`, reconciled by E3 for the CI-pinned build versions) |
+
+Release implication: SEC-P2-1 and SEC-P2-2 are fixes to make before a tag is pushed; SEC-P2-3 must be opened and
+recorded or accepted in writing by the maintainer (AGENTS_V7 section 21.4.4). None is exploitable from the default
+local Studio or MCP surface; they concern the release pipeline and the published inventory.
+
+Not examined at the freeze: the web `new Function` JavaScript circuit builder (`web/src/main.ts`, user-authored code
+run in the viewer's own browser, by design) and the dynamic `__import__` in `cqhecs/service.py`; `subprocess` calls
+without `shell=True` were not individually reviewed.

@@ -160,3 +160,33 @@ here; the others are tracked by the integrator.
 - Calibration `ideal` and `warn` behave identically inside `FakeHardwareBackend` (both run uncovered gates
   noiselessly and report them); they differ only in the warning text. `hardware_bridge.py` was not changed.
 - MaxSAT has no MCP tool or Studio route.
+
+
+## Waves C, D and E (V7 plan, 2026-11-22) - status at the freeze (E3)
+
+Evidence: `research/v7/evidence/waveC_C1..C5.md`, `waveD_D1..D5.md`, `waveE_E2.md`, `waveE_E3.md`. Commits: `d56c5cc`,
+`f4dc089`, `133ae64`, `440e367`, `51969fd`, `c655e92`, `c631cf8`, `f912160`, `6260495`, `c098971`, `38e799b`.
+Wave E is in progress: only E2 (docs) and E3 (this record) have evidence files when this was written.
+
+| ID | Task | Status |
+|---|---|---|
+| C1 / W13 | Shared web/Python conformance corpus (21 circuits, 4 refusals), run-card import, state/visual specs, feature matrix web column | DONE (Chromium only; WebGPU on a real adapter, Firefox, WebKit NOT_RUN) |
+| C2 / W14 / T6-07 | Reproducible wheel/sdist, onedir EXE, native CPU/Vulkan zips, CycloneDX SBOMs, manifest, `package.yml` | DONE locally; rebuilt for `38e799b` by the integrator; clean-machine install and a hosted run NOT_RUN |
+| C3 / W12 | QG plan on four surfaces, `analyze --explain` on the service, calibration v3 policy | DONE (see Wave C table above) |
+| C4 / W15 | Docs match code and evidence | DONE for the pinned statements (63 tests); full claim audit in `CLAIM_AUDIT.md` (E3 section) |
+| C5 / W15 | Fuzz, property, resource tests; mutation targets to 95; security audit | DONE (181 targeted tests re-run by E3, 0 xfail; mutation 95/95 in place at the freeze, integrator-recorded) |
+| D1 | Repeated gate operands refused at the shared layer (C1-FIND-01); `eval` removed from `python_bridge` (SEC-M2) | DONE |
+| D2 | SEC-M1, SEC-L1..L5, P-01 | DONE |
+| D3 | Typed Vulkan refusal (P-03), `/Brepro` reproducible MSVC binaries (P-06), release asset policy (P-07), legacy script (P-08) | DONE; the workflows are linted, NOT run |
+| D4 | Studio ExecutionPlan panel, real-browser axe and keyboard test | DONE |
+| D5 | Mutation count pin, Python 3.14 lane report, Lean L-RESULT-01, audit skeletons | DONE; Python 3.14 whole suite NOT_RUN |
+| E2 | Documentation freeze numbers | DONE (integrator figures recorded; E2 did not re-run) |
+| E3 | Research record to the freeze state (this task) | DONE: ledger, matrix, blockers, security, licences, claims, packaging, baseline addendum, candidate audit, final report draft |
+| E1, E4, E5 | other Wave E tasks | NOT_RUN by E3; their evidence files did not exist at writing (E4 owns the rollback section of `FINAL_REPORT.md` and the release workflow edits) |
+
+Not promoted in V7 (kept as research or deferred): Paths E, F, G (`RESEARCH_ONLY`, B5); Path C graph-aware ordering
+(M6 DEFERRED); CNF-to-XOR with a witness (M11 DEFERRED); optional CDCL (M12 DEFERRED); the learned router
+(H4-ROUTE-01 DEFERRED); a Studio plan i18n and Studio `qg.js` plan panel (English only).
+
+Open release conditions that block `STABLE`: see `BLOCKERS.md` B-V7-09, B-V7-11, B-V7-12, B-V7-13, B-V7-14 and the
+`NOT_RUN`/`FAIL` rows of `RELEASE_CANDIDATE_AUDIT.md`.

@@ -48,3 +48,28 @@ statement files read.
 
 Each entry must be re-opened and its exact revision/DOI confirmed before any claim depends on it.
 
+
+
+## V7 status at the freeze (E3, 2026-11-22)
+
+Append-only. No literature was re-read by E3 and no pin was changed; the statuses below are what the earlier waves
+recorded, restated so the final report can cite one place. Rule from above still applies: each entry must be
+re-opened and its exact revision or DOI confirmed before any claim depends on it.
+
+| Topic | Pin | Status at the freeze | Used in 7.0.0 as |
+|---|---|---|---|
+| Anthropic formal ETH artifact | `anthropics/formal-math` @ `16a5ce41304fcdaea4e0be7c132e1c361dc26da5`, directory `eth/` | read in W2/W4 (`evidence/LEAN_ENV.md`); `SOURCE_CLAIM`, `FORMALIZED_BY_SOURCE`; not reproduced as a CQ-HECS result | context only; no ETH, SETH or P-versus-NP claim |
+| OpenAI ETH preprint and Lean scope | `openai/math` @ `4eaee87` | pinned in W2; the abstract bound and the Lean scope bound differ | context only; do not cite interchangeably |
+| Zeta zeros, 3SUM/APSP | `anthropics/formal-math` `zeta23/`, `3sum-apsp/` | not integrated | context only; never cited as a CQ-HECS result |
+| Lean 4 and Mathlib | Lean 4.33.1, Mathlib `0df444a` (`formal/lake-manifest`) | built at the freeze (`lean_freeze_build.txt`, 8711 jobs) | the toolchain for the `FORMALIZED_LEMMA` rows; licence UNVERIFIED in `LICENCE_REGISTER.md` |
+| Lean-Quantum, Lean-QIT, FloatLib | listed in W2 | `to pin`; never pinned | not used; backlog for L-SEP-01, L-SAT-01 |
+| 2D tensor networks (Rudolph and Tindall) | doi:10.1038/s41534-026-01372-2 | listed as `to read in W7`; B5 recorded only the arXiv abstract level reading | Path E prototype only (`RESEARCH_ONLY`, `INCONCLUSIVE`) |
+| Matrix Product Evolution (Kawabe et al.) | arXiv:2608.03472 | `to read in W7`; B5 read the abstract only | Path G prototype only (`NOT_SUPPORTED` for promotion) |
+| QEC and RL calibration (Sivak et al.) | doi:10.1038/s41586-026-10759-2 | `to read in W10`; not read | none (`V7-QEC-01` NOT_STARTED, hardware-gated) |
+| SAT Competition 2026 rules | satcompetition.github.io/2026/rules.html | `to read in W9`; not read | none; no competition instance is redistributed |
+| MCP specification | revision 2025-06-18 | read for field names in A1 | the only revision the server is checked against; later revisions NOT_RUN |
+| DRAT, LRAT, `cake_lpr`, `drat-trim` | not pinned | not run (B-V7-06) | proof labels stop at `DRAT_CHECKED` and `MODEL_VERIFIED` |
+
+Not done: a fresh search for prior art on the Path D observable extension, the separator backend or the calibration
+schema (prior art for the v4 features is in the first table of this file); the pins marked `to pin` in W2. Both are
+`NOT_RUN` and are not needed for any 7.0.0 claim, because no 7.0.0 claim rests on a novelty statement.
