@@ -83,7 +83,15 @@ CQ_API int cq_execute_qasm(cq_context_t* ctx, const char* qasm_str, cq_result_t*
 - **Return Value**:
   - `0`: Success.
   - `-3`: Parse/validation error. `out_result` is zeroed; no circuit is executed.
-  - `1`: Execution failure after successful parsing.
+  - `-5`: QASM longer than 64 MiB (the core library caps at 16 MiB).
+  - `-7`: Internal error. Every entry point is exception-fenced; nothing throws
+    across the C boundary.
+  - `1`: NULL argument or execution failure after successful parsing.
+  `out_result` is zeroed on every failure. The core library (`include/cq/cq_c_api.h`)
+  additionally refuses non-Clifford gates (T, Tdg, RZ) on a simulator wider than 16
+  qubits before any gate runs (`CQ_CORE_ERR_UNSUPPORTED`, read with
+  `cq_core_last_error()`), instead of returning a 16-bit bitstring; it also range-checks
+  qubit indices and rejects non-finite angles. Evidence: `research/v7/evidence/waveA_A2.md`.
 
 ---
 
@@ -98,7 +106,10 @@ CQ_API int cq_solve_sat(const char* cnf_str, cq_sat_result_t* out_result);
 - **Return Value**:
   - `0`: Formula is **Satisfiable (SAT)**.
   - `10`: Formula is **Unsatisfiable (UNSAT)**.
+  - `3`: Time budget exhausted. **No verdict**: `satisfiable == -1`. Treat it as
+    unknown, never as UNSAT (before ABI 1.1 a timeout surfaced as `10`).
   - `1`: Syntax error or malformed input.
+  - `-5`: Input longer than 64 MiB. `-7`: internal error.
 
 ---
 
@@ -158,8 +169,12 @@ CQ_API int cq_omniwave_bcp_eval(const uint32_t* offsets, const uint32_t* codes, 
   codes `2(v-1)+neg`); each front is `words` 32-bit words of assigned bits and
   value bits. `out_status[f*num_clauses+c]` is `0` SAT, `1` CONFLICT,
   `2|(code<<2)` UNIT or `3` OPEN, identical to `cqhecs.omniwave.bcp.evaluate_batch`.
-- **Return Value**: `0`, `-2` (no device), `-3` (allocation) or `-4` (dispatch).
-  Python verifies every pass against the CPU reference unless told otherwise.
+- **Return Value**: `0`, `-2` (no device), `1`/`2`/`4` (NULL argument, size limit,
+  malformed clause data; all validated on the host before any device work),
+  `-3` (allocation), `-4` (dispatch), `-5` (device lost: the context is dropped and
+  the next call re-creates it; use the CPU reference), `-6` (readback failed:
+  `out_status` is **not** written) or `-7` (internal). Python verifies every pass
+  against the CPU reference unless told otherwise.
 
 ### 2.10 `cq_omniwave_shutdown` (3.6.0)
 ```c
@@ -200,3 +215,97 @@ and may change in a minor release.
 The `cq_solve_sat` C entry point and `python_bridge.sat_engine` use the v3.0.0
 `SAT_VERIFIED`/`UNSAT_PROVEN`/`TIMEOUT_UNKNOWN` vocabulary. The standalone
 `cqhecs.sat` surface uses `SAT`/`UNSAT`/`UNKNOWN`.
+
+---
+
+## 4. ABI version contract
+
+Both native libraries export an ABI version (`CQ_HECS_ABI_MAJOR`/`MINOR`, currently
+1.1): `cq_abi_version()` returns `(major << 16) | minor` and `cq_check_abi(major, minor)`
+returns `0` when the loaded library is compatible with the caller's build, else `-1`.
+MAJOR changes are incompatible, MINOR changes are additions. The 1.1 additions are
+listed in `include/cq_hecs_api.h`: `cq_create_context` returns `NULL` for absurd sizes
+(qubits above 4096, bond dimension above 65536), input-size limits, the device-lost and
+readback codes above, and status `3` for `cq_solve_sat`. The core's own capability JSON
+(`cq_core_build_capabilities()`) is unchanged.
+
+## 5. Shared service layer and the plan document
+
+`cqhecs/service.py` is the one place that turns a request into an `ExecutionPlan`
+(`plan_document(source, force_path=..., require_counts=..., max_memory_bytes=...)`; `plan_object` returns the `ExecutionPlan` itself). Four
+surfaces call it and `tests/test_cross_surface_parity.py` asserts they return the same
+document on a six-circuit corpus (including a forced-path refusal and `require_counts`):
+
+| Surface | Entry |
+| :--- | :--- |
+| Python | `cqhecs.service.plan_document(...)` |
+| CLI | `cq-hecs plan <circuit> [--force-path A..D] [--require-counts] [--max-memory-mb N]` |
+| MCP | tool `cqhecs_plan` |
+| Studio | `POST /api/plan` (also `/api/v1/plan`) |
+
+Quantum Gravity experiments have their own envelope (`qg_plan` plus a `digest`, built by
+`cqhecs.service.qg_plan_document`), exposed the same way: `cq-hecs qg plan`, MCP
+`cqhecs_qg_plan` and Studio `POST /api/qg/v1/experiments/plan`;
+`tests/test_qg_surface_parity.py` asserts they are identical. It never plans a QPU job.
+
+The document schema is `cqhecs.execution_plan/1` (`docs/schemas/execution_plan.schema.json`).
+Envelope keys differ by surface and only those (CLI adds `schema_version` and `version`,
+Studio adds `schema_version`). A refusal (`FORCED_PATH_UNSUPPORTED`, `COUNTS_UNAVAILABLE`,
+`RESOURCE_BUDGET`) is part of a successful plan document (`selected_path: null`,
+`would_execute: false`, a `refusal` object); it is not an HTTP or process error.
+Estimates in the plan are heuristics; `estimate_quality` says so.
+
+Not migrated to the service: `cq-hecs analyze --explain` still calls
+`build_execution_plan` directly (same function, same output).
+
+## 6. Studio HTTP API: OpenAPI 3.1 and `/api/v1`
+
+`schemas/studio.openapi.json` is generated by `python -m cqhecs.studio.openapi` and
+served at `GET /api/openapi.json`. Every `/api/<x>` route also answers at
+`/api/v1/<x>` with the same guard and the same body; the original paths are unchanged.
+Every `/api` route needs the per-launch bearer token (or `CQ_HECS_STUDIO_TOKEN` /
+`CQ_HECS_STUDIO_TOKEN_FILE`), an allowed Host, no foreign Origin and `application/json`
+POST bodies. The Quantum Gravity routes are a separately versioned family under
+`/api/qg/v1` and are not in the OpenAPI document (see [`QUANTUM_GRAVITY_LAB.md`](QUANTUM_GRAVITY_LAB.md)).
+A drift test fails if a route literal in `cqhecs/studio/app.py` is undocumented or if the
+committed JSON differs from the generator. `openapi_spec_validator` is not installed in the
+reference environment, so full-spec validation is NOT RUN; structural checks are tested.
+
+## 7. MCP server (`cq-hecs mcp`)
+
+Stdio JSON-RPC. `initialize` negotiates `protocolVersion` among `2025-06-18`,
+`2025-03-26` and `2024-11-05` (an absent version selects the legacy shape, which is
+byte-for-byte the old behaviour). `2025-03-26` adds tool `annotations`; `2025-06-18`
+adds `title`, `outputSchema` and `structuredContent` (with a JSON text mirror in
+`content`). Checked against the 2025-06-18 tools text only; newer revisions are not
+claimed.
+
+Tools: `cqhecs_run`, `cqhecs_analyze`, `cqhecs_plan`, `cqhecs_doctor`,
+`cqhecs_sat_solve`, `cqhecs_sat_count`, `cqhecs_sat_models`, `cqhecs_devices`,
+`cqhecs_hardware`, and the Quantum Gravity family `cqhecs_qg_catalog`,
+`cqhecs_qg_circuit_preview`, `cqhecs_qg_run_local`, `cqhecs_qg_plan`,
+`cqhecs_qg_model_validate`, `cqhecs_qg_compare`, `cqhecs_qg_export`. Five more tools,
+`cqhecs_qg_openquantum_discover`, `cqhecs_qg_openquantum_quote`,
+`cqhecs_qg_openquantum_submit`, `cqhecs_qg_openquantum_status` and
+`cqhecs_qg_openquantum_results`, exist only to refuse: each returns the typed document
+`cqhecs.qg.paid_refusal.v1` (`status: UNAVAILABLE`, `code: QG_PAID_PATH_UNAVAILABLE`,
+`network: none`, `spend_credits: 0.0`). No tool contacts a provider or spends credits.
+
+Execution and cancellation: `tools/call` runs on a worker thread and the read loop stays
+live (`ping` is answered mid-call). `notifications/cancelled` answers the call once with
+`status: CANCELLED`, `verdict: null`; the late result is discarded. This deviates from the
+spec's "SHOULD NOT respond" and is recorded as a deviation. Pure-Python compute is
+**abandoned, not stopped**. At most 8 calls run concurrently (`SERVER_BUSY` otherwise,
+reported as `UNKNOWN`, never a verdict). Numeric inputs (`timeout`, `waves`, `workers`,
+`limit`, `node_budget`) are bounded to the Studio's ranges. Evidence:
+`research/v7/evidence/waveA_A1.md`.
+
+## 8. Typed MaxSAT
+
+`cq-hecs sat maxsat` and `cqhecs.sat.max_sat_checked` return contract `hcs.sat.maxsat.v1`:
+`status` is `OPTIMAL` only when exhaustive enumeration ran (at most 20 variables) and the
+optimum was re-verified from the returned assignment; above the limit the status is
+`UNKNOWN` with `limit_reached: true`, `assignment: null` and `trust: "NONE"`. The optimality
+claim rests on enumeration, so `optimality_certificate` is always `null`. The older
+`cqhecs.sat.max_sat` still raises `ValueError` above the limit. See
+[`../MIGRATION_V7.md`](../MIGRATION_V7.md) for a verified example.

@@ -1,15 +1,19 @@
-# CQ-HECS Architecture (v2, historical)
+# CQ-HECS Architecture (v2 snapshot, HISTORICAL)
 
-> This document describes the architecture that v2.2.2 actually ships. It
-> replaces an earlier aspirational "VRTS-300" specification whose bit-exact
-> Z(2^32) CORDIC phase ring and GPU VRAM accounting are not part of the
-> supported Python contract; the shipped native core does expose a 6x5x10
-> lattice engine; primitive Vulkan compute dispatch is verified on an AMD iGPU,
-> but no end-to-end GPU acceleration is claimed. The canonical,
-> regularly maintained architecture overview lives in the repository root at
-> [`ARCHITECTURE.md`](../ARCHITECTURE.md).
+> **HISTORICAL. NOT AUTHORITATIVE.** This file is a frozen snapshot of the v2.2.2
+> component matrix, kept so older references keep resolving. It does **not** describe the
+> current system: it predates the `ExecutionPlan`, the shared service layer, the MCP and
+> OpenAPI contracts, the exact #SAT backends, calibration governance, the Quantum Gravity
+> Lab and the native hardening. The single authoritative, maintained architecture
+> description is the repository root [`ARCHITECTURE.md`](../ARCHITECTURE.md). Where the two
+> disagree, the root file wins; do not copy statements from below into new documents.
 
-## What the system actually consists of
+Original v2 preface: this document replaced an earlier aspirational "VRTS-300"
+specification whose bit-exact Z(2^32) CORDIC phase ring and GPU VRAM accounting are not part
+of the supported Python contract. Primitive Vulkan compute dispatch was verified on an AMD
+iGPU; no end-to-end GPU acceleration is claimed.
+
+## What the v2 system consisted of (historical)
 
 | Layer | Component | Where | Notes |
 | :--- | :--- | :--- | :--- |

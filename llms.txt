@@ -8,13 +8,13 @@ Software version: 5.0.0 (the single source is `scripts/version.py`; do not hard-
 
 ## Core Capabilities & Architectural Invariants
 
-- **Vulkan 1.3 Compute Backend (native core only)**: Standardized SPIR-V compute shaders for tensor network contraction and ring arithmetic, without proprietary CUDA lock-in. Verification status is per-platform; see the hardware matrix in README.md. No physical GPU execution has been verified in the current release cycle.
+- **Vulkan 1.3 Compute Backend (native core only)**: Standardized SPIR-V compute shaders for tensor network contraction and ring arithmetic, without proprietary CUDA lock-in. Verification status is per-platform; see the hardware matrix in README.md. Primitive Vulkan dispatch and a bit-exact CPU-versus-Vulkan check of the OMNIWAVE BCP kernel were run on one AMD iGPU (research/v7/evidence/waveA_A2.md); there is no end-to-end GPU circuit simulator and no GPU speedup claim.
 - **Exact Giles-Selinger Ring Arithmetic Z[1/sqrt(2), i]**: Bit-exact algebraic tracking for Clifford+T circuits without floating-point rounding drift (unitary integrity U^dagger U = I).
 - **Four-Path Classical Architecture**:
   - Path A: Stabilizer-Tableau O(N^2) for pure Clifford (T = 0).
   - Path B: Low-T branch decomposition over a dense statevector (Bravyi-Smith-Smolin expansion; <= 14 branched gates). A measured comparison (research/v7/evidence/PATHB_DOMINANCE.json) found a plain dense statevector faster on every case, so Path B is a low-T method, not a stabilizer-rank advantage.
   - Path C: MPS with unbounded bond dimension for Area-Law entanglement. No truncation budget; the discarded singular-value mass is reported **only as a diagnostic** (`metadata["discarded_spectral_mass_diagnostic"]`). `numerical_error_bound` stays `None` because the per-SVD discarded mass does not compose into a state-norm bound. Runs on the CPU.
-  - Path D: Heisenberg-Picture Sparse-Pauli-Dynamics with mathematically certified error bound (Delta <= sum |c_P|); reports certified expectation values (single-qubit Z and parity Z_q Z_r) rather than a joint bitstring distribution, and flags unresolved=True if tolerance is exceeded.
+  - Path D: Heisenberg-Picture Sparse-Pauli-Dynamics with mathematically certified error bound (Delta <= sum |c_P|); reports certified expectation values (Z, ZZ and, per observable, X/Y/Z Pauli strings; each with its own bound) rather than a joint bitstring distribution, and flags unresolved=True if tolerance is exceeded.
 - **Honest Complexity Boundaries**:
   - No claims of quantum supremacy or collapsing complexity classes (BPP != BQP).
   - Exponential entanglement scaling (Volume-Law / Random Circuit Sampling) is acknowledged honestly; SVD terminates as unresolved rather than guessing.
@@ -22,10 +22,26 @@ Software version: 5.0.0 (the single source is `scripts/version.py`; do not hard-
 - **Zero Silent Cutoffs**: Enforces an explicit opt-in policy. Forbidden chi=48 truncations are audited to zero.
 - **Single Permissive License**: Licensed under the Apache License 2.0 repository-wide.
 
+## Surfaces and contracts (development tree, <NEXT_MAJOR> draft)
+
+- **One plan, four surfaces:** `cqhecs.execution_plan/1` is produced by Python (`cqhecs.service.plan_document`), `cq-hecs plan`, MCP `cqhecs_plan` and Studio `POST /api/plan`, and a test asserts the documents are identical. A refusal is a successful plan with `selected_path: null`.
+- **MCP:** stdio JSON-RPC; negotiates protocolVersion (2025-06-18, 2025-03-26, 2024-11-05); tool calls run on worker threads; cancellation returns a typed `CANCELLED` (compute is abandoned, not stopped); at most 8 concurrent calls.
+- **Studio:** loopback only; every `/api` route needs a per-launch bearer token; OpenAPI 3.1 at `/api/openapi.json`; `/api/v1/...` aliases; Quantum Gravity routes under `/api/qg/v1`.
+- **SAT trust labels:** `MODEL_VERIFIED`, `TREE_RESOLUTION_CHECKED`, `DRAT_CHECKED`; `UNKNOWN` on any timeout or budget. MaxSAT (`hcs.sat.maxsat.v1`) is exact only up to 20 variables and carries no optimality certificate. Exact #SAT by variable elimination refuses before allocating an over-budget table.
+- **Error fields:** `error_bound` (deliberate approximation), `numerical_error_bound` (`None` means not derived, never zero) and `sampling_error_bound` are separate. Paths B and C add diagnostics only.
+- **Noise:** models, not hardware. Gates without a calibrated channel are listed in `uncovered_gates`; calibration schema `cqhecs.calibration/3.0` records provenance (`synthetic | measured | derived | post_hoc | unknown`) and freshness.
+- **Quantum Gravity Lab:** finite models on a classical reference; the QG plan envelope is identical on Python, `cq-hecs qg plan`, MCP and Studio; Open Quantum routes and tools only return a typed `QG_PAID_PATH_UNAVAILABLE` refusal (no job submission, no credentials, no spend, no gravity measurement).
+- **Formal:** Lean specification lemmas (`FORMALIZED_LEMMA`), not a refinement proof of the code.
+- **Research only, not routable:** candidate Paths E, F, G (research/v7/QUANTUM_SIMULATION_RESEARCH.md).
+
 ## Key Links & Documentation
 
 - [Project README](README.md): Architecture overview, capabilities and boundaries table, installation guides, and benchmarks.
-- [Technical Architecture](ARCHITECTURE.md): Mathematical formulations for the Four-Path architecture, exact ring, and Lyapunov stability.
+- [Technical Architecture](ARCHITECTURE.md): the single authoritative architecture document (docs/ARCHITECTURE.md is a historical v2 snapshot).
+- [Migration guide](MIGRATION_V7.md): caller-visible changes with executed examples.
+- [Draft release notes](RELEASE_NOTES_DRAFT.md): implemented / experimental / measured / formally checked / not supported.
+- [Studio and HTTP API](docs/STUDIO.md): token model, routes, OpenAPI.
+- [Quantum Gravity Lab](docs/QUANTUM_GRAVITY_LAB.md): finite-model research workbench.
 - [Vulkan MPS Evaluation](benchmarks/VULKAN_MPS_EVALUATION.md): Comparative benchmarks against Qiskit Aer MPS and cuTensorNet.
 - [API Reference](docs/API_REFERENCE.md): Pure C-ABI function signatures, struct layouts, and thread safety contracts.
 - [Embedding Guide](docs/EMBEDDING_GUIDE.md): Code examples for C++, Python, C#, Rust, and Node.js.

@@ -113,7 +113,44 @@ Branch-Heuristik. Unterstützt mit klarem Umfang:
   auf der zurückgehaltenen Pigeonhole-Instanz braucht sie 157 973 Fronts statt 10 079.
 - Referenz: [`docs/OMNIWAVE.md`](docs/OMNIWAVE.md).
 
-## Verifikation (exakter Stand `c854560` und danach)
+## Neu seit der letzten Veröffentlichung (Entwurf `<NEXT_MAJOR>`)
+
+Dieser Zweig ist der letzten Veröffentlichung voraus. Aufgeteilt in implementiert /
+experimentell / gemessen / formal geprüft / nicht unterstützt steht es in
+[`RELEASE_NOTES_DRAFT.md`](RELEASE_NOTES_DRAFT.md); jede für Aufrufer sichtbare Änderung
+mit ausgeführten Beispielen in [`MIGRATION_V7.md`](MIGRATION_V7.md). Kurz:
+
+- **Ein Plan, vier Oberflächen:** `cq-hecs plan`, Python, MCP und Studio liefern dasselbe
+  `ExecutionPlan`-Dokument (ein Test prüft die Gleichheit). Studio hat OpenAPI 3.1 und
+  `/api/v1`; jeder Aufruf braucht ein Token pro Start (**Änderung für Skripte**).
+- **Typisiertes MaxSAT:** `OPTIMAL` nur nach erschöpfender Aufzählung (höchstens 20
+  Variablen), sonst `UNKNOWN`; kein Optimalitätszertifikat.
+- **Ehrliche Fehlerangaben:** Pfad A zieht jede angeforderte Shot-Zahl oder verweigert
+  typisiert; für Pfade B und C bleibt `numerical_error_bound` `None` (nicht hergeleitet,
+  nicht null). Gatter ohne kalibrierten Kanal stehen in `uncovered_gates`; Kalibrierschema
+  v3 trägt Herkunft und Frische.
+- **Nativ und Web:** ABI 1.1, geprüfte Argumente, Vulkan-Fehlerinjektion; WebGPU fällt
+  bei Geräteverlust sichtbar auf WASM zurück.
+- **Quantum-Gravity-Labor:** endliche Modelle auf klassischer Referenz, ohne Jobversand,
+  ohne Zugangsdaten und ohne Kosten; keine Gravitationsmessung.
+- **Formal:** Lean-Spezifikationslemmata (`FORMALIZED_LEMMA`), kein Verfeinerungsbeweis des
+  Codes. Die Forschungspfade E, F, G blieben `RESEARCH_ONLY` und sind nicht routbar.
+
+## Verifikation
+
+Zwei getrennte Tabellen, damit keine Zahl dem falschen Commit zugeschrieben wird.
+
+### Aktueller Entwicklungsstand (`release/v7-stable`)
+
+| Prüfung | Ergebnis | Beleg |
+|---|---|---|
+| Python-Suite, Windows / Python 3.13, Commit `6fe4f01` | 2896 bestanden, 109 übersprungen | `research/v7/evidence/waveA_A5.md` |
+| Mutationstests (früherer Stand) | 64/64 getötet | `research/v7/BASELINE_V7.md` |
+| CTest nativ (Vulkan an / nur CPU) | 26/26 / 15/15 | `research/v7/evidence/waveA_A2.md` |
+| Nicht ausgeführt | GCC/Clang-Sanitizer, Linux, WebGPU auf Hardware, `drat-trim`, `cake_lpr` | `RELEASE_NOTES_DRAFT.md` |
+
+### Historische Messung (exakter Stand `c854560`)
+
 
 | Prüfung | Ergebnis |
 |---|---|
@@ -157,6 +194,9 @@ python -m pytest tests/ -q
 | Lokale Bridge | [`docs/LOCAL_BRIDGE.md`](docs/LOCAL_BRIDGE.md) |
 | SHA-Rundenanalyse | [`docs/SHA_ROUND_ANALYZER.md`](docs/SHA_ROUND_ANALYZER.md) |
 | Forschungsakte | [`research/sha_forge/`](research/sha_forge/) (Englisch) |
+| Architektur (maßgeblich) | [`ARCHITECTURE.md`](ARCHITECTURE.md) (`docs/ARCHITECTURE.md` ist ein historischer Stand) |
+| Migration | [`MIGRATION_V7.md`](MIGRATION_V7.md) |
+| Release-Notes-Entwurf | [`RELEASE_NOTES_DRAFT.md`](RELEASE_NOTES_DRAFT.md) |
 
 ## Lizenz
 

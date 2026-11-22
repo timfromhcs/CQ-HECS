@@ -28,6 +28,56 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   `python -m cqhecs.studio.openapi`, served at `/api/openapi.json`); every `/api/x` route also answers
   at `/api/v1/x`, with the same token and origin guard. The original paths are unchanged.
 
+### Wave B - numerics, Quantum Gravity, noise governance, research paths
+
+Evidence files: `research/v7/evidence/waveB_B1.md` to `waveB_B5.md`. Nothing here contacted a
+QPU, a provider or a credential.
+
+- **Paths B and C error stories (B1).** Metadata only, no behaviour change: Path B adds
+  `born_norm_sum`, `renormalization_applied`, `discarded_branch_count`; Path C adds SVD
+  instrumentation and `numerical_error_bound_reason`. `numerical_error_bound` stays `None`
+  ("not derived"). New tests compare gate mapping, endianness, reduced density matrices and
+  sampling against a dense Qiskit reference on enumerated families (44 + 94 targeted tests
+  passed); a doubled state is refused, and injected mapping defects are detected. Not run:
+  n > 7 dense comparison for Path C. See `research/v7/NUMERICS_B_C.md`.
+- **Quantum Gravity models and plan parity (B2).** `bmv_competing` (competing predictions, null
+  controls, Wootters oracle, fidelity witness; a physical `theta` is a typed refusal),
+  `syk_trotter` (Pauli-rotation QASM compiler, Trotter and mirror circuits checked against a dense
+  `expm` oracle), Gauss-law leakage for the Z2 toy, a QG `ExecutionPlan` wrapper that never plans a
+  QPU job, and a read-only offline replay of the recorded campaign (raw, processed and QASM files
+  hashed before and after). 261 targeted tests passed. Plan exposure on CLI, MCP and Studio was
+  not wired in B2; it is present in the working tree afterwards (`cq-hecs qg plan`, MCP
+  `cqhecs_qg_plan`, Studio `/api/qg/v1/experiments/plan`, `tests/test_qg_surface_parity.py`).
+- **Quantum Gravity Lab screens (B3).** Studio tab 08 (`qg.js`) over `/api/qg/v1`, English only;
+  the web route `#/qg` was already present. A syntax error in `cqhecs/studio/app.py` (a literal
+  CR LF written where an escape belonged) was repaired. No surface can submit a job.
+  Web: 105 unit tests, Playwright 14 + 35 targeted tests passed; Studio smoke was an ad hoc script.
+- **Calibration schema v3 and FIT/EVAL enforcement (B4).** `cqhecs.calibration/3.0` wraps an
+  unchanged `BackendProfile` with provenance label, freshness window, layout and a
+  `refuse | warn | ideal` gate policy; channel and readout checks; tests prove the fit touches
+  FIT jobs only and does not change when EVAL counts change. 15 new tests, 65 related passed.
+  Not done: transpilation, layout legality, CLI/Studio wiring, a VALIDATION split.
+- **Research Paths E, F, G (B5).** Prototypes under `research/v7/prototypes/` with a
+  preregistration written before the first run and held-out seeds; all three ended
+  `RESEARCH_ONLY`, with negative results recorded (Path F interval under-coverage and no speedup
+  for n <= 6; Path G worse than the standard MPS at equal bond dimension). The router is unchanged
+  and a test enforces it (85 prototype tests passed).
+
+### Wave C - documentation
+
+- **Docs reconciled with code and evidence (C4).** `ARCHITECTURE.md` is the single authoritative
+  architecture document (new section 7); `docs/ARCHITECTURE.md` is marked historical. README in
+  English, German and French now separates the current development tree from the historical CI
+  lane and states each number with its commit; multi-line DIMACS examples use `$'...'` (a
+  double-quoted backslash-n was rejected by the parser). `docs/API_REFERENCE.md` documents the
+  service layer, OpenAPI, MCP negotiation and the C ABI 1.1 return codes; `docs/STUDIO.md`
+  documents the bearer token, `/api/v1`, `/api/plan` and the Quantum Gravity routes.
+  New: `MIGRATION_V7.md` (every python example is executed by a test) and
+  `RELEASE_NOTES_DRAFT.md` (implemented / experimental / measured / formally checked / not
+  supported / not run). `llms.txt` and `llms-full.txt` refreshed. The version is written as the
+  placeholder `<NEXT_MAJOR>` until the freeze; `tests/test_doc_consistency_v7.py` detects stale
+  claims and a leaked placeholder.
+
 ### Fixed — honesty defects found by the Wave-1/2 audit (AGENTS_V6.md Wave 3)
 
 - **SAT certification (D3):** `solve_unified` labelled any engine `UNSAT` as "DRAT proof
