@@ -1,6 +1,6 @@
 # CQ-HECS: Classical Quantum High-Efficiency Compute Simulator
 
-> Deterministic classical quantum emulator & algebraic constraint solver with Z[1/sqrt(2), i] exact ring arithmetic, Vulkan 1.3 compute backend, and honest four-path architecture.
+> Deterministic classical quantum emulator and constraint solver with an honest four-path architecture. The Python paths compute in float64 (exact algebraic decompositions, float64 evaluation, error classes reported separately); Z[1/sqrt(2), i] exact ring arithmetic is a native C++ research component, and Vulkan 1.3 compute is verified for native primitives only.
 
 CQ-HECS (Classical Quantum High-Efficiency Compute Simulator) is an open-source compute engine written in C++20 and Vulkan 1.3. The Python package, the `cq-hecs` CLI and the four classical backends run entirely on the CPU and need no Vulkan SDK; the native core uses Vulkan 1.3 SPIR-V compute shaders.
 
@@ -9,7 +9,7 @@ Software version: 7.0.0 (the single source is `scripts/version.py`; do not hard-
 ## Core Capabilities & Architectural Invariants
 
 - **Vulkan 1.3 Compute Backend (native core only)**: Standardized SPIR-V compute shaders for tensor network contraction and ring arithmetic, without proprietary CUDA lock-in. Verification status is per-platform; see the hardware matrix in README.md. Primitive Vulkan dispatch and a bit-exact CPU-versus-Vulkan check of the OMNIWAVE BCP kernel were run on one AMD iGPU (research/v7/evidence/waveA_A2.md); there is no end-to-end GPU circuit simulator and no GPU speedup claim.
-- **Exact Giles-Selinger Ring Arithmetic Z[1/sqrt(2), i]**: Bit-exact algebraic tracking for Clifford+T circuits without floating-point rounding drift (unitary integrity U^dagger U = I).
+- **Exact Giles-Selinger Ring Arithmetic Z[1/sqrt(2), i] (native C++ research component, `include/cq/exact_cyclotomic.hpp`, `include/cqhecs/algebra/ring.hpp`)**: bit-exact integer ring arithmetic for Clifford+T gate algebra. It is not the arithmetic of the Python simulation paths A-D, which use float64 (Path A uses exact GF(2) tableau updates); a float64 result must not be read as symbolically exact.
 - **Four-Path Classical Architecture**:
   - Path A: Stabilizer-Tableau O(N^2) for pure Clifford (T = 0).
   - Path B: Low-T branch decomposition over a dense statevector (Bravyi-Smith-Smolin expansion; <= 14 branched gates). A measured comparison (research/v7/evidence/PATHB_DOMINANCE.json) found a plain dense statevector faster on every case, so Path B is a low-T method, not a stabilizer-rank advantage.

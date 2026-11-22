@@ -287,7 +287,7 @@ That rule is enforced in code, not only in documentation:
 | **Public surfaces** | `cq-hecs` CLI, `cq-hecs studio`, Qiskit `BackendV2`, Python API, C ABI, SAT engine |
 | **Simulation paths** | A: stabilizer tableau · B: stabilizer rank · C: untruncated MPS · D: sparse Pauli |
 | **Noise** | Typed profiles, Kraus channels, exact float64 density matrix up to 10 qubits |
-| **Verification** | see [Verification](#verification): last full Python run 2896 passed / 109 skipped (Windows, `6fe4f01`), 95/95 mutants (snapshot run, W15; re-run in place at freeze), 12-check selftest, 21/21 independent oracle |
+| **Verification** | see [Verification](#verification): freeze-SHA `38e799b`: Python 4269 passed / 134 skipped / 0 failed, 95/95 mutants, web unit 167/167, Playwright 128 passed / 1 skipped (WebGPU NOT_RUN), CTest 26/26 (Vulkan) and 15/15 (CPU); the 12-check selftest and the 21/21 independent oracle are historical (v3.x) |
 | **Platforms** | Linux x64, Windows 10/11; Python 3.11–3.14 |
 | **License** | Apache-2.0 |
 
@@ -336,7 +336,7 @@ flowchart LR
 | Path | Method | Best for | Guarantee | Hard limit |
 | :--- | :--- | :--- | :--- | :--- |
 | **A** | Gottesman–Knill tableau | pure Clifford circuits (`T = 0`) | exact GF(2) symplectic evolution, `error_bound = 0.0` | first non-Clifford gate escalates |
-| **B** | Stabilizer-rank decomposition | low `T`-count | exact algebraic decomposition, float64 evaluation; branches with \|weight\| ≤ 1e-15 are dropped and their mass is reported in `error_bound` | 22 qubits (implementation ceiling) |
+| **B** | Stabilizer-rank decomposition | low `T`-count (measured: a plain dense statevector was faster on every measured case, `research/v7/evidence/PATHB_DOMINANCE.json`; Path B is a low-T method, not a speed advantage) | exact algebraic decomposition, float64 evaluation; branches with \|weight\| ≤ 1e-15 are dropped and their mass is reported in `error_bound` | 22 qubits (implementation ceiling) |
 | **C** | Untruncated MPS | 1D area-law states | no deliberate truncation; `numerical_error_bound=None` | RAM budget (`ram_budget_mb`, fail-closed); dense conversion ≤ 20 qubits; sampling routing cap 500 qubits |
 | **D** | Sparse-Pauli Heisenberg | observable queries on 200+ qubits | certified bound `Δ ≤ Σ abs(c_P)` over discarded terms | no certified joint measurement distribution |
 
@@ -449,8 +449,9 @@ equivariance, zero-noise identity, and channel composition order.
 - **Plan parity:** the same `cqhecs.execution_plan/1` document comes from Python
   (`cqhecs.service.plan_document`), `cq-hecs plan`, MCP `cqhecs_plan` and Studio
   `POST /api/plan`; one test asserts they are identical.
-- **Standalone:** `cqhecs-7.0.0-windows-x64.zip` on the release page; unzip
-  and run `cq-hecs\cq-hecs.exe`. `scripts/build_exe.ps1` rebuilds it.
+- **Standalone:** `cqhecs-7.0.0-windows-x64.zip` will be attached to the release once
+  `v7.0.0` is published (nothing is published yet); then unzip and run
+  `cq-hecs\cq-hecs.exe`. `scripts/build_exe.ps1` builds it from this tree.
 
 ### CQ-HECS Studio
 
@@ -911,14 +912,16 @@ not projections. A green run on an older commit is not evidence for a later comm
 
 | Gate | Result | Evidence |
 | :--- | :--- | :--- |
-| Python suite, Windows / Python 3.13, commit `6fe4f01` | **2896 passed**, **109 skipped**, 1 deselected | `research/v7/evidence/waveA_A5.md` |
-| Skip budget | 4 skips are an interpreter difference (`qiskit-ibm-runtime` missing); the same tests pass under Python 3.14 | `research/v7/BASELINE_V7.md` addendum |
-| Mutation suite (snapshot run, W15; re-run in place at freeze) | 95/95 killed | `research/v7/BASELINE_V7.md` |
-| Native CTest, Vulkan ON, one AMD iGPU, MSVC | 26/26 | `research/v7/evidence/waveA_A2.md` |
-| Native CTest, CPU-only build | 15/15 | `research/v7/evidence/waveA_A2.md` |
-| Web unit tests / Playwright | 105 passed / 63 + 14 passed (QG screens) | `waveA_A3.md`, `waveB_B3.md` |
+| Python suite, Windows, freeze SHA `38e799b` | **4269 passed**, **134 skipped**, 0 failed | `research/v7/evidence/waveE_E2.md` (integrator record) |
+| Skip budget | skips are environmental (native build directory not set, optional extras absent), not failures | `research/v7/SKIP_BUDGET.json` |
+| Mutation suite, in place at the freeze | 95/95 killed | `research/v7/evidence/waveE_E2.md` |
+| Native CTest, Vulkan ON, one AMD iGPU, MSVC | 26/26 | `research/v7/evidence/waveE_E2.md`, `waveA_A2.md` |
+| Native CTest, CPU-only build | 15/15 | `research/v7/evidence/waveE_E2.md`, `waveA_A2.md` |
+| Web unit tests | 167/167 | `research/v7/evidence/waveE_E2.md` |
+| Playwright | 128 passed / 1 skipped (WebGPU, NOT_RUN: no adapter); Studio plan UI: 6 | `research/v7/evidence/waveE_E2.md` |
+| Release artifacts | built from `38e799b`; not published | `research/v7/evidence/waveE_E2.md` |
 | Lean specification lemmas | `lake build` green, standard axioms only | `waveA_A5.md` |
-| Not run | GCC/Clang sanitizers, Linux and software-ICD native runs, WebGPU on hardware, `drat-trim`, `cake_lpr`, a full re-run after the last Wave B commits | `RELEASE_NOTES_DRAFT.md` |
+| Not run | GCC/Clang sanitizers, Linux and software-ICD native runs, WebGPU on hardware, `drat-trim`, `cake_lpr`, a release publication (no tag exists yet) | `RELEASE_NOTES_DRAFT.md` |
 
 ### Historical lane (exact head SHA `c854560` of `dev/sha-forge-hardware-lab`)
 

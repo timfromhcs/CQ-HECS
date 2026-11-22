@@ -4,7 +4,7 @@
 > frozen v2 snapshot kept for old links and is marked historical. Sections 1-5 are the
 > long-standing four-path contract; sections 6 and 7 record what was added since. Every
 > status word below (implemented, experimental, measured, formally checked, not supported)
-> is tied to an evidence file; the evidence index is `research/v7/EVIDENCE_LEDGER.md`.
+> is tied to an evidence file; the evidence index is `research/v7/EVIDENCE_LEDGER.md` (maintained separately; the freeze-SHA test and build numbers are in `research/v7/evidence/waveE_E2.md`).
 
 ## 1. System Architecture Overview
 
@@ -141,7 +141,7 @@ conflating them in a single `error_bound`:
 | Field | Meaning |
 | :--- | :--- |
 | `error_bound` | **Deliberate approximation** (truncated Pauli terms, any opt-in truncation). `0.0` means nothing was deliberately approximated. |
-| `numerical_error_bound` | **Floating-point roundoff**, measured where the backend can measure it (e.g. Path C's discarded singular-value mass). |
+| `numerical_error_bound` | **Floating-point roundoff**: `None` ("not derived", never `0`) unless a backend derives a propagated bound. Paths B and C derive none. Path C's discarded singular-value mass is a **diagnostic only** (`discarded_spectral_mass_diagnostic`), not this field (see section 7.2). |
 | `sampling_error_bound` | **Finite-shot sampling** error, a rigorous Hoeffding TV bound `sqrt(ln(2/delta)/(2*shots))`. |
 
 `total_error_bound` sums them. A result therefore never claims zero error while

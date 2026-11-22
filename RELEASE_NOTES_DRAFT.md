@@ -63,14 +63,15 @@ Finite, machine-specific numbers. None is an asymptotic or universal claim.
 
 | Measurement | Value | Evidence |
 | :--- | :--- | :--- |
-| Full Python suite, Windows, Python 3.13 (commit `6fe4f01`) | 2896 passed, 109 skipped, 1 deselected | `waveA_A5.md`, `BASELINE_V7.md` addendum |
-| Skip budget | the 4 extra skips are `qiskit-ibm-runtime` missing in that interpreter; the same tests pass (33) under Python 3.14 | `waveA_A5.md` |
-| Mutation suite (earlier baseline, before Wave A) | 64/64 killed | `BASELINE_V7.md` |
-| Native CTest, Vulkan ON, one AMD Radeon iGPU, MSVC | 26/26 | `waveA_A2.md` |
-| Native CTest, CPU-only build | 15/15 | `waveA_A2.md` |
+| Full Python suite, Windows, freeze SHA `38e799b` | 4269 passed, 134 skipped, 0 failed | `waveE_E2.md` (integrator record) |
+| Skip budget | skips are environmental (native build directory not set, optional extras absent), not failures | `SKIP_BUDGET.json` |
+| Mutation suite, in place at the freeze | 95/95 killed (an earlier pre-Wave-A baseline was 64/64) | `waveE_E2.md`, `BASELINE_V7.md` |
+| Native CTest, Vulkan ON, one AMD Radeon iGPU, MSVC | 26/26 | `waveE_E2.md`, `waveA_A2.md` |
+| Native CTest, CPU-only build | 15/15 | `waveE_E2.md`, `waveA_A2.md` |
 | CPU versus Vulkan BCP differential | 1,052,908 cells, 0 mismatches (correctness only, no timing claim) | `waveA_A2.md` |
-| Web unit tests after the Quantum Gravity screens | 105 passed | `waveB_B3.md` |
-| Playwright (desktop, 360 px and 390 px projects) | 63 passed before the Quantum Gravity screens; 14 more in `qg.spec.ts` | `waveA_A3.md`, `waveB_B3.md` |
+| Web unit tests at the freeze | 167/167 | `waveE_E2.md` |
+| Playwright at the freeze | 128 passed, 1 skipped (WebGPU, NOT_RUN: no adapter); Studio plan UI: 6 | `waveE_E2.md` |
+| Release artifacts | built from `38e799b`; not published, no tag exists | `waveE_E2.md` |
 | Path B versus a plain dense statevector | Path B slower on every measured case | `PATHB_DOMINANCE.json` |
 | Separator table bound `2^(w+1)` | 31 rows, 0 violations of observed <= predicted | `waveA_A4_separator_calibration.json` |
 | DRAT tamper matrix | 125 of 235 single-lemma deletions rejected (others are redundant) | `waveA_A4.md` |

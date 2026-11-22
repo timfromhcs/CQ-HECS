@@ -86,9 +86,10 @@ Python-Engine; behauptet wird nur Übereinstimmung auf einem erklärten Korpus.
 - **Bundle-Budget:** `npm run build` schlägt über 270 KB gzip JavaScript, 18 KB WASM und
   8 KB CSS fehl; gemessen am 2026-11-02: 233,5 / 15,0 / 6,6 KB.
 - **Delivery-Check:** `npm run verify:deploy -- <url>` prüft Shell, Security-Header,
-  WASM-MIME-Typ und Cache-Policy. Das Production-Deployment von `1d38df2` bestand 10/10 -
-  über `vercel curl`, weil das Deployment durch Vercel Deployment Protection geschützt ist;
-  das Skript sagt das, statt eine öffentliche URL zu behaupten.
+  WASM-MIME-Typ und Cache-Policy. Das öffentliche Production-Deployment (`https://cq-hecs-web.vercel.app`) bestand
+  10/10 anonym, ohne `--via-cli` (Deployment Protection ist seit 2026-11-02 deaktiviert,
+  siehe `docs/WEB_ENGINES.md`); sollte eine Schutzseite zurückkehren, erkennt das Skript sie und
+  endet mit Code 3.
 
 - **Korpus mit unabhängigem Orakel:** sechs OpenQASM-Fälle werden vom Browser-Parser
   gelesen und mit **Qiskit 2.5.1 Statevector** bei `1e-12` verglichen; ein Test vertauscht
@@ -144,10 +145,14 @@ Zwei getrennte Tabellen, damit keine Zahl dem falschen Commit zugeschrieben wird
 
 | Prüfung | Ergebnis | Beleg |
 |---|---|---|
-| Python-Suite, Windows / Python 3.13, Commit `6fe4f01` | 2896 bestanden, 109 übersprungen | `research/v7/evidence/waveA_A5.md` |
-| Mutationstests (Snapshot-Lauf, W15; beim Freeze erneut) | 95/95 getötet | `research/v7/BASELINE_V7.md` |
-| CTest nativ (Vulkan an / nur CPU) | 26/26 / 15/15 | `research/v7/evidence/waveA_A2.md` |
-| Nicht ausgeführt | GCC/Clang-Sanitizer, Linux, WebGPU auf Hardware, `drat-trim`, `cake_lpr` | `RELEASE_NOTES_DRAFT.md` |
+| Python-Suite, Windows, Freeze-SHA `38e799b` | 4269 bestanden, 134 übersprungen, 0 fehlgeschlagen | `research/v7/evidence/waveE_E2.md` (Integrator-Protokoll) |
+| Übersprungene Tests | umgebungsbedingt (natives Build-Verzeichnis nicht gesetzt, optionale Extras fehlen), keine Fehlschläge | `research/v7/SKIP_BUDGET.json` |
+| Mutationstests, beim Freeze vor Ort | 95/95 getötet | `research/v7/evidence/waveE_E2.md` |
+| CTest nativ (Vulkan an / nur CPU) | 26/26 / 15/15 | `research/v7/evidence/waveE_E2.md`, `waveA_A2.md` |
+| Web-Unit-Tests | 167/167 | `research/v7/evidence/waveE_E2.md` |
+| Playwright | 128 bestanden / 1 übersprungen (WebGPU, NOT_RUN: kein Adapter); Studio-Plan-UI: 6 | `research/v7/evidence/waveE_E2.md` |
+| Release-Artefakte | aus `38e799b` gebaut, nicht veröffentlicht | `research/v7/evidence/waveE_E2.md` |
+| Nicht ausgeführt | GCC/Clang-Sanitizer, Linux, WebGPU auf Hardware, `drat-trim`, `cake_lpr`, Veröffentlichung (es gibt noch kein Tag) | `RELEASE_NOTES_DRAFT.md` |
 
 ### Historische Messung (exakter Stand `c854560`)
 

@@ -24,6 +24,31 @@ LANGUAGES = {
 SHARED_EVIDENCE = ("2786", "2690", "21/21", "60/60", "39/39", "41/41")
 
 
+def _freeze_tokens():
+    import json
+    import re
+
+    text = (REPO / "research" / "v7" / "evidence" / "waveE_E2.md").read_text(encoding="utf-8")
+    n = json.loads(re.search(r"```json\n(.*?)```", text, flags=re.DOTALL).group(1))
+    return (
+        n["freeze_sha"],
+        str(n["python"]["passed"]),
+        str(n["python"]["skipped"]),
+        f'{n["mutation"]["killed"]}/{n["mutation"]["total"]}',
+        f'{n["web_unit"]["passed"]}/{n["web_unit"]["total"]}',
+        f'{n["ctest_vulkan"]["passed"]}/{n["ctest_vulkan"]["total"]}',
+        f'{n["ctest_cpu"]["passed"]}/{n["ctest_cpu"]["total"]}',
+    )
+
+
+def test_every_language_carries_the_freeze_numbers_from_the_evidence_file():
+    tokens = _freeze_tokens()
+    for filename in LANGUAGES:
+        text = (REPO / filename).read_text(encoding="utf-8")
+        missing = [token for token in tokens if token not in text]
+        assert not missing, f"{filename} is missing freeze numbers: {missing}"
+
+
 @pytest.mark.parametrize("filename", sorted(LANGUAGES))
 def test_exists_and_is_marked_with_its_language(filename):
     path = REPO / filename

@@ -206,23 +206,92 @@ def test_readme_documentation_table_says_which_architecture_file_is_authoritativ
 # 5. Numbers in the docs equal the numbers in the evidence
 # ---------------------------------------------------------------------------
 
-def test_readme_python_suite_numbers_match_the_evidence_file():
-    evidence = read("research/v7/evidence/waveA_A5.md")
-    assert "2896 passed, 109 skipped" in evidence
-    for name in LANGUAGE_READMES:
-        text = read(name)
-        assert "2896" in text and "109" in text and "6fe4f01" in text, (
-            f"{name} does not state the current suite numbers with their commit"
-        )
+def freeze_numbers() -> dict:
+    """The freeze-SHA gate numbers, parsed from the evidence file (not typed into the test)."""
+    text = read("research/v7/evidence/waveE_E2.md")
+    match = re.search(r"```json\n(.*?)```", text, flags=re.DOTALL)
+    assert match, "waveE_E2.md lost its machine-readable freeze-number block"
+    data = json.loads(match.group(1))
+    assert data["schema"] == "hcs.freeze_numbers.v1"
+    return data
 
 
-def test_native_and_mutation_numbers_match_the_evidence():
-    a2 = read("research/v7/evidence/waveA_A2.md")
-    assert "26/26" in a2 and "15/15" in a2
-    assert "64/64" in read("research/v7/BASELINE_V7.md")
-    for name in LANGUAGE_READMES:
+def test_readme_numbers_equal_the_freeze_evidence_file():
+    n = freeze_numbers()
+    expected = [
+        n["freeze_sha"],
+        f'{n["python"]["passed"]}',
+        f'{n["python"]["skipped"]}',
+        f'{n["mutation"]["killed"]}/{n["mutation"]["total"]}',
+        f'{n["web_unit"]["passed"]}/{n["web_unit"]["total"]}',
+        f'{n["playwright"]["passed"]}',
+        f'{n["ctest_vulkan"]["passed"]}/{n["ctest_vulkan"]["total"]}',
+        f'{n["ctest_cpu"]["passed"]}/{n["ctest_cpu"]["total"]}',
+    ]
+    assert n["python"]["failed"] == 0
+    for name in LANGUAGE_READMES + ("RELEASE_NOTES_DRAFT.md",):
         text = read(name)
-        assert "26/26" in text and "15/15" in text and "95/95" in text, name
+        missing = [token for token in expected if token not in text]
+        assert not missing, f"{name} does not state the freeze-SHA numbers {missing}"
+
+
+def test_superseded_suite_numbers_are_gone_from_the_current_tables():
+    # 2896/109 (commit 6fe4f01) and 105 web unit tests were the pre-freeze numbers.
+    for name in LANGUAGE_READMES + ("RELEASE_NOTES_DRAFT.md",):
+        text = read(name)
+        for stale in ("2896", "6fe4f01", "105 passed"):
+            assert stale not in text, f"{name} still quotes the superseded number {stale!r}"
+
+
+def test_the_waveE_evidence_cited_by_the_docs_exists():
+    for name in LANGUAGE_READMES + ("RELEASE_NOTES_DRAFT.md", "ARCHITECTURE.md"):
+        assert "waveE_E2.md" in read(name), f"{name} does not cite the freeze evidence file"
+    assert (REPO / "research" / "v7" / "evidence" / "waveE_E2.md").is_file()
+
+
+def test_standalone_zip_is_described_as_future_until_published():
+    for name in LANGUAGE_READMES:
+        for line in read(name).splitlines():
+            if "windows-x64.zip" in line:
+                assert "on the release page" not in line, f"{name}: asset claimed as already published"
+    text = read("README.md")
+    assert "will be attached to the release" in text
+
+
+def test_path_b_row_carries_the_measured_dominance_caveat():
+    row = next(line for line in read("README.md").splitlines() if line.startswith("| **B** |"))
+    assert "PATHB_DOMINANCE.json" in row and "dense statevector" in row and "faster" in row
+    dominance = json.loads((REPO / "research/v7/evidence/PATHB_DOMINANCE.json").read_text(encoding="utf-8"))
+    ran = [c for c in dominance["cases"] if c.get("state") == "RUN"]
+    assert ran and all(c["ratio_path_b_over_dense"] > 1 for c in ran), "the caveat no longer matches the data"
+
+
+def test_translations_do_not_state_a_protected_production_deployment():
+    for name in ("README.de.md", "README.fr.md"):
+        text = read(name)
+        assert "1d38df2" not in text and "vercel curl" not in text, f"{name}: stale deployment statement"
+        assert "cq-hecs-web.vercel.app" in text and "10/10" in text
+
+
+def test_architecture_result_table_says_numerical_error_bound_is_none_unless_derived():
+    text = read("ARCHITECTURE.md")
+    row = next(line for line in text.splitlines() if line.startswith("| `numerical_error_bound` |"))
+    assert "`None`" in row and "diagnostic only" in row and "Paths B and C derive none" in row
+
+
+def test_llms_headline_does_not_overclaim_exactness():
+    head = read("llms.txt").split("\n\n", 2)[1]
+    assert "float64" in head and "native C++" in head
+    assert "exact ring arithmetic, Vulkan" not in head
+    assert "native C++ research component" in read("llms.txt")
+    assert "native C++ research component" in read("llms-full.txt")
+
+
+def test_changelog_marks_the_current_version_as_an_unreleased_candidate():
+    from version import VERSION
+
+    line = next(l for l in read("CHANGELOG.md").splitlines() if l.startswith(f"## [{VERSION}]"))
+    assert "unreleased candidate" in line
 
 
 def test_release_notes_draft_uses_the_five_status_headings():
@@ -346,3 +415,13 @@ def test_cited_evidence_files_exist(relative):
         if not any(c.is_file() for c in candidates):
             missing.append(name)
     assert not missing, f"{relative} cites evidence that does not exist: {missing}"
+
+
+def test_release_notes_mirror_the_draft_body():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    norm = lambda p: (root / p).read_text(encoding="utf-8").replace("\r\n", "\n")
+    notes, draft = norm("RELEASE_NOTES.md"), norm("RELEASE_NOTES_DRAFT.md")
+    marker = "Migration steps for every"
+    assert "**Version:** 7.0.0" in notes
+    assert notes[notes.index(marker):] == draft[draft.index(marker):]

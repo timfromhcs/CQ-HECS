@@ -12,7 +12,11 @@ _(nothing yet)_
 
 ---
 
-## [7.0.0] - 2026-11-22
+## [7.0.0] - 2026-11-22 (unreleased candidate)
+
+> Release candidate: no `v7.0.0` tag or GitHub release exists yet. This section describes the tree on
+> `release/v7-stable` and becomes a release only when the tag is published. Freeze-SHA gate numbers are in
+> `research/v7/evidence/waveE_E2.md`.
 
 Version 7.0.0 follows 5.0.0 directly; there is no 6.x release (6 was an internal planning label). See `MIGRATION_V7.md`.
 

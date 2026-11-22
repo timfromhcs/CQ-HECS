@@ -85,9 +85,10 @@ déclaré.
   18 Ko de WASM et 8 Ko de CSS ; mesuré le 2026-11-02 : 233,5 / 15,0 / 6,6 Ko.
 - **Contrôle de livraison :** `npm run verify:deploy -- <url>` vérifie la coquille, les
   en-têtes de sécurité, le type MIME et la politique de cache du WASM. Le déploiement de
-  production de `1d38df2` a passé 10/10 — via `vercel curl`, car il est protégé par
-  Vercel Deployment Protection ; le script le dit au lieu de prétendre que l'URL est
-  publique.
+  production public (`https://cq-hecs-web.vercel.app`) a passé 10/10 en anonyme, sans
+  `--via-cli` (la Deployment Protection est désactivée depuis le 2026-11-02, voir
+  `docs/WEB_ENGINES.md`) ; si une page de protection revenait, le script la détecte et
+  quitte avec le code 3.
 
 - **Corpus avec un oracle indépendant :** six cas OpenQASM lus par l'analyseur du
   navigateur et comparés à **Qiskit 2.5.1 Statevector** à `1e-12` ; un test inverse un CNOT
@@ -143,10 +144,14 @@ Deux tableaux séparés, pour qu'aucun chiffre ne soit attribué au mauvais comm
 
 | Contrôle | Résultat | Preuve |
 |---|---|---|
-| Suite Python, Windows / Python 3.13, commit `6fe4f01` | 2896 réussis, 109 ignorés | `research/v7/evidence/waveA_A5.md` |
-| Tests de mutation (exécution sur instantané, W15 ; à relancer au gel) | 95/95 tués | `research/v7/BASELINE_V7.md` |
-| CTest natif (Vulkan actif / CPU seul) | 26/26 / 15/15 | `research/v7/evidence/waveA_A2.md` |
-| Non exécuté | sanitizers GCC/Clang, Linux, WebGPU sur matériel, `drat-trim`, `cake_lpr` | `RELEASE_NOTES_DRAFT.md` |
+| Suite Python, Windows, SHA de gel `38e799b` | 4269 réussis, 134 ignorés, 0 échec | `research/v7/evidence/waveE_E2.md` (relevé de l'intégrateur) |
+| Tests ignorés | dus à l'environnement (répertoire de build natif non défini, extras optionnels absents), pas des échecs | `research/v7/SKIP_BUDGET.json` |
+| Tests de mutation, sur place au gel | 95/95 tués | `research/v7/evidence/waveE_E2.md` |
+| CTest natif (Vulkan actif / CPU seul) | 26/26 / 15/15 | `research/v7/evidence/waveE_E2.md`, `waveA_A2.md` |
+| Tests unitaires web | 167/167 | `research/v7/evidence/waveE_E2.md` |
+| Playwright | 128 réussis / 1 ignoré (WebGPU, NOT_RUN : aucun adaptateur) ; interface de plan Studio : 6 | `research/v7/evidence/waveE_E2.md` |
+| Artefacts de release | construits depuis `38e799b`, non publiés | `research/v7/evidence/waveE_E2.md` |
+| Non exécuté | sanitizers GCC/Clang, Linux, WebGPU sur matériel, `drat-trim`, `cake_lpr`, publication (aucun tag n'existe encore) | `RELEASE_NOTES_DRAFT.md` |
 
 ### Mesure historique (commit exact `c854560`)
 

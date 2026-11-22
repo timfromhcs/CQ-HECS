@@ -23,7 +23,8 @@ Decomposes 64-bit addition into linear and carry terms for algebraic step verifi
 - (A + B) mod 2^64 = Sum(A, B) + CarryShadow(A, B) mod 2^64
 Serves as an algebraic SAT verification testbench for reduced rounds of standard primitives (ChaCha20: 20 rounds specification, SHA-256: 64 steps specification, BLAKE2b: 12 rounds specification). It does not claim full cryptographic preimage extraction.
 
-#### 3. Exact Giles-Selinger Ring Z[1/sqrt(2), i]
+#### 3. Exact Giles-Selinger Ring Z[1/sqrt(2), i] (native C++ research component)
+Scope: this ring lives in the native C++ headers (`include/cq/exact_cyclotomic.hpp`, `include/cqhecs/algebra/ring.hpp`). The Python simulation paths A-D evaluate in float64 (Path A uses exact GF(2) tableau updates), so Python results are not symbolically exact.
 Bit-exact arithmetic over the dyadic cyclotomic ring for Clifford+T quantum gates:
 - Element form: (a + b*sqrt(2) + c*i + d*i*sqrt(2)) / (sqrt(2)^k), where a, b, c, d in Z, k in N.
 - Eliminates floating-point cancellation drift: constructive ((k1 - k2) == 0 mod 8) and destructive ((k1 - k2) == 4 mod 8) interference are evaluated with exact integer arithmetic.
