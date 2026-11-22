@@ -108,6 +108,20 @@ def test_valid_program_round_trip_shape():
         (HEADER + "qreg q[1];\nh q[0];\x00", "missing_semicolon"),
         (HEADER + "qreg q[1];\n" + "a" * (2 * 1024 * 1024) + ";", None),
     ],
+    # Explicit short ids: a hostile payload must never become part of the pytest node id. pytest
+    # mirrors the node id into the PYTEST_CURRENT_TEST environment variable, and on Windows a 2 MiB
+    # value fails that setup step; the end-of-run error report then takes about an hour to render
+    # (windows-latest, CI run 45029804800).
+    ids=[
+        "register-size-1e9",
+        "negative-register-size",
+        "huge-index-literal",
+        "index-out-of-range",
+        "deep-parentheses",
+        "power-tower",
+        "nul-byte",
+        "two-mib-identifier",
+    ],
 )
 def test_resource_hostile_input_is_refused_with_a_typed_error(src, category):
     start = time.monotonic()
