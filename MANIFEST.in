@@ -1,0 +1,13 @@
+# Source distribution contents (the wheel is governed by pyproject.toml package data).
+include LICENSE README.md README.de.md README.fr.md CHANGELOG.md SECURITY.md CITATION.cff
+include schemas/*.json
+recursive-include cqhecs/studio/static *
+recursive-include cqhecs/studio/data *
+# Research raw evidence, web app, native sources and build outputs are not part of the Python sdist.
+prune research
+prune web
+prune audit
+prune formal
+prune build
+prune dist
+global-exclude __pycache__ *.py[cod] *.exe *.dll *.pdb .env *.pem *.key
